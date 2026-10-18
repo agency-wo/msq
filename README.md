@@ -1,0 +1,54 @@
+# Quincy Survival (prototype)
+
+A one-thumb survival roguelite in the style of Magic Survival, built as an
+installable web app so it plays full-screen and offline on iPhone with no App
+Store. Live at **https://play.minarankstudio.com**.
+
+Phase 1 is the engine with placeholder powers. The themed content (the
+knights' powers, fusions, bosses, progression) comes next.
+
+## Play on iPhone
+
+Open the site in Safari, tap **Share**, then **Add to Home Screen**. It then
+launches full-screen from its own icon, works in airplane mode, and keeps its
+save separate from Safari.
+
+## Develop
+
+```sh
+npm install
+npm run dev          # http://localhost:5173 (add --host to open it from your phone on the same Wi-Fi)
+npm run typecheck
+npm test
+npm run build        # static site in dist/
+npm run smoke        # after a build: plays it in headless Edge under the studio's CSP, screenshots to .smoke/
+npm run icons        # redraws public/icons
+```
+
+Pacing report for tuning (prints level, kills and boss times for a few simulated play styles):
+
+```sh
+BALANCE=1 npx vitest run test/balance.test.ts --silent=false
+```
+
+## Testing switches
+
+Add these to the URL: `?debug` (FPS, CPU per frame and entity counts),
+`?stress=1500` (swarm plus every power maxed, no damage), `?god`, `?seed=123`,
+`?t=600` (start at 10:00), `?play` (skip the title).
+
+## How it is built
+
+- `src/game/` is the whole simulation in plain TypeScript with no rendering, so it runs headless in tests.
+- `src/data/` holds the content tables: powers with their Lv 7 attributes, passives, relics, enemies and the stage timeline. New content goes here.
+- `src/render/` draws with PixiJS particle containers from one texture atlas generated in code at startup. All art is original.
+- `src/ui/` is plain DOM with an external stylesheet.
+- No inline scripts or styles and no `eval`, so it runs under the strict Content-Security-Policy that minarankstudio.com sends.
+- A service worker generated at build time precaches every file for offline play.
+
+## Deploy
+
+Every push to `main` builds and publishes to GitHub Pages through
+`.github/workflows/deploy.yml`. The custom domain is set in the repository's
+Pages settings, and DNS is a `CNAME play -> acetodiavolo-ops.github.io` record
+on Cloudflare.

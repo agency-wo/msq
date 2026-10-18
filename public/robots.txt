@@ -1,0 +1,3 @@
+# A game prototype, not part of the studio site. Kept out of search on purpose.
+User-agent: *
+Disallow: /
