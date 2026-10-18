@@ -49,6 +49,21 @@ export function castOverkill(w: World, ps: PowerState): void {
   w.overkillCap = st.amount;
 }
 
+/** The Balance: hands its numbers to the world; World.hurtPlayer applies them. */
+export function castBalance(w: World, ps: PowerState): void {
+  const st = ps.stats;
+  w.balanceCut = st.amount;
+  w.balanceDmg = st.damage;
+  w.balanceR = st.radius * w.stats.size;
+}
+
+/** The Miracle: hands its numbers to the world; World.updateBuffs scales damage with health lost. */
+export function castMiracle(w: World, ps: PowerState): void {
+  const st = ps.stats;
+  w.miracleAmt = st.amount;
+  w.miracleRegen = st.damage;
+}
+
 /** Quincy: Vollständig: wings of light, saved for when enemies are actually close. */
 export function castVollstandig(w: World, ps: PowerState): void {
   ps.timer -= DT;

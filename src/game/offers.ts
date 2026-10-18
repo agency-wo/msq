@@ -26,6 +26,9 @@ export interface OfferInput {
   maxPassives: number;
 }
 
+/** Combined weight of every "new power" card before the slots-used falloff. */
+const NEW_TOTAL = 30;
+
 interface Weighted<T> {
   item: T;
   w: number;
@@ -56,8 +59,11 @@ export function generateOffers(input: OfferInput, rng: Rng, count = 3): Offer[] 
   const ownedPowers = new Map(input.powers.map((p) => [p.id, p.level]));
   const defs = new Map(input.powerDefs.map((d) => [d.id, d]));
   const slotsUsed = input.powers.filter((p) => defs.get(p.id)?.group !== 'bankai').length;
-  // New powers get rarer the more you own, so a build focuses instead of spreading thin across all 16.
-  const newWeight = 2.4 / (1 + slotsUsed * 0.5);
+  // New powers get rarer the more you own, so a build focuses instead of spreading thin. Their
+  // combined weight is shared across however many there are, so adding content to the game
+  // never dilutes a build: each unowned power gets a slice, never more than 2.4.
+  const unowned = input.powerDefs.filter((d) => d.group !== 'bankai' && !ownedPowers.has(d.id)).length;
+  const newWeight = Math.min(2.4, NEW_TOTAL / Math.max(1, unowned)) / (1 + slotsUsed * 0.5);
   for (const def of input.powerDefs) {
     const level = ownedPowers.get(def.id);
     if (level === undefined) {

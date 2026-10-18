@@ -6,6 +6,7 @@ import { PLAYER, VIEW_H_LANDSCAPE, VIEW_W } from '../config';
 import type { Input } from '../core/input';
 import { BANKAI_BY_ID, BANKAI_IDS } from '../data/bankai';
 import { ENEMY_INDEX, ENEMY_LIST } from '../data/enemies';
+import { DOUBLE_RING, doubleCount } from '../game/casts/schrift2';
 import {
   EB_FIRE,
   EB_ICE,
@@ -13,6 +14,7 @@ import {
   EB_WAVE,
   FLAG_BOSS,
   FLAG_ELITE,
+  FLAG_ZOMBIE,
   FX_ASH,
   FX_AVATAR,
   FX_BEAM,
@@ -20,9 +22,11 @@ import {
   FX_BOLT,
   FX_CRESCENT,
   FX_DOT,
+  FX_FIST,
   FX_FLAME,
   FX_GLOW,
   FX_MASK,
+  FX_MAW,
   FX_METEOR,
   FX_MISSILE,
   FX_PETAL,
@@ -33,6 +37,8 @@ import {
   FX_STAR,
   FX_WINGS,
   HOLD_FEAR,
+  HOLD_JAIL,
+  HOLD_STUN,
   LAYER_ADD,
   MF_ENEMY,
   MK_METEOR,
@@ -41,12 +47,15 @@ import {
   MS_LINE,
   PK_ARROW,
   PK_BLADE,
+  PK_BLOOD,
   PK_BOMB,
   PK_DRAGON,
   PK_DRONE,
+  PK_HEART,
   PK_MISSILE,
   PK_PETAL,
   PK_THORN,
+  ZK_CAGE,
   ZK_FIRE,
   ZK_FROST,
   ZK_GUST,
@@ -161,7 +170,11 @@ const ZONE_TINT: Record<number, number> = {
   [ZK_PETALS]: 0xffb8d2,
   [ZK_FROST]: 0x9fe0ff,
   [ZK_HEAT]: 0xff8a3c,
+  [ZK_CAGE]: 0xcfe0ff,
 };
+
+/** Why an enemy cannot move, by hold kind: freeze, fear, cage, stun. */
+const HOLD_TINT: Record<number, number> = { 0: 0x8fd0ff, [HOLD_FEAR]: 0xc9a8ff, [HOLD_JAIL]: 0xc8d8ff, [HOLD_STUN]: 0xffe9a0 };
 
 export class Renderer {
   readonly app = new Application();
@@ -283,6 +296,8 @@ export class Renderer {
     byId[FX_SNOW] = fx('snow');
     byId[FX_PETAL] = fx('petal');
     byId[FX_MISSILE] = fx('missile');
+    byId[FX_MAW] = fx('maw');
+    byId[FX_FIST] = fx('fist');
     this.fxSprites = byId;
     this.digits = Array.from({ length: 10 }, (_, d) => f[`d${d}`]);
     this.bankaiAura = BANKAI_IDS.map((id) => BANKAI_BY_ID.get(id)?.aura ?? 0xffcb5c);
@@ -404,6 +419,12 @@ export class Renderer {
         case ZK_FROST:
           L.zonesA.add(f.frost, x, y, s, s, seed, tint, 0.6 * a);
           break;
+        case ZK_CAGE: {
+          // Drops in slightly large and settles.
+          const drop = 1 + Math.max(0, 0.25 - age) * 1.2;
+          L.zonesA.add(f.cage, x, y, ((r * 2) / 128) * drop, ((r * 2) / 128) * drop, 0, tint, 0.55 * a);
+          break;
+        }
         case ZK_HEAT: {
           const pulse = 0.28 + Math.sin(now * 5) * 0.06;
           L.zonesA.add(f.ring, x, y, (r * 2) / 110, (r * 2) / 110, 0, tint, pulse);
@@ -532,10 +553,12 @@ export class Renderer {
         L.shadows.add(f.shadow, x, y + r * 0.85, (r * 2.2) / 48, (r * 2.2) / 48, 0, 0xffffff, 0.8);
       }
       let tint = 0xffffff;
-      if (E.freezeT[i] > 0) tint = E.holdKind[i] === HOLD_FEAR ? 0xc9a8ff : 0x8fd0ff;
+      if (E.charmT[i] > 0) tint = flags & FLAG_ZOMBIE ? 0x9fd88a : 0xff9cc8;
+      else if (E.freezeT[i] > 0) tint = HOLD_TINT[E.holdKind[i]] ?? 0x8fd0ff;
       else if (frozenAll && !boss) tint = 0x8fd0ff;
       else if (E.slowT[i] > 0) tint = 0xbfe2ff;
       else if (E.vulnT[i] > 0) tint = 0xd8ffcf;
+      else if (E.infT[i] > 0) tint = 0xffb8c0;
       const bob = E.freezeT[i] > 0 ? 0 : Math.sin(now * 7 + E.uid[i] * 1.7) * 0.05;
       L.enemies.add(E.flash[i] > 0 ? spr.flash : spr.tex, x, y, scale * (1 + bob), scale * (1 - bob), 0, tint);
     }
@@ -555,6 +578,18 @@ export class Renderer {
     }
     if (w.superT > 0) L.auras.add(f.glow, x, y, 1.6, 1.6, 0, 0xffd27a, 0.45 + Math.sin(now * 10) * 0.1);
     if (w.shieldCharges > 0) L.auras.add(f.ring, x, y - 2, 0.42, 0.42, 0, 0xdfe7f2, 0.35 + 0.1 * w.shieldCharges);
+    // The Yourself: translucent doubles standing around you.
+    for (const ps of w.powers) {
+      if (ps.def.kind !== 'double' || ps.active <= 0) continue;
+      const n = doubleCount(w, ps);
+      for (let k = 0; k < n; k++) {
+        const a = ps.angle + (k / n) * Math.PI * 2;
+        const dx = x + Math.cos(a) * DOUBLE_RING;
+        const dy = y + Math.sin(a) * DOUBLE_RING;
+        L.shadows.add(f.shadow, dx, dy + 15, 0.5, 0.5, 0, 0xffffff, 0.4);
+        L.allies.add(f.player, dx, dy - 4, 0.46 * p.face, 0.46, 0, 0x9fd0ff, 0.6);
+      }
+    }
     const justHit = p.iframes > PLAYER.iframes - 0.08;
     const blink = p.iframes > 0 && w.vollT <= 0 && Math.floor(now * 18) % 2 === 0;
     const float = Math.sin(now * 3.2) * 1.2;
@@ -614,6 +649,16 @@ export class Renderer {
         case PK_DRONE:
           L.allies.add(f.drone, x, y, 0.6, 0.6, now * 2);
           break;
+        case PK_HEART: {
+          const s = (P.r[i] * 2.4) / 24;
+          L.proj.add(f.loveheart, x, y, s, s, Math.sin(now * 10 + i) * 0.3);
+          break;
+        }
+        case PK_BLOOD: {
+          const s = (P.r[i] / 6) * 0.8;
+          L.proj.add(f.thorn, x, y, s, s, P.rot[i], 0xff3a50);
+          break;
+        }
         default:
           L.proj.add(f.shard, x, y, 0.6, 0.6, P.rot[i], 0xbfe6ff);
           break;

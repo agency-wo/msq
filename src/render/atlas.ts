@@ -685,6 +685,146 @@ const wings: Draw = (g, w, h) => {
   g.restore();
 };
 
+/** The Glutton's bite: two jaws of teeth seen from above, open toward +x. Drawn light so a tint colours it. */
+const maw: Draw = (g, w, h) => {
+  const cy = h / 2;
+  const x0 = 10;
+  const x1 = w - 6;
+  const open = h * 0.36;
+  // The gullet between the jaws
+  const gullet = g.createRadialGradient(w * 0.4, cy, 4, w * 0.45, cy, w * 0.5);
+  gullet.addColorStop(0, 'rgba(60,8,18,0.85)');
+  gullet.addColorStop(1, 'rgba(120,20,40,0)');
+  g.fillStyle = gullet;
+  g.beginPath();
+  g.ellipse(w * 0.45, cy, w * 0.42, open * 0.9, 0, 0, TAU);
+  g.fill();
+  for (const dir of [-1, 1]) {
+    // Gum: a thick curved band
+    g.fillStyle = '#e8a0a8';
+    g.beginPath();
+    for (let k = 0; k <= 20; k++) {
+      const t = k / 20;
+      const x = x0 + (x1 - x0) * t;
+      const y = cy + dir * (open * Math.sin(Math.PI * (0.15 + 0.7 * t)) + 4);
+      if (k === 0) g.moveTo(x, y);
+      else g.lineTo(x, y);
+    }
+    for (let k = 20; k >= 0; k--) {
+      const t = k / 20;
+      const x = x0 + (x1 - x0) * t;
+      const y = cy + dir * (open * Math.sin(Math.PI * (0.15 + 0.7 * t)) + 14);
+      g.lineTo(x, y);
+    }
+    g.closePath();
+    g.fill();
+    // Teeth pointing into the mouth
+    g.fillStyle = '#ffffff';
+    for (let k = 1; k < 9; k++) {
+      const t = k / 9;
+      const x = x0 + (x1 - x0) * t;
+      const y = cy + dir * (open * Math.sin(Math.PI * (0.15 + 0.7 * t)) + 4);
+      const len = 9 + (k % 2) * 3;
+      poly(g, [
+        [x - 4.5, y],
+        [x + 4.5, y],
+        [x, y - dir * len],
+      ]);
+      g.fill();
+    }
+  }
+};
+
+/** The Power's fist: a big gauntleted fist of light, punching toward +x. */
+const fist: Draw = (g, w, h) => {
+  const cy = h / 2;
+  g.save();
+  g.shadowColor = 'rgba(255,214,150,0.9)';
+  g.shadowBlur = 8;
+  // Cuff
+  g.fillStyle = '#e9d6b0';
+  roundRect(g, 4, cy - 11, 16, 22, 4);
+  g.fill();
+  // Back of the hand and knuckles
+  const grad = g.createLinearGradient(16, 0, w - 4, 0);
+  grad.addColorStop(0, '#fff3dc');
+  grad.addColorStop(1, '#ffffff');
+  g.fillStyle = grad;
+  roundRect(g, 16, cy - 15, w - 22, 30, 9);
+  g.fill();
+  g.restore();
+  // Finger creases and the thumb
+  g.strokeStyle = 'rgba(120,90,40,0.45)';
+  g.lineWidth = 1.4;
+  for (let k = 1; k < 4; k++) {
+    const y = cy - 15 + k * 7.5;
+    g.beginPath();
+    g.moveTo(w - 16, y);
+    g.lineTo(w - 6, y);
+    g.stroke();
+  }
+  g.fillStyle = '#f2e2c2';
+  g.beginPath();
+  g.ellipse(w * 0.55, cy + 12, 9, 4.5, -0.2, 0, TAU);
+  g.fill();
+};
+
+/** The Love's heart ray: a crisp heart of light, no halo, so it reads at a glance. */
+const loveHeart: Draw = (g, w, h) => {
+  const cx = w / 2;
+  g.save();
+  g.shadowColor = 'rgba(255,140,190,0.9)';
+  g.shadowBlur = 5;
+  const grad = g.createLinearGradient(0, 2, 0, h - 2);
+  grad.addColorStop(0, '#ffffff');
+  grad.addColorStop(1, '#ffc2dc');
+  g.fillStyle = grad;
+  g.beginPath();
+  g.moveTo(cx, h - 3);
+  g.bezierCurveTo(cx - w * 0.55, h * 0.5, cx - w * 0.3, -h * 0.05, cx, h * 0.3);
+  g.bezierCurveTo(cx + w * 0.3, -h * 0.05, cx + w * 0.55, h * 0.5, cx, h - 3);
+  g.closePath();
+  g.fill();
+  g.restore();
+};
+
+/** The Jail from above: a ring of posts with crossed bars over the top. */
+const cage: Draw = (g, w) => {
+  const c = w / 2;
+  const R = c - 6;
+  g.save();
+  g.beginPath();
+  g.arc(c, c, R, 0, TAU);
+  g.clip();
+  g.fillStyle = 'rgba(200,220,255,0.12)';
+  g.fillRect(0, 0, w, w);
+  g.strokeStyle = 'rgba(255,255,255,0.55)';
+  g.lineWidth = 2;
+  for (let k = -3; k <= 3; k++) {
+    g.beginPath();
+    g.moveTo(c + k * 16, 0);
+    g.lineTo(c + k * 16, w);
+    g.stroke();
+    g.beginPath();
+    g.moveTo(0, c + k * 16);
+    g.lineTo(w, c + k * 16);
+    g.stroke();
+  }
+  g.restore();
+  g.strokeStyle = 'rgba(255,255,255,0.95)';
+  g.lineWidth = 4;
+  g.beginPath();
+  g.arc(c, c, R, 0, TAU);
+  g.stroke();
+  g.fillStyle = '#ffffff';
+  for (let k = 0; k < 12; k++) {
+    const a = (k / 12) * TAU;
+    g.beginPath();
+    g.arc(c + Math.cos(a) * R, c + Math.sin(a) * R, 4.5, 0, TAU);
+    g.fill();
+  }
+};
+
 const shadow: Draw = (g, w, h) => {
   g.save();
   g.translate(w / 2, h / 2);
@@ -1575,6 +1715,10 @@ function specs(): Spec[] {
     { name: 'firezone', w: 128, h: 128, draw: firezone },
     { name: 'gust', w: 128, h: 128, draw: gust },
     { name: 'frost', w: 128, h: 128, draw: frost },
+    { name: 'cage', w: 128, h: 128, draw: cage },
+    { name: 'maw', w: 128, h: 112, draw: maw },
+    { name: 'fist', w: 64, h: 40, draw: fist },
+    { name: 'loveheart', w: 24, h: 22, draw: loveHeart },
     { name: 'beamh', w: 256, h: 32, draw: beamh },
     { name: 'flame', w: 192, h: 48, draw: flame },
     { name: 'dragon', w: 120, h: 48, draw: dragon },

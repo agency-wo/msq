@@ -2,6 +2,14 @@
 
 export const FLAG_ELITE = 1;
 export const FLAG_BOSS = 2;
+/** Risen by The Zombie: fights for you, crumbles when its time runs out, drops nothing. */
+export const FLAG_ZOMBIE = 4;
+/** Charmed with Heartbreak: bursts when the charm ends or it dies. */
+export const FLAG_HEARTBREAK = 8;
+/** Zombie with Plague: infects what it hits. */
+export const FLAG_PLAGUE = 16;
+/** Zombie with Blood Burst: bursts when it falls. */
+export const FLAG_BLOODBURST = 32;
 
 /** Projectile kinds. */
 export const PK_ARROW = 0;
@@ -13,6 +21,8 @@ export const PK_THORN = 5;
 export const PK_MISSILE = 6;
 export const PK_DRAGON = 7;
 export const PK_DRONE = 8;
+export const PK_HEART = 9;
+export const PK_BLOOD = 10;
 
 /** Projectile flags. */
 export const PF_SPECIAL = 1; // arrows burst (Sprenger), blades throw shards
@@ -22,6 +32,8 @@ export const PF_FREEZE = 8;
 export const PF_VOLATILE = 16;
 export const PF_CLUSTER = 32;
 export const PF_BURST = 64;
+export const PF_CHARM = 128; // pa = charm seconds, pb = charmed damage per second
+export const PF_INFECT = 256; // pa = infection seconds
 
 /** Visual effect sprites; the renderer maps each to an atlas frame. */
 export const FX_GLOW = 0;
@@ -43,6 +55,8 @@ export const FX_STAR = 15;
 export const FX_SNOW = 16;
 export const FX_PETAL = 17;
 export const FX_MISSILE = 18;
+export const FX_MAW = 19;
+export const FX_FIST = 20;
 
 /** Effect blend layers. */
 export const LAYER_NORMAL = 0;
@@ -55,6 +69,8 @@ export const ZK_GUST = 2;
 export const ZK_PETALS = 3;
 export const ZK_FROST = 4;
 export const ZK_HEAT = 5;
+/** The Jail: holds every non-boss enemy inside; extra = burst damage when it opens (Execution). */
+export const ZK_CAGE = 6;
 
 /** Zone flags. */
 export const ZF_FOLLOW = 1; // sits on the player
@@ -107,6 +123,8 @@ export const BH_RANGED = 2;
 /** Why an enemy cannot move (drives its tint). */
 export const HOLD_FREEZE = 0;
 export const HOLD_FEAR = 1;
+export const HOLD_JAIL = 2;
+export const HOLD_STUN = 3;
 
 /** Damage-over-time kinds. */
 export const DOT_FIRE = 0;

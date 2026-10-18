@@ -5,9 +5,11 @@ installable web app so it plays full-screen and offline on iPhone with no App
 Store. Live at **https://play.minarankstudio.com**.
 
 You are the Emperor. Level-ups let you take back the Schrift you gave your
-knights (Auswählen): 12 offensive powers with a Lv 7 attribute pick, plus 4
-utilities. Every run, three random medallion bearers carry stolen bankai; beat
-one and its bankai is yours. All art is original and drawn in code.
+knights (Auswählen): 18 offensive powers with a Lv 7 attribute pick, plus 6
+utilities. Some fight for you: The Love charms enemies onto your side, The
+Zombie raises the infected dead, The Yourself sends out doubles. Every run,
+three random medallion bearers carry stolen bankai; beat one and its bankai is
+yours. All art is original and drawn in code.
 
 Stages, 20 minutes each:
 
@@ -39,6 +41,7 @@ Pacing report for tuning (prints level, kills and boss times for a few simulated
 ```sh
 BALANCE=1 npx vitest run test/balance.test.ts --silent=false
 BALANCE=1 STAGE=seireitei MINUTES=21 npx vitest run test/balance.test.ts --silent=false
+BENCH=1 npx vitest run test/bench.test.ts --silent=false   # damage per second of every power at Lv 6
 ```
 
 ## Testing switches

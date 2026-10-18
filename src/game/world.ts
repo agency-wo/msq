@@ -15,8 +15,12 @@ import {
   BH_BLINK,
   BH_CHASE,
   BH_RANGED,
+  FLAG_BLOODBURST,
   FLAG_BOSS,
   FLAG_ELITE,
+  FLAG_HEARTBREAK,
+  FLAG_PLAGUE,
+  FLAG_ZOMBIE,
   FX_ASH,
   FX_DOT,
   FX_GLOW,
@@ -28,8 +32,10 @@ import {
   LAYER_ADD,
   LAYER_NORMAL,
   PF_BURST,
+  PF_CHARM,
   PF_FREEZE,
   PF_HOMING,
+  PF_INFECT,
   PF_SPECIAL,
   PF_STUN,
   PK_ARROW,
@@ -37,6 +43,7 @@ import {
   PK_BOMB,
   PK_DRAGON,
   PK_DRONE,
+  PK_HEART,
   PK_MISSILE,
   PK_PETAL,
   PK_SHARD,
@@ -95,7 +102,11 @@ export type SoundName =
   | 'thorn'
   | 'gust'
   | 'shield'
-  | 'blast';
+  | 'blast'
+  | 'bite'
+  | 'charm'
+  | 'punch'
+  | 'rise';
 
 export interface WorldOptions {
   seed?: number;
@@ -199,6 +210,21 @@ export class World {
   overkillPer = 0;
   overkillCap = 0;
   overkillStart = 0;
+  /** The Balance: share of each hit shrugged off, and the burst it sends into enemies within balanceR. */
+  balanceCut = 0;
+  balanceDmg = 0;
+  balanceR = 0;
+  /** The Miracle: extra damage at zero health, and regen per second below 35% health. */
+  miracleAmt = 0;
+  miracleRegen = 0;
+  /** The Zombie: how risen enemies behave, and how many are up right now. */
+  zombieLife = 0;
+  zombieDps = 0;
+  zombieMax = 0;
+  zombieFull = false;
+  zombiePlague = false;
+  zombieBurst = false;
+  zombieN = 0;
   /** Direction you last moved, radians: aim for powers that fire "where you are heading". */
   aim = -Math.PI / 2;
 
@@ -215,7 +241,8 @@ export class World {
   /** Scratch target written by densestPoint() and edgePoint(). */
   tx = 0;
   ty = 0;
-  readonly isAlive = (i: number): boolean => this.en.dead[i] === 0;
+  /** A valid target for your powers: alive and not fighting on your side. */
+  readonly isAlive = (i: number): boolean => this.en.dead[i] === 0 && this.en.charmT[i] <= 0;
 
   private bossCount = 0;
   private evCursor = 0;
@@ -340,6 +367,7 @@ export class World {
       const stacks = Math.floor((this.kills - this.overkillStart) / this.overkillEvery);
       mul *= 1 + Math.min(this.overkillCap, stacks * this.overkillPer);
     }
+    if (this.miracleAmt > 0) mul *= 1 + this.miracleAmt * (1 - Math.max(0, this.player.hp) / this.player.maxHp);
     if (this.hasSanrei) {
       if (!this.sanreiOff && this.t >= 480) {
         this.sanreiOff = true;
@@ -539,6 +567,9 @@ export class World {
     E.atk2T[i] = def.boss ? 4 : 1.5 + this.rng.next() * 2.5;
     E.volT[i] = 0;
     E.volDmg[i] = 0;
+    E.charmT[i] = 0;
+    E.charmDmg[i] = 0;
+    E.infT[i] = 0;
     E.type[i] = type;
     E.variant[i] = 0;
     E.flags[i] = flags;
@@ -584,6 +615,24 @@ export class World {
       }
       const flags = E.flags[i];
       const boss = (flags & FLAG_BOSS) !== 0;
+      let charmed = false;
+      if (E.charmT[i] > 0) {
+        E.charmT[i] -= DT;
+        if (E.charmT[i] > 0) {
+          charmed = true;
+        } else {
+          E.charmT[i] = 0;
+          if (flags & FLAG_ZOMBIE) {
+            this.killEnemy(i);
+            continue;
+          }
+          if (flags & FLAG_HEARTBREAK) {
+            E.flags[i] = flags & ~FLAG_HEARTBREAK;
+            this.queueBurst(x, y, 60 * this.stats.size, E.charmDmg[i] * 3);
+          }
+        }
+      }
+      if (E.infT[i] > 0) E.infT[i] -= DT;
       let k = 1;
       if (E.freezeT[i] > 0) {
         E.freezeT[i] -= DT;
@@ -600,7 +649,29 @@ export class World {
       const dist = Math.sqrt(dist2) || 1;
       const v = E.spd[i] * k * DT;
       const behavior = BEHAVIOR[E.type[i]];
-      if (behavior === BH_RANGED && !(flags & FLAG_ELITE)) {
+      if (charmed) {
+        // On your side: rush the nearest enemy and hit it; with nobody near, stay close to you.
+        // The rush is faster than a normal walk, or an ally could never catch a target heading your way.
+        E.atk2T[i] -= DT;
+        const t = this.grid.nearest(x, y, 260, E.x, E.y, this.isAlive);
+        if (t >= 0) {
+          const tx = E.x[t] - x;
+          const ty = E.y[t] - y;
+          const td = Math.hypot(tx, ty) || 1;
+          if (td > E.r[i] + E.r[t] + 8) {
+            const rush = Math.min(td, v * 1.6);
+            x += (tx / td) * rush;
+            y += (ty / td) * rush;
+          } else if (E.atk2T[i] <= 0) {
+            E.atk2T[i] = 0.5;
+            if (flags & FLAG_PLAGUE) E.infT[t] = Math.max(E.infT[t], 4);
+            this.damageEnemy(t, E.charmDmg[i] * 0.5, 30, x, y, true);
+          }
+        } else if (dist > 70) {
+          x += (dx / dist) * v;
+          y += (dy / dist) * v;
+        }
+      } else if (behavior === BH_RANGED && !(flags & FLAG_ELITE)) {
         // Casters hold a ring around you: close in, back off, or circle.
         if (dist > 220) {
           x += (dx / dist) * v;
@@ -678,11 +749,13 @@ export class World {
       E.x[i] = x;
       E.y[i] = y;
       if (boss) bossAI(this, i, dist);
-      else if (flags & FLAG_ELITE) eliteAI(this, i, dist);
+      else if (charmed) {
+        // Allies neither shoot at you nor flash-step.
+      } else if (flags & FLAG_ELITE) eliteAI(this, i, dist);
       else if (k > 0 && behavior === BH_BLINK) blinkAI(this, i, dist);
       else if (k > 0 && behavior === BH_RANGED) casterAI(this, i, dist);
       if (E.dead[i]) continue;
-      if (dist < E.r[i] + PLAYER.radius + 2) this.contact(i);
+      if (!charmed && dist < E.r[i] + PLAYER.radius + 2) this.contact(i);
       else if (dist2 > recycle2 && !boss) this.recycle(i);
     }
   }
@@ -765,15 +838,59 @@ export class World {
     E.dotKind[i] = kind;
   }
 
+  /** Charm an enemy (The Love): it fights for you for a while. Bosses and the risen are immune; elites resist unless Adoration. */
+  charm(j: number, secs: number, dps: number, attr: string | null): void {
+    const E = this.en;
+    if (E.dead[j] || E.flags[j] & FLAG_ZOMBIE) return;
+    if (E.flags[j] & FLAG_BOSS) {
+      // Bosses cannot be charmed, but they are flustered: more damage from everything for a while.
+      this.applyVuln(j, secs, 0.25);
+      return;
+    }
+    const s = E.flags[j] & FLAG_ELITE && attr !== 'adoration' ? secs * 0.5 : secs;
+    if (s > E.charmT[j]) E.charmT[j] = s;
+    E.charmDmg[j] = Math.max(E.charmDmg[j], dps);
+    if (attr === 'heartbreak') E.flags[j] |= FLAG_HEARTBREAK;
+    E.atk2T[j] = Math.min(E.atk2T[j], 0.2);
+    this.spawnFx(FX_GLOW, E.x[j], E.y[j], 0, 0, 0.3, E.r[j] * 1.5, E.r[j] * 3, 0.7, 0, 0, 0xff9cc8, LAYER_ADD);
+  }
+
+  /** An infected enemy died: it rises again on your side (The Zombie). */
+  private raise(type: number, x: number, y: number): void {
+    const E = this.en;
+    const z = this.spawnEnemy(type, x, y);
+    if (z < 0) return;
+    if (!this.zombieFull) {
+      E.maxHp[z] *= 0.5;
+      E.hp[z] = E.maxHp[z];
+    }
+    E.xp[z] = 0;
+    E.flags[z] |= FLAG_ZOMBIE | (this.zombiePlague ? FLAG_PLAGUE : 0) | (this.zombieBurst ? FLAG_BLOODBURST : 0);
+    E.charmT[z] = this.zombieLife;
+    E.charmDmg[z] = this.zombieDps;
+    E.atk2T[z] = 0.3;
+    this.zombieN++;
+    this.spawnFx(FX_GLOW, x, y, 0, 0, 0.4, E.r[z] * 1.5, E.r[z] * 3.5, 0.8, 0, 0, 0xff3050, LAYER_ADD);
+    this.sound('rise');
+  }
+
   killEnemy(i: number): void {
     const E = this.en;
     if (E.dead[i]) return;
     E.dead[i] = 1;
-    this.kills++;
     const x = E.x[i];
     const y = E.y[i];
     const flags = E.flags[i];
     const def = ENEMY_LIST[E.type[i]];
+    if (flags & FLAG_ZOMBIE) {
+      // The risen crumble: no mana, no drops, not a kill.
+      this.zombieN = Math.max(0, this.zombieN - 1);
+      if (flags & FLAG_BLOODBURST) this.queueBurst(x, y, 56 * this.stats.size, E.charmDmg[i] * 2.5);
+      this.spawnFx(FX_GLOW, x, y, 0, 0, 0.3, E.r[i], E.r[i] * 2.6, 0.6, 0, 0, 0xff3050, LAYER_ADD);
+      return;
+    }
+    this.kills++;
+    if (E.charmT[i] > 0 && flags & FLAG_HEARTBREAK) this.queueBurst(x, y, 60 * this.stats.size, E.charmDmg[i] * 3);
     this.spawnOrb(x, y, E.xp[i]);
     if (E.volT[i] > 0) this.queueBurst(x, y, 44 * this.stats.size, E.volDmg[i]);
     if (flags & FLAG_BOSS) {
@@ -804,6 +921,7 @@ export class World {
       }
       if (def.shinigami) this.spiritFx(x, y, E.r[i]);
       else this.deathFx(x, y, def.color, E.r[i]);
+      if (E.infT[i] > 0 && this.zombieN < this.zombieMax) this.raise(E.type[i], x, y);
     }
     this.sound('kill');
   }
@@ -820,10 +938,12 @@ export class World {
       if (this.ironBurst > 0) this.shockwave(140, this.ironBurst, 300);
       return;
     }
-    p.hp -= amount * this.stats.dmgTaken;
+    p.hp -= amount * this.stats.dmgTaken * (1 - this.balanceCut);
     p.iframes = PLAYER.iframes;
     this.shake = Math.max(this.shake, 5);
     this.sound('hurt');
+    // The Balance: the misfortune is shared with everything around you.
+    if (this.balanceDmg > 0) this.shockwave(this.balanceR, this.balanceDmg, 140);
     if (p.hp > 0) return;
     if (p.revives > 0) {
       p.revives--;
@@ -864,7 +984,7 @@ export class World {
     if (n === 0) return -1;
     for (let tries = 0; tries < 10; tries++) {
       const j = this.qbuf[this.rng.int(n)];
-      if (E.dead[j]) continue;
+      if (E.dead[j] || E.charmT[j] > 0) continue;
       const dx = E.x[j] - p.x;
       const dy = E.y[j] - p.y;
       if (dx * dx + dy * dy > range * range) continue;
@@ -979,7 +1099,8 @@ export class World {
       const n = g.query(x - r - 46, y - r - 46, x + r + 46, y + r + 46, buf);
       for (let k = 0; k < n; k++) {
         const j = buf[k];
-        if (E.dead[j]) continue;
+        // Shots pass through enemies fighting on your side.
+        if (E.dead[j] || E.charmT[j] > 0) continue;
         const rr = r + E.r[j];
         const dx = E.x[j] - x;
         const dy = E.y[j] - y;
@@ -995,8 +1116,11 @@ export class World {
         if (this.alreadyHit(i, uid)) continue;
         this.recordHit(i, uid);
         const f = P.flags[i];
-        const knock = kind === PK_ARROW ? 30 : kind === PK_DRAGON ? 60 : 15;
+        const knock = kind === PK_ARROW ? 30 : kind === PK_DRAGON ? 60 : kind === PK_HEART ? 0 : 15;
+        // Infected before the hit lands, so a bolt that kills still raises a zombie.
+        if (f & PF_INFECT) E.infT[j] = Math.max(E.infT[j], P.pa[i]);
         this.damageEnemy(j, P.dmg[i], knock, x - P.vx[i] * 0.05, y - P.vy[i] * 0.05);
+        if (f & PF_CHARM && !E.dead[j]) this.charm(j, P.pa[i], P.pb[i], this.powers[P.src[i]]?.attr ?? null);
         if (f & PF_STUN && !E.dead[j]) {
           this.applyHold(j, P.pa[i], HOLD_FEAR);
           if (P.pb[i] > 0) this.applyVuln(j, P.pa[i], P.pb[i]);
@@ -1288,6 +1412,11 @@ export class World {
     p.hp = Math.min(p.maxHp, p.hp + p.maxHp * fraction);
   }
 
+  healFlat(amount: number): void {
+    const p = this.player;
+    if (p.alive) p.hp = Math.min(p.maxHp, p.hp + amount);
+  }
+
   // ------------------------------------------------------------ effects
 
   spawnFx(
@@ -1402,6 +1531,7 @@ export class World {
     const p = this.player;
     if (p.iframes > 0) p.iframes -= DT;
     if (this.stats.regen > 0 && p.hp < p.maxHp) p.hp = Math.min(p.maxHp, p.hp + this.stats.regen * DT);
+    if (this.miracleRegen > 0 && p.alive && p.hp < p.maxHp * 0.35) p.hp += this.miracleRegen * DT;
     if (this.shake > 0) this.shake = Math.max(0, this.shake - 28 * DT);
     if (this.freezeAllT > 0) this.freezeAllT -= DT;
     if (this.hasClock) {

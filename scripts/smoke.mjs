@@ -166,6 +166,22 @@ try {
   log('schrift build', { ...(await stats()), picks });
   await shot('04-schrift');
 
+  // 5b. The second wave of Schrift: maw, cages, charm, fist, doubles, zombies.
+  await page.goto(`${BASE}?debug&seed=7&play&god&t=400&give=glutton6,jail6,love6,power6,yourself6,zombie6`);
+  await wait(500);
+  picks = await steer(9000, { radius: 20 });
+  log('schrift wave 2', {
+    ...(await stats()),
+    picks,
+    allies: await page.evaluate(() => {
+      const w = window.__msq.world;
+      let n = 0;
+      for (let i = 0; i < w.en.n; i++) if (w.en.charmT[i] > 0) n++;
+      return n;
+    }),
+  });
+  await shot('04b-schrift-wave2');
+
   // 6. Medallion bearers: each fights with its bankai and warns before it hits.
   for (const id of ['tengen', 'raikoben', 'gonryo']) {
     await page.goto(`${BASE}?debug&seed=3&play&god&t=297&bearers=${id}`);

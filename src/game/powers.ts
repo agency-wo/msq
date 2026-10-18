@@ -16,7 +16,8 @@ import {
   respawnBlades,
   respawnDrones,
 } from './casts/schrift';
-import { castIron, castOverkill, castSuperstar, castVollstandig } from './casts/utility';
+import { castDouble, castJail, castLove, castMaw, castPunch, castZombie } from './casts/schrift2';
+import { castBalance, castIron, castMiracle, castOverkill, castSuperstar, castVollstandig } from './casts/utility';
 import type { World } from './world';
 
 /** Runtime state of one owned power. */
@@ -95,6 +96,24 @@ export function updatePowers(w: World): void {
       case 'drones':
         castDrones(w, ps, slot);
         break;
+      case 'maw':
+        castMaw(w, ps);
+        break;
+      case 'jail':
+        castJail(w, ps);
+        break;
+      case 'love':
+        castLove(w, ps, slot);
+        break;
+      case 'punch':
+        castPunch(w, ps);
+        break;
+      case 'double':
+        castDouble(w, ps, slot);
+        break;
+      case 'zombie':
+        castZombie(w, ps, slot);
+        break;
       case 'iron':
         castIron(w, ps);
         break;
@@ -106,6 +125,12 @@ export function updatePowers(w: World): void {
         break;
       case 'vollstandig':
         castVollstandig(w, ps);
+        break;
+      case 'balance':
+        castBalance(w, ps);
+        break;
+      case 'miracle':
+        castMiracle(w, ps);
         break;
       case 'senbonzakura':
         castSenbonzakura(w, ps);

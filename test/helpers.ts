@@ -28,6 +28,8 @@ export const bot: Mover = (w) => {
   let mx = 0;
   let my = 0;
   for (let i = 0; i < E.n; i++) {
+    // Charmed and risen enemies are on your side: nothing to run from.
+    if (E.charmT[i] > 0) continue;
     const dx = p.x - E.x[i];
     const dy = p.y - E.y[i];
     const R = 100 + E.r[i];
@@ -98,6 +100,8 @@ export const bot: Mover = (w) => {
   let ty = 0;
   let found = false;
   let bestD = 700 * 700;
+  // Medallions and chests close by are worth pushing through a crowd for; orbs are not.
+  let pull = 2.5;
   for (const q of w.pickups) {
     if (q.kind !== 'chest' && q.kind !== 'chestBlack' && q.kind !== 'medallion') continue;
     const d2 = (q.x - p.x) ** 2 + (q.y - p.y) ** 2;
@@ -109,6 +113,7 @@ export const bot: Mover = (w) => {
     }
   }
   if (!found) {
+    pull = 1;
     bestD = 420 * 420;
     for (let i = 0; i < O.n; i++) {
       const d2 = (O.x[i] - p.x) ** 2 + (O.y[i] - p.y) ** 2;
@@ -122,8 +127,10 @@ export const bot: Mover = (w) => {
   }
   if (found) {
     const d = Math.sqrt(bestD) || 1;
-    mx += (tx - p.x) / d;
-    my += (ty - p.y) / d;
+    // Only worth pushing through a crowd when it is right there.
+    if (d > 200) pull = 1;
+    mx += ((tx - p.x) / d) * pull;
+    my += ((ty - p.y) / d) * pull;
   } else {
     mx += Math.cos(w.t * 0.35) * 0.5;
     my += Math.sin(w.t * 0.35) * 0.5;

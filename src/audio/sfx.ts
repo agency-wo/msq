@@ -16,6 +16,10 @@ const GAP: Partial<Record<SoundName, number>> = {
   warn: 0.25,
   blast: 0.15,
   explode: 0.08,
+  bite: 0.2,
+  charm: 0.2,
+  punch: 0.12,
+  rise: 0.25,
 };
 
 /**
@@ -150,6 +154,23 @@ export class Sfx {
       case 'blast':
         this.burst(0.55, 0.16, 700, 'lowpass');
         this.tone('sine', 80, 32, 0.55, 0.13);
+        break;
+      case 'bite':
+        // Two quick snaps.
+        this.burst(0.07, 0.1, 500, 'lowpass');
+        this.burst(0.07, 0.1, 380, 'lowpass');
+        this.tone('square', 140, 70, 0.12, 0.04);
+        break;
+      case 'charm':
+        this.tone('sine', 880, 1320, 0.18, 0.04);
+        this.tone('sine', 1100, 1650, 0.18, 0.03, 0.07);
+        break;
+      case 'punch':
+        this.burst(0.18, 0.14, 420, 'lowpass');
+        this.tone('sine', 110, 45, 0.2, 0.12);
+        break;
+      case 'rise':
+        this.tone('sawtooth', 70, 140, 0.35, 0.05);
         break;
     }
   }

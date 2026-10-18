@@ -84,6 +84,11 @@ export class EnemyPool extends Pool {
   /** Marked by a Volatile blast: explodes for volDmg if it dies within volT. */
   readonly volT = this.f32();
   readonly volDmg = this.f32();
+  /** Charmed (The Love) or risen (The Zombie): fights other enemies for charmT seconds, dealing charmDmg a second. */
+  readonly charmT = this.f32();
+  readonly charmDmg = this.f32();
+  /** Infected by The Zombie: rises on your side if it dies while infT > 0. */
+  readonly infT = this.f32();
   readonly type = this.u8();
   /** Bosses: which bankai a medallion bearer carries (index into BANKAI_IDS). */
   readonly variant = this.u8();
@@ -118,7 +123,7 @@ export class ProjPool extends Pool {
   readonly kind = this.u8();
   /** Owning power slot. */
   readonly src = this.u8();
-  readonly flags = this.u8();
+  readonly flags = this.u32();
   readonly hitN = this.u8();
   readonly hits = new Int32Array(this.cap * HITS);
 

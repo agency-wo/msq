@@ -13,6 +13,7 @@ import {
   FX_SNOW,
   FX_SPARK,
   HOLD_FREEZE,
+  HOLD_JAIL,
   LAYER_ADD,
   MF_BURN,
   MF_CRATER,
@@ -40,6 +41,7 @@ import {
   ZF_SPREAD,
   ZF_VULN,
   ZF_WANDER,
+  ZK_CAGE,
   ZK_FIRE,
   ZK_HEAT,
   ZK_POISON,
@@ -55,6 +57,7 @@ export function updateZones(w: World): void {
   for (let i = Z.n - 1; i >= 0; i--) {
     Z.life[i] -= DT;
     if (Z.life[i] <= 0) {
+      if (Z.kind[i] === ZK_CAGE && Z.extra[i] > 0) openCage(w, i);
       Z.remove(i);
       continue;
     }
@@ -116,8 +119,22 @@ export function updateZones(w: World): void {
       }
       if (flags & ZF_VULN) w.applyVuln(j, Z.tickInt[i] + 0.2, Z.extra[i]);
       if (flags & ZF_FREEZE) w.applyHold(j, 0.8, HOLD_FREEZE);
+      if (kind === ZK_CAGE) w.applyHold(j, Z.tickInt[i] + 0.15, HOLD_JAIL);
     }
   }
+}
+
+/** Execution: a cage that opens blows up on whatever is still inside. */
+function openCage(w: World, i: number): void {
+  const Z = w.zones;
+  const x = Z.x[i];
+  const y = Z.y[i];
+  const r = Z.r[i];
+  const n = enemiesInCircle(w, x, y, r);
+  for (let k = 0; k < n; k++) w.damageEnemy(w.qout[k], Z.extra[i], 80, x, y);
+  w.spawnFx(FX_GLOW, x, y, 0, 0, 0.3, r, r * 2.6, 1, 0, 0, 0xcfe0ff, LAYER_ADD);
+  w.spawnFx(FX_RING, x, y, 0, 0, 0.3, r * 0.6, r * 2.4, 1, 0, 0, 0xffffff, LAYER_ADD);
+  w.sound('blast');
 }
 
 /** Wandering gusts drift with a lazy random turn and curve back if they stray too far from you. */
