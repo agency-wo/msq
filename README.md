@@ -12,7 +12,8 @@ three random medallion bearers carry stolen bankai; beat one and its bankai is
 yours. Take back all six across your runs and **A · The Almighty** unlocks: from
 then on it awakens once three Schrift reach Lv 7, stops time every 24 s and
 rewrites the future (enemy fire vanishes, everything on screen is struck down).
-All art is original and drawn in code.
+All art is drawn in code: the Emperor is a chibi homage to Yhwach; everything
+else (Hollows, Soul Reapers, bearers, bosses, effects) is an original design.
 
 Stages, 20 minutes each:
 
@@ -61,7 +62,7 @@ Add these to the URL: `?debug` (FPS, CPU per frame and entity counts),
 
 - `src/game/` is the whole simulation in plain TypeScript with no rendering, so it runs headless in tests.
 - `src/data/` holds the content tables: powers with their Lv 7 attributes, passives, relics, enemies and the stages (spawn mixes, events, difficulty). New content goes here.
-- `src/render/` draws with PixiJS particle containers from one texture atlas generated in code at startup. All art is original.
+- `src/render/` draws with PixiJS particle containers from one texture atlas generated in code at startup.
 - `src/ui/` is plain DOM with an external stylesheet.
 - No inline scripts or styles and no `eval`, so it runs under the strict Content-Security-Policy that minarankstudio.com sends.
 - A service worker generated at build time precaches every file for offline play.

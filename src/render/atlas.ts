@@ -4,8 +4,8 @@ import { Rectangle, Texture } from 'pixi.js';
  * All game art is drawn here with Canvas 2D at startup and packed into one
  * texture, so the whole game renders from a single texture source (which is
  * what lets Pixi's ParticleContainer batch thousands of sprites) and nothing
- * is downloaded. Every design is original: Bleach's look (ink black, bone
- * white, Quincy blue, Hollow red) without copying any of its characters.
+ * is downloaded. Bleach's look (ink black, bone white, Quincy blue, Hollow
+ * red); the Emperor is a chibi homage to Yhwach, every other design is original.
  */
 
 /** Atlas pixels per world unit at scale 1: sprites are drawn at 2x for sharp phones. */
@@ -1012,85 +1012,156 @@ const frost: Draw = (g, w) => {
 
 // ------------------------------------------------------------- the hero
 
-/** The Emperor: hooded, white robe, black cape, a crown of blue reishi light. Faces right. Original design. */
+/**
+ * The Emperor, drawn after Yhwach in the game's own chibi style: long wavy
+ * black hair falling over his shoulders, a heavy mustache under stern brows,
+ * red eyes, a black coat whose tall collar shows crimson beside the hair, and
+ * a long cape. Pale rim lines keep the black silhouette readable at night.
+ */
 const hero: Draw = (g, w) => {
   const cx = w / 2;
-  // Cape
-  g.fillStyle = '#0c0d14';
+  const RIM = 'rgba(214,222,242,0.6)';
+  const HAIR = '#0b0b11';
+  const HAIR_RIM = 'rgba(214,222,242,0.42)';
+  // Cape, flaring from the shoulders
+  g.fillStyle = '#0a0b10';
   g.beginPath();
-  g.moveTo(cx - 11, 28);
-  g.quadraticCurveTo(cx - 26, 52, cx - 22, 70);
-  g.lineTo(cx + 22, 70);
-  g.quadraticCurveTo(cx + 26, 52, cx + 11, 28);
+  g.moveTo(cx - 10, 27);
+  g.quadraticCurveTo(cx - 27, 50, cx - 24, 70);
+  g.quadraticCurveTo(cx, 66, cx + 24, 70);
+  g.quadraticCurveTo(cx + 27, 50, cx + 10, 27);
   g.closePath();
   g.fill();
-  g.strokeStyle = BONE;
-  g.lineWidth = 1.4;
+  g.strokeStyle = RIM;
+  g.lineWidth = 1.3;
   g.stroke();
-  // Robe
-  const robe = g.createLinearGradient(0, 28, 0, 66);
-  robe.addColorStop(0, '#ffffff');
-  robe.addColorStop(1, '#cfd6e6');
-  g.fillStyle = robe;
+  // Coat
+  const coat = g.createLinearGradient(0, 28, 0, 66);
+  coat.addColorStop(0, '#262833');
+  coat.addColorStop(1, '#07080c');
+  g.fillStyle = coat;
   g.beginPath();
-  g.moveTo(cx - 9, 30);
-  g.quadraticCurveTo(cx - 15, 50, cx - 14, 66);
-  g.lineTo(cx + 14, 66);
-  g.quadraticCurveTo(cx + 15, 50, cx + 9, 30);
+  g.moveTo(cx - 9, 29);
+  g.lineTo(cx + 9, 29);
+  g.lineTo(cx + 13, 66);
+  g.lineTo(cx - 13, 66);
   g.closePath();
   g.fill();
-  // Black sash and hem
-  g.fillStyle = INK;
-  g.fillRect(cx - 1.6, 34, 3.2, 32);
-  g.fillRect(cx - 14, 61.5, 28, 2.6);
-  // Sleeves
-  g.fillStyle = '#e8ecf6';
+  // Front opening, hem trim and a silver star at the chest
+  g.strokeStyle = 'rgba(232,236,246,0.5)';
+  g.lineWidth = 1;
   g.beginPath();
-  g.ellipse(cx - 12, 43, 4, 9, 0.3, 0, TAU);
-  g.fill();
-  g.beginPath();
-  g.ellipse(cx + 12, 43, 4, 9, -0.3, 0, TAU);
-  g.fill();
-  // Hood
-  const hood = g.createRadialGradient(cx - 3, 15, 2, cx, 22, 15);
-  hood.addColorStop(0, '#ffffff');
-  hood.addColorStop(1, '#d4dbea');
-  g.fillStyle = hood;
-  g.beginPath();
-  g.moveTo(cx, 8);
-  g.bezierCurveTo(cx + 13, 9, cx + 15, 26, cx + 11, 34);
-  g.lineTo(cx - 11, 34);
-  g.bezierCurveTo(cx - 15, 26, cx - 13, 9, cx, 8);
-  g.closePath();
-  g.fill();
-  // Shadowed face, set toward the facing side, with pale blue eyes
-  g.fillStyle = INK;
-  g.beginPath();
-  g.ellipse(cx + 3, 23.5, 6.5, 8, 0, 0, TAU);
-  g.fill();
-  glowDot(g, cx + 1.6, 22.6, 1.2, 1.2, '#dff6ff', '#59b8ff');
-  glowDot(g, cx + 6.2, 22.6, 1.2, 1.2, '#dff6ff', '#59b8ff');
-  // Crown of blue reishi light
+  g.moveTo(cx, 40);
+  g.lineTo(cx, 66);
+  g.moveTo(cx - 12.6, 63);
+  g.lineTo(cx + 12.6, 63);
+  g.stroke();
   g.save();
-  g.strokeStyle = '#9fdcff';
-  g.fillStyle = '#dff4ff';
-  g.shadowColor = '#59b8ff';
-  g.shadowBlur = 7;
-  g.lineWidth = 1.8;
+  g.fillStyle = '#eef2fa';
+  g.shadowColor = 'rgba(160,210,255,0.9)';
+  g.shadowBlur = 4;
   g.beginPath();
-  g.ellipse(cx, 6, 10, 3, 0, 0, TAU);
-  g.stroke();
-  for (let k = 0; k < 5; k++) {
-    const x = cx - 8 + k * 4;
-    const tall = k === 2 ? 6 : 4;
+  for (let k = 0; k < 10; k++) {
+    const a = (k / 10) * TAU - Math.PI / 2;
+    const r = k % 2 === 0 ? 3.2 : 1.3;
+    g.lineTo(cx + Math.cos(a) * r, 36 + Math.sin(a) * r);
+  }
+  g.closePath();
+  g.fill();
+  g.restore();
+  // Sleeves with pale cuffs and hands
+  g.fillStyle = '#14151c';
+  g.beginPath();
+  g.ellipse(cx - 12, 44, 4, 9, 0.3, 0, TAU);
+  g.fill();
+  g.beginPath();
+  g.ellipse(cx + 12, 44, 4, 9, -0.3, 0, TAU);
+  g.fill();
+  g.fillStyle = '#d9d2c4';
+  g.fillRect(cx - 16, 50, 6, 1.6);
+  g.fillRect(cx + 10, 50, 6, 1.6);
+  g.fillStyle = '#efe0cc';
+  g.beginPath();
+  g.arc(cx - 13.5, 53.5, 2, 0, TAU);
+  g.arc(cx + 13.5, 53.5, 2, 0, TAU);
+  g.fill();
+  // Tall collar: pointed flaps standing up beside the head, crimson facing out
+  for (const dir of [-1, 1]) {
+    g.fillStyle = '#101117';
     poly(g, [
-      [x - 1.4, 5.5],
-      [x, 5.5 - tall],
-      [x + 1.4, 5.5],
+      [cx + dir * 5, 29],
+      [cx + dir * 16.5, 13],
+      [cx + dir * 13.5, 31],
     ]);
     g.fill();
+    g.fillStyle = '#7a1e2c';
+    poly(g, [
+      [cx + dir * 9, 27],
+      [cx + dir * 15.6, 15],
+      [cx + dir * 13, 29.5],
+    ]);
+    g.fill();
+    g.strokeStyle = RIM;
+    g.lineWidth = 0.9;
+    g.beginPath();
+    g.moveTo(cx + dir * 5, 29);
+    g.lineTo(cx + dir * 16.5, 13);
+    g.lineTo(cx + dir * 13.5, 31);
+    g.stroke();
   }
-  g.restore();
+  // Face
+  g.fillStyle = '#efdfcb';
+  g.beginPath();
+  g.ellipse(cx, 19.5, 6, 7.2, 0, 0, TAU);
+  g.fill();
+  g.fillStyle = 'rgba(80,50,40,0.25)';
+  g.beginPath();
+  g.ellipse(cx, 24.5, 4.5, 2.2, 0, 0, TAU);
+  g.fill();
+  // Hair: a full crown with a centre part, and long wavy locks down over the shoulders
+  g.fillStyle = HAIR;
+  g.strokeStyle = HAIR_RIM;
+  g.lineWidth = 0.9;
+  g.beginPath();
+  g.ellipse(cx, 14.5, 8.2, 7.4, 0, Math.PI, TAU);
+  g.fill();
+  for (const dir of [-1, 1]) {
+    g.beginPath();
+    g.moveTo(cx + dir * 0.6, 8);
+    g.quadraticCurveTo(cx + dir * 10.5, 9, cx + dir * 10.2, 19);
+    g.quadraticCurveTo(cx + dir * 10.6, 26, cx + dir * 12.6, 31);
+    g.quadraticCurveTo(cx + dir * 14.4, 36, cx + dir * 12.4, 40);
+    g.quadraticCurveTo(cx + dir * 11.6, 43.5, cx + dir * 12.8, 46.5);
+    g.quadraticCurveTo(cx + dir * 9.2, 44.5, cx + dir * 9.6, 40.5);
+    g.quadraticCurveTo(cx + dir * 10.6, 36, cx + dir * 8.4, 31);
+    g.quadraticCurveTo(cx + dir * 6.6, 26, cx + dir * 6.5, 19.5);
+    g.quadraticCurveTo(cx + dir * 6.2, 15, cx + dir * 2, 12.5);
+    g.closePath();
+    g.fill();
+    g.stroke();
+  }
+  // Stern brows and red eyes
+  g.strokeStyle = HAIR;
+  g.lineWidth = 1.3;
+  g.lineCap = 'round';
+  g.beginPath();
+  g.moveTo(cx - 5, 16.2);
+  g.lineTo(cx - 1.5, 17.8);
+  g.moveTo(cx + 5, 16.2);
+  g.lineTo(cx + 1.5, 17.8);
+  g.stroke();
+  glowDot(g, cx - 2.9, 19.7, 1.35, 0.95, '#ffe0e0', '#ff2d4a', 6);
+  glowDot(g, cx + 2.9, 19.7, 1.35, 0.95, '#ffe0e0', '#ff2d4a', 6);
+  // Heavy mustache, its ends sweeping down
+  g.fillStyle = HAIR;
+  for (const dir of [-1, 1]) {
+    g.beginPath();
+    g.moveTo(cx, 22.3);
+    g.quadraticCurveTo(cx + dir * 3.8, 21.4, cx + dir * 6.4, 26.2);
+    g.quadraticCurveTo(cx + dir * 3.6, 24, cx, 24);
+    g.closePath();
+    g.fill();
+  }
 };
 
 // -------------------------------------------------------------- enemies

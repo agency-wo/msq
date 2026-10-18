@@ -572,6 +572,8 @@ export class Renderer {
     const x = p.ox + (p.x - p.ox) * alpha;
     const y = p.oy + (p.y - p.oy) * alpha;
     L.shadows.add(f.shadow, x, y + 15, 0.55, 0.55, 0, 0xffffff, 0.7);
+    // A faint reishi glow behind you, so a figure in black still stands out on the night ground.
+    L.auras.add(f.glow, x, y - 4, 0.95, 1.1, 0, 0x6fa8ff, 0.2);
     if (p.rootT > 0) {
       // Bound by a seal: a golden ring turns under your feet until it lets go.
       L.auras.add(f.ring, x, y + 6, 0.5, 0.5, now * 2, 0xffcb5c, 0.5 + 0.4 * Math.min(1, p.rootT));
@@ -588,7 +590,9 @@ export class Renderer {
         const dx = x + Math.cos(a) * DOUBLE_RING;
         const dy = y + Math.sin(a) * DOUBLE_RING;
         L.shadows.add(f.shadow, dx, dy + 15, 0.5, 0.5, 0, 0xffffff, 0.4);
-        L.allies.add(f.player, dx, dy - 4, 0.46 * p.face, 0.46, 0, 0x9fd0ff, 0.6);
+        // A ghost of light in your shape: a blue glow with your features showing through.
+        L.allies.add(f.player_f, dx, dy - 4, 0.48 * p.face, 0.48, 0, 0x6fa8ff, 0.3);
+        L.allies.add(f.player, dx, dy - 4, 0.46 * p.face, 0.46, 0, 0xcfe6ff, 0.55);
       }
     }
     const justHit = p.iframes > PLAYER.iframes - 0.08;
