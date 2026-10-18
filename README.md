@@ -50,5 +50,5 @@ Add these to the URL: `?debug` (FPS, CPU per frame and entity counts),
 
 Every push to `main` builds and publishes to GitHub Pages through
 `.github/workflows/deploy.yml`. The custom domain is set in the repository's
-Pages settings, and DNS is a `CNAME play -> acetodiavolo-ops.github.io` record
-on Cloudflare.
+Pages settings, and DNS is a `CNAME play -> agency-wo.github.io` record on
+Cloudflare, DNS only (grey cloud), so GitHub can issue the HTTPS certificate.
