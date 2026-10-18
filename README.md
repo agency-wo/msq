@@ -21,6 +21,11 @@ both are at Lv 7 a Resonance card joins the level-up board. Both powers keep
 working as before; the resonance ties them together (Firestorm: gusts carry
 The Heat's fire; Railgun: lightning down every beam; nine pairs in all).
 
+Music is composed note by note and synthesized live with Web Audio (nothing to
+download): a regal title theme, the eerie "White Moon" for Hueco Mundo, taiko
+and flute for Seireitei, a driving boss theme with a Seireitei version and a
+finale, and victory and defeat stingers. It can be turned off in Settings.
+
 Every run pays gold. Spend it in the **Wandenreich Archives** on permanent
 upgrades (attack, health, speed, pickup range, cooldowns, faster level-ups,
 more gold, a revive, level-up rerolls), and pick which awakened Schrift a run

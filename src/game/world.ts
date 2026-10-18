@@ -265,8 +265,8 @@ export class World {
   readonly stress: number;
   /** Stopped Hourglass relic: seconds left of the global freeze. */
   freezeAllT = 0;
-  /** The first live boss, for the boss health bar. */
-  readonly boss = { active: false, hp: 0, max: 1, name: '' };
+  /** The first live boss, for the boss health bar (final: it is the stage's last boss). */
+  readonly boss = { active: false, hp: 0, max: 1, name: '', final: false };
   /** Scratch target written by densestPoint() and edgePoint(). */
   tx = 0;
   ty = 0;
@@ -1637,11 +1637,13 @@ export class World {
       else i++;
     }
     this.boss.active = false;
+    this.boss.final = false;
     if (this.bossCount > 0) {
       for (let i = 0; i < E.n; i++) {
         if (E.flags[i] & FLAG_BOSS) {
           const def = ENEMY_LIST[E.type[i]];
           this.boss.active = true;
+          this.boss.final = E.uid[i] === this.finalBossUid;
           this.boss.hp = E.hp[i];
           this.boss.max = E.maxHp[i];
           const bankai = BANKAI_IDS[E.variant[i]];

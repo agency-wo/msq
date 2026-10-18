@@ -11,6 +11,7 @@ import { STAGE_IDS, STAGES, type StageId } from '../data/stages';
 
 export interface Settings {
   sound: boolean;
+  music: boolean;
   numbers: boolean;
   shake: boolean;
 }
@@ -69,7 +70,7 @@ export function defaultSave(): SaveData {
     v: 1,
     best: { time: 0, level: 0, kills: 0 },
     totals: { runs: 0, kills: 0, clears: 0, gold: 0 },
-    settings: { sound: true, numbers: true, shake: true },
+    settings: { sound: true, music: true, numbers: true, shake: true },
     stage: 'hueco',
     stages: Object.fromEntries(STAGE_IDS.map((id) => [id, { best: 0, cleared: false }])) as Record<StageId, StageRecord>,
     taken: [],
@@ -143,6 +144,7 @@ export function migrate(raw: unknown): SaveData {
     },
     settings: {
       sound: bool(settings.sound, d.settings.sound),
+      music: bool(settings.music, d.settings.music),
       numbers: bool(settings.numbers, d.settings.numbers),
       shake: bool(settings.shake, d.settings.shake),
     },

@@ -1,3 +1,5 @@
+import type { TrackId } from './audio/compose';
+import { Music } from './audio/music';
 import { Sfx } from './audio/sfx';
 import { Input } from './core/input';
 import { FixedLoop } from './core/loop';
@@ -39,6 +41,7 @@ function listParam(p: URLSearchParams, key: string): string[] {
 export class App {
   private readonly renderer = new Renderer();
   private readonly sfx = new Sfx();
+  private readonly music = new Music(this.sfx);
   private readonly params = new URLSearchParams(location.search);
   private readonly debug = this.params.has('debug');
   private save: SaveData = loadSave();
@@ -81,6 +84,8 @@ export class App {
     this.ui.showHud(false);
     if (!stageUnlocked(this.save, this.save.stage)) this.save.stage = 'hueco';
     this.renderer.setStage(this.save.stage);
+    this.music.play('title');
+    this.music.duck(false);
     this.ui.showTitle(this.save, {
       onPlay: () => this.startRun(),
       onArchives: () => this.showArchives(),
@@ -204,6 +209,7 @@ export class App {
         this.ui.banner(w.banners[w.banners.length - 1]);
         w.banners.length = 0;
       }
+      if (this.state !== 'over') this.music.play(this.runTrack(w));
     }
     this.renderer.render(w, alpha, this.input, performance.now() / 1000, frameSeconds);
     if (w) this.ui.updateHud(w);
@@ -215,6 +221,14 @@ export class App {
       this.fpsTime = 0;
       if (this.debug) this.ui.setDebug(this.debugText());
     }
+  }
+
+  /** The stage's theme, its boss theme while a boss is up, the finale for the last boss. */
+  private runTrack(w: World): TrackId {
+    const sei = w.stage.id === 'seireitei';
+    if (!w.boss.active) return sei ? 'seireitei' : 'hueco';
+    if (w.boss.final) return 'final';
+    return sei ? 'bossSei' : 'boss';
   }
 
   private openLevelUp(): void {
@@ -287,6 +301,7 @@ export class App {
     if (!this.world) return;
     this.ui.hideScreen();
     this.state = 'playing';
+    this.music.duck(false);
     this.input.enabled = true;
     this.loop.resetClock();
     this.loop.simulate = true;
@@ -363,12 +378,15 @@ export class App {
       },
       { onRetry: () => this.startRun(), onMenu: () => this.showTitle() },
     );
+    this.music.duck(false);
+    this.music.play(victory ? 'victory' : 'defeat');
     if (!quit) this.sfx.play(victory ? 'level' : 'boss');
   }
 
   /** Freeze the simulation and the joystick while a screen is up. */
   private halt(state: State): void {
     this.state = state;
+    if (state === 'paused' || state === 'levelup' || state === 'chest') this.music.duck(true);
     this.loop.simulate = false;
     this.input.release();
     this.input.enabled = false;
@@ -386,6 +404,7 @@ export class App {
   private applySettings(): void {
     const s = this.save.settings;
     this.sfx.enabled = s.sound;
+    this.music.setEnabled(s.music);
     this.renderer.shakeEnabled = s.shake;
     if (this.world) this.world.showNumbers = s.numbers;
   }
@@ -427,6 +446,7 @@ export class App {
     window.addEventListener('keydown', unlock);
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) this.pause();
+      this.music.setHidden(document.hidden);
       this.loop.resetClock();
     });
     window.addEventListener('pagehide', () => this.pause());
@@ -457,6 +477,7 @@ export class App {
   /** window.__msq, for the automated smoke test (only with ?debug). */
   private exposeDebug(): void {
     const read = {
+      music: () => ({ track: this.music.track, notes: this.music.notes }),
       state: () => this.state,
       fps: () => this.fps,
       cost: () => this.loop.cost,
@@ -479,6 +500,9 @@ export class App {
         },
         get world() {
           return read.world();
+        },
+        get music() {
+          return read.music();
         },
         /** Click the nth visible card; returns how many cards are showing. */
         pick(index = 0): number {

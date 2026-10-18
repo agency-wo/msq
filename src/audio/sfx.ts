@@ -58,6 +58,16 @@ export class Sfx {
     return this.ctx?.state === 'running';
   }
 
+  /** The shared AudioContext (the music plays through it too), once the first tap has created it. */
+  get context(): AudioContext | null {
+    return this.ctx;
+  }
+
+  /** One second of white noise, for drums and breath. */
+  get noiseBuffer(): AudioBuffer | null {
+    return this.noise;
+  }
+
   play(name: SoundName): void {
     const ctx = this.ctx;
     if (!this.enabled || !ctx || ctx.state !== 'running') return;

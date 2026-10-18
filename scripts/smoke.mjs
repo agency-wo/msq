@@ -138,6 +138,7 @@ try {
   await page.waitForSelector('.screen.title .btn.primary');
   await wait(400);
   log('title', {
+    music: await page.evaluate(() => window.__msq.music),
     installHint: await page.isVisible('.install'),
     stages: await page.$$eval('.stage-btn', (bs) => bs.map((b) => `${b.textContent}${b.classList.contains('locked') ? ' (locked)' : ''}`)),
   });
@@ -151,7 +152,7 @@ try {
   await page.tap('.screen.title .btn.primary');
   await wait(300);
   let picks = await steer(12000);
-  log('early run', { ...(await stats()), picks });
+  log('early run', { ...(await stats()), picks, music: await page.evaluate(() => window.__msq.music) });
   await shot('02-early');
 
   // 3. Pause from the HUD button, then resume.
@@ -213,7 +214,7 @@ try {
     await page.goto(`${BASE}?debug&seed=3&play&god&t=297&bearers=${id}`);
     await wait(400);
     await steer(7000, { radius: 20 });
-    log(`bearer ${id}`, { ...(await stats()), bossBar: await page.isVisible('.bossbar') });
+    log(`bearer ${id}`, { ...(await stats()), bossBar: await page.isVisible('.bossbar'), music: await page.evaluate(() => window.__msq.music) });
     await shot(`05-bearer-${id}`);
   }
 

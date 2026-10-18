@@ -563,6 +563,7 @@ export class UI {
     const box = el('div', 'toggles');
     const items: [Toggle, string][] = [
       ['sound', 'Sound'],
+      ['music', 'Music'],
       ['numbers', 'Damage numbers'],
       ['shake', 'Screen shake'],
     ];
