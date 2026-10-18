@@ -5,9 +5,12 @@ import { Application, Container, Particle, ParticleContainer, TilingSprite, type
 import { PLAYER, VIEW_H_LANDSCAPE, VIEW_W } from '../config';
 import type { Input } from '../core/input';
 import { BANKAI_BY_ID, BANKAI_IDS } from '../data/bankai';
+import { ENEMY_INDEX, ENEMY_LIST } from '../data/enemies';
 import {
+  EB_FIRE,
   EB_ICE,
   EB_PETAL,
+  EB_WAVE,
   FLAG_BOSS,
   FLAG_ELITE,
   FX_ASH,
@@ -172,7 +175,11 @@ export class Renderer {
   private layers: Layer[] = [];
   private L!: Record<LayerName, Layer>;
   private enemySprites: EnemySprite[] = [];
-  private eliteSprite!: EnemySprite;
+  /** Per enemy type: Hollows promote to Adjuchas, Soul Reapers to seated officers. */
+  private eliteSprites: EnemySprite[] = [];
+  private bossAura: number[] = [];
+  private grounds = new Map<string, Texture>();
+  private groundId = '';
   private fxSprites: FxSprite[] = [];
   private digits: Texture[] = [];
   private bankaiAura: number[] = [];
@@ -193,7 +200,8 @@ export class Renderer {
     host.appendChild(this.app.canvas);
     this.atlas = buildAtlas();
     const f = this.atlas.frames;
-    this.ground = new TilingSprite({ texture: buildGroundTile(), width: 16, height: 16 });
+    this.ground = new TilingSprite({ texture: this.groundFor('hueco'), width: 16, height: 16 });
+    this.groundId = 'hueco';
     const base = this.atlas.base;
     this.L = {
       zonesN: new Layer(base),
@@ -233,18 +241,27 @@ export class Renderer {
       L.nums.view,
     );
     this.app.stage.addChild(this.ground, this.worldRoot, L.hud.view);
-    // Indexed by enemy type, matching ENEMY_LIST order.
+    // Indexed by enemy type, matching ENEMY_LIST order. `ref` is the radius the art was drawn for.
     const sprite = (name: string, ref: number): EnemySprite => ({ tex: f[name], flash: f[`${name}_f`], ref });
-    this.enemySprites = [
-      sprite('hollow', 11),
-      sprite('hound', 9),
-      sprite('brute', 18),
-      sprite('volatile', 12),
-      sprite('bearer', 30),
-      sprite('menos', 44),
-      sprite('vasto', 34),
-    ];
-    this.eliteSprite = sprite('adjuchas', 24);
+    const REF: Record<string, number> = {
+      hollow: 11,
+      hound: 9,
+      brute: 18,
+      volatile: 12,
+      bearer: 30,
+      menos: 44,
+      vasto: 34,
+      officer: 11,
+      flash: 9,
+      caster: 11,
+      guard: 19,
+      grandmaster: 28,
+    };
+    this.enemySprites = ENEMY_LIST.map((d) => sprite(d.id, REF[d.id] ?? d.radius));
+    const adjuchas = sprite('adjuchas', 24);
+    const seated = sprite('seated', 24);
+    this.eliteSprites = ENEMY_LIST.map((d) => (d.shinigami ? seated : adjuchas));
+    this.bossAura = ENEMY_LIST.map((d) => d.color);
     const fx = (name: string): FxSprite => ({ tex: f[name], w: this.atlas.px[name].w, h: this.atlas.px[name].h });
     const byId: FxSprite[] = [];
     byId[FX_GLOW] = fx('glow');
@@ -269,6 +286,22 @@ export class Renderer {
     this.fxSprites = byId;
     this.digits = Array.from({ length: 10 }, (_, d) => f[`d${d}`]);
     this.bankaiAura = BANKAI_IDS.map((id) => BANKAI_BY_ID.get(id)?.aura ?? 0xffcb5c);
+  }
+
+  /** Show a stage's ground (the title screen previews the selected stage too). */
+  setStage(id: string): void {
+    if (id === this.groundId) return;
+    this.groundId = id;
+    this.ground.texture = this.groundFor(id);
+  }
+
+  private groundFor(id: string): Texture {
+    let tex = this.grounds.get(id);
+    if (!tex) {
+      tex = buildGroundTile(id);
+      this.grounds.set(id, tex);
+    }
+    return tex;
   }
 
   render(w: World | null, alpha: number, input: Input, now: number, frameSeconds: number): void {
@@ -485,13 +518,15 @@ export class Renderer {
       const flags = E.flags[i];
       const boss = (flags & FLAG_BOSS) !== 0;
       const elite = (flags & FLAG_ELITE) !== 0;
-      const spr = elite ? this.eliteSprite : this.enemySprites[E.type[i]];
+      const type = E.type[i];
+      const spr = elite ? this.eliteSprites[type] : this.enemySprites[type];
       const scale = r / spr.ref / ATLAS_SCALE;
       if (elite) L.auras.add(f.ring, x, y, (r * 2.7) / 128, (r * 2.7) / 128, 0, 0xff2d4a, 0.55 + Math.sin(now * 6) * 0.2);
       if (boss) {
-        const aura = E.type[i] === 4 ? (this.bankaiAura[E.variant[i]] ?? 0xffcb5c) : 0xff2d4a;
+        const bearer = type === ENEMY_INDEX.bearer;
+        const aura = bearer ? (this.bankaiAura[E.variant[i]] ?? 0xffcb5c) : this.bossAura[type];
         L.auras.add(f.glow, x, y, (r * 3.6) / 64, (r * 3.6) / 64, 0, aura, 0.5 + Math.sin(now * 3) * 0.12);
-        if (E.type[i] === 4 && BANKAI_IDS[E.variant[i]] === 'zanka') {
+        if (bearer && BANKAI_IDS[E.variant[i]] === 'zanka') {
           L.auras.add(f.ring, x, y, (95 * 2) / 110, (95 * 2) / 110, 0, 0xff7a3c, 0.4 + Math.sin(now * 6) * 0.1);
         }
         L.shadows.add(f.shadow, x, y + r * 0.85, (r * 2.2) / 48, (r * 2.2) / 48, 0, 0xffffff, 0.8);
@@ -513,6 +548,11 @@ export class Renderer {
     const x = p.ox + (p.x - p.ox) * alpha;
     const y = p.oy + (p.y - p.oy) * alpha;
     L.shadows.add(f.shadow, x, y + 15, 0.55, 0.55, 0, 0xffffff, 0.7);
+    if (p.rootT > 0) {
+      // Bound by a seal: a golden ring turns under your feet until it lets go.
+      L.auras.add(f.ring, x, y + 6, 0.5, 0.5, now * 2, 0xffcb5c, 0.5 + 0.4 * Math.min(1, p.rootT));
+      L.auras.add(f.glow, x, y + 6, 1.1, 1.1, 0, 0xffb347, 0.3);
+    }
     if (w.superT > 0) L.auras.add(f.glow, x, y, 1.6, 1.6, 0, 0xffd27a, 0.45 + Math.sin(now * 10) * 0.1);
     if (w.shieldCharges > 0) L.auras.add(f.ring, x, y - 2, 0.42, 0.42, 0, 0xdfe7f2, 0.35 + 0.1 * w.shieldCharges);
     const justHit = p.iframes > PLAYER.iframes - 0.08;
@@ -589,9 +629,23 @@ export class Renderer {
       const x = B.ox[i] + (B.x[i] - B.ox[i]) * alpha;
       const y = B.oy[i] + (B.y[i] - B.oy[i]) * alpha;
       const rot = Math.atan2(B.vy[i], B.vx[i]);
-      if (B.kind[i] === EB_PETAL) L.add(f.petal, x, y, (B.r[i] * 2.4) / 20, (B.r[i] * 2.4) / 20, rot, 0xff9cc2);
-      else if (B.kind[i] === EB_ICE) L.add(f.icebolt, x, y, (B.r[i] * 2.6) / 40, (B.r[i] * 2.6) / 40, rot);
-      else L.add(f.bala, x, y, (B.r[i] * 2.8) / 20, (B.r[i] * 2.8) / 20);
+      const r = B.r[i];
+      switch (B.kind[i]) {
+        case EB_PETAL:
+          L.add(f.petal, x, y, (r * 2.4) / 20, (r * 2.4) / 20, rot, 0xff9cc2);
+          break;
+        case EB_ICE:
+          L.add(f.icebolt, x, y, (r * 2.6) / 40, (r * 2.6) / 40, rot);
+          break;
+        case EB_FIRE:
+          L.add(f.bala, x, y, (r * 3) / 20, (r * 3) / 20, 0, 0xffa04a);
+          break;
+        case EB_WAVE:
+          L.add(f.crescent, x, y, (r * 2.4) / 256, (r * 3.2) / 128, rot, 0xdfe8ff);
+          break;
+        default:
+          L.add(f.bala, x, y, (r * 2.8) / 20, (r * 2.8) / 20);
+      }
     }
   }
 

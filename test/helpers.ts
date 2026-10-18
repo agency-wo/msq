@@ -17,9 +17,9 @@ export const sensible: Strategy = (o) =>
 export const circle: Mover = (w) => [Math.cos(w.t * 0.35), Math.sin(w.t * 0.35)];
 
 /**
- * Closer to a person: backs away from enemies that get close and from boss
- * warnings it is standing in, goes for medallions and chests first, otherwise
- * the nearest orb.
+ * Closer to a person: backs away from enemies that get close, sidesteps
+ * bullets about to hit it, steps out of boss warnings it is standing in, goes
+ * for medallions and chests first, otherwise the nearest orb.
  */
 export const bot: Mover = (w) => {
   const p = w.player;
@@ -39,16 +39,59 @@ export const bot: Mover = (w) => {
       my += (dy / d) * k;
     }
   }
-  // Step out of circular warnings aimed at you.
+  // Sidestep the one bullet that will hit soonest, like a person reacting to the nearest threat.
+  const B = w.eb;
+  let soonest = 0.6;
+  let dodgeX = 0;
+  let dodgeY = 0;
+  for (let i = 0; i < B.n; i++) {
+    const rx = p.x - B.x[i];
+    const ry = p.y - B.y[i];
+    const sp = Math.hypot(B.vx[i], B.vy[i]) || 1;
+    const ux = B.vx[i] / sp;
+    const uy = B.vy[i] / sp;
+    const along = rx * ux + ry * uy;
+    const eta = along / sp;
+    if (eta < 0 || eta > soonest) continue;
+    const side = rx * -uy + ry * ux;
+    if (Math.abs(side) > B.r[i] + 16) continue;
+    soonest = eta;
+    const dir = side >= 0 ? 1 : -1;
+    dodgeX = -uy * dir * 2;
+    dodgeY = ux * dir * 2;
+  }
+  mx += dodgeX;
+  my += dodgeY;
+  // Step out of warnings aimed at you: away from a circle's centre, sideways off a
+  // line, straight back out of an arc.
   const M = w.marks;
   for (let i = 0; i < M.n; i++) {
-    if (!(M.flags[i] & 1) || M.shape[i] !== 0) continue;
+    if (!(M.flags[i] & 1)) continue;
     const dx = p.x - M.x[i];
     const dy = p.y - M.y[i];
     const d = Math.hypot(dx, dy);
-    if (d < M.r[i] + 14) {
-      mx += ((d > 1 ? dx / d : 1) * 4);
-      my += ((d > 1 ? dy / d : 0) * 4);
+    if (M.shape[i] === 0) {
+      if (d < M.r[i] + 14) {
+        mx += (d > 1 ? dx / d : 1) * 4;
+        my += (d > 1 ? dy / d : 0) * 4;
+      }
+    } else if (M.shape[i] === 1) {
+      const ux = Math.cos(M.ang[i]);
+      const uy = Math.sin(M.ang[i]);
+      const along = dx * ux + dy * uy;
+      const side = dx * -uy + dy * ux;
+      if (along > -14 && along < M.len[i] + 14 && Math.abs(side) < M.r[i] / 2 + 16) {
+        const dir = side >= 0 ? 1 : -1;
+        mx += -uy * dir * 4;
+        my += ux * dir * 4;
+      }
+    } else if (d < M.r[i] + 14) {
+      let da = Math.atan2(dy, dx) - M.ang[i];
+      da = Math.atan2(Math.sin(da), Math.cos(da));
+      if (Math.abs(da) < M.len[i] + 0.2) {
+        mx += (d > 1 ? dx / d : 1) * 4;
+        my += (d > 1 ? dy / d : 0) * 4;
+      }
     }
   }
   let tx = 0;

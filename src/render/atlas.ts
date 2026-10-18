@@ -1149,6 +1149,286 @@ const vasto: Draw = (g, w, h) => {
   g.stroke();
 };
 
+// ----------------------------------------------------------- Soul Reapers
+
+interface ReaperLook {
+  /** Sash colour. */
+  sash?: string;
+  /** Width factor for heavier builds. */
+  broad?: number;
+  /** Cloth over the lower face (scouts). */
+  scarf?: boolean;
+  /** Headband (seated officers). */
+  band?: boolean;
+  sword?: 'hip' | 'raised' | 'back';
+  /** A glowing Kidō orb in the off hand. */
+  orb?: string;
+}
+
+/**
+ * A generic Soul Reaper in chibi proportions: black robe and hakama, white
+ * collar, dark hair, a sword. Deliberately plain: an anonymous soldier, not
+ * any character from the series.
+ */
+function reaper(g: Ctx, cx: number, cy: number, s: number, o: ReaperLook): void {
+  const b = o.broad ?? 1;
+  if (o.sword === 'back') {
+    // A long blade slung across the back, drawn first so the body covers it.
+    g.save();
+    g.translate(cx, cy - 2 * s);
+    g.rotate(-0.75);
+    g.fillStyle = '#1a1c24';
+    g.fillRect(-1.6 * s, -22 * s, 3.2 * s, 40 * s);
+    g.fillStyle = BONE;
+    g.fillRect(-1.6 * s, -26 * s, 3.2 * s, 6 * s);
+    g.restore();
+  }
+  // Robe and hakama
+  const robe = g.createLinearGradient(0, cy - 6 * s, 0, cy + 20 * s);
+  robe.addColorStop(0, '#262935');
+  robe.addColorStop(1, '#07080c');
+  g.fillStyle = robe;
+  g.beginPath();
+  g.moveTo(cx - 8 * s * b, cy - 6 * s);
+  g.lineTo(cx + 8 * s * b, cy - 6 * s);
+  g.lineTo(cx + 11 * s * b, cy + 20 * s);
+  g.lineTo(cx - 11 * s * b, cy + 20 * s);
+  g.closePath();
+  g.fill();
+  // A pale rim so a black robe still reads on a dark floor.
+  g.strokeStyle = 'rgba(214,222,240,0.6)';
+  g.lineWidth = 1;
+  g.stroke();
+  g.strokeStyle = 'rgba(255,255,255,0.12)';
+  g.beginPath();
+  g.moveTo(cx, cy + 8 * s);
+  g.lineTo(cx, cy + 20 * s);
+  g.stroke();
+  // White collar
+  g.fillStyle = '#eceff6';
+  poly(g, [
+    [cx - 5 * s, cy - 6 * s],
+    [cx, cy + 2 * s],
+    [cx + 5 * s, cy - 6 * s],
+    [cx + 3 * s, cy - 6 * s],
+    [cx, cy - 1 * s],
+    [cx - 3 * s, cy - 6 * s],
+  ]);
+  g.fill();
+  // Sash
+  g.fillStyle = o.sash ?? '#eceff6';
+  g.fillRect(cx - 9 * s * b, cy + 4 * s, 18 * s * b, 2.2 * s);
+  // Wide sleeves
+  g.fillStyle = '#161820';
+  g.beginPath();
+  g.ellipse(cx - 10 * s * b, cy + 1 * s, 4 * s, 7 * s, 0.25, 0, TAU);
+  g.fill();
+  g.beginPath();
+  g.ellipse(cx + 10 * s * b, cy + 1 * s, 4 * s, 7 * s, -0.25, 0, TAU);
+  g.fill();
+  if (b > 1.2) {
+    // Plain shoulder guards on heavy builds.
+    g.fillStyle = '#5a6070';
+    g.beginPath();
+    g.ellipse(cx - 9 * s * b, cy - 5 * s, 5 * s, 3.2 * s, -0.3, 0, TAU);
+    g.fill();
+    g.beginPath();
+    g.ellipse(cx + 9 * s * b, cy - 5 * s, 5 * s, 3.2 * s, 0.3, 0, TAU);
+    g.fill();
+  }
+  if (o.sword === 'hip') {
+    // Worn at the left hip: hilt forward, blade sloping back and down.
+    g.save();
+    g.translate(cx + 7 * s * b, cy + 5 * s);
+    g.rotate(0.9);
+    g.fillStyle = '#2b2e38';
+    g.fillRect(0, -1.2 * s, 15 * s, 2.4 * s);
+    g.fillStyle = BONE;
+    g.fillRect(-5 * s, -1.2 * s, 5 * s, 2.4 * s);
+    g.restore();
+  }
+  if (o.sword === 'raised') {
+    g.save();
+    g.shadowColor = 'rgba(220,235,255,0.9)';
+    g.shadowBlur = 6;
+    g.strokeStyle = '#eef3fb';
+    g.lineWidth = 2 * s;
+    g.lineCap = 'round';
+    g.beginPath();
+    g.moveTo(cx + 11 * s * b, cy + 1 * s);
+    g.lineTo(cx + 21 * s * b, cy - 19 * s);
+    g.stroke();
+    g.restore();
+    g.fillStyle = BONE;
+    g.fillRect(cx + 9.5 * s * b, cy + 0.5 * s, 3 * s, 4 * s);
+  }
+  if (o.orb) glowDot(g, cx + 11 * s * b, cy - 4 * s, 3.6 * s, 3.6 * s, '#fff1d6', o.orb, 10 * s);
+  // Head: pale face, dark hair, two small eyes.
+  g.fillStyle = '#efdcc6';
+  g.beginPath();
+  g.arc(cx, cy - 12 * s, 6.2 * s, 0, TAU);
+  g.fill();
+  g.fillStyle = '#12131a';
+  g.beginPath();
+  g.arc(cx, cy - 13 * s, 6.8 * s, Math.PI, TAU);
+  g.lineTo(cx + 6.8 * s, cy - 11 * s);
+  g.lineTo(cx + 3 * s, cy - 13.5 * s);
+  g.lineTo(cx, cy - 11.5 * s);
+  g.lineTo(cx - 3 * s, cy - 13.5 * s);
+  g.lineTo(cx - 6.8 * s, cy - 11 * s);
+  g.closePath();
+  g.fill();
+  g.fillStyle = '#0b0c12';
+  g.fillRect(cx - 3 * s, cy - 11 * s, 1.6 * s, 1.8 * s);
+  g.fillRect(cx + 1.4 * s, cy - 11 * s, 1.6 * s, 1.8 * s);
+  if (o.scarf) {
+    g.fillStyle = '#2a2140';
+    g.fillRect(cx - 6 * s, cy - 9 * s, 12 * s, 4 * s);
+    g.beginPath();
+    g.moveTo(cx + 5 * s, cy - 8 * s);
+    g.quadraticCurveTo(cx + 14 * s, cy - 9 * s, cx + 16 * s, cy - 2 * s);
+    g.lineTo(cx + 12 * s, cy - 4 * s);
+    g.closePath();
+    g.fill();
+  }
+  if (o.band) {
+    g.fillStyle = '#f4f6fb';
+    g.fillRect(cx - 6.6 * s, cy - 15 * s, 13.2 * s, 2 * s);
+    poly(g, [
+      [cx - 6 * s, cy - 15 * s],
+      [cx - 12 * s, cy - 11 * s],
+      [cx - 10 * s, cy - 10 * s],
+      [cx - 5 * s, cy - 13.5 * s],
+    ]);
+    g.fill();
+  }
+}
+
+const officer: Draw = (g, w, h) => {
+  aura(g, w / 2, h / 2 + 4, 24, 'rgba(160,190,255,0.12)');
+  reaper(g, w / 2, h / 2 + 2, 1, { sword: 'hip' });
+};
+
+const flashScout: Draw = (g, w, h) => {
+  aura(g, w / 2, h / 2 + 4, 22, 'rgba(180,150,255,0.2)');
+  reaper(g, w / 2, h / 2 + 2, 0.92, { scarf: true, sash: '#7a68b8', sword: 'hip' });
+};
+
+const caster: Draw = (g, w, h) => {
+  aura(g, w / 2, h / 2 + 4, 24, 'rgba(255,150,80,0.16)');
+  reaper(g, w / 2 - 2, h / 2 + 2, 1, { sash: '#d8794a', orb: '#ff8a3c' });
+};
+
+const guard: Draw = (g, w, h) => {
+  aura(g, w / 2, h / 2 + 4, 38, 'rgba(160,190,255,0.12)');
+  reaper(g, w / 2, h / 2 + 4, 1.45, { broad: 1.35, sash: '#8a8f9c', sword: 'back' });
+};
+
+/** Elite: a seated officer with a headband and a drawn blade. */
+const seated: Draw = (g, w, h) => {
+  aura(g, w / 2, h / 2 + 4, 34, 'rgba(255,60,90,0.22)');
+  reaper(g, w / 2 - 3, h / 2 + 5, 1.32, { band: true, sash: '#c23a4a', sword: 'raised' });
+};
+
+/**
+ * The Kidō Grandmaster: an indigo-robed spell master under a wide straw hat,
+ * hands joined over a glowing spell, a golden seal turning behind. Original design.
+ */
+const grandmaster: Draw = (g, w, h) => {
+  const cx = w / 2;
+  const cy = h / 2 + 6;
+  aura(g, cx, cy, 62, 'rgba(255,170,90,0.22)');
+  // The seal behind
+  g.save();
+  g.strokeStyle = 'rgba(255,205,110,0.85)';
+  g.shadowColor = '#ffb347';
+  g.shadowBlur = 8;
+  g.lineWidth = 2;
+  g.beginPath();
+  g.arc(cx, cy - 6, 52, 0, TAU);
+  g.stroke();
+  g.lineWidth = 1.2;
+  g.beginPath();
+  g.arc(cx, cy - 6, 44, 0, TAU);
+  g.stroke();
+  g.fillStyle = 'rgba(255,215,130,0.9)';
+  for (let k = 0; k < 8; k++) {
+    const a = (k / 8) * TAU;
+    const x = cx + Math.cos(a) * 48;
+    const y = cy - 6 + Math.sin(a) * 48;
+    poly(g, [
+      [x, y - 3.5],
+      [x + 3.5, y],
+      [x, y + 3.5],
+      [x - 3.5, y],
+    ]);
+    g.fill();
+  }
+  g.restore();
+  // Robe
+  const robe = g.createLinearGradient(0, cy - 16, 0, cy + 46);
+  robe.addColorStop(0, '#2a2c58');
+  robe.addColorStop(1, '#07080f');
+  g.fillStyle = robe;
+  poly(g, [
+    [cx - 18, cy - 16],
+    [cx + 18, cy - 16],
+    [cx + 32, cy + 46],
+    [cx - 32, cy + 46],
+  ]);
+  g.fill();
+  g.strokeStyle = 'rgba(214,222,240,0.5)';
+  g.lineWidth = 1;
+  g.stroke();
+  g.fillStyle = '#d9a54a';
+  g.fillRect(cx - 31, cy + 41, 62, 3);
+  g.fillStyle = '#eceff6';
+  poly(g, [
+    [cx - 8, cy - 16],
+    [cx, cy - 2],
+    [cx + 8, cy - 16],
+    [cx + 5, cy - 16],
+    [cx, cy - 8],
+    [cx - 5, cy - 16],
+  ]);
+  g.fill();
+  // Wide sleeves meeting at the chest, a spell glowing between the hands
+  g.fillStyle = '#1b1d3d';
+  g.beginPath();
+  g.ellipse(cx - 14, cy + 6, 9, 14, 0.5, 0, TAU);
+  g.fill();
+  g.beginPath();
+  g.ellipse(cx + 14, cy + 6, 9, 14, -0.5, 0, TAU);
+  g.fill();
+  glowDot(g, cx, cy + 10, 5, 5, '#fff4d8', '#ff9a3c', 14);
+  // Straw hat over a shadowed face, two gold eyes under the brim
+  g.fillStyle = INK;
+  g.beginPath();
+  g.ellipse(cx, cy - 24, 10, 9, 0, 0, TAU);
+  g.fill();
+  glowDot(g, cx - 4, cy - 23, 1.5, 1.1, '#fff0b8', '#ffb347', 6);
+  glowDot(g, cx + 4, cy - 23, 1.5, 1.1, '#fff0b8', '#ffb347', 6);
+  const hat = g.createLinearGradient(0, cy - 46, 0, cy - 26);
+  hat.addColorStop(0, '#e2cf9f');
+  hat.addColorStop(1, '#9c8655');
+  g.fillStyle = hat;
+  g.beginPath();
+  g.moveTo(cx - 30, cy - 28);
+  g.lineTo(cx, cy - 46);
+  g.lineTo(cx + 30, cy - 28);
+  g.quadraticCurveTo(cx, cy - 23, cx - 30, cy - 28);
+  g.closePath();
+  g.fill();
+  g.strokeStyle = 'rgba(70,52,20,0.55)';
+  g.lineWidth = 1;
+  for (let k = -2; k <= 2; k++) {
+    g.beginPath();
+    g.moveTo(cx, cy - 46);
+    g.lineTo(cx + k * 12, cy - 26.5);
+    g.stroke();
+  }
+};
+
 // -------------------------------------------------------------- pickups
 
 function chest(body: string, lid: string, band: string, glowColor: string): Draw {
@@ -1274,6 +1554,12 @@ const ENEMY_DRAW: readonly [string, number, Draw][] = [
   ['hollow', 52, hollow],
   ['volatile', 52, volatile],
   ['hound', 48, hound],
+  ['grandmaster', 136, grandmaster],
+  ['guard', 84, guard],
+  ['seated', 72, seated],
+  ['officer', 52, officer],
+  ['caster', 52, caster],
+  ['flash', 48, flashScout],
 ];
 
 function specs(): Spec[] {
@@ -1383,14 +1669,23 @@ export function buildAtlas(): Atlas {
   return { canvas, base, frames, px };
 }
 
-/** 1024 px tile covering 512 world units: Hueco Mundo at night (dark sand, pale ripples, bone, dead white trees). */
-export function buildGroundTile(): Texture {
+/** A 1024 px tile covering 512 world units, one per stage. */
+export function buildGroundTile(stage: string): Texture {
   const S = 1024;
   const c = document.createElement('canvas');
   c.width = S;
   c.height = S;
   const g = c.getContext('2d');
   if (!g) throw new Error('Canvas 2D is not available');
+  if (stage === 'seireitei') seireiteiGround(g, S);
+  else huecoGround(g, S);
+  const tex = Texture.from(c);
+  tex.source.addressMode = 'repeat';
+  return tex;
+}
+
+/** Hueco Mundo at night: dark sand, pale ripples, bone, dead white trees. */
+function huecoGround(g: Ctx, S: number): void {
   g.fillStyle = '#0d1018';
   g.fillRect(0, 0, S, S);
   const rnd = seeded(1234);
@@ -1453,7 +1748,117 @@ export function buildGroundTile(): Texture {
   ] as const) {
     for (let b = 0; b < 4; b++) tree(tx, ty, 34, (b / 4) * TAU + rnd(), 4);
   }
-  const tex = Texture.from(c);
-  tex.source.addressMode = 'repeat';
-  return tex;
+}
+
+/**
+ * Seireitei at night, seen from above: a courtyard of big slate flagstones in
+ * staggered rows, worn edges and cracks, pale gravel strips, and the warm
+ * pools of light from stone lanterns. Everything stays low-contrast so the
+ * fight on top reads first.
+ */
+function seireiteiGround(g: Ctx, S: number): void {
+  g.fillStyle = '#10131b';
+  g.fillRect(0, 0, S, S);
+  const rnd = seeded(4321);
+  // Flagstones: 8 rows of 128 px, every other row shifted half a stone. The slab
+  // that hangs over the right edge is drawn again on the left, so the tile wraps.
+  const row = 128;
+  const stone = 128;
+  const slab = (x: number, y: number, seed: number): void => {
+    const r2 = seeded(seed);
+    const v = Math.floor(r2() * 10);
+    g.fillStyle = `rgb(${24 + v},${28 + v},${38 + v})`;
+    roundRect(g, x + 3, y + 3, stone - 6, row - 6, 6);
+    g.fill();
+    // A faint lit top edge and a darker bottom edge give each slab some thickness.
+    g.lineWidth = 2;
+    g.strokeStyle = 'rgba(200,210,235,0.05)';
+    g.beginPath();
+    g.moveTo(x + 8, y + 5);
+    g.lineTo(x + stone - 8, y + 5);
+    g.stroke();
+    g.strokeStyle = 'rgba(0,0,0,0.35)';
+    g.beginPath();
+    g.moveTo(x + 8, y + row - 4);
+    g.lineTo(x + stone - 8, y + row - 4);
+    g.stroke();
+    for (let m = 0; m < 10; m++) {
+      g.fillStyle = `rgba(150,160,190,${(0.015 + r2() * 0.03).toFixed(3)})`;
+      g.beginPath();
+      g.arc(x + 10 + r2() * (stone - 20), y + 10 + r2() * (row - 20), 3 + r2() * 9, 0, TAU);
+      g.fill();
+    }
+    if (r2() < 0.3) {
+      g.strokeStyle = 'rgba(0,0,0,0.45)';
+      g.lineWidth = 1.2;
+      let cx = x + 20 + r2() * (stone - 40);
+      let cy = y + 12;
+      g.beginPath();
+      g.moveTo(cx, cy);
+      for (let q = 0; q < 5; q++) {
+        cx += (r2() - 0.5) * 22;
+        cy += 12 + r2() * 10;
+        g.lineTo(cx, cy);
+      }
+      g.stroke();
+    }
+  };
+  for (let r = 0; r < S / row; r++) {
+    const shift = r % 2 ? stone / 2 : 0;
+    for (let k = 0; k < S / stone; k++) {
+      const x = k * stone + shift;
+      const seed = 1 + Math.floor(rnd() * 2147483000);
+      slab(x, r * row, seed);
+      if (x + stone > S) slab(x - S, r * row, seed);
+    }
+  }
+  // Gravel strip with raked lines, crossing the tile.
+  const gy = 3 * row;
+  g.fillStyle = '#1a1e28';
+  g.fillRect(0, gy - 2, S, 22);
+  g.strokeStyle = 'rgba(210,218,240,0.07)';
+  g.lineWidth = 1;
+  for (let l = 0; l < 4; l++) {
+    g.beginPath();
+    g.moveTo(0, gy + 3 + l * 5);
+    g.lineTo(S, gy + 3 + l * 5);
+    g.stroke();
+  }
+  // Pale specks of gravel and grit.
+  for (let i = 0; i < 1400; i++) {
+    g.fillStyle = `rgba(200,208,230,${(0.02 + rnd() * 0.05).toFixed(3)})`;
+    g.fillRect(rnd() * S, rnd() * S, 1 + rnd() * 1.5, 1 + rnd() * 1.5);
+  }
+  // Fallen leaves, a few.
+  for (let i = 0; i < 26; i++) {
+    const x = rnd() * S;
+    const y = rnd() * S;
+    g.save();
+    g.translate(x, y);
+    g.rotate(rnd() * TAU);
+    g.fillStyle = `rgba(214,190,150,${(0.08 + rnd() * 0.1).toFixed(3)})`;
+    g.beginPath();
+    g.ellipse(0, 0, 4 + rnd() * 3, 2, 0, 0, TAU);
+    g.fill();
+    g.restore();
+  }
+  // Warm lantern light pooling on the stones; each also drawn on the far side of
+  // the tile edge it is near, so it wraps cleanly.
+  for (const [lx, ly] of [
+    [200, 640],
+    [760, 180],
+  ] as const) {
+    for (const ox of [-S, 0, S]) {
+      for (const oy of [-S, 0, S]) {
+        aura(g, lx + ox, ly + oy, 150, 'rgba(255,190,110,0.07)');
+        aura(g, lx + ox, ly + oy, 40, 'rgba(255,214,150,0.12)');
+      }
+    }
+    // The lantern itself, from above: a square cap on a square base.
+    g.fillStyle = '#2a2e3a';
+    g.fillRect(lx - 14, ly - 14, 28, 28);
+    g.fillStyle = '#3a3f4e';
+    g.fillRect(lx - 9, ly - 9, 18, 18);
+    glowDot(g, lx, ly, 4, 4, '#ffe2b0', '#ffb347', 10);
+  }
 }

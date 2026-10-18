@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import { SIM_HZ } from '../src/config';
-import { STAGE } from '../src/data/timeline';
 import { World } from '../src/game/world';
 import { bot, circle, firstCard, play, sensible } from './helpers';
 
@@ -42,9 +41,9 @@ describe('world simulation', () => {
 
   it('clears Hueco Mundo: the Vasto Lorde dies and the run ends in victory', { timeout: 240_000 }, () => {
     const w = new World({ seed: 7, god: true });
-    play(w, STAGE.length + 240, sensible, bot);
+    play(w, w.stage.length + 240, sensible, bot);
     expect(w.over).toBe('victory');
-    expect(w.t).toBeGreaterThan(STAGE.length);
+    expect(w.t).toBeGreaterThan(w.stage.length);
     // All three bearers fell along the way.
     for (const id of w.bearers) expect(w.powers.some((ps) => ps.def.id === id)).toBe(true);
   });

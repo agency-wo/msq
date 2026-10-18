@@ -75,6 +75,8 @@ export const MK_ICE = 4;
 export const MK_SLASH = 5;
 export const MK_FIRE = 6;
 export const MK_RAIN = 7;
+export const MK_SEAL = 8;
+export const MK_LANCE = 9;
 
 /** Mark shapes. */
 export const MS_CIRCLE = 0;
@@ -87,12 +89,20 @@ export const MF_FREEZE = 2;
 export const MF_CRATER = 4; // leaves a burning crater
 export const MF_BURN = 8;
 export const MF_SLOW = 16; // slows the player on hit
+export const MF_ROOT = 32; // roots the player in place on hit
 
 /** Enemy bullet kinds and flags. */
 export const EB_BALA = 0;
 export const EB_PETAL = 1;
 export const EB_ICE = 2;
+export const EB_FIRE = 3; // Kidō fireball
+export const EB_WAVE = 4; // sword wave
 export const EBF_SLOW = 1;
+
+/** Enemy movement behaviours (EnemyDef.behavior as a byte). */
+export const BH_CHASE = 0;
+export const BH_BLINK = 1;
+export const BH_RANGED = 2;
 
 /** Why an enemy cannot move (drives its tint). */
 export const HOLD_FREEZE = 0;

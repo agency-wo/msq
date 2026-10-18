@@ -2,11 +2,12 @@ import { Sfx } from './audio/sfx';
 import { Input } from './core/input';
 import { FixedLoop } from './core/loop';
 import { POWER_BY_ID } from './data/powers';
+import { STAGE_BY_ID, stageById, type StageId } from './data/stages';
 import type { Offer } from './game/offers';
 import { World } from './game/world';
 import { installGestureGuards, isIOS, isPhoneLandscape, isStandalone } from './platform/pwa';
 import { Renderer } from './render/renderer';
-import { exportCode, importCode, loadSave, recordRun, writeSave, type SaveData } from './save/save';
+import { exportCode, importCode, loadSave, recordRun, stageUnlocked, writeSave, type SaveData } from './save/save';
 import { UI, type Toggle } from './ui/ui';
 
 type State = 'title' | 'settings' | 'playing' | 'paused' | 'levelup' | 'chest' | 'over';
@@ -29,7 +30,8 @@ function listParam(p: URLSearchParams, key: string): string[] {
  *
  * URL switches for testing: ?debug (FPS overlay), ?stress=1500 (swarm + maxed
  * powers, no damage), ?god, ?seed=123, ?t=600 (start at 10:00), ?play (skip title),
- * ?give=explode7,xaxis5 (own powers), ?bankai=zanka (grant a bankai), ?bearers=tengen,gonryo.
+ * ?give=explode7,xaxis5 (own powers), ?bankai=zanka (grant a bankai), ?bearers=tengen,gonryo,
+ * ?stage=seireitei (play a stage, locked or not).
  */
 export class App {
   private readonly renderer = new Renderer();
@@ -74,11 +76,25 @@ export class App {
     this.halt('title');
     this.world = null;
     this.ui.showHud(false);
+    if (!stageUnlocked(this.save, this.save.stage)) this.save.stage = 'hueco';
+    this.renderer.setStage(this.save.stage);
     this.ui.showTitle(this.save, {
       onPlay: () => this.startRun(),
       onSettings: () => this.showSettings(),
+      onStage: (id: StageId) => {
+        this.save.stage = id;
+        writeSave(this.save);
+        this.renderer.setStage(id);
+      },
       installHint: isIOS() && !isStandalone(),
     });
+  }
+
+  /** ?stage= wins (testing, even if locked); otherwise the stage picked on the title screen. */
+  private runStage(): StageId {
+    const forced = this.params.get('stage');
+    if (forced && STAGE_BY_ID.has(forced)) return forced as StageId;
+    return stageUnlocked(this.save, this.save.stage) ? this.save.stage : 'hueco';
   }
 
   private showSettings(): void {
@@ -94,7 +110,10 @@ export class App {
   private startRun(): void {
     this.sfx.unlock();
     const p = this.params;
+    const stage = this.runStage();
+    this.renderer.setStage(stage);
     this.world = new World({
+      stage,
       seed: numParam(p, 'seed'),
       stress: numParam(p, 'stress'),
       god: p.has('god'),
@@ -238,18 +257,22 @@ export class App {
     this.halt('over');
     const victory = w.over === 'victory';
     // Test runs (god mode, stress) never touch the real save.
-    const newBest = w.god ? false : recordRun(this.save, { time: w.t, level: w.level, kills: w.kills, cleared: victory, gold: w.gold }).newBest;
+    const record = w.god
+      ? { newBest: false, unlocked: null }
+      : recordRun(this.save, { stage: w.stage.id, time: w.t, level: w.level, kills: w.kills, cleared: victory, gold: w.gold });
     if (!w.god) writeSave(this.save);
     this.ui.showHud(false);
     this.ui.showResults(
       {
+        stageName: w.stage.name,
+        unlocked: record.unlocked ? stageById(record.unlocked).name : null,
         victory,
         quit,
         time: w.t,
         level: w.level,
         kills: w.kills,
-        bestTime: this.save.best.time,
-        newBest,
+        bestTime: this.save.stages[w.stage.id].best,
+        newBest: record.newBest,
         powers: w.powers.map((ps) => ({
           name: ps.def.name,
           icon: ps.def.icon,

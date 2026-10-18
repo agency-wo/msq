@@ -4,20 +4,26 @@ import { BANKAI_IDS } from '../data/bankai';
 import { ENEMY_LIST } from '../data/enemies';
 import {
   EB_BALA,
+  EB_FIRE,
   EB_ICE,
   EB_PETAL,
+  EB_WAVE,
   EBF_SLOW,
   FX_AVATAR,
   FX_GLOW,
   FX_MISSILE,
+  FX_RING,
   LAYER_ADD,
   MF_ENEMY,
   MF_FREEZE,
+  MF_ROOT,
   MK_CERO,
   MK_FIRE,
   MK_ICE,
+  MK_LANCE,
   MK_MISSILE,
   MK_PILLAR,
+  MK_SEAL,
   MK_SLASH,
   MS_ARC,
   MS_CIRCLE,
@@ -49,12 +55,17 @@ export function updateEnemyBullets(w: World): void {
     if (dx * dx + dy * dy > rr * rr) continue;
     w.hurtPlayer(B.dmg[i]);
     if (B.flags[i] & EBF_SLOW) p.slowT = Math.max(p.slowT, 1.6);
-    w.spawnFx(FX_GLOW, B.x[i], B.y[i], 0, 0, 0.2, B.r[i] * 2, B.r[i] * 5, 0.9, 0, 0, B.kind[i] === EB_ICE ? 0x8fd8ff : 0xff4d6a, LAYER_ADD);
+    w.spawnFx(FX_GLOW, B.x[i], B.y[i], 0, 0, 0.2, B.r[i] * 2, B.r[i] * 5, 0.9, 0, 0, BULLET_HIT[B.kind[i]] ?? 0xff4d6a, LAYER_ADD);
     B.remove(i);
   }
 }
 
-/** Adjuchas (elites) spit a red Bala at you every few seconds while on screen. */
+const BULLET_HIT: Record<number, number> = { [EB_ICE]: 0x8fd8ff, [EB_FIRE]: 0xff9a4a, [EB_WAVE]: 0xdfe8ff };
+
+/**
+ * Elites shoot every few seconds while on screen: Adjuchas spit a red Bala,
+ * seated officers swing a sword wave (bigger, slower, easy to read).
+ */
 export function eliteAI(w: World, i: number, dist: number): void {
   const E = w.en;
   E.atkT[i] -= DT;
@@ -63,7 +74,46 @@ export function eliteAI(w: World, i: number, dist: number): void {
   if (dist > Math.max(w.viewHalfW, w.viewHalfH)) return;
   const p = w.player;
   const a = Math.atan2(p.y - E.y[i], p.x - E.x[i]);
-  w.spawnEnemyBullet(EB_BALA, E.x[i], E.y[i], Math.cos(a) * 150, Math.sin(a) * 150, 6, 4, E.dmg[i] * 0.6);
+  if (ENEMY_LIST[E.type[i]].shinigami) {
+    w.spawnEnemyBullet(EB_WAVE, E.x[i], E.y[i], Math.cos(a) * 165, Math.sin(a) * 165, 12, 3.5, E.dmg[i] * 0.6);
+    w.sound('blade');
+  } else {
+    w.spawnEnemyBullet(EB_BALA, E.x[i], E.y[i], Math.cos(a) * 150, Math.sin(a) * 150, 6, 4, E.dmg[i] * 0.6);
+  }
+}
+
+/**
+ * Flash-step scouts: every few seconds, vanish and reappear most of the way
+ * to you, never right on top of you, leaving an afterimage where they stood.
+ */
+export function blinkAI(w: World, i: number, dist: number): void {
+  const E = w.en;
+  E.atk2T[i] -= DT;
+  if (E.atk2T[i] > 0) return;
+  E.atk2T[i] = 2.6 + w.rng.next() * 1.8;
+  if (dist > 340 || dist < 110) return;
+  const p = w.player;
+  const hop = Math.min(130, dist - 70);
+  const x0 = E.x[i];
+  const y0 = E.y[i];
+  const nx = (p.x - x0) / dist;
+  const ny = (p.y - y0) / dist;
+  w.spawnFx(FX_GLOW, x0, y0, 0, 0, 0.3, E.r[i] * 2, E.r[i] * 3.2, 0.55, 0, 0, 0xc9b8ff, LAYER_ADD);
+  E.x[i] = E.ox[i] = x0 + nx * hop;
+  E.y[i] = E.oy[i] = y0 + ny * hop;
+  w.spawnFx(FX_RING, E.x[i], E.y[i], 0, 0, 0.2, E.r[i], E.r[i] * 3, 0.6, 0, 0, 0xc9b8ff, LAYER_ADD);
+}
+
+/** Kidō casters: a small fireball at you every few seconds while they are close enough to see you. */
+export function casterAI(w: World, i: number, dist: number): void {
+  const E = w.en;
+  E.atkT[i] -= DT;
+  if (E.atkT[i] > 0) return;
+  E.atkT[i] = 5 + w.rng.next() * 2.5;
+  if (dist > 270) return;
+  const p = w.player;
+  const a = Math.atan2(p.y - E.y[i], p.x - E.x[i]);
+  w.spawnEnemyBullet(EB_FIRE, E.x[i], E.y[i], Math.cos(a) * 135, Math.sin(a) * 135, 5, 3, E.dmg[i] * 0.6);
 }
 
 export function bossAI(w: World, i: number, dist: number): void {
@@ -88,6 +138,52 @@ export function bossAI(w: World, i: number, dist: number): void {
       if (E.atk2T[i] > 0) cero(w, i, 1, 54, 1.1);
       else ring(w, i, 14, 170, 0.4);
     }
+  } else if (def.id === 'grandmaster') {
+    grandmasterAI(w, i);
+  }
+}
+
+/**
+ * The Kidō Grandmaster cycles three spells, each warned on the ground first:
+ * a binding seal at your feet (roots you if it lands), a fan of fireballs,
+ * and a lightning lance down a straight line.
+ */
+function grandmasterAI(w: World, i: number): void {
+  const E = w.en;
+  const p = w.player;
+  // Left far behind, it flash-steps back into range instead of plodding after you.
+  if (E.atk2T[i] <= 0) {
+    const d = Math.hypot(p.x - E.x[i], p.y - E.y[i]);
+    if (d > 420) {
+      E.atk2T[i] = 3;
+      const a = Math.atan2(E.y[i] - p.y, E.x[i] - p.x);
+      w.spawnFx(FX_GLOW, E.x[i], E.y[i], 0, 0, 0.35, E.r[i] * 2, E.r[i] * 3.5, 0.6, 0, 0, 0xffb37a, LAYER_ADD);
+      E.x[i] = E.ox[i] = p.x + Math.cos(a) * 260;
+      E.y[i] = E.oy[i] = p.y + Math.sin(a) * 260;
+      w.spawnFx(FX_RING, E.x[i], E.y[i], 0, 0, 0.3, E.r[i], E.r[i] * 4, 0.7, 0, 0, 0xffcb5c, LAYER_ADD);
+    }
+  }
+  if (E.atkT[i] > 0) return;
+  E.atkT[i] = 2.4;
+  const x = E.x[i];
+  const y = E.y[i];
+  const dmg = E.dmg[i];
+  const toP = Math.atan2(p.y - y, p.x - x);
+  // The variant byte is free on this boss: use it as the spell counter.
+  const spell = E.variant[i] % 3;
+  E.variant[i] = (spell + 1) % 3;
+  if (spell === 0) {
+    w.spawnMark(MK_SEAL, MS_CIRCLE, p.x, p.y, 62, 0, 0, 1.3, dmg * 0.5, MF_ENEMY | MF_ROOT);
+    w.sound('warn');
+  } else if (spell === 1) {
+    for (let k = 0; k < 5; k++) {
+      const a = toP + (k - 2) * 0.17;
+      w.spawnEnemyBullet(EB_FIRE, x, y, Math.cos(a) * 175, Math.sin(a) * 175, 8, 4, dmg * 0.45);
+    }
+    w.sound('fire');
+  } else {
+    w.spawnMark(MK_LANCE, MS_LINE, x, y, 40, 900, toP, 1, dmg * 1.05, MF_ENEMY);
+    w.sound('warn');
   }
 }
 

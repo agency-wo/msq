@@ -6,7 +6,7 @@ import { bot, circle, firstCard, resolveChoices, sensible, type Mover, type Stra
 /**
  * Pacing report, not a pass/fail test. Run with:
  *   BALANCE=1 npx vitest run test/balance.test.ts --silent=false
- * Prints level, kills, health and boss progress every 30 s of a simulated run
+ * (add STAGE=seireitei, SEED=3, MINUTES=21 to change the run). Prints level, kills, health and boss progress every 30 s of a simulated run
  * for a few play styles, so tuning changes can be compared before and after.
  */
 const env = (globalThis as { process?: { env: Record<string, string | undefined> } }).process?.env ?? {};
@@ -16,7 +16,7 @@ function clock(t: number): string {
 }
 
 function run(seed: number, pick: Strategy, move: Mover, god: boolean, minutes: number): string[] {
-  const w = new World({ seed, god });
+  const w = new World({ seed, god, stage: env.STAGE });
   const rows: string[] = [];
   let nextReport = 30;
   let bossStart = -1;

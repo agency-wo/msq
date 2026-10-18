@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { defaultSave, exportCode, importCode, loadSave, migrate, recordRun, writeSave } from '../src/save/save';
+import { defaultSave, exportCode, importCode, loadSave, migrate, recordRun, stageUnlocked, writeSave } from '../src/save/save';
 
 class MemoryStorage implements Storage {
   private data = new Map<string, string>();
@@ -60,9 +60,35 @@ describe('save', () => {
 
   it('records the longest survival as the best run', () => {
     const s = defaultSave();
-    expect(recordRun(s, { time: 200, level: 10, kills: 300, cleared: false, gold: 25 }).newBest).toBe(true);
-    expect(recordRun(s, { time: 100, level: 30, kills: 900, cleared: false, gold: 0 }).newBest).toBe(false);
+    expect(recordRun(s, { stage: 'hueco', time: 200, level: 10, kills: 300, cleared: false, gold: 25 }).newBest).toBe(true);
+    expect(recordRun(s, { stage: 'hueco', time: 100, level: 30, kills: 900, cleared: false, gold: 0 }).newBest).toBe(false);
     expect(s.best).toEqual({ time: 200, level: 10, kills: 300 });
+    expect(s.stages.hueco.best).toBe(200);
     expect(s.totals).toEqual({ runs: 2, kills: 1200, clears: 0, gold: 25 });
+  });
+
+  it('opens Seireitei only once Hueco Mundo is cleared', () => {
+    const s = defaultSave();
+    expect(stageUnlocked(s, 'hueco')).toBe(true);
+    expect(stageUnlocked(s, 'seireitei')).toBe(false);
+    expect(recordRun(s, { stage: 'hueco', time: 700, level: 30, kills: 3000, cleared: false, gold: 0 }).unlocked).toBeNull();
+    expect(stageUnlocked(s, 'seireitei')).toBe(false);
+    expect(recordRun(s, { stage: 'hueco', time: 1202, level: 60, kills: 9000, cleared: true, gold: 0 }).unlocked).toBe('seireitei');
+    expect(stageUnlocked(s, 'seireitei')).toBe(true);
+    // Clearing it again unlocks nothing new.
+    expect(recordRun(s, { stage: 'hueco', time: 1203, level: 60, kills: 9000, cleared: true, gold: 0 }).unlocked).toBeNull();
+    // Per-stage bests stay separate.
+    recordRun(s, { stage: 'seireitei', time: 300, level: 20, kills: 900, cleared: false, gold: 0 });
+    expect(s.stages.seireitei.best).toBe(300);
+    expect(s.stages.hueco.best).toBe(1203);
+  });
+
+  it('carries an old save (before stages) over: its record and clear count as Hueco Mundo', () => {
+    const old = { v: 1, best: { time: 1201, level: 55, kills: 8000 }, totals: { runs: 4, kills: 20000, clears: 1, gold: 100 } };
+    const s = migrate(old);
+    expect(s.stages.hueco).toEqual({ best: 1201, cleared: true });
+    expect(s.stages.seireitei).toEqual({ best: 0, cleared: false });
+    expect(stageUnlocked(s, 'seireitei')).toBe(true);
+    expect(s.stage).toBe('hueco');
   });
 });

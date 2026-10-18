@@ -7,8 +7,14 @@ Store. Live at **https://play.minarankstudio.com**.
 You are the Emperor. Level-ups let you take back the Schrift you gave your
 knights (Auswählen): 12 offensive powers with a Lv 7 attribute pick, plus 4
 utilities. Every run, three random medallion bearers carry stolen bankai; beat
-one and its bankai is yours. Stage: Hueco Mundo, 20 minutes, ending with the
-Vasto Lorde. All art is original and drawn in code.
+one and its bankai is yours. All art is original and drawn in code.
+
+Stages, 20 minutes each:
+
+- **Hueco Mundo**: Hollows, ending with the Vasto Lorde.
+- **Seireitei** (unlocked by clearing Hueco Mundo): Soul Reaper soldiers that
+  flash-step and cast Kidō, seated officers that throw sword waves, and the
+  Kidō Grandmaster, whose binding seal roots you in place.
 
 ## Play on iPhone
 
@@ -32,6 +38,7 @@ Pacing report for tuning (prints level, kills and boss times for a few simulated
 
 ```sh
 BALANCE=1 npx vitest run test/balance.test.ts --silent=false
+BALANCE=1 STAGE=seireitei MINUTES=21 npx vitest run test/balance.test.ts --silent=false
 ```
 
 ## Testing switches
@@ -40,12 +47,13 @@ Add these to the URL: `?debug` (FPS, CPU per frame and entity counts),
 `?stress=1500` (swarm plus every power maxed, no damage), `?god`, `?seed=123`,
 `?t=600` (start at 10:00), `?play` (skip the title), `?give=explode7,xaxis5`
 (own powers at those levels), `?bankai=zanka,tengen` (start with bankai),
-`?bearers=raikoben,gonryo` (choose which bankai the bosses carry).
+`?bearers=raikoben,gonryo` (choose which bankai the bosses carry),
+`?stage=seireitei` (play a stage even if it is still locked).
 
 ## How it is built
 
 - `src/game/` is the whole simulation in plain TypeScript with no rendering, so it runs headless in tests.
-- `src/data/` holds the content tables: powers with their Lv 7 attributes, passives, relics, enemies and the stage timeline. New content goes here.
+- `src/data/` holds the content tables: powers with their Lv 7 attributes, passives, relics, enemies and the stages (spawn mixes, events, difficulty). New content goes here.
 - `src/render/` draws with PixiJS particle containers from one texture atlas generated in code at startup. All art is original.
 - `src/ui/` is plain DOM with an external stylesheet.
 - No inline scripts or styles and no `eval`, so it runs under the strict Content-Security-Policy that minarankstudio.com sends.

@@ -7,14 +7,18 @@ import { ENEMY_INDEX, ENEMY_LIST } from '../data/enemies';
 import { PASSIVE_BY_ID, PASSIVES } from '../data/passives';
 import { POWER_BY_ID, POWERS, STARTING_POWER, upgradeCap } from '../data/powers';
 import { RELIC_BY_ID, RELICS, type RelicDef } from '../data/relics';
-import { STAGE, hpScale, phaseAt, spawnRate, speedScale, xpScale, type TimelineEvent } from '../data/timeline';
+import { hpScale, phaseAt, spawnRate, speedScale, stageById, xpScale, type StageDef, type TimelineEvent } from '../data/stages';
 import { updateMarks, updateZones } from './areas';
 import { burstAt } from './casts/common';
 import { explodeBomb, steerMissile, strikeAt } from './casts/schrift';
 import {
+  BH_BLINK,
+  BH_CHASE,
+  BH_RANGED,
   FLAG_BOSS,
   FLAG_ELITE,
   FX_ASH,
+  FX_DOT,
   FX_GLOW,
   FX_MASK,
   FX_RING,
@@ -37,7 +41,7 @@ import {
   PK_PETAL,
   PK_SHARD,
 } from './constants';
-import { bossAI, eliteAI, updateEnemyBullets } from './hostile';
+import { blinkAI, bossAI, casterAI, eliteAI, updateEnemyBullets } from './hostile';
 import { generateOffers, rollRelics, type ChestKind, type Offer } from './offers';
 import { EBulletPool, EnemyPool, FxPool, HITS, MarkPool, NumberRing, OrbPool, ProjPool, ZonePool } from './pools';
 import { newPowerState, refreshPowerStats, syncPower, updatePowers, type PowerState } from './powers';
@@ -103,6 +107,8 @@ export interface WorldOptions {
   numbers?: boolean;
   /** Force which bankai the bearers carry, in order (testing). */
   bearers?: string[];
+  /** Stage id; Hueco Mundo when missing or unknown. */
+  stage?: string;
 }
 
 interface Warning {
@@ -116,9 +122,14 @@ function orbTier(v: number): number {
 
 const MAX_BURSTS = 64;
 
+const BEHAVIOR_CODE = { chase: BH_CHASE, blink: BH_BLINK, ranged: BH_RANGED } as const;
+/** Per enemy type, for the hot loop. */
+const BEHAVIOR = Uint8Array.from(ENEMY_LIST, (d) => BEHAVIOR_CODE[d.behavior]);
+
 /** One run's whole simulation. Pure logic: the renderer and UI only read it. */
 export class World {
   readonly rng: Rng;
+  readonly stage: StageDef;
   readonly en = new EnemyPool(CAP.enemies);
   readonly pr = new ProjPool(CAP.projectiles);
   readonly orbs = new OrbPool(CAP.orbs);
@@ -147,6 +158,8 @@ export class World {
     alive: true,
     revives: 0,
     slowT: 0,
+    /** Rooted by a binding seal: cannot move. */
+    rootT: 0,
   };
 
   t = 0;
@@ -225,6 +238,7 @@ export class World {
 
   constructor(opts: WorldOptions = {}) {
     this.rng = new Rng(opts.seed);
+    this.stage = stageById(opts.stage);
     this.stress = Math.max(0, Math.floor(opts.stress ?? 0));
     this.god = !!opts.god || this.stress > 0;
     this.showNumbers = opts.numbers ?? true;
@@ -241,15 +255,16 @@ export class World {
     this.bearers = [...forced, ...pool.filter((id) => !forced.includes(id))].slice(0, 3);
 
     this.warnings = [];
-    for (const e of STAGE.events) {
+    const events = this.stage.events;
+    for (const e of events) {
       if (e.kind === 'bearer') this.warnings.push({ at: e.at - 4, text: 'A medallion bearer approaches' });
-      else if (e.kind === 'boss') this.warnings.push({ at: e.at - 4, text: e.final ? 'The lord of Hueco Mundo awakens' : 'A Menos Grande rises' });
+      else if (e.kind === 'boss') this.warnings.push({ at: e.at - 4, text: e.warn });
     }
 
     const start = Math.max(0, opts.startTime ?? 0);
     if (start > 0) {
       this.t = start;
-      while (this.evCursor < STAGE.events.length && STAGE.events[this.evCursor].at < start) this.evCursor++;
+      while (this.evCursor < events.length && events[this.evCursor].at < start) this.evCursor++;
       while (this.warnCursor < this.warnings.length && this.warnings[this.warnCursor].at < start) this.warnCursor++;
     }
     this.addPower(STARTING_POWER);
@@ -280,6 +295,10 @@ export class World {
     if (p.slowT > 0) {
       p.slowT -= DT;
       speed *= 0.6;
+    }
+    if (p.rootT > 0) {
+      p.rootT -= DT;
+      speed = 0;
     }
     p.x += mx * speed * DT;
     p.y += my * speed * DT;
@@ -340,7 +359,7 @@ export class World {
       this.warnCursor++;
       this.sound('boss');
     }
-    const events = STAGE.events;
+    const events = this.stage.events;
     while (this.evCursor < events.length && this.t >= events[this.evCursor].at) this.fire(events[this.evCursor++]);
     if (this.victoryT > 0) {
       this.victoryT -= DT;
@@ -383,7 +402,7 @@ export class World {
         this.bossCount++;
         if (ev.final) this.finalBossUid = this.en.uid[i];
         const def = ENEMY_LIST[ENEMY_INDEX[ev.enemy]];
-        this.banners.push({ kind: 'boss', title: def.name, sub: ev.final ? 'Lord of Hueco Mundo' : 'Its Cero burns in a straight line' });
+        this.banners.push({ kind: 'boss', title: def.name, sub: ev.sub });
         this.shake = Math.max(this.shake, 8);
         break;
       }
@@ -410,11 +429,11 @@ export class World {
       while (E.n < this.stress && budget-- > 0) {
         const a = this.rng.next() * TAU;
         const d = this.rng.range(120, far);
-        this.spawnEnemy(this.rng.int(4), this.player.x + Math.cos(a) * d, this.player.y + Math.sin(a) * d, false, 3);
+        this.spawnEnemy(this.stressType(), this.player.x + Math.cos(a) * d, this.player.y + Math.sin(a) * d, false, 3);
       }
       return;
     }
-    this.spawnAcc += spawnRate(this.t) * DT;
+    this.spawnAcc += spawnRate(this.t) * this.stage.spawn * DT;
     while (this.spawnAcc >= 1) {
       this.spawnAcc -= 1;
       if (E.n >= MAX_ENEMIES_ALIVE) {
@@ -427,7 +446,7 @@ export class World {
   }
 
   private pickType(): number {
-    const mix = phaseAt(this.t).mix;
+    const mix = phaseAt(this.stage, this.t).mix;
     let total = 0;
     for (const entry of mix) total += entry[1];
     let r = this.rng.next() * total;
@@ -436,6 +455,12 @@ export class World {
       if (r < 0) return ENEMY_INDEX[entry[0]];
     }
     return ENEMY_INDEX[mix[mix.length - 1][0]];
+  }
+
+  /** Stress swarms use the stage's late-game mix. */
+  private stressType(): number {
+    const mix = this.stage.phases[this.stage.phases.length - 1].mix;
+    return ENEMY_INDEX[mix[this.rng.int(mix.length)][0]];
   }
 
   /** A random point just outside the visible area, written to tx/ty. */
@@ -476,11 +501,11 @@ export class World {
     const def = ENEMY_LIST[type];
     const i = E.n++;
     // Bosses get their health from the timeline alone; everything else also scales with time.
-    let hp = def.hp * hpMul * (def.boss ? 1 : hpScale(this.t));
+    let hp = def.hp * hpMul * (def.boss ? 1 : hpScale(this.t) * this.stage.hp);
     let r = def.radius;
     // Boss hits scale with the boss's tier: the first bearer is an introduction, the last boss hits hard.
     let dmg = def.damage * (def.boss ? Math.min(1.6, 0.65 + 0.06 * hpMul) : 1);
-    let xp = def.xp * xpScale(this.t);
+    let xp = def.xp * xpScale(this.t) * this.stage.xp;
     let flags = 0;
     if (elite) {
       hp *= 12;
@@ -511,7 +536,7 @@ export class World {
     E.dotTick[i] = 0;
     E.dotKind[i] = 0;
     E.atkT[i] = def.boss ? 2.5 : 2 + this.rng.next() * 2;
-    E.atk2T[i] = 4;
+    E.atk2T[i] = def.boss ? 4 : 1.5 + this.rng.next() * 2.5;
     E.volT[i] = 0;
     E.volDmg[i] = 0;
     E.type[i] = type;
@@ -574,8 +599,24 @@ export class World {
       const dist2 = dx * dx + dy * dy;
       const dist = Math.sqrt(dist2) || 1;
       const v = E.spd[i] * k * DT;
-      x += (dx / dist) * v;
-      y += (dy / dist) * v;
+      const behavior = BEHAVIOR[E.type[i]];
+      if (behavior === BH_RANGED && !(flags & FLAG_ELITE)) {
+        // Casters hold a ring around you: close in, back off, or circle.
+        if (dist > 220) {
+          x += (dx / dist) * v;
+          y += (dy / dist) * v;
+        } else if (dist < 150) {
+          x -= (dx / dist) * v * 0.8;
+          y -= (dy / dist) * v * 0.8;
+        } else {
+          const side = E.uid[i] & 1 ? 0.5 : -0.5;
+          x += (-dy / dist) * v * side;
+          y += (dx / dist) * v * side;
+        }
+      } else {
+        x += (dx / dist) * v;
+        y += (dy / dist) * v;
+      }
       const kx = E.kx[i];
       const ky = E.ky[i];
       if (kx !== 0 || ky !== 0) {
@@ -638,6 +679,8 @@ export class World {
       E.y[i] = y;
       if (boss) bossAI(this, i, dist);
       else if (flags & FLAG_ELITE) eliteAI(this, i, dist);
+      else if (k > 0 && behavior === BH_BLINK) blinkAI(this, i, dist);
+      else if (k > 0 && behavior === BH_RANGED) casterAI(this, i, dist);
       if (E.dead[i]) continue;
       if (dist < E.r[i] + PLAYER.radius + 2) this.contact(i);
       else if (dist2 > recycle2 && !boss) this.recycle(i);
@@ -759,7 +802,8 @@ export class World {
         else if (roll < 0.005) this.addPickup('magnet', x, y);
         else if (roll < 0.0056) this.addPickup('nuke', x, y);
       }
-      this.deathFx(x, y, def.color, E.r[i]);
+      if (def.shinigami) this.spiritFx(x, y, E.r[i]);
+      else this.deathFx(x, y, def.color, E.r[i]);
     }
     this.sound('kill');
   }
@@ -1294,6 +1338,15 @@ export class World {
       this.spawnFx(FX_MASK, x, y - r * 0.3, Math.cos(a) * s, Math.sin(a) * s - 30, this.rng.range(0.3, 0.5), r * 0.9, r * 0.5, 1, a, this.rng.range(-9, 9), color, LAYER_NORMAL, 3);
     }
     this.spawnFx(FX_GLOW, x, y, 0, 0, 0.2, r, r * 2.6, 0.45, 0, 0, 0xbfe6ff, LAYER_ADD);
+  }
+
+  /** Soul Reapers: the body comes apart into rising motes of spirit light. */
+  private spiritFx(x: number, y: number, r: number): void {
+    for (let k = 0; k < 4; k++) {
+      const ox = this.rng.range(-r, r) * 0.7;
+      this.spawnFx(FX_DOT, x + ox, y + this.rng.range(-r, r) * 0.5, ox * 0.6, -this.rng.range(50, 95), this.rng.range(0.4, 0.65), 5, 2, 0.95, 0, 0, 0xcfe6ff, LAYER_ADD, 1.5);
+    }
+    this.spawnFx(FX_GLOW, x, y, 0, 0, 0.22, r, r * 2.6, 0.5, 0, 0, 0x9fc8ff, LAYER_ADD);
   }
 
   private explosionFx(x: number, y: number): void {

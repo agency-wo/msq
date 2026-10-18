@@ -3,9 +3,10 @@ import { BANKAI_BY_ID } from '../data/bankai';
 import { PASSIVE_BY_ID } from '../data/passives';
 import { POWER_BY_ID, type PowerDef } from '../data/powers';
 import type { Rarity, RelicDef } from '../data/relics';
+import { STAGES, stageById, type StageId } from '../data/stages';
 import type { ChestKind, Offer } from '../game/offers';
 import type { Banner, World } from '../game/world';
-import type { SaveData, Settings } from '../save/save';
+import { stageUnlocked, type SaveData, type Settings } from '../save/save';
 import { drawEmblem, drawIcon } from './icons';
 
 /**
@@ -44,6 +45,9 @@ interface CardSpec {
 }
 
 export interface ResultSummary {
+  stageName: string;
+  /** A stage this run unlocked, by name. */
+  unlocked: string | null;
   victory: boolean;
   quit: boolean;
   time: number;
@@ -203,7 +207,10 @@ export class UI {
     this.screen.replaceChildren();
   }
 
-  showTitle(save: SaveData, h: { onPlay: () => void; onSettings: () => void; installHint: boolean }): void {
+  showTitle(
+    save: SaveData,
+    h: { onPlay: () => void; onSettings: () => void; onStage: (id: StageId) => void; installHint: boolean },
+  ): void {
     const p = this.open('title');
     const emblem = el('canvas', 'emblem');
     drawEmblem(emblem, 84);
@@ -213,9 +220,8 @@ export class UI {
     play.addEventListener('click', this.guard(h.onPlay));
     const settings = button('btn', 'Settings');
     settings.addEventListener('click', this.guard(h.onSettings));
-    p.append(emblem, logo, el('p', 'tagline', 'The Emperor takes back what he gave.'), play, settings);
-    if (save.best.time > 0) p.append(el('p', 'best', `Best ${formatTime(save.best.time)} · Lv ${save.best.level}`));
-    p.append(el('p', 'hint', 'Drag anywhere to move. Your powers fire on their own. Hueco Mundo · 20 minutes.'));
+    p.append(emblem, logo, el('p', 'tagline', 'The Emperor takes back what he gave.'), this.stagePicker(save, h.onStage), play, settings);
+    p.append(el('p', 'hint', 'Drag anywhere to move. Your powers fire on their own. Each stage lasts 20 minutes.'));
     if (h.installHint) {
       const box = el('div', 'install');
       box.append(el('strong', '', 'Play full-screen'), el('span', '', 'Tap Share, then Add to Home Screen.'));
@@ -296,8 +302,9 @@ export class UI {
 
   showResults(r: ResultSummary, h: { onRetry: () => void; onMenu: () => void }): void {
     const p = this.open(`results ${r.victory ? 'won' : 'lost'}`);
-    const kicker = r.victory ? 'Hueco Mundo cleared' : r.quit ? 'Run abandoned' : 'You fell';
+    const kicker = r.victory ? `${r.stageName} cleared` : r.quit ? 'Run abandoned' : `Fallen in ${r.stageName}`;
     p.append(el('div', 'board-kicker', kicker), el('h2', 'board-title', r.victory ? 'Victory' : 'Fallen'));
+    if (r.unlocked) p.append(el('p', 'unlock-note', `New stage unlocked: ${r.unlocked}`));
     const stats = el('div', 'stats');
     const stat = (label: string, value: string): HTMLElement => {
       const s = el('div', 'stat');
@@ -327,6 +334,46 @@ export class UI {
   }
 
   // --------------------------------------------------------- helpers
+
+  /** One button per stage; locked ones say what opens them. The line underneath describes the pick. */
+  private stagePicker(save: SaveData, onStage: (id: StageId) => void): HTMLElement {
+    const box = el('div', 'stages');
+    const row = el('div', 'stage-row');
+    row.setAttribute('role', 'radiogroup');
+    row.setAttribute('aria-label', 'Stage');
+    const info = el('p', 'stage-info');
+    const buttons: HTMLButtonElement[] = [];
+    const select = (id: StageId): void => {
+      STAGES.forEach((def, k) => {
+        const on = def.id === id;
+        buttons[k].classList.toggle('on', on);
+        buttons[k].setAttribute('aria-checked', String(on));
+      });
+      const def = stageById(id);
+      const rec = save.stages[id];
+      const best = rec.best > 0 ? ` Best ${formatTime(rec.best)}${rec.cleared ? ' · cleared' : ''}.` : '';
+      info.textContent = `${def.blurb}${best}`;
+    };
+    for (const def of STAGES) {
+      const open = stageUnlocked(save, def.id);
+      const b = button(`stage-btn${open ? '' : ' locked'}`, '');
+      b.setAttribute('role', 'radio');
+      b.append(el('span', 'stage-name', def.name), el('span', 'stage-sub', open ? (save.stages[def.id].cleared ? 'Cleared' : '20:00') : 'Locked'));
+      b.addEventListener('click', () => {
+        if (!open) {
+          this.toast(`Clear ${stageById(def.unlockedBy).name} to unlock ${def.name}`);
+          return;
+        }
+        select(def.id);
+        onStage(def.id);
+      });
+      buttons.push(b);
+      row.append(b);
+    }
+    select(stageUnlocked(save, save.stage) ? save.stage : 'hueco');
+    box.append(row, info);
+    return box;
+  }
 
   private open(cls: string): HTMLElement {
     this.screen.replaceChildren();

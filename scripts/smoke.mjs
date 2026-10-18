@@ -127,8 +127,15 @@ try {
   await page.goto(`${BASE}?debug&seed=7`);
   await page.waitForSelector('.screen.title .btn.primary');
   await wait(400);
-  log('title', { installHint: await page.isVisible('.install') });
+  log('title', {
+    installHint: await page.isVisible('.install'),
+    stages: await page.$$eval('.stage-btn', (bs) => bs.map((b) => `${b.textContent}${b.classList.contains('locked') ? ' (locked)' : ''}`)),
+  });
   await shot('01-title');
+  // A locked stage explains itself instead of starting.
+  await page.tap('.stage-btn.locked');
+  await wait(300);
+  log('locked stage tap', { toast: await page.textContent('.toast'), state: await state() });
 
   // 2. Start with a tap and play: joystick, auto-casting, the Auswählen board.
   await page.tap('.screen.title .btn.primary');
@@ -185,7 +192,41 @@ try {
     await shot(`07-bankai-${id}`);
   }
 
-  // 9. Stress: 1500 enemies, every Schrift maxed, two bankai. Software WebGL here, so FPS is only a floor.
+  // 9. Seireitei: unlocked once Hueco Mundo is cleared; picking it previews its ground on the title screen.
+  await page.goto(`${BASE}?debug&seed=7`);
+  await page.evaluate(() => {
+    const save = JSON.parse(localStorage.getItem('msq.save') ?? '{}');
+    save.stages = { hueco: { best: 1210, cleared: true }, seireitei: { best: 0, cleared: false } };
+    localStorage.setItem('msq.save', JSON.stringify(save));
+  });
+  await page.reload();
+  await page.waitForSelector('.screen.title .btn.primary');
+  await wait(300);
+  await page.tap('.stage-btn:nth-child(2)');
+  await wait(500);
+  log('title seireitei', { selected: await page.textContent('.stage-btn.on'), info: await page.textContent('.stage-info') });
+  await shot('09-title-seireitei');
+  await page.tap('.screen.title .btn.primary');
+  await wait(300);
+  picks = await steer(9000);
+  log('seireitei early', { ...(await stats()), picks, stage: await page.evaluate(() => window.__msq.world.stage.id) });
+  await shot('10-seireitei-early');
+
+  // Mid-run: flash-steps, Kidō fire, a seated officer (elite at 7:30).
+  await page.goto(`${BASE}?debug&seed=7&play&god&stage=seireitei&t=445&give=xaxis5,explode5,wind5`);
+  await wait(400);
+  await steer(9000, { radius: 25 });
+  log('seireitei mid', await stats());
+  await shot('11-seireitei-mid');
+
+  // The Kidō Grandmaster: binding seal, fireball fan, lightning lance.
+  await page.goto(`${BASE}?debug&seed=7&play&god&stage=seireitei&t=1196&give=xaxis6,explode6,heat6,knowledge6`);
+  await wait(400);
+  await steer(9000, { radius: 15 });
+  log('grandmaster', { ...(await stats()), bossBar: await page.isVisible('.bossbar'), boss: await page.textContent('.boss-name') });
+  await shot('12-grandmaster');
+
+  // 10. Stress: 1500 enemies, every Schrift maxed, two bankai. Software WebGL here, so FPS is only a floor.
   await page.goto(`${BASE}?debug&stress=1500&bankai=senbonzakura,gonryo`);
   await wait(6000);
   const samples = [];
@@ -196,7 +237,18 @@ try {
   log('stress', { samples: samples.map((s) => `${s.state} ${s.fps}fps cpu${s.cpu}ms ${s.enemies}e ${s.zones}z ${s.sprites}spr`) });
   await shot('08-stress');
 
-  // 10. Offline: the service worker serves the whole game with the network off.
+  // Same in Seireitei, where casters keep enemy fire in the air.
+  await page.goto(`${BASE}?debug&stress=1500&stage=seireitei&bankai=zanka,hyorinmaru`);
+  await wait(6000);
+  const seiSamples = [];
+  for (let i = 0; i < 4; i++) {
+    await wait(1000);
+    seiSamples.push(await stats());
+  }
+  log('stress seireitei', { samples: seiSamples.map((s) => `${s.state} ${s.fps}fps cpu${s.cpu}ms ${s.enemies}e ${s.sprites}spr`) });
+  await shot('13-stress-seireitei');
+
+  // 11. Offline: the service worker serves the whole game with the network off.
   await page.goto(`${BASE}?debug`);
   const sw = await page.evaluate(async () => {
     const reg = await navigator.serviceWorker.ready;

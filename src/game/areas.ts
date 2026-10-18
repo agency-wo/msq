@@ -18,14 +18,17 @@ import {
   MF_CRATER,
   MF_ENEMY,
   MF_FREEZE,
+  MF_ROOT,
   MF_SLOW,
   MK_CERO,
   MK_FIRE,
   MK_ICE,
+  MK_LANCE,
   MK_METEOR,
   MK_MISSILE,
   MK_PILLAR,
   MK_RAIN,
+  MK_SEAL,
   MK_SLASH,
   MS_CIRCLE,
   MS_LINE,
@@ -174,6 +177,7 @@ function resolveMark(w: World, i: number): void {
     if (hit) {
       w.hurtPlayer(dmg);
       if (flags & (MF_SLOW | MF_FREEZE)) p.slowT = Math.max(p.slowT, 1.5);
+      if (flags & MF_ROOT && w.vollT <= 0) p.rootT = Math.max(p.rootT, 1);
     }
   } else {
     const E = w.en;
@@ -244,6 +248,17 @@ function markFx(w: World, kind: number, x: number, y: number, r: number, len: nu
     case MK_RAIN:
       w.spawnFx(FX_BEAM, x, y, 0, 0, 0.18, r * 0.8, 0, 1, 0, 0, 0xbfe6ff, LAYER_ADD);
       w.spawnFx(FX_GLOW, x, y, 0, 0, 0.2, r * 0.6, r * 1.8, 0.8, 0, 0, 0x9fd8ff, LAYER_ADD);
+      break;
+    case MK_SEAL:
+      w.spawnFx(FX_RING, x, y, 0, 0, 0.5, r * 2.2, r * 1.6, 1, 0, 0, 0xffcb5c, LAYER_ADD);
+      w.spawnFx(FX_GLOW, x, y, 0, 0, 0.4, r, r * 2.2, 0.8, 0, 0, 0xffb347, LAYER_ADD);
+      w.sound('shield');
+      break;
+    case MK_LANCE:
+      w.spawnFx(FX_BEAMH, x + (Math.cos(ang) * len) / 2, y + (Math.sin(ang) * len) / 2, 0, 0, 0.3, len, len, 1, ang, 0, 0xfff0b0, LAYER_ADD, 0, 0, r * 1.6);
+      w.spawnFx(FX_GLOW, x, y, 0, 0, 0.3, r, r * 2.6, 1, 0, 0, 0xffe680, LAYER_ADD);
+      w.shake = Math.max(w.shake, 5);
+      w.sound('strike');
       break;
   }
 }
