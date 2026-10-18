@@ -213,6 +213,7 @@ try {
   await page.evaluate(() => {
     const save = JSON.parse(localStorage.getItem('msq.save') ?? '{}');
     save.stages = { hueco: { best: 1210, cleared: true }, seireitei: { best: 0, cleared: false } };
+    save.taken = ['senbonzakura', 'hyorinmaru', 'zanka', 'tengen'];
     localStorage.setItem('msq.save', JSON.stringify(save));
   });
   await page.reload();
@@ -220,7 +221,12 @@ try {
   await wait(300);
   await page.tap('.stage-btn:nth-child(2)');
   await wait(500);
-  log('title seireitei', { selected: await page.textContent('.stage-btn.on'), info: await page.textContent('.stage-info') });
+  log('title seireitei', {
+    selected: await page.textContent('.stage-btn.on'),
+    info: await page.textContent('.stage-info'),
+    medals: await page.$$eval('.medal.got', (m) => m.length),
+    collection: await page.textContent('.collection-text'),
+  });
   await shot('09-title-seireitei');
   await page.tap('.screen.title .btn.primary');
   await wait(300);
@@ -241,6 +247,16 @@ try {
   await steer(9000, { radius: 15 });
   log('grandmaster', { ...(await stats()), bossBar: await page.isVisible('.bossbar'), boss: await page.textContent('.boss-name') });
   await shot('12-grandmaster');
+
+  // A · The Almighty: time stops, an eye opens, then everything on screen is struck down.
+  await page.goto(`${BASE}?debug&seed=7&play&god&t=500&almighty&give=xaxis5,explode5`);
+  let stopped = false;
+  for (let k = 0; k < 80 && !stopped; k++) {
+    stopped = await page.evaluate(() => window.__msq.world.almightyT > 0.5);
+    if (!stopped) await steer(250, { radius: 20 });
+  }
+  log('almighty stop', { stopped, ...(await stats()) });
+  await shot('15-almighty-stop');
 
   // 10. Stress: 1500 enemies, every Schrift maxed, two bankai. Software WebGL here, so FPS is only a floor.
   await page.goto(`${BASE}?debug&stress=1500&bankai=senbonzakura,gonryo`);

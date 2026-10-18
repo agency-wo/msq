@@ -28,6 +28,8 @@ export type PowerKind =
   | 'vollstandig'
   | 'balance'
   | 'miracle'
+  // The Emperor's own
+  | 'almighty'
   // Stolen bankai
   | 'senbonzakura'
   | 'hyorinmaru'
@@ -36,8 +38,11 @@ export type PowerKind =
   | 'gonryo'
   | 'zanka';
 
-/** art: a Quincy technique · schrift: a knight's letter · utility: support · bankai: won from a boss only. */
-export type PowerGroup = 'art' | 'schrift' | 'utility' | 'bankai';
+/**
+ * art: a Quincy technique · schrift: a knight's letter · utility: support ·
+ * bankai: won from a boss only · ultimate: The Almighty, never on the level-up board.
+ */
+export type PowerGroup = 'art' | 'schrift' | 'utility' | 'bankai' | 'ultimate';
 
 /** Generic numbers each cast pattern reads in its own way (see the comment on each power). */
 export interface PowerStats {

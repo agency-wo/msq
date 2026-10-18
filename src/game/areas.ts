@@ -164,6 +164,7 @@ function steerWander(w: World, i: number): void {
 // ------------------------------------------------------------------ marks
 
 export function updateMarks(w: World): void {
+  if (w.almightyT > 0) return;
   const M = w.marks;
   for (let i = M.n - 1; i >= 0; i--) {
     M.delay[i] -= DT;

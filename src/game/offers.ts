@@ -58,16 +58,18 @@ export function generateOffers(input: OfferInput, rng: Rng, count = 3): Offer[] 
   const pool: Weighted<Offer>[] = [];
   const ownedPowers = new Map(input.powers.map((p) => [p.id, p.level]));
   const defs = new Map(input.powerDefs.map((d) => [d.id, d]));
-  const slotsUsed = input.powers.filter((p) => defs.get(p.id)?.group !== 'bankai').length;
+  // Bankai and The Almighty come from elsewhere: they take no slot and are never offered as new.
+  const offerable = (d: PowerDef | undefined): boolean => !!d && d.group !== 'bankai' && d.group !== 'ultimate';
+  const slotsUsed = input.powers.filter((p) => offerable(defs.get(p.id))).length;
   // New powers get rarer the more you own, so a build focuses instead of spreading thin. Their
   // combined weight is shared across however many there are, so adding content to the game
   // never dilutes a build: each unowned power gets a slice, never more than 2.4.
-  const unowned = input.powerDefs.filter((d) => d.group !== 'bankai' && !ownedPowers.has(d.id)).length;
+  const unowned = input.powerDefs.filter((d) => offerable(d) && !ownedPowers.has(d.id)).length;
   const newWeight = Math.min(2.4, NEW_TOTAL / Math.max(1, unowned)) / (1 + slotsUsed * 0.5);
   for (const def of input.powerDefs) {
     const level = ownedPowers.get(def.id);
     if (level === undefined) {
-      if (def.group !== 'bankai' && slotsUsed < input.maxPowers) pool.push({ item: { kind: 'power-new', id: def.id }, w: newWeight });
+      if (offerable(def) && slotsUsed < input.maxPowers) pool.push({ item: { kind: 'power-new', id: def.id }, w: newWeight });
     } else if (def.attributes && level === def.maxLevel - 1) {
       pool.push({ item: { kind: 'power-attr', id: def.id }, w: 6 });
     } else if (level < upgradeCap(def)) {

@@ -598,9 +598,30 @@ const LEVELED: readonly PowerDef[] = [
   },
 ];
 
+/**
+ * The Emperor's own Schrift. Unlocked by taking back all six bankai across
+ * runs; from then on it awakens in a run once three Schrift reach Lv 7.
+ * cooldown = time between rewrites, damage + amount x level = strike damage,
+ * duration = how long time stands still, count = share of a boss's health taken.
+ */
+export const ALMIGHTY: PowerDef = {
+  id: 'almighty',
+  kind: 'almighty',
+  group: 'ultimate',
+  name: 'The Almighty',
+  letter: 'A',
+  credit: 'the Emperor',
+  desc: 'Every 24 s you see every future and rewrite it: time stops, enemy fire vanishes, and everything on screen is struck down. Some hits simply never happen.',
+  icon: 'star',
+  color: '#ffe6a0',
+  maxLevel: 1,
+  base: stats({ damage: 80, amount: 8, cooldown: 24, duration: 1.2, count: 0.05 }),
+  levels: [],
+};
+
 export const STARTING_POWER = 'heilig';
 
-/** Everything that can be owned, bankai included (they never show up as new cards). */
-export const POWERS: readonly PowerDef[] = [...LEVELED, ...BANKAI_POWERS];
+/** Everything that can be owned. Bankai and The Almighty never show up as new cards. */
+export const POWERS: readonly PowerDef[] = [...LEVELED, ...BANKAI_POWERS, ALMIGHTY];
 
 export const POWER_BY_ID: ReadonlyMap<string, PowerDef> = new Map(POWERS.map((p) => [p.id, p]));

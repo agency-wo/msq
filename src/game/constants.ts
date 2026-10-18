@@ -57,6 +57,7 @@ export const FX_PETAL = 17;
 export const FX_MISSILE = 18;
 export const FX_MAW = 19;
 export const FX_FIST = 20;
+export const FX_EYE = 21;
 
 /** Effect blend layers. */
 export const LAYER_NORMAL = 0;

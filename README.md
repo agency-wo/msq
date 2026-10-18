@@ -9,7 +9,10 @@ knights (Auswählen): 18 offensive powers with a Lv 7 attribute pick, plus 6
 utilities. Some fight for you: The Love charms enemies onto your side, The
 Zombie raises the infected dead, The Yourself sends out doubles. Every run,
 three random medallion bearers carry stolen bankai; beat one and its bankai is
-yours. All art is original and drawn in code.
+yours. Take back all six across your runs and **A · The Almighty** unlocks: from
+then on it awakens once three Schrift reach Lv 7, stops time every 24 s and
+rewrites the future (enemy fire vanishes, everything on screen is struck down).
+All art is original and drawn in code.
 
 Stages, 20 minutes each:
 
@@ -51,7 +54,8 @@ Add these to the URL: `?debug` (FPS, CPU per frame and entity counts),
 `?t=600` (start at 10:00), `?play` (skip the title), `?give=explode7,xaxis5`
 (own powers at those levels), `?bankai=zanka,tengen` (start with bankai),
 `?bearers=raikoben,gonryo` (choose which bankai the bosses carry),
-`?stage=seireitei` (play a stage even if it is still locked).
+`?stage=seireitei` (play a stage even if it is still locked), `?almighty`
+(start with A · The Almighty).
 
 ## How it is built
 

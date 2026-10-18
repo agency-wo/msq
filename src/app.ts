@@ -7,7 +7,7 @@ import type { Offer } from './game/offers';
 import { World } from './game/world';
 import { installGestureGuards, isIOS, isPhoneLandscape, isStandalone } from './platform/pwa';
 import { Renderer } from './render/renderer';
-import { exportCode, importCode, loadSave, recordRun, stageUnlocked, writeSave, type SaveData } from './save/save';
+import { almightyUnlocked, exportCode, importCode, loadSave, recordRun, stageUnlocked, writeSave, type SaveData } from './save/save';
 import { UI, type Toggle } from './ui/ui';
 
 type State = 'title' | 'settings' | 'playing' | 'paused' | 'levelup' | 'chest' | 'over';
@@ -31,7 +31,7 @@ function listParam(p: URLSearchParams, key: string): string[] {
  * URL switches for testing: ?debug (FPS overlay), ?stress=1500 (swarm + maxed
  * powers, no damage), ?god, ?seed=123, ?t=600 (start at 10:00), ?play (skip title),
  * ?give=explode7,xaxis5 (own powers), ?bankai=zanka (grant a bankai), ?bearers=tengen,gonryo,
- * ?stage=seireitei (play a stage, locked or not).
+ * ?stage=seireitei (play a stage, locked or not), ?almighty (start with A · The Almighty).
  */
 export class App {
   private readonly renderer = new Renderer();
@@ -120,7 +120,9 @@ export class App {
       startTime: numParam(p, 't'),
       numbers: this.save.settings.numbers,
       bearers: listParam(p, 'bearers'),
+      almighty: almightyUnlocked(this.save),
     });
+    if (p.has('almighty')) this.world.grantAlmighty();
     // Testing: ?give=explode7,xaxis5 owns powers at those levels; ?bankai=senbonzakura,zanka grants bankai.
     for (const entry of listParam(p, 'give')) {
       const m = /^([a-z]+)(\d*)$/.exec(entry);
@@ -258,14 +260,23 @@ export class App {
     const victory = w.over === 'victory';
     // Test runs (god mode, stress) never touch the real save.
     const record = w.god
-      ? { newBest: false, unlocked: null }
-      : recordRun(this.save, { stage: w.stage.id, time: w.t, level: w.level, kills: w.kills, cleared: victory, gold: w.gold });
+      ? { newBest: false, unlocked: null, almighty: false }
+      : recordRun(this.save, {
+          stage: w.stage.id,
+          time: w.t,
+          level: w.level,
+          kills: w.kills,
+          cleared: victory,
+          gold: w.gold,
+          bankai: w.powers.filter((ps) => ps.def.group === 'bankai').map((ps) => ps.def.id),
+        });
     if (!w.god) writeSave(this.save);
     this.ui.showHud(false);
     this.ui.showResults(
       {
         stageName: w.stage.name,
         unlocked: record.unlocked ? stageById(record.unlocked).name : null,
+        almighty: record.almighty,
         victory,
         quit,
         time: w.t,

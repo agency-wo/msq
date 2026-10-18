@@ -9,6 +9,7 @@ import { POWER_BY_ID, POWERS, STARTING_POWER, upgradeCap } from '../data/powers'
 import { RELIC_BY_ID, RELICS, type RelicDef } from '../data/relics';
 import { hpScale, phaseAt, spawnRate, speedScale, stageById, xpScale, type StageDef, type TimelineEvent } from '../data/stages';
 import { updateMarks, updateZones } from './areas';
+import { rewrite } from './casts/almighty';
 import { burstAt } from './casts/common';
 import { explodeBomb, steerMissile, strikeAt } from './casts/schrift';
 import {
@@ -71,9 +72,9 @@ export interface Message {
   kind: 'boss' | 'info';
 }
 
-/** A title card: a boss arriving, or a bankai taken back. */
+/** A title card: a boss arriving, a bankai taken back, or The Almighty awakening. */
 export interface Banner {
-  kind: 'bankai' | 'boss';
+  kind: 'bankai' | 'boss' | 'almighty';
   title: string;
   sub: string;
 }
@@ -106,7 +107,8 @@ export type SoundName =
   | 'bite'
   | 'charm'
   | 'punch'
-  | 'rise';
+  | 'rise'
+  | 'almighty';
 
 export interface WorldOptions {
   seed?: number;
@@ -120,6 +122,8 @@ export interface WorldOptions {
   bearers?: string[];
   /** Stage id; Hueco Mundo when missing or unknown. */
   stage?: string;
+  /** A · The Almighty is unlocked: it awakens once three Schrift reach Lv 7. */
+  almighty?: boolean;
 }
 
 interface Warning {
@@ -225,6 +229,15 @@ export class World {
   zombiePlague = false;
   zombieBurst = false;
   zombieN = 0;
+  /** A · The Almighty: while almightyT > 0 time stands still; then the strike in rewrite(). */
+  readonly almightyUnlocked: boolean;
+  almightyGranted = false;
+  almightyT = 0;
+  almightyMax = 1;
+  almightyDmg = 0;
+  almightyBoss = 0;
+  /** Chance that a hit never happens (The Almighty's foresight). */
+  foresight = 0;
   /** Direction you last moved, radians: aim for powers that fire "where you are heading". */
   aim = -Math.PI / 2;
 
@@ -266,6 +279,7 @@ export class World {
   constructor(opts: WorldOptions = {}) {
     this.rng = new Rng(opts.seed);
     this.stage = stageById(opts.stage);
+    this.almightyUnlocked = !!opts.almighty;
     this.stress = Math.max(0, Math.floor(opts.stress ?? 0));
     this.god = !!opts.god || this.stress > 0;
     this.showNumbers = opts.numbers ?? true;
@@ -450,6 +464,8 @@ export class World {
   }
 
   private spawnTick(): void {
+    // Nothing arrives while time stands still.
+    if (this.almightyT > 0) return;
     const E = this.en;
     if (this.stress > 0) {
       let budget = 60;
@@ -633,6 +649,8 @@ export class World {
         }
       }
       if (E.infT[i] > 0) E.infT[i] -= DT;
+      // The Almighty stopped time: nobody moves, attacks or touches you, bosses included.
+      if (this.almightyT > 0) continue;
       let k = 1;
       if (E.freezeT[i] > 0) {
         E.freezeT[i] -= DT;
@@ -929,6 +947,12 @@ export class World {
   hurtPlayer(amount: number): void {
     const p = this.player;
     if (p.iframes > 0 || this.god || !p.alive || this.vollT > 0) return;
+    if (this.foresight > 0 && this.rng.next() < this.foresight) {
+      // Foresight: you saw this future and stepped out of it.
+      p.iframes = 0.25;
+      this.spawnFx(FX_RING, 0, 0, 0, 0, 0.3, 16, 60, 0.9, 0, 0, 0xffe6a0, LAYER_ADD, 0, 1);
+      return;
+    }
     if (this.shieldCharges > 0) {
       // The Iron: steel skin eats the hit.
       this.shieldCharges--;
@@ -1534,6 +1558,10 @@ export class World {
     if (this.miracleRegen > 0 && p.alive && p.hp < p.maxHp * 0.35) p.hp += this.miracleRegen * DT;
     if (this.shake > 0) this.shake = Math.max(0, this.shake - 28 * DT);
     if (this.freezeAllT > 0) this.freezeAllT -= DT;
+    if (this.almightyT > 0) {
+      this.almightyT -= DT;
+      if (this.almightyT <= 0) rewrite(this);
+    }
     if (this.hasClock) {
       this.clockCd -= DT;
       if (this.clockCd <= 0) {
@@ -1653,6 +1681,23 @@ export class World {
     ps.attr = attr;
     refreshPowerStats(ps);
     syncPower(this, this.powers.indexOf(ps));
+    // The third awakened Schrift wakes The Almighty, once it is unlocked.
+    if (this.almightyUnlocked && this.powers.filter((q) => q.attr !== null).length >= 3) this.grantAlmighty();
+  }
+
+  /** A · The Almighty joins your powers, with its own title card. Once per run. */
+  grantAlmighty(): boolean {
+    if (this.almightyGranted) return false;
+    const def = POWER_BY_ID.get('almighty');
+    if (!def) return false;
+    this.almightyGranted = true;
+    this.addPower('almighty');
+    this.banners.push({ kind: 'almighty', title: 'The Almighty', sub: 'Every future is yours to see, and to rewrite' });
+    this.sound('almighty');
+    this.shake = Math.max(this.shake, 12);
+    this.spawnFx(FX_GLOW, 0, 0, 0, 0, 1, 60, 900, 1, 0, 0, 0xffe6a0, LAYER_ADD, 0, 1);
+    this.spawnFx(FX_RING, 0, 0, 0, 0, 0.9, 40, 700, 1, 0, 0, 0xffffff, LAYER_ADD, 0, 1);
+    return true;
   }
 
   /** A medallion was taken back: its bankai joins your powers at Lv 1 (or levels up if you somehow have it). */

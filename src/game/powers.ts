@@ -16,6 +16,7 @@ import {
   respawnBlades,
   respawnDrones,
 } from './casts/schrift';
+import { castAlmighty } from './casts/almighty';
 import { castDouble, castJail, castLove, castMaw, castPunch, castZombie } from './casts/schrift2';
 import { castBalance, castIron, castMiracle, castOverkill, castSuperstar, castVollstandig } from './casts/utility';
 import type { World } from './world';
@@ -131,6 +132,9 @@ export function updatePowers(w: World): void {
         break;
       case 'miracle':
         castMiracle(w, ps);
+        break;
+      case 'almighty':
+        castAlmighty(w, ps);
         break;
       case 'senbonzakura':
         castSenbonzakura(w, ps);

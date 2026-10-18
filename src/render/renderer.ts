@@ -365,6 +365,7 @@ export class Renderer {
       this.drawFx(w, alpha);
       this.drawNumbers(w, view);
       this.drawIndicators(w, view, sw, sh);
+      if (w.almightyT > 0) this.drawAlmighty(w, sw, sh);
     }
     this.drawJoystick(input);
     let drawn = 0;
@@ -789,6 +790,18 @@ export class Renderer {
       const s = q.kind === 'medallion' ? 0.9 : 0.7;
       this.L.hud.add(f.pointer, sw / 2 + Math.cos(ang) * k, sh / 2 + Math.sin(ang) * k, s, s, ang, tint, 0.95);
     }
+  }
+
+  /** Time stands still: the field dims and an eye opens over it, closing as time starts again. */
+  private drawAlmighty(w: World, sw: number, sh: number): void {
+    const f = this.atlas.frames;
+    const L = this.L.hud;
+    const sq = this.atlas.px.square.w;
+    const elapsed = w.almightyMax - w.almightyT;
+    const open = Math.min(1, elapsed / 0.25, w.almightyT / 0.2);
+    L.add(f.square, sw / 2, sh / 2, sw / sq + 2, sh / sq + 2, 0, 0x0a1030, 0.42 * open);
+    const s = Math.min(sw * 0.7, 340) / this.atlas.px.eye.w;
+    L.add(f.eye, sw / 2, sh * 0.3, s, s * Math.max(0.05, open), 0, 0xffffff, open);
   }
 
   private drawJoystick(input: Input): void {

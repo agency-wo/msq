@@ -1,12 +1,12 @@
 import { formatTime } from '../core/math';
-import { BANKAI_BY_ID } from '../data/bankai';
+import { BANKAI_BY_ID, BANKAI_IDS } from '../data/bankai';
 import { PASSIVE_BY_ID } from '../data/passives';
 import { POWER_BY_ID, type PowerDef } from '../data/powers';
 import type { Rarity, RelicDef } from '../data/relics';
 import { STAGES, stageById, type StageId } from '../data/stages';
 import type { ChestKind, Offer } from '../game/offers';
 import type { Banner, World } from '../game/world';
-import { stageUnlocked, type SaveData, type Settings } from '../save/save';
+import { almightyUnlocked, stageUnlocked, type SaveData, type Settings } from '../save/save';
 import { drawEmblem, drawIcon } from './icons';
 
 /**
@@ -48,6 +48,8 @@ export interface ResultSummary {
   stageName: string;
   /** A stage this run unlocked, by name. */
   unlocked: string | null;
+  /** This run took back the last missing bankai: A · The Almighty is now unlocked. */
+  almighty: boolean;
   victory: boolean;
   quit: boolean;
   time: number;
@@ -179,8 +181,9 @@ export class UI {
 
   /** A title card that slides across the middle of the screen; the game keeps running. */
   banner(b: Banner): void {
+    const kicker = b.kind === 'bankai' ? 'Bankai' : b.kind === 'almighty' ? 'A · Awakened' : 'Boss';
     this.bannerEl.replaceChildren(
-      el('div', 'banner-kicker', b.kind === 'bankai' ? 'Bankai' : 'Boss'),
+      el('div', 'banner-kicker', kicker),
       el('div', 'banner-title', b.title),
       el('div', 'banner-sub', b.sub),
     );
@@ -220,7 +223,15 @@ export class UI {
     play.addEventListener('click', this.guard(h.onPlay));
     const settings = button('btn', 'Settings');
     settings.addEventListener('click', this.guard(h.onSettings));
-    p.append(emblem, logo, el('p', 'tagline', 'The Emperor takes back what he gave.'), this.stagePicker(save, h.onStage), play, settings);
+    p.append(
+      emblem,
+      logo,
+      el('p', 'tagline', 'The Emperor takes back what he gave.'),
+      this.stagePicker(save, h.onStage),
+      play,
+      settings,
+      this.collection(save),
+    );
     p.append(el('p', 'hint', 'Drag anywhere to move. Your powers fire on their own. Each stage lasts 20 minutes.'));
     if (h.installHint) {
       const box = el('div', 'install');
@@ -305,6 +316,7 @@ export class UI {
     const kicker = r.victory ? `${r.stageName} cleared` : r.quit ? 'Run abandoned' : `Fallen in ${r.stageName}`;
     p.append(el('div', 'board-kicker', kicker), el('h2', 'board-title', r.victory ? 'Victory' : 'Fallen'));
     if (r.unlocked) p.append(el('p', 'unlock-note', `New stage unlocked: ${r.unlocked}`));
+    if (r.almighty) p.append(el('p', 'unlock-note', 'Every bankai taken back. A · The Almighty is unlocked: it awakens once three Schrift reach Lv 7.'));
     const stats = el('div', 'stats');
     const stat = (label: string, value: string): HTMLElement => {
       const s = el('div', 'stat');
@@ -334,6 +346,25 @@ export class UI {
   }
 
   // --------------------------------------------------------- helpers
+
+  /** The six bankai as medallions, lit once taken back in any run, and what all six unlock. */
+  private collection(save: SaveData): HTMLElement {
+    const box = el('div', 'collection');
+    const medals = el('div', 'medals');
+    for (const id of BANKAI_IDS) {
+      const got = save.taken.includes(id);
+      const m = el('span', got ? 'medal got' : 'medal');
+      m.style.setProperty('--c', `#${(BANKAI_BY_ID.get(id)?.aura ?? 0xffcb5c).toString(16).padStart(6, '0')}`);
+      m.title = POWER_BY_ID.get(id)?.name ?? id;
+      medals.append(m);
+    }
+    const n = BANKAI_IDS.filter((id) => save.taken.includes(id)).length;
+    const text = almightyUnlocked(save)
+      ? 'A · The Almighty is yours: it awakens once three Schrift reach Lv 7.'
+      : `Bankai taken back ${n}/${BANKAI_IDS.length}. Take back all six to unlock A · The Almighty.`;
+    box.append(medals, el('p', 'collection-text', text));
+    return box;
+  }
 
   /** One button per stage; locked ones say what opens them. The line underneath describes the pick. */
   private stagePicker(save: SaveData, onStage: (id: StageId) => void): HTMLElement {

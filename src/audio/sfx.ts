@@ -172,6 +172,12 @@ export class Sfx {
       case 'rise':
         this.tone('sawtooth', 70, 140, 0.35, 0.05);
         break;
+      case 'almighty':
+        // Time stopping: a falling drone under a high, still chord.
+        this.tone('sine', 140, 46, 1.4, 0.16);
+        this.tone('triangle', 70, 35, 1.4, 0.08);
+        [1047, 1319, 1568].forEach((f, i) => this.tone('sine', f, f * 0.98, 1.1, 0.035, i * 0.05));
+        break;
     }
   }
 

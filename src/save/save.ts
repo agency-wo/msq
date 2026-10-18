@@ -1,3 +1,4 @@
+import { BANKAI_IDS } from '../data/bankai';
 import { STAGE_IDS, STAGES, type StageId } from '../data/stages';
 
 /**
@@ -32,10 +33,14 @@ export interface SaveData {
   /** The stage picked last time, so Play starts there again. */
   stage: StageId;
   stages: Record<StageId, StageRecord>;
+  /** Every bankai ever taken back, across runs. All six unlock A · The Almighty. */
+  taken: string[];
 }
 
 export interface RunResult {
   stage: StageId;
+  /** Bankai taken back during the run. */
+  bankai?: readonly string[];
   time: number;
   level: number;
   kills: number;
@@ -54,7 +59,13 @@ export function defaultSave(): SaveData {
     settings: { sound: true, numbers: true, shake: true },
     stage: 'hueco',
     stages: Object.fromEntries(STAGE_IDS.map((id) => [id, { best: 0, cleared: false }])) as Record<StageId, StageRecord>,
+    taken: [],
   };
+}
+
+/** A · The Almighty: unlocked once every bankai has been taken back at least once. */
+export function almightyUnlocked(save: SaveData): boolean {
+  return BANKAI_IDS.every((id) => save.taken.includes(id));
 }
 
 /** Hueco Mundo is always open; every other stage opens when the one before it is cleared. */
@@ -95,6 +106,7 @@ export function migrate(raw: unknown): SaveData {
     stages.hueco.cleared = num(totals.clears, 0) > 0;
   }
   const stage = STAGE_IDS.find((id) => id === r.stage) ?? 'hueco';
+  const taken = Array.isArray(r.taken) ? BANKAI_IDS.filter((id) => (r.taken as unknown[]).includes(id)) : [];
   return {
     v: 1,
     best: { time: num(best.time, 0), level: num(best.level, 0), kills: num(best.kills, 0) },
@@ -111,6 +123,7 @@ export function migrate(raw: unknown): SaveData {
     },
     stage,
     stages,
+    taken,
   };
 }
 
@@ -176,7 +189,9 @@ export function importCode(code: string): SaveData | null {
  * and per stage; newBest is about the stage just played. `unlocked` names a
  * stage this run opened up, if any.
  */
-export function recordRun(save: SaveData, r: RunResult): { newBest: boolean; unlocked: StageId | null } {
+export function recordRun(save: SaveData, r: RunResult): { newBest: boolean; unlocked: StageId | null; almighty: boolean } {
+  const hadAlmighty = almightyUnlocked(save);
+  for (const id of r.bankai ?? []) if (BANKAI_IDS.includes(id) && !save.taken.includes(id)) save.taken.push(id);
   save.totals.runs++;
   save.totals.kills += r.kills;
   save.totals.gold += r.gold;
@@ -190,5 +205,5 @@ export function recordRun(save: SaveData, r: RunResult): { newBest: boolean; unl
     rec.cleared = true;
     unlocked = STAGES.find((s) => s.unlockedBy === r.stage)?.id ?? null;
   }
-  return { newBest, unlocked };
+  return { newBest, unlocked, almighty: !hadAlmighty && almightyUnlocked(save) };
 }

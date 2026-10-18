@@ -39,6 +39,12 @@ import type { World } from './world';
 export function updateEnemyBullets(w: World): void {
   const B = w.eb;
   const p = w.player;
+  if (w.almightyT > 0) {
+    // Time stands still: bullets hang in the air.
+    B.ox.set(B.x.subarray(0, B.n));
+    B.oy.set(B.y.subarray(0, B.n));
+    return;
+  }
   for (let i = B.n - 1; i >= 0; i--) {
     B.life[i] -= DT;
     if (B.life[i] <= 0) {

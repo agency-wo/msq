@@ -769,6 +769,56 @@ const fist: Draw = (g, w, h) => {
   g.fill();
 };
 
+/** A · The Almighty: an eye of light opening over the field, a five-pointed Quincy star for a pupil. Original design. */
+const eye: Draw = (g, w, h) => {
+  const cx = w / 2;
+  const cy = h / 2;
+  const almond = (inset: number): void => {
+    g.beginPath();
+    g.moveTo(inset, cy);
+    g.quadraticCurveTo(cx, -h * 0.35 + inset, w - inset, cy);
+    g.quadraticCurveTo(cx, h * 1.35 - inset, inset, cy);
+    g.closePath();
+  };
+  g.save();
+  almond(6);
+  g.fillStyle = 'rgba(8,10,24,0.85)';
+  g.fill();
+  g.shadowColor = 'rgba(255,230,160,0.95)';
+  g.shadowBlur = 14;
+  g.strokeStyle = '#fff6dc';
+  g.lineWidth = 3;
+  g.stroke();
+  g.restore();
+  g.save();
+  almond(6);
+  g.clip();
+  const r = h * 0.36;
+  const iris = g.createRadialGradient(cx, cy, r * 0.2, cx, cy, r);
+  iris.addColorStop(0, '#fff6dc');
+  iris.addColorStop(0.45, '#ffcb5c');
+  iris.addColorStop(1, 'rgba(120,80,20,0.9)');
+  g.fillStyle = iris;
+  g.beginPath();
+  g.arc(cx, cy, r, 0, TAU);
+  g.fill();
+  g.strokeStyle = 'rgba(255,255,255,0.7)';
+  g.lineWidth = 1.5;
+  g.beginPath();
+  g.arc(cx, cy, r * 0.78, 0, TAU);
+  g.stroke();
+  g.fillStyle = INK;
+  g.beginPath();
+  for (let k = 0; k < 10; k++) {
+    const a = (k / 10) * TAU - Math.PI / 2;
+    const rr = k % 2 === 0 ? r * 0.62 : r * 0.25;
+    g.lineTo(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr);
+  }
+  g.closePath();
+  g.fill();
+  g.restore();
+};
+
 /** The Love's heart ray: a crisp heart of light, no halo, so it reads at a glance. */
 const loveHeart: Draw = (g, w, h) => {
   const cx = w / 2;
@@ -1719,6 +1769,7 @@ function specs(): Spec[] {
     { name: 'maw', w: 128, h: 112, draw: maw },
     { name: 'fist', w: 64, h: 40, draw: fist },
     { name: 'loveheart', w: 24, h: 22, draw: loveHeart },
+    { name: 'eye', w: 192, h: 96, draw: eye },
     { name: 'beamh', w: 256, h: 32, draw: beamh },
     { name: 'flame', w: 192, h: 48, draw: flame },
     { name: 'dragon', w: 120, h: 48, draw: dragon },

@@ -297,6 +297,22 @@ body {
   border-bottom: 1px solid rgba(255, 203, 92, 0.45);
 }
 
+.banner.almighty .banner-kicker {
+  color: var(--gold);
+}
+
+.banner.almighty .banner-title {
+  color: #fff6dc;
+  text-shadow:
+    0 0 14px rgba(255, 230, 160, 0.9),
+    0 0 40px rgba(255, 203, 92, 0.5);
+}
+
+.banner.almighty {
+  border-top: 1px solid rgba(255, 230, 160, 0.75);
+  border-bottom: 1px solid rgba(255, 230, 160, 0.75);
+}
+
 .banner.boss .banner-kicker {
   color: var(--hollow);
 }
@@ -466,6 +482,40 @@ body {
   text-align: center;
   font-size: 13px;
   color: #c9cbd4;
+}
+
+.collection {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.medals {
+  display: flex;
+  gap: 8px;
+}
+
+.medal {
+  --c: #ffcb5c;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255, 203, 92, 0.45);
+}
+
+.medal.got {
+  border-color: var(--gold);
+  background: radial-gradient(circle at 35% 35%, #fff6dc, var(--c) 70%);
+  box-shadow: 0 0 8px var(--c);
+}
+
+.collection-text {
+  margin: 0;
+  text-align: center;
+  font-size: 12px;
+  color: var(--muted);
 }
 
 .unlock-note {
