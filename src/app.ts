@@ -5,6 +5,7 @@ import { Input } from './core/input';
 import { FixedLoop } from './core/loop';
 import { POWER_BY_ID } from './data/powers';
 import { STAGE_BY_ID, stageById, type StageId } from './data/stages';
+import { CHAPTER_BY_ID, type Chapter } from './data/story';
 import type { Offer } from './game/offers';
 import { runGold } from './game/rewards';
 import { World } from './game/world';
@@ -12,9 +13,10 @@ import { installGestureGuards, isIOS, isPhoneLandscape, isStandalone } from './p
 import { Renderer } from './render/renderer';
 import { buyUpgrade, goldMul, metaMods, metaRerolls, metaRevives, setStart } from './save/archives';
 import { almightyUnlocked, exportCode, importCode, loadSave, recordRun, stageUnlocked, writeSave, type SaveData } from './save/save';
+import { chaptersAfter, chaptersBefore, markChapter } from './save/story';
 import { UI, type Toggle } from './ui/ui';
 
-type State = 'title' | 'settings' | 'archives' | 'playing' | 'paused' | 'levelup' | 'chest' | 'over';
+type State = 'title' | 'settings' | 'archives' | 'chronicle' | 'story' | 'playing' | 'paused' | 'levelup' | 'chest' | 'over';
 
 function numParam(p: URLSearchParams, key: string): number | undefined {
   const v = p.get(key);
@@ -50,6 +52,8 @@ export class App {
   private loop!: FixedLoop;
   private world: World | null = null;
   private state: State = 'title';
+  /** Chapters a finished run unlocked, told when the player moves on from the results. */
+  private pendingChapters: Chapter[] = [];
   private fps = 0;
   private fpsFrames = 0;
   private fpsTime = 0;
@@ -89,6 +93,7 @@ export class App {
     this.ui.showTitle(this.save, {
       onPlay: () => this.startRun(),
       onArchives: () => this.showArchives(),
+      onChronicle: () => this.showChronicle(),
       onSettings: () => this.showSettings(),
       onStage: (id: StageId) => {
         this.save.stage = id;
@@ -123,6 +128,33 @@ export class App {
     );
   }
 
+  private showChronicle(): void {
+    this.state = 'chronicle';
+    this.ui.showChronicle(this.save, {
+      onOpen: (id) => {
+        const c = CHAPTER_BY_ID.get(id);
+        if (c) this.ui.showStory(c, () => this.showChronicle(), 'Back');
+      },
+      onBack: () => this.showTitle(),
+    });
+  }
+
+  /** Tell these chapters one after another (marking each as told), then carry on. */
+  private tellChapters(list: readonly Chapter[], then: () => void): void {
+    const [first, ...rest] = list;
+    if (!first) {
+      then();
+      return;
+    }
+    this.state = 'story';
+    this.ui.showHud(false);
+    this.ui.showStory(first, () => {
+      markChapter(this.save, first.id);
+      writeSave(this.save);
+      this.tellChapters(rest, then);
+    });
+  }
+
   /** ?stage= wins (testing, even if locked); otherwise the stage picked on the title screen. */
   private runStage(): StageId {
     const forced = this.params.get('stage');
@@ -140,10 +172,18 @@ export class App {
     });
   }
 
-  private startRun(): void {
+  private startRun(storyTold = false): void {
     this.sfx.unlock();
     const p = this.params;
     const stage = this.runStage();
+    // Story chapters that belong before this run (the prologue, the invasion); testing switches skip them.
+    const testing = p.has('play') || p.has('stress') || p.has('god');
+    const before = storyTold || testing ? [] : chaptersBefore(this.save, stage);
+    if (before.length > 0) {
+      this.halt('story');
+      this.tellChapters(before, () => this.startRun(true));
+      return;
+    }
     this.renderer.setStage(stage);
     this.world = new World({
       stage,
@@ -209,7 +249,9 @@ export class App {
         this.ui.banner(w.banners[w.banners.length - 1]);
         w.banners.length = 0;
       }
-      if (this.state !== 'over') this.music.play(this.runTrack(w));
+      // During a run (boards and pause included) the music follows the fight; results and story cards keep their own.
+      const inRun = this.state === 'playing' || this.state === 'paused' || this.state === 'levelup' || this.state === 'chest';
+      if (inRun) this.music.play(this.runTrack(w));
     }
     this.renderer.render(w, alpha, this.input, performance.now() / 1000, frameSeconds);
     if (w) this.ui.updateHud(w);
@@ -349,6 +391,7 @@ export class App {
           awakened: w.powers.filter((ps) => ps.attr !== null).map((ps) => ps.def.id),
         });
     if (!w.god) writeSave(this.save);
+    this.pendingChapters = w.god ? [] : chaptersAfter(this.save);
     this.ui.showHud(false);
     this.ui.showResults(
       {
@@ -358,6 +401,7 @@ export class App {
         goldEarned: earned,
         goldTotal: this.save.gold,
         starts: record.starts.map((id) => POWER_BY_ID.get(id)?.name ?? id),
+        chapters: this.pendingChapters.map((c) => c.title),
         victory,
         quit,
         time: w.t,
@@ -376,11 +420,21 @@ export class App {
           bankai: ps.def.group === 'bankai',
         })),
       },
-      { onRetry: () => this.startRun(), onMenu: () => this.showTitle() },
+      {
+        onRetry: () => this.afterResults(() => this.startRun()),
+        onMenu: () => this.afterResults(() => this.showTitle()),
+      },
     );
     this.music.duck(false);
     this.music.play(victory ? 'victory' : 'defeat');
     if (!quit) this.sfx.play(victory ? 'level' : 'boss');
+  }
+
+  /** Tell the chapters the last run unlocked, then go on. */
+  private afterResults(then: () => void): void {
+    const list = this.pendingChapters;
+    this.pendingChapters = [];
+    this.tellChapters(list, then);
   }
 
   /** Freeze the simulation and the joystick while a screen is up. */

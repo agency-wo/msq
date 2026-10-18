@@ -2,6 +2,7 @@ import { UPGRADES } from '../data/archives';
 import { BANKAI_IDS } from '../data/bankai';
 import { STARTABLE_IDS, STARTING_POWER } from '../data/powers';
 import { STAGE_IDS, STAGES, type StageId } from '../data/stages';
+import { CHAPTER_BY_ID } from '../data/story';
 
 /**
  * Versioned save in localStorage. On iPhone a Home Screen web app keeps its
@@ -46,6 +47,8 @@ export interface SaveData {
   awakened: string[];
   /** The Schrift a run opens with. */
   start: string;
+  /** Story chapters already told. */
+  chapters: string[];
 }
 
 export interface RunResult {
@@ -78,6 +81,7 @@ export function defaultSave(): SaveData {
     meta: {},
     awakened: [],
     start: STARTING_POWER,
+    chapters: [],
   };
 }
 
@@ -133,6 +137,7 @@ export function migrate(raw: unknown): SaveData {
   }
   const awakened = Array.isArray(r.awakened) ? STARTABLE_IDS.filter((id) => (r.awakened as unknown[]).includes(id)) : [];
   const start = typeof r.start === 'string' && awakened.includes(r.start) ? r.start : STARTING_POWER;
+  const chapters = Array.isArray(r.chapters) ? (r.chapters as unknown[]).filter((id): id is string => typeof id === 'string' && CHAPTER_BY_ID.has(id)) : [];
   return {
     v: 1,
     best: { time: num(best.time, 0), level: num(best.level, 0), kills: num(best.kills, 0) },
@@ -156,6 +161,7 @@ export function migrate(raw: unknown): SaveData {
     meta,
     awakened,
     start,
+    chapters: [...new Set(chapters)],
   };
 }
 

@@ -6,10 +6,12 @@ import { POWER_BY_ID, type PowerDef } from '../data/powers';
 import type { Rarity, RelicDef } from '../data/relics';
 import { RESONANCE_BY_ID } from '../data/resonances';
 import { STAGES, stageById, type StageId } from '../data/stages';
+import { CHAPTERS, type Chapter } from '../data/story';
 import type { ChestKind, Offer } from '../game/offers';
 import type { Banner, World } from '../game/world';
 import { nextCost, startOptions, upgradeLevel } from '../save/archives';
 import { almightyUnlocked, stageUnlocked, type SaveData, type Settings } from '../save/save';
+import { chapterUnlocked } from '../save/story';
 import { drawEmblem, drawIcon } from './icons';
 
 /**
@@ -58,6 +60,8 @@ export interface ResultSummary {
   goldTotal: number;
   /** Attacks awakened for the first time (names): new starting options. */
   starts: string[];
+  /** Story chapters this run unlocked (titles), told next. */
+  chapters: string[];
   victory: boolean;
   quit: boolean;
   time: number;
@@ -202,11 +206,15 @@ export class UI {
       el('div', 'banner-title', b.title),
       el('div', 'banner-sub', b.sub),
     );
+    if (b.quote) this.bannerEl.append(el('div', 'banner-quote', b.quote));
     this.bannerEl.className = `banner show ${b.kind}`;
     window.clearTimeout(this.bannerTimer);
-    this.bannerTimer = window.setTimeout(() => {
-      this.bannerEl.className = `banner ${b.kind}`;
-    }, 2600);
+    this.bannerTimer = window.setTimeout(
+      () => {
+        this.bannerEl.className = `banner ${b.kind}`;
+      },
+      b.quote ? 3800 : 2600,
+    );
   }
 
   setRotate(show: boolean): void {
@@ -227,7 +235,14 @@ export class UI {
 
   showTitle(
     save: SaveData,
-    h: { onPlay: () => void; onArchives: () => void; onSettings: () => void; onStage: (id: StageId) => void; installHint: boolean },
+    h: {
+      onPlay: () => void;
+      onArchives: () => void;
+      onChronicle: () => void;
+      onSettings: () => void;
+      onStage: (id: StageId) => void;
+      installHint: boolean;
+    },
   ): void {
     const p = this.open('title');
     const emblem = el('canvas', 'emblem');
@@ -239,8 +254,12 @@ export class UI {
     const archives = button('btn archives-btn', '');
     archives.append(el('span', '', 'Archives'), el('span', 'btn-note', `${gold(save.gold)} gold`));
     archives.addEventListener('click', this.guard(h.onArchives));
+    const row = el('div', 'row-btns');
+    const chronicle = button('btn', 'Chronicle');
+    chronicle.addEventListener('click', this.guard(h.onChronicle));
     const settings = button('btn', 'Settings');
     settings.addEventListener('click', this.guard(h.onSettings));
+    row.append(chronicle, settings);
     p.append(
       emblem,
       logo,
@@ -248,7 +267,7 @@ export class UI {
       this.stagePicker(save, h.onStage),
       play,
       archives,
-      settings,
+      row,
       this.collection(save),
     );
     p.append(el('p', 'hint', 'Drag anywhere to move. Your powers fire on their own. Each stage lasts 20 minutes.'));
@@ -406,6 +425,7 @@ export class UI {
     if (r.unlocked) p.append(el('p', 'unlock-note', `New stage unlocked: ${r.unlocked}`));
     if (r.almighty) p.append(el('p', 'unlock-note', 'Every bankai taken back. A · The Almighty is unlocked: it awakens once three Schrift reach Lv 7.'));
     if (r.starts.length > 0) p.append(el('p', 'unlock-note', `New starting Schrift in the Archives: ${r.starts.join(', ')}`));
+    if (r.chapters.length > 0) p.append(el('p', 'unlock-note', `New in the Chronicle: ${r.chapters.join(', ')}`));
     const stats = el('div', 'stats');
     const stat = (label: string, value: string): HTMLElement => {
       const s = el('div', 'stat');
@@ -443,6 +463,41 @@ export class UI {
   }
 
   // --------------------------------------------------------- helpers
+
+  /** A story chapter as a card: kicker, title, a few short paragraphs, Continue. */
+  showStory(c: Chapter, onDone: () => void, label = 'Continue'): void {
+    const p = this.open('story');
+    p.append(el('div', 'board-kicker', c.kicker), el('h2', 'board-title', c.title));
+    const body = el('div', 'story-text');
+    for (const para of c.text) body.append(el('p', '', para));
+    const done = button('btn primary', label);
+    done.addEventListener('click', this.guard(onDone));
+    p.append(body, done);
+    this.lock(600);
+  }
+
+  /** Every chapter: the told ones to reread, the rest as a hint of what unlocks them. */
+  showChronicle(save: SaveData, h: { onOpen: (id: string) => void; onBack: () => void }): void {
+    const p = this.open('chronicle');
+    p.append(el('div', 'board-kicker', 'The Emperor'), el('h2', 'board-title', 'Chronicle'));
+    const list = el('div', 'chapters');
+    for (const c of CHAPTERS) {
+      if (chapterUnlocked(save, c)) {
+        const b = button('chapter', '');
+        b.append(el('span', 'chapter-kicker', c.kicker), el('span', 'chapter-title', c.title));
+        b.addEventListener('click', this.guard(() => h.onOpen(c.id)));
+        list.append(b);
+      } else {
+        const d = el('div', 'chapter locked');
+        d.append(el('span', 'chapter-kicker', c.kicker), el('span', 'chapter-title', '? ? ?'), el('span', 'chapter-hint', c.hint));
+        list.append(d);
+      }
+    }
+    const back = button('btn primary', 'Back');
+    back.addEventListener('click', this.guard(h.onBack));
+    p.append(list, back);
+    this.lock(150);
+  }
 
   /** The six bankai as medallions, lit once taken back in any run, and what all six unlock. */
   private collection(save: SaveData): HTMLElement {

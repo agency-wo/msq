@@ -8,6 +8,7 @@ import { PASSIVE_BY_ID, PASSIVES } from '../data/passives';
 import { POWER_BY_ID, POWERS, STARTABLE_IDS, STARTING_POWER, upgradeCap } from '../data/powers';
 import { RELIC_BY_ID, RELICS, type RelicDef } from '../data/relics';
 import { RESONANCE_BY_ID, RESONANCES } from '../data/resonances';
+import { BOSS_LINES } from '../data/story';
 import { hpScale, phaseAt, spawnRate, speedScale, stageById, xpScale, type StageDef, type TimelineEvent } from '../data/stages';
 import { updateMarks, updateZones } from './areas';
 import { rewrite } from './casts/almighty';
@@ -79,6 +80,8 @@ export interface Banner {
   kind: 'bankai' | 'boss' | 'almighty' | 'resonance';
   title: string;
   sub: string;
+  /** What a boss says (or does) as it arrives. */
+  quote?: string;
 }
 
 export type SoundName =
@@ -456,10 +459,11 @@ export class World {
         this.bossCount++;
         const bankaiName = POWER_BY_ID.get(id)?.name ?? id;
         const info = BANKAI_BY_ID.get(id);
+        const quote = BOSS_LINES[`${captain ? 'captain' : 'bearer'}:${id}`];
         this.banners.push(
           captain && info
-            ? { kind: 'boss', title: info.owner, sub: `${info.rank} · ${bankaiName}` }
-            : { kind: 'boss', title: 'Medallion Bearer', sub: `carries ${bankaiName}` },
+            ? { kind: 'boss', title: info.owner, sub: `${info.rank} · ${bankaiName}`, quote }
+            : { kind: 'boss', title: 'Medallion Bearer', sub: `carries ${bankaiName}`, quote },
         );
         this.shake = Math.max(this.shake, 8);
         break;
@@ -471,7 +475,7 @@ export class World {
         this.bossCount++;
         if (ev.final) this.finalBossUid = this.en.uid[i];
         const def = ENEMY_LIST[ENEMY_INDEX[ev.enemy]];
-        this.banners.push({ kind: 'boss', title: def.name, sub: ev.sub });
+        this.banners.push({ kind: 'boss', title: def.name, sub: ev.sub, quote: BOSS_LINES[`boss:${ev.enemy}`] });
         this.shake = Math.max(this.shake, 8);
         break;
       }

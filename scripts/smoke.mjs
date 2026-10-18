@@ -126,6 +126,20 @@ async function steer(ms, { cx = 195, cy = 620, radius = 45 } = {}) {
   return picks;
 }
 
+/** Read through any story cards that are up, screenshotting the first; returns the chapter titles. */
+async function passStory(name) {
+  const told = [];
+  for (let k = 0; k < 4; k++) {
+    if (!(await page.isVisible('.screen.story').catch(() => false))) break;
+    await wait(700); // story cards ignore taps for a moment
+    told.push(await page.textContent('.screen.story .board-title'));
+    if (k === 0 && name) await shot(name);
+    await page.tap('.screen.story .btn.primary');
+    await wait(350);
+  }
+  return told;
+}
+
 const summary = { steps: [] };
 const log = (step, data = {}) => {
   summary.steps.push({ step, ...data });
@@ -148,8 +162,10 @@ try {
   await wait(300);
   log('locked stage tap', { toast: await page.textContent('.toast'), state: await state() });
 
-  // 2. Start with a tap and play: joystick, auto-casting, the Auswählen board.
+  // 2. Start with a tap: the prologue is told first, then play: joystick, auto-casting, the Auswählen board.
   await page.tap('.screen.title .btn.primary');
+  await page.waitForSelector('.screen.story');
+  log('prologue', { chapters: await passStory('01b-prologue') });
   await wait(300);
   let picks = await steer(12000);
   log('early run', { ...(await stats()), picks, music: await page.evaluate(() => window.__msq.music) });
@@ -284,7 +300,22 @@ try {
   await page.waitForSelector('.screen.title .btn.primary');
   await wait(300);
 
+  // The Chronicle: chapters told so far, and the locked ones.
+  await page.tap('.row-btns .btn:nth-child(1)');
+  await page.waitForSelector('.screen.chronicle .chapter');
+  await wait(250);
+  log('chronicle', {
+    open: await page.$$eval('.screen.chronicle button.chapter', (c) => c.map((x) => x.textContent)),
+    locked: await page.$$eval('.screen.chronicle .chapter.locked', (c) => c.length),
+  });
+  await shot('09d-chronicle');
+  await page.tap('.screen.chronicle .btn.primary');
+  await page.waitForSelector('.screen.title .btn.primary');
+  await wait(300);
+
   await page.tap('.screen.title .btn.primary');
+  await wait(300);
+  log('invasion', { chapters: await passStory('09e-invasion') });
   await wait(300);
   log('run with upgrades', await page.evaluate(() => {
     const w = window.__msq.world;

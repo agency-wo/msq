@@ -21,6 +21,12 @@ both are at Lv 7 a Resonance card joins the level-up board. Both powers keep
 working as before; the resonance ties them together (Firestorm: gusts carry
 The Heat's fire; Railgun: lightning down every beam; nine pairs in all).
 
+The story is told in short chapters that unlock as you play (the prologue
+before your first run, the invasion before your first Seireitei run, others
+for your first bankai, each stage cleared, and The Almighty), all rereadable in
+the **Chronicle**. Every boss says one line as it arrives: the bearers are your
+own knights, the captains defend their city.
+
 Music is composed note by note and synthesized live with Web Audio (nothing to
 download): a regal title theme, the eerie "White Moon" for Hueco Mundo, taiko
 and flute for Seireitei, a driving boss theme with a Seireitei version and a
