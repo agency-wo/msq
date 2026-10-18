@@ -18,12 +18,18 @@ function numParam(p: URLSearchParams, key: string): number | undefined {
   return Number.isFinite(n) ? n : undefined;
 }
 
+function listParam(p: URLSearchParams, key: string): string[] {
+  const v = p.get(key);
+  return v ? v.split(',').map((s) => s.trim().toLowerCase()).filter(Boolean) : [];
+}
+
 /**
  * Glue between the simulation, renderer, UI and audio, as a small state machine:
  * title -> playing <-> (level-up | chest | paused) -> results.
  *
  * URL switches for testing: ?debug (FPS overlay), ?stress=1500 (swarm + maxed
- * powers, no damage), ?god, ?seed=123, ?t=600 (start at 10:00), ?play (skip title).
+ * powers, no damage), ?god, ?seed=123, ?t=600 (start at 10:00), ?play (skip title),
+ * ?give=explode7,xaxis5 (own powers), ?bankai=zanka (grant a bankai), ?bearers=tengen,gonryo.
  */
 export class App {
   private readonly renderer = new Renderer();
@@ -94,7 +100,15 @@ export class App {
       god: p.has('god'),
       startTime: numParam(p, 't'),
       numbers: this.save.settings.numbers,
+      bearers: listParam(p, 'bearers'),
     });
+    // Testing: ?give=explode7,xaxis5 owns powers at those levels; ?bankai=senbonzakura,zanka grants bankai.
+    for (const entry of listParam(p, 'give')) {
+      const m = /^([a-z]+)(\d*)$/.exec(entry);
+      if (m) this.world.give(m[1], m[2] ? Number(m[2]) : 1);
+    }
+    for (const id of listParam(p, 'bankai')) this.world.grantBankai(id);
+    this.world.banners.length = 0;
     this.ui.hideScreen();
     this.ui.showHud(true);
     this.resume();
@@ -129,6 +143,11 @@ export class App {
       if (w.messages.length > 0) {
         for (const m of w.messages) this.ui.toast(m.text, m.kind);
         w.messages.length = 0;
+      }
+      if (w.banners.length > 0) {
+        // Only the latest title card is shown; they never queue up behind each other.
+        this.ui.banner(w.banners[w.banners.length - 1]);
+        w.banners.length = 0;
       }
     }
     this.renderer.render(w, alpha, this.input, performance.now() / 1000, frameSeconds);
@@ -235,8 +254,10 @@ export class App {
           name: ps.def.name,
           icon: ps.def.icon,
           color: ps.def.color,
+          letter: ps.def.letter,
           level: ps.level,
-          attr: ps.attr ? (ps.def.attributes.find((a) => a.id === ps.attr)?.name ?? null) : null,
+          attr: ps.attr ? (ps.def.attributes?.find((a) => a.id === ps.attr)?.name ?? null) : null,
+          bankai: ps.def.group === 'bankai',
         })),
       },
       { onRetry: () => this.startRun(), onMenu: () => this.showTitle() },

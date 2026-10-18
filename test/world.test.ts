@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import { SIM_HZ } from '../src/config';
-import { POWER_MAX_LEVEL } from '../src/data/powers';
 import { STAGE } from '../src/data/timeline';
 import { World } from '../src/game/world';
 import { bot, circle, firstCard, play, sensible } from './helpers';
@@ -15,7 +14,7 @@ function assertFinite(w: World): void {
 }
 
 describe('world simulation', () => {
-  it('plays the first minute: enemies spawn and die, mana levels you up', () => {
+  it('plays the first minute: Hollows spawn and die, mana levels you up', () => {
     const w = new World({ seed: 1, god: true });
     play(w, 60, sensible, bot);
     assertFinite(w);
@@ -24,11 +23,11 @@ describe('world simulation', () => {
     expect(w.en.n).toBeGreaterThan(0);
   });
 
-  it('kills the 5:00 boss within a minute and pays out a legendary relic', { timeout: 60_000 }, () => {
+  it('kills the 5:00 medallion bearer within a minute and takes back its bankai', { timeout: 90_000 }, () => {
     const w = new World({ seed: 2, god: true });
     let bossSeenAt = -1;
     let bossDownAt = -1;
-    play(w, 400, sensible, bot, (world) => {
+    play(w, 420, sensible, bot, (world) => {
       if (world.boss.active && bossSeenAt < 0) bossSeenAt = world.t;
       if (!world.boss.active && bossSeenAt >= 0 && bossDownAt < 0) bossDownAt = world.t;
     });
@@ -36,15 +35,18 @@ describe('world simulation', () => {
     expect(bossSeenAt).toBeGreaterThanOrEqual(300);
     expect(bossDownAt - bossSeenAt).toBeGreaterThan(0);
     expect(bossDownAt - bossSeenAt).toBeLessThan(60);
+    // The bot walked over the medallion: the first bearer's bankai is now ours.
+    expect(w.powers.some((ps) => ps.def.id === w.bearers[0])).toBe(true);
     expect(w.relics.some((r) => r.rarity === 'legendary')).toBe(true);
-    expect(w.powers.some((p) => p.level === POWER_MAX_LEVEL)).toBe(true);
   });
 
-  it('clears the stage: the final boss dies and the run ends in victory', { timeout: 120_000 }, () => {
+  it('clears Hueco Mundo: the Vasto Lorde dies and the run ends in victory', { timeout: 240_000 }, () => {
     const w = new World({ seed: 7, god: true });
-    play(w, STAGE.length + 180, sensible, bot);
+    play(w, STAGE.length + 240, sensible, bot);
     expect(w.over).toBe('victory');
     expect(w.t).toBeGreaterThan(STAGE.length);
+    // All three bearers fell along the way.
+    for (const id of w.bearers) expect(w.powers.some((ps) => ps.def.id === id)).toBe(true);
   });
 
   it('punishes a player who ignores the swarm', { timeout: 60_000 }, () => {

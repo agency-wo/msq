@@ -16,6 +16,9 @@ export const CAP = {
   fx: 2600,
   numbers: 160,
   pickups: 32,
+  zones: 96,
+  marks: 96,
+  ebullets: 600,
 } as const;
 
 /** Enemies alive at once in a normal run (stress mode ignores this). */
@@ -29,8 +32,8 @@ export const PLAYER = {
   radius: 10,
   speed: 128,
   hp: 100,
-  /** Seconds of invulnerability after taking a hit, so a swarm cannot delete you in one frame. */
-  iframes: 0.45,
+  /** Seconds of invulnerability after taking a hit, so a swarm or a bullet spiral cannot delete you at once. */
+  iframes: 0.6,
   /** Base orb pickup radius. */
   magnet: 80,
 } as const;

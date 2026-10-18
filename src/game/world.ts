@@ -2,218 +2,69 @@ import { CAP, DT, GRID_CELL, GRID_DIM, MAX_ENEMIES_ALIVE, PLAYER } from '../conf
 import { SpatialGrid } from '../core/grid';
 import { TAU } from '../core/math';
 import { Rng } from '../core/rng';
+import { BANKAI_BY_ID, BANKAI_IDS } from '../data/bankai';
 import { ENEMY_INDEX, ENEMY_LIST } from '../data/enemies';
 import { PASSIVE_BY_ID, PASSIVES } from '../data/passives';
-import { POWER_BY_ID, POWER_MAX_LEVEL, POWERS } from '../data/powers';
+import { POWER_BY_ID, POWERS, STARTING_POWER, upgradeCap } from '../data/powers';
 import { RELIC_BY_ID, RELICS, type RelicDef } from '../data/relics';
 import { STAGE, hpScale, phaseAt, spawnRate, speedScale, xpScale, type TimelineEvent } from '../data/timeline';
+import { updateMarks, updateZones } from './areas';
+import { burstAt } from './casts/common';
+import { explodeBomb, steerMissile, strikeAt } from './casts/schrift';
 import {
   FLAG_BOSS,
   FLAG_ELITE,
+  FX_ASH,
   FX_GLOW,
+  FX_MASK,
   FX_RING,
   FX_SPARK,
+  HOLD_FEAR,
+  HOLD_FREEZE,
   LAYER_ADD,
+  LAYER_NORMAL,
+  PF_BURST,
+  PF_FREEZE,
+  PF_HOMING,
   PF_SPECIAL,
+  PF_STUN,
   PK_ARROW,
   PK_BLADE,
+  PK_BOMB,
+  PK_DRAGON,
+  PK_DRONE,
+  PK_MISSILE,
+  PK_PETAL,
   PK_SHARD,
 } from './constants';
+import { bossAI, eliteAI, updateEnemyBullets } from './hostile';
 import { generateOffers, rollRelics, type ChestKind, type Offer } from './offers';
-import { newPowerState, refreshPowerStats, respawnBlades, strikeAt, updatePowers, type PowerState } from './powers';
+import { EBulletPool, EnemyPool, FxPool, HITS, MarkPool, NumberRing, OrbPool, ProjPool, ZonePool } from './pools';
+import { newPowerState, refreshPowerStats, syncPower, updatePowers, type PowerState } from './powers';
 import { computeStats, damageMultiplier, scaleMods, type StatMods, type Stats } from './stats';
 import { xpToNext } from './xp';
 
-type Field = Float32Array | Int32Array | Uint8Array | Uint32Array;
-
-/**
- * Struct-of-arrays pool. Live entities sit densely in [0, n); removal copies
- * the last entity into the hole, so iteration stays tight and nothing is
- * allocated while playing (allocation is what causes GC stutter on iOS).
- */
-class Pool {
-  n = 0;
-  readonly cap: number;
-  protected readonly fields: Field[] = [];
-
-  constructor(cap: number) {
-    this.cap = cap;
-  }
-
-  protected f32(): Float32Array {
-    return this.track(new Float32Array(this.cap));
-  }
-
-  protected i32(): Int32Array {
-    return this.track(new Int32Array(this.cap));
-  }
-
-  protected u8(): Uint8Array {
-    return this.track(new Uint8Array(this.cap));
-  }
-
-  protected u32(): Uint32Array {
-    return this.track(new Uint32Array(this.cap));
-  }
-
-  /** Copy slot `from` into slot `to`. */
-  move(from: number, to: number): void {
-    for (const a of this.fields) a[to] = a[from];
-  }
-
-  private track<T extends Field>(a: T): T {
-    this.fields.push(a);
-    return a;
-  }
-}
-
-export class EnemyPool extends Pool {
-  readonly x = this.f32();
-  readonly y = this.f32();
-  readonly ox = this.f32();
-  readonly oy = this.f32();
-  /** Knockback velocity, decays every step. */
-  readonly kx = this.f32();
-  readonly ky = this.f32();
-  readonly hp = this.f32();
-  readonly maxHp = this.f32();
-  readonly r = this.f32();
-  readonly spd = this.f32();
-  readonly dmg = this.f32();
-  readonly xp = this.f32();
-  readonly flash = this.f32();
-  readonly slowT = this.f32();
-  readonly slowK = this.f32();
-  readonly freezeT = this.f32();
-  /** Time of the last blade hit; blades share a short per-enemy hit cooldown. */
-  readonly ohit = this.f32();
-  readonly type = this.u8();
-  readonly flags = this.u8();
-  /** Set when killed mid-step; the slot is reclaimed at the end of the step. */
-  readonly dead = this.u8();
-  /** Never reused, so a piercing arrow can remember who it already hit. */
-  readonly uid = this.i32();
-  /** This enemy's latest damage number, so rapid hits merge into one instead of stacking. */
-  readonly nslot = this.i32();
-  readonly nt = this.f32();
-}
-
-const HITS = 8;
-
-export class ProjPool extends Pool {
-  readonly x = this.f32();
-  readonly y = this.f32();
-  readonly ox = this.f32();
-  readonly oy = this.f32();
-  readonly vx = this.f32();
-  readonly vy = this.f32();
-  readonly life = this.f32();
-  readonly dmg = this.f32();
-  readonly r = this.f32();
-  readonly rot = this.f32();
-  /** Blades: angle offset in the ring. */
-  readonly pa = this.f32();
-  /** Blades: ring radius (negative spins the other way). */
-  readonly pb = this.f32();
-  readonly pierce = this.i32();
-  readonly kind = this.u8();
-  /** Owning power slot. */
-  readonly src = this.u8();
-  readonly flags = this.u8();
-  readonly hitN = this.u8();
-  readonly hits = new Int32Array(this.cap * HITS);
-
-  move(from: number, to: number): void {
-    super.move(from, to);
-    this.hits.copyWithin(to * HITS, from * HITS, from * HITS + HITS);
-  }
-}
-
-export class OrbPool extends Pool {
-  readonly x = this.f32();
-  readonly y = this.f32();
-  readonly ox = this.f32();
-  readonly oy = this.f32();
-  readonly val = this.f32();
-  readonly spd = this.f32();
-  /** 0 blue, 1 orange, 2 purple. */
-  readonly tier = this.u8();
-  readonly mag = this.u8();
-}
-
-export class FxPool extends Pool {
-  readonly x = this.f32();
-  readonly y = this.f32();
-  readonly ox = this.f32();
-  readonly oy = this.f32();
-  readonly vx = this.f32();
-  readonly vy = this.f32();
-  readonly life = this.f32();
-  readonly max = this.f32();
-  /** Start and end size in world units (diameter, or length for bolts). */
-  readonly s0 = this.f32();
-  readonly s1 = this.f32();
-  /** Fixed thickness for stretched sprites (bolts); 0 = uniform scale. */
-  readonly sy = this.f32();
-  readonly a0 = this.f32();
-  readonly rot = this.f32();
-  readonly vr = this.f32();
-  readonly drag = this.f32();
-  readonly frame = this.u8();
-  readonly layer = this.u8();
-  /** 1 = x/y are offsets from the player, so the effect travels with you. */
-  readonly follow = this.u8();
-  readonly tint = this.u32();
-}
-
-/** Damage numbers in a ring buffer: when it is full the oldest number is overwritten. */
-export class NumberRing {
-  readonly cap: number;
-  readonly x: Float32Array;
-  readonly y: Float32Array;
-  readonly life: Float32Array;
-  readonly val: Float32Array;
-  readonly crit: Uint8Array;
-  /** uid of the enemy the number belongs to. */
-  readonly owner: Int32Array;
-  private head = 0;
-
-  constructor(cap: number) {
-    this.cap = cap;
-    this.x = new Float32Array(cap);
-    this.y = new Float32Array(cap);
-    this.life = new Float32Array(cap);
-    this.val = new Float32Array(cap);
-    this.crit = new Uint8Array(cap);
-    this.owner = new Int32Array(cap);
-  }
-
-  /** Returns the slot used. */
-  push(x: number, y: number, val: number, crit: boolean, owner: number): number {
-    const i = this.head;
-    this.head = (i + 1) % this.cap;
-    this.x[i] = x + (Math.random() - 0.5) * 14;
-    this.y[i] = y;
-    this.val[i] = val;
-    this.crit[i] = crit ? 1 : 0;
-    this.owner[i] = owner;
-    this.life[i] = 0.7;
-    return i;
-  }
-}
-
-export type PickupKind = 'chest' | 'chestBlack' | 'heart' | 'magnet' | 'nuke';
+export type PickupKind = 'chest' | 'chestBlack' | 'heart' | 'magnet' | 'nuke' | 'medallion';
 
 export interface Pickup {
   kind: PickupKind;
   x: number;
   y: number;
   born: number;
+  /** Medallions: the bankai inside. */
+  bankai?: string;
 }
 
 export interface Message {
   text: string;
   kind: 'boss' | 'info';
+}
+
+/** A title card: a boss arriving, or a bankai taken back. */
+export interface Banner {
+  kind: 'bankai' | 'boss';
+  title: string;
+  sub: string;
 }
 
 export type SoundName =
@@ -232,7 +83,15 @@ export type SoundName =
   | 'freeze'
   | 'heal'
   | 'magnet'
-  | 'explode';
+  | 'explode'
+  | 'bankai'
+  | 'warn'
+  | 'beam'
+  | 'fire'
+  | 'thorn'
+  | 'gust'
+  | 'shield'
+  | 'blast';
 
 export interface WorldOptions {
   seed?: number;
@@ -242,11 +101,20 @@ export interface WorldOptions {
   /** Start the clock here (seconds) to test late-game spawns. */
   startTime?: number;
   numbers?: boolean;
+  /** Force which bankai the bearers carry, in order (testing). */
+  bearers?: string[];
+}
+
+interface Warning {
+  at: number;
+  text: string;
 }
 
 function orbTier(v: number): number {
   return v >= 20 ? 2 : v >= 4 ? 1 : 0;
 }
+
+const MAX_BURSTS = 64;
 
 /** One run's whole simulation. Pure logic: the renderer and UI only read it. */
 export class World {
@@ -255,12 +123,17 @@ export class World {
   readonly pr = new ProjPool(CAP.projectiles);
   readonly orbs = new OrbPool(CAP.orbs);
   readonly fx = new FxPool(CAP.fx);
+  readonly zones = new ZonePool(CAP.zones);
+  readonly marks = new MarkPool(CAP.marks);
+  readonly eb = new EBulletPool(CAP.ebullets);
   readonly nums = new NumberRing(CAP.numbers);
   readonly pickups: Pickup[] = [];
   readonly grid = new SpatialGrid(GRID_CELL, GRID_DIM, CAP.enemies);
-  /** Scratch buffers for grid queries; nested queries must use the second one. */
+  /** Grid query scratch: qbuf for top-level loops, qbuf2 inside them, qraw/qout for the area helpers. */
   readonly qbuf = new Int32Array(4096);
   readonly qbuf2 = new Int32Array(4096);
+  readonly qraw = new Int32Array(4096);
+  readonly qout = new Int32Array(4096);
 
   readonly player = {
     x: 0,
@@ -273,6 +146,7 @@ export class World {
     face: 1,
     alive: true,
     revives: 0,
+    slowT: 0,
   };
 
   t = 0;
@@ -285,6 +159,7 @@ export class World {
   pendingLevelUps = 0;
   readonly pendingChests: ChestKind[] = [];
   readonly messages: Message[] = [];
+  readonly banners: Banner[] = [];
   readonly sounds = new Set<SoundName>();
   shake = 0;
   over: 'dead' | 'victory' | null = null;
@@ -293,7 +168,26 @@ export class World {
   readonly passives = new Map<string, number>();
   readonly relics: RelicDef[] = [];
   stats: Stats = computeStats([]);
+  /** Damage multiplier used by every hit: stats plus temporary boosts (Superstar, Overkill, Sanrei). */
   dmgMul = 1;
+  private baseDmgMul = 1;
+
+  /** The three bankai this run's medallion bearers carry, in boss order. */
+  readonly bearers: string[];
+
+  // Player states from utilities.
+  shieldCharges = 0;
+  shieldMax = 0;
+  ironBurst = 0;
+  superT = 0;
+  superAmt = 0;
+  vollT = 0;
+  overkillEvery = 0;
+  overkillPer = 0;
+  overkillCap = 0;
+  overkillStart = 0;
+  /** Direction you last moved, radians: aim for powers that fire "where you are heading". */
+  aim = -Math.PI / 2;
 
   /** Half the visible area in world units; the renderer keeps this current. */
   viewHalfW = 210;
@@ -301,46 +195,69 @@ export class World {
   showNumbers: boolean;
   readonly god: boolean;
   readonly stress: number;
-  /** Stopped Clock relic: seconds left of the global freeze. */
+  /** Stopped Hourglass relic: seconds left of the global freeze. */
   freezeAllT = 0;
   /** The first live boss, for the boss health bar. */
-  readonly boss = { active: false, hp: 0, max: 1 };
+  readonly boss = { active: false, hp: 0, max: 1, name: '' };
+  /** Scratch target written by densestPoint() and edgePoint(). */
+  tx = 0;
+  ty = 0;
+  readonly isAlive = (i: number): boolean => this.en.dead[i] === 0;
 
   private bossCount = 0;
   private evCursor = 0;
   private warnCursor = 0;
-  private readonly bossTimes: number[];
+  private readonly warnings: Warning[];
   private spawnAcc = 0;
   private uidSeq = 0;
   private moveX = 0;
   private moveY = -1;
-  private tx = 0;
-  private ty = 0;
   private clockCd = 20;
   private sigilCd = 6;
   private hasClock = false;
   private hasSigil = false;
+  private hasSanrei = false;
+  private sanreiOff = false;
   private finalBossUid = -1;
   private victoryT = -1;
-  private readonly isAlive = (i: number): boolean => this.en.dead[i] === 0;
+  private readonly bursts = new Float32Array(MAX_BURSTS * 4);
+  private burstN = 0;
 
   constructor(opts: WorldOptions = {}) {
     this.rng = new Rng(opts.seed);
     this.stress = Math.max(0, Math.floor(opts.stress ?? 0));
     this.god = !!opts.god || this.stress > 0;
     this.showNumbers = opts.numbers ?? true;
-    this.bossTimes = STAGE.events.filter((e) => e.kind === 'boss').map((e) => e.at);
+
+    // Draw this run's bearers: three different bankai, any forced ones first.
+    const pool = BANKAI_IDS.slice();
+    for (let i = pool.length - 1; i > 0; i--) {
+      const j = this.rng.int(i + 1);
+      const tmp = pool[i];
+      pool[i] = pool[j];
+      pool[j] = tmp;
+    }
+    const forced = (opts.bearers ?? []).filter((id) => BANKAI_IDS.includes(id));
+    this.bearers = [...forced, ...pool.filter((id) => !forced.includes(id))].slice(0, 3);
+
+    this.warnings = [];
+    for (const e of STAGE.events) {
+      if (e.kind === 'bearer') this.warnings.push({ at: e.at - 4, text: 'A medallion bearer approaches' });
+      else if (e.kind === 'boss') this.warnings.push({ at: e.at - 4, text: e.final ? 'The lord of Hueco Mundo awakens' : 'A Menos Grande rises' });
+    }
+
     const start = Math.max(0, opts.startTime ?? 0);
     if (start > 0) {
       this.t = start;
       while (this.evCursor < STAGE.events.length && STAGE.events[this.evCursor].at < start) this.evCursor++;
-      while (this.warnCursor < this.bossTimes.length && this.bossTimes[this.warnCursor] - 4 < start) this.warnCursor++;
+      while (this.warnCursor < this.warnings.length && this.warnings[this.warnCursor].at < start) this.warnCursor++;
     }
-    this.addPower('arrow');
+    this.addPower(STARTING_POWER);
     if (this.stress > 0) {
       for (const def of POWERS) {
+        if (def.group === 'bankai') continue;
         this.addPower(def.id);
-        while (this.powerLevel(def.id) < POWER_MAX_LEVEL - 1) this.addPower(def.id);
+        while (this.powerLevel(def.id) < upgradeCap(def)) this.addPower(def.id);
       }
     }
     this.recomputeStats();
@@ -354,10 +271,16 @@ export class World {
     if (this.over) return;
     this.t += DT;
     this.steps++;
+    this.updateBuffs();
     const p = this.player;
     p.ox = p.x;
     p.oy = p.y;
-    const speed = PLAYER.speed * this.stats.moveSpeed;
+    let speed = PLAYER.speed * this.stats.moveSpeed;
+    if (this.vollT > 0) speed *= 1.3;
+    if (p.slowT > 0) {
+      p.slowT -= DT;
+      speed *= 0.6;
+    }
     p.x += mx * speed * DT;
     p.y += my * speed * DT;
     if (mx > 0.05) p.face = 1;
@@ -365,6 +288,7 @@ export class World {
     if (mx !== 0 || my !== 0) {
       this.moveX = mx;
       this.moveY = my;
+      this.aim = Math.atan2(my, mx);
     }
     this.runTimeline();
     this.spawnTick();
@@ -372,6 +296,10 @@ export class World {
     this.updateEnemies();
     updatePowers(this);
     this.updateProjectiles();
+    this.flushBursts();
+    updateMarks(this);
+    updateZones(this);
+    updateEnemyBullets(this);
     this.updateOrbs();
     this.updatePickups();
     this.updateFx();
@@ -384,13 +312,32 @@ export class World {
     this.sounds.add(name);
   }
 
+  private updateBuffs(): void {
+    if (this.superT > 0) this.superT -= DT;
+    if (this.vollT > 0) this.vollT -= DT;
+    let mul = 1;
+    if (this.superT > 0) mul *= 1 + this.superAmt;
+    if (this.overkillEvery > 0) {
+      const stacks = Math.floor((this.kills - this.overkillStart) / this.overkillEvery);
+      mul *= 1 + Math.min(this.overkillCap, stacks * this.overkillPer);
+    }
+    if (this.hasSanrei) {
+      if (!this.sanreiOff && this.t >= 480) {
+        this.sanreiOff = true;
+        this.messages.push({ text: 'The Sanrei Glove comes off', kind: 'info' });
+      }
+      mul *= this.sanreiOff ? 1.6 : 0.8;
+    }
+    this.dmgMul = this.baseDmgMul * mul;
+  }
+
   // ------------------------------------------------------------ timeline
 
   private runTimeline(): void {
     if (this.stress > 0) return;
-    while (this.warnCursor < this.bossTimes.length && this.t >= this.bossTimes[this.warnCursor] - 4) {
+    while (this.warnCursor < this.warnings.length && this.t >= this.warnings[this.warnCursor].at) {
+      this.messages.push({ text: this.warnings[this.warnCursor].text, kind: 'boss' });
       this.warnCursor++;
-      this.messages.push({ text: 'A Warden approaches', kind: 'boss' });
       this.sound('boss');
     }
     const events = STAGE.events;
@@ -417,13 +364,26 @@ export class World {
         this.edgePoint();
         this.spawnEnemy(ENEMY_INDEX[ev.enemy], this.tx, this.ty, true);
         break;
+      case 'bearer': {
+        const id = this.bearers[ev.tier];
+        if (!id) break;
+        this.edgePoint(80);
+        const i = this.spawnEnemy(ENEMY_INDEX.bearer, this.tx, this.ty, false, ev.hpMul);
+        if (i < 0) break;
+        this.en.variant[i] = BANKAI_IDS.indexOf(id);
+        this.bossCount++;
+        this.banners.push({ kind: 'boss', title: 'Medallion Bearer', sub: `carries ${POWER_BY_ID.get(id)?.name ?? id}` });
+        this.shake = Math.max(this.shake, 8);
+        break;
+      }
       case 'boss': {
         this.edgePoint(80);
         const i = this.spawnEnemy(ENEMY_INDEX[ev.enemy], this.tx, this.ty, false, ev.hpMul);
-        if (i >= 0) {
-          this.bossCount++;
-          if (ev.final) this.finalBossUid = this.en.uid[i];
-        }
+        if (i < 0) break;
+        this.bossCount++;
+        if (ev.final) this.finalBossUid = this.en.uid[i];
+        const def = ENEMY_LIST[ENEMY_INDEX[ev.enemy]];
+        this.banners.push({ kind: 'boss', title: def.name, sub: ev.final ? 'Lord of Hueco Mundo' : 'Its Cero burns in a straight line' });
         this.shake = Math.max(this.shake, 8);
         break;
       }
@@ -518,7 +478,8 @@ export class World {
     // Bosses get their health from the timeline alone; everything else also scales with time.
     let hp = def.hp * hpMul * (def.boss ? 1 : hpScale(this.t));
     let r = def.radius;
-    let dmg = def.damage;
+    // Boss hits scale with the boss's tier: the first bearer is an introduction, the last boss hits hard.
+    let dmg = def.damage * (def.boss ? Math.min(1.6, 0.65 + 0.06 * hpMul) : 1);
     let xp = def.xp * xpScale(this.t);
     let flags = 0;
     if (elite) {
@@ -541,8 +502,20 @@ export class World {
     E.slowT[i] = 0;
     E.slowK[i] = 0;
     E.freezeT[i] = 0;
+    E.holdKind[i] = HOLD_FREEZE;
     E.ohit[i] = -10;
+    E.vulnT[i] = 0;
+    E.vulnK[i] = 0;
+    E.dotT[i] = 0;
+    E.dotDps[i] = 0;
+    E.dotTick[i] = 0;
+    E.dotKind[i] = 0;
+    E.atkT[i] = def.boss ? 2.5 : 2 + this.rng.next() * 2;
+    E.atk2T[i] = 4;
+    E.volT[i] = 0;
+    E.volDmg[i] = 0;
     E.type[i] = type;
+    E.variant[i] = 0;
     E.flags[i] = flags;
     E.dead[i] = 0;
     E.uid[i] = ++this.uidSeq;
@@ -570,7 +543,22 @@ export class World {
       E.ox[i] = x;
       E.oy[i] = y;
       if (E.flash[i] > 0) E.flash[i] -= DT;
-      const boss = (E.flags[i] & FLAG_BOSS) !== 0;
+      if (E.volT[i] > 0) E.volT[i] -= DT;
+      if (E.vulnT[i] > 0) {
+        E.vulnT[i] -= DT;
+        if (E.vulnT[i] <= 0) E.vulnK[i] = 0;
+      }
+      if (E.dotT[i] > 0) {
+        E.dotT[i] -= DT;
+        E.dotTick[i] -= DT;
+        if (E.dotTick[i] <= 0) {
+          E.dotTick[i] += 0.5;
+          this.damageEnemy(i, E.dotDps[i] * 0.5, 0, x, y, true);
+          if (E.dead[i]) continue;
+        }
+      }
+      const flags = E.flags[i];
+      const boss = (flags & FLAG_BOSS) !== 0;
       let k = 1;
       if (E.freezeT[i] > 0) {
         E.freezeT[i] -= DT;
@@ -648,6 +636,9 @@ export class World {
       }
       E.x[i] = x;
       E.y[i] = y;
+      if (boss) bossAI(this, i, dist);
+      else if (flags & FLAG_ELITE) eliteAI(this, i, dist);
+      if (E.dead[i]) continue;
       if (dist < E.r[i] + PLAYER.radius + 2) this.contact(i);
       else if (dist2 > recycle2 && !boss) this.recycle(i);
     }
@@ -673,11 +664,12 @@ export class World {
     E.kx[i] = E.ky[i] = 0;
   }
 
-  damageEnemy(i: number, base: number, knock = 0, srcX = this.player.x, srcY = this.player.y): void {
+  damageEnemy(i: number, base: number, knock = 0, srcX = this.player.x, srcY = this.player.y, noCrit = false): void {
     const E = this.en;
     if (E.dead[i]) return;
-    const crit = this.rng.next() < this.stats.critChance;
-    const dmg = base * this.dmgMul * (crit ? this.stats.critMult : 1);
+    const crit = !noCrit && this.rng.next() < this.stats.critChance;
+    const vul = E.vulnT[i] > 0 ? 1 + E.vulnK[i] : 1;
+    const dmg = base * this.dmgMul * vul * (crit ? this.stats.critMult : 1);
     E.hp[i] -= dmg;
     E.flash[i] = 0.07;
     if (knock > 0 && !(E.flags[i] & FLAG_BOSS)) {
@@ -703,6 +695,33 @@ export class World {
     if (E.hp[i] <= 0) this.killEnemy(i);
   }
 
+  /** Unable to move for `secs` (bosses ignore it, elites shake it off twice as fast). */
+  applyHold(i: number, secs: number, kind: number): void {
+    const E = this.en;
+    if (E.dead[i] || E.flags[i] & FLAG_BOSS) return;
+    const s = E.flags[i] & FLAG_ELITE ? secs * 0.5 : secs;
+    if (s > E.freezeT[i]) {
+      E.freezeT[i] = s;
+      E.holdKind[i] = kind;
+    }
+  }
+
+  applyVuln(i: number, secs: number, k: number): void {
+    const E = this.en;
+    if (E.dead[i]) return;
+    E.vulnT[i] = Math.max(E.vulnT[i], secs);
+    E.vulnK[i] = Math.max(E.vulnK[i], k);
+  }
+
+  applyDot(i: number, secs: number, dps: number, kind: number): void {
+    const E = this.en;
+    if (E.dead[i]) return;
+    if (E.dotT[i] <= 0) E.dotTick[i] = 0.5;
+    E.dotT[i] = Math.max(E.dotT[i], secs);
+    E.dotDps[i] = Math.max(E.dotDps[i], dps);
+    E.dotKind[i] = kind;
+  }
+
   killEnemy(i: number): void {
     const E = this.en;
     if (E.dead[i]) return;
@@ -713,16 +732,22 @@ export class World {
     const flags = E.flags[i];
     const def = ENEMY_LIST[E.type[i]];
     this.spawnOrb(x, y, E.xp[i]);
+    if (E.volT[i] > 0) this.queueBurst(x, y, 44 * this.stats.size, E.volDmg[i]);
     if (flags & FLAG_BOSS) {
       this.bossCount = Math.max(0, this.bossCount - 1);
-      this.addPickup('chestBlack', x, y);
+      if (def.id === 'bearer') {
+        this.addPickup('medallion', x, y, BANKAI_IDS[E.variant[i]]);
+        this.addPickup('chestBlack', x + 36, y + 12);
+      } else if (def.id === 'menos') {
+        this.addPickup('chest', x, y);
+      }
       for (let k = 0; k < 10; k++) {
         const a = this.rng.next() * TAU;
         const d = this.rng.range(20, 70);
         this.spawnOrb(x + Math.cos(a) * d, y + Math.sin(a) * d, E.xp[i] * 0.3);
       }
       this.shake = Math.max(this.shake, 14);
-      this.messages.push({ text: 'Warden defeated', kind: 'info' });
+      this.messages.push({ text: def.id === 'bearer' ? 'The bearer falls. Take back its medallion.' : `${def.name} defeated`, kind: 'info' });
       this.bigBurst(x, y, def.color);
       if (E.uid[i] === this.finalBossUid) this.victoryT = 2.2;
     } else {
@@ -734,14 +759,23 @@ export class World {
         else if (roll < 0.005) this.addPickup('magnet', x, y);
         else if (roll < 0.0056) this.addPickup('nuke', x, y);
       }
-      this.deathFx(x, y, def.color);
+      this.deathFx(x, y, def.color, E.r[i]);
     }
     this.sound('kill');
   }
 
   hurtPlayer(amount: number): void {
     const p = this.player;
-    if (p.iframes > 0 || this.god || !p.alive) return;
+    if (p.iframes > 0 || this.god || !p.alive || this.vollT > 0) return;
+    if (this.shieldCharges > 0) {
+      // The Iron: steel skin eats the hit.
+      this.shieldCharges--;
+      p.iframes = 0.6;
+      this.spawnFx(FX_RING, 0, 0, 0, 0, 0.35, 20, 70, 1, 0, 0, 0xdfe7f2, LAYER_ADD, 0, 1);
+      this.sound('shield');
+      if (this.ironBurst > 0) this.shockwave(140, this.ironBurst, 300);
+      return;
+    }
     p.hp -= amount * this.stats.dmgTaken;
     p.iframes = PLAYER.iframes;
     this.shake = Math.max(this.shake, 5);
@@ -751,8 +785,8 @@ export class World {
       p.revives--;
       p.hp = p.maxHp * 0.5;
       p.iframes = 2.5;
-      this.shockwave(220);
-      this.messages.push({ text: 'The feather burns. You rise again.', kind: 'info' });
+      this.shockwave(220, 40 + this.level * 4, 420);
+      this.messages.push({ text: 'Reishi threads lift you back up', kind: 'info' });
     } else {
       p.hp = 0;
       p.alive = false;
@@ -760,7 +794,7 @@ export class World {
     }
   }
 
-  private shockwave(R: number): void {
+  private shockwave(R: number, dmg: number, knock: number): void {
     const E = this.en;
     const p = this.player;
     for (let i = 0; i < E.n; i++) {
@@ -768,10 +802,10 @@ export class World {
       const dx = E.x[i] - p.x;
       const dy = E.y[i] - p.y;
       if (dx * dx + dy * dy > R * R) continue;
-      this.damageEnemy(i, 40 + this.level * 4, 420, p.x, p.y);
+      this.damageEnemy(i, dmg, knock, p.x, p.y);
     }
     this.spawnFx(FX_RING, 0, 0, 0, 0, 0.5, 40, R * 2.2, 1, 0, 0, 0xffe6a0, LAYER_ADD, 0, 1);
-    this.shake = 12;
+    this.shake = Math.max(this.shake, 10);
   }
 
   nearestEnemy(range: number): number {
@@ -832,21 +866,23 @@ export class World {
     return i;
   }
 
-  spawnBlade(slot: number, offset: number, ring: number, dmg: number, r: number, flags: number): void {
+  /** Something that circles the player: blades, petals, drones. A negative ring spins the other way. */
+  spawnOrbiter(kind: number, slot: number, offset: number, ring: number, dmg: number, r: number, flags: number): void {
     const ps = this.powers[slot];
     const p = this.player;
     const ang = (ring < 0 ? -ps.angle : ps.angle) + offset;
     const rad = Math.abs(ring);
-    const i = this.spawnProjectile(PK_BLADE, slot, p.x + Math.cos(ang) * rad, p.y + Math.sin(ang) * rad, 0, 0, 1e9, dmg, r, 0, flags);
+    const i = this.spawnProjectile(kind, slot, p.x + Math.cos(ang) * rad, p.y + Math.sin(ang) * rad, 0, 0, 1e9, dmg, r, 0, flags);
     if (i < 0) return;
     this.pr.pa[i] = offset;
     this.pr.pb[i] = ring;
     this.pr.rot[i] = ang;
   }
 
-  clearBlades(slot: number): void {
+  /** Remove a power's projectiles of one kind (its blades, petals or drones). */
+  clearKind(slot: number, kind: number): void {
     const P = this.pr;
-    for (let i = 0; i < P.n; i++) if (P.kind[i] === PK_BLADE && P.src[i] === slot) P.life[i] = -1;
+    for (let i = 0; i < P.n; i++) if (P.kind[i] === kind && P.src[i] === slot) P.life[i] = -1;
   }
 
   private updateProjectiles(): void {
@@ -862,7 +898,7 @@ export class World {
       P.oy[i] = P.y[i];
       let x: number;
       let y: number;
-      if (kind === PK_BLADE) {
+      if (kind === PK_BLADE || kind === PK_PETAL || kind === PK_DRONE) {
         const ps = this.powers[P.src[i]];
         if (!ps || ps.active <= 0) {
           P.life[i] = -1;
@@ -870,18 +906,31 @@ export class World {
         }
         const ring = P.pb[i];
         const ang = (ring < 0 ? -ps.angle : ps.angle) + P.pa[i];
-        const rad = Math.abs(ring);
+        let rad = Math.abs(ring);
+        if (kind === PK_PETAL) rad += Math.sin(this.t * 2.6 + P.pa[i] * 7) * 10;
         x = p.x + Math.cos(ang) * rad;
         y = p.y + Math.sin(ang) * rad;
         P.rot[i] = ang;
+        P.x[i] = x;
+        P.y[i] = y;
+        if (kind === PK_DRONE) continue;
       } else {
         P.life[i] -= DT;
+        if (kind === PK_BOMB) {
+          // Lobbed: no collision in flight, it blows up where it lands.
+          P.x[i] += P.vx[i] * DT;
+          P.y[i] += P.vy[i] * DT;
+          if (P.life[i] <= 0) explodeBomb(this, i);
+          continue;
+        }
         if (P.life[i] <= 0) continue;
+        if (kind === PK_MISSILE && P.flags[i] & PF_HOMING) steerMissile(this, i);
         x = P.x[i] + P.vx[i] * DT;
         y = P.y[i] + P.vy[i] * DT;
+        P.x[i] = x;
+        P.y[i] = y;
+        if (kind === PK_MISSILE || kind === PK_DRAGON) P.rot[i] = Math.atan2(P.vy[i], P.vx[i]);
       }
-      P.x[i] = x;
-      P.y[i] = y;
       const r = P.r[i];
       const n = g.query(x - r - 46, y - r - 46, x + r + 46, y + r + 46, buf);
       for (let k = 0; k < n; k++) {
@@ -891,18 +940,33 @@ export class World {
         const dx = E.x[j] - x;
         const dy = E.y[j] - y;
         if (dx * dx + dy * dy > rr * rr) continue;
-        if (kind === PK_BLADE) {
-          if (this.t - E.ohit[j] < 0.3) continue;
+        if (kind === PK_BLADE || kind === PK_PETAL) {
+          if (this.t - E.ohit[j] < (kind === PK_PETAL ? 0.22 : 0.3)) continue;
           E.ohit[j] = this.t;
-          this.damageEnemy(j, P.dmg[i], 70, x, y);
-          if (P.flags[i] & PF_SPECIAL && this.rng.next() < 0.3) this.spawnShards(x, y, P.dmg[i] * 0.5);
+          this.damageEnemy(j, P.dmg[i], kind === PK_PETAL ? 20 : 70, x, y);
+          if (kind === PK_BLADE && P.flags[i] & PF_SPECIAL && this.rng.next() < 0.3) this.spawnShards(x, y, P.dmg[i] * 0.5);
           continue;
         }
         const uid = E.uid[j];
         if (this.alreadyHit(i, uid)) continue;
         this.recordHit(i, uid);
-        this.damageEnemy(j, P.dmg[i], kind === PK_ARROW ? 30 : 15, x - P.vx[i] * 0.05, y - P.vy[i] * 0.05);
-        if (P.flags[i] & PF_SPECIAL) this.burst(x, y, 36 * this.stats.size, P.dmg[i] * 0.6, j);
+        const f = P.flags[i];
+        const knock = kind === PK_ARROW ? 30 : kind === PK_DRAGON ? 60 : 15;
+        this.damageEnemy(j, P.dmg[i], knock, x - P.vx[i] * 0.05, y - P.vy[i] * 0.05);
+        if (f & PF_STUN && !E.dead[j]) {
+          this.applyHold(j, P.pa[i], HOLD_FEAR);
+          if (P.pb[i] > 0) this.applyVuln(j, P.pa[i], P.pb[i]);
+        }
+        if (f & PF_FREEZE && !E.dead[j]) {
+          this.applyHold(j, P.pa[i], HOLD_FREEZE);
+          this.applyVuln(j, P.pa[i], 0.5);
+        }
+        if (f & PF_SPECIAL) burstAt(this, x, y, 36 * this.stats.size, P.dmg[i] * 0.6, j, true, 0x9fd8ff);
+        if (f & PF_BURST) {
+          burstAt(this, x, y, P.pa[i], P.dmg[i] * 0.7, j, true, 0xa8c4ff);
+          P.life[i] = -1;
+          break;
+        }
         if (P.pierce[i]-- <= 0) {
           P.life[i] = -1;
           this.spawnFx(FX_SPARK, x, y, 0, 0, 0.15, 12, 4, 1, this.rng.next() * TAU, 0, 0xbfe8ff, LAYER_ADD);
@@ -926,28 +990,100 @@ export class World {
     if (P.hitN[i] < 255) P.hitN[i]++;
   }
 
-  /** Area damage around a point (Detonate arrows). Uses the second query buffer: it runs inside a projectile query. */
-  private burst(x: number, y: number, R: number, dmg: number, skip: number): void {
-    const E = this.en;
-    const buf = this.qbuf2;
-    const n = this.grid.query(x - R - 46, y - R - 46, x + R + 46, y + R + 46, buf);
-    for (let k = 0; k < n; k++) {
-      const j = buf[k];
-      if (j === skip || E.dead[j]) continue;
-      const dx = E.x[j] - x;
-      const dy = E.y[j] - y;
-      const rr = R + E.r[j];
-      if (dx * dx + dy * dy > rr * rr) continue;
-      this.damageEnemy(j, dmg, 60, x, y);
-    }
-    this.spawnFx(FX_GLOW, x, y, 0, 0, 0.22, R * 0.8, R * 2.2, 0.85, 0, 0, 0x9fd8ff, LAYER_ADD);
-  }
-
   private spawnShards(x: number, y: number, dmg: number): void {
     for (let k = 0; k < 2; k++) {
       const a = this.rng.next() * TAU;
       this.spawnProjectile(PK_SHARD, 0, x, y, Math.cos(a) * 320, Math.sin(a) * 320, 0.45, dmg, 6, 0, 0);
     }
+  }
+
+  /** Volatile kills explode after the step's projectile pass, so chains never recurse. */
+  private queueBurst(x: number, y: number, r: number, dmg: number): void {
+    if (this.burstN >= MAX_BURSTS || dmg <= 0) return;
+    const b = this.burstN++ * 4;
+    this.bursts[b] = x;
+    this.bursts[b + 1] = y;
+    this.bursts[b + 2] = r;
+    this.bursts[b + 3] = dmg;
+  }
+
+  private flushBursts(): void {
+    let done = 0;
+    while (this.burstN > 0 && done < MAX_BURSTS) {
+      const b = --this.burstN * 4;
+      burstAt(this, this.bursts[b], this.bursts[b + 1], this.bursts[b + 2], this.bursts[b + 3], -1, false, 0xffb37a);
+      done++;
+    }
+    this.burstN = 0;
+  }
+
+  // ---------------------------------------------- zones, marks, bullets
+
+  spawnZone(
+    kind: number,
+    x: number,
+    y: number,
+    vx: number,
+    vy: number,
+    r: number,
+    life: number,
+    tickInt: number,
+    dmg: number,
+    flags: number,
+    extra = 0,
+    src = 0,
+  ): number {
+    const Z = this.zones;
+    if (Z.n >= Z.cap) return -1;
+    const i = Z.n++;
+    Z.x[i] = Z.ox[i] = x;
+    Z.y[i] = Z.oy[i] = y;
+    Z.vx[i] = vx;
+    Z.vy[i] = vy;
+    Z.r[i] = r;
+    Z.life[i] = Z.max[i] = life;
+    Z.tickT[i] = 0;
+    Z.tickInt[i] = Math.max(0.05, tickInt);
+    Z.dmg[i] = dmg;
+    Z.extra[i] = extra;
+    Z.kind[i] = kind;
+    Z.flags[i] = flags;
+    Z.src[i] = src;
+    Z.seed[i] = this.rng.int(256);
+    return i;
+  }
+
+  spawnMark(kind: number, shape: number, x: number, y: number, r: number, len: number, ang: number, delay: number, dmg: number, flags: number): number {
+    const M = this.marks;
+    if (M.n >= M.cap) return -1;
+    const i = M.n++;
+    M.x[i] = x;
+    M.y[i] = y;
+    M.r[i] = r;
+    M.len[i] = len;
+    M.ang[i] = ang;
+    M.delay[i] = M.max[i] = delay;
+    M.dmg[i] = dmg;
+    M.kind[i] = kind;
+    M.shape[i] = shape;
+    M.flags[i] = flags;
+    M.src[i] = 0;
+    return i;
+  }
+
+  spawnEnemyBullet(kind: number, x: number, y: number, vx: number, vy: number, r: number, life: number, dmg: number, flags = 0): void {
+    const B = this.eb;
+    if (B.n >= B.cap) return;
+    const i = B.n++;
+    B.x[i] = B.ox[i] = x;
+    B.y[i] = B.oy[i] = y;
+    B.vx[i] = vx;
+    B.vy[i] = vy;
+    B.r[i] = r;
+    B.life[i] = life;
+    B.dmg[i] = dmg;
+    B.kind[i] = kind;
+    B.flags[i] = flags;
   }
 
   // ---------------------------------------------------------- orbs + xp
@@ -994,8 +1130,7 @@ export class World {
       const s = O.spd[i] * DT;
       if (d <= grab + s) {
         this.gainXp(O.val[i]);
-        O.n--;
-        if (i < O.n) O.move(O.n, i);
+        O.remove(i);
         continue;
       }
       O.x[i] = x + (dx / d) * s;
@@ -1019,13 +1154,13 @@ export class World {
 
   // ------------------------------------------------------------ pickups
 
-  addPickup(kind: PickupKind, x: number, y: number): void {
+  addPickup(kind: PickupKind, x: number, y: number, bankai?: string): void {
     if (this.pickups.length >= CAP.pickups) {
-      const idx = this.pickups.findIndex((q) => q.kind !== 'chest' && q.kind !== 'chestBlack');
+      const idx = this.pickups.findIndex((q) => q.kind !== 'chest' && q.kind !== 'chestBlack' && q.kind !== 'medallion');
       if (idx < 0) return;
       this.pickups.splice(idx, 1);
     }
-    this.pickups.push({ kind, x, y, born: this.t });
+    this.pickups.push({ kind, x, y, born: this.t, bankai });
   }
 
   private updatePickups(): void {
@@ -1037,13 +1172,13 @@ export class World {
       const dx = p.x - q.x;
       const dy = p.y - q.y;
       const d = Math.hypot(dx, dy);
-      const chest = q.kind === 'chest' || q.kind === 'chestBlack';
-      if (!chest && d < pull && d > 0) {
+      const big = q.kind === 'chest' || q.kind === 'chestBlack' || q.kind === 'medallion';
+      if (!big && d < pull && d > 0) {
         const s = Math.min(d, 260 * DT);
         q.x += (dx / d) * s;
         q.y += (dy / d) * s;
       }
-      if (d > PLAYER.radius + (chest ? 16 : 12)) continue;
+      if (d > PLAYER.radius + (big ? 16 : 12)) continue;
       list.splice(i, 1);
       this.collect(q);
     }
@@ -1058,6 +1193,9 @@ export class World {
       case 'chestBlack':
         if (this.stress === 0) this.pendingChests.push('black');
         this.sound('chest');
+        break;
+      case 'medallion':
+        if (q.bankai) this.grantBankai(q.bankai);
         break;
       case 'heart':
         this.heal(0.3);
@@ -1079,7 +1217,7 @@ export class World {
     }
   }
 
-  /** Annihilation rune: clears the screen, chips the boss. */
+  /** Annihilation rune: clears the screen, chips the bosses. */
   private nuke(): void {
     const E = this.en;
     const p = this.player;
@@ -1147,17 +1285,19 @@ export class World {
     F.tint[i] = tint;
   }
 
-  private deathFx(x: number, y: number, color: number): void {
-    this.spawnFx(FX_GLOW, x, y, 0, 0, 0.22, 14, 34, 0.7, 0, 0, color, LAYER_ADD);
-    for (let k = 0; k < 4; k++) {
+  /** Hollows: the mask cracks into white shards and the body dissolves into ash. */
+  private deathFx(x: number, y: number, color: number, r: number): void {
+    this.spawnFx(FX_ASH, x, y, 0, -12, 0.45, r * 1.6, r * 3, 0.55, this.rng.next() * TAU, 0, 0x14101c, LAYER_NORMAL);
+    for (let k = 0; k < 3; k++) {
       const a = this.rng.next() * TAU;
-      const s = this.rng.range(50, 130);
-      this.spawnFx(FX_SPARK, x, y, Math.cos(a) * s, Math.sin(a) * s, this.rng.range(0.25, 0.45), 9, 3, 1, this.rng.next() * TAU, this.rng.range(-8, 8), color, LAYER_ADD, 4);
+      const s = this.rng.range(60, 150);
+      this.spawnFx(FX_MASK, x, y - r * 0.3, Math.cos(a) * s, Math.sin(a) * s - 30, this.rng.range(0.3, 0.5), r * 0.9, r * 0.5, 1, a, this.rng.range(-9, 9), color, LAYER_NORMAL, 3);
     }
+    this.spawnFx(FX_GLOW, x, y, 0, 0, 0.2, r, r * 2.6, 0.45, 0, 0, 0xbfe6ff, LAYER_ADD);
   }
 
   private explosionFx(x: number, y: number): void {
-    this.spawnFx(FX_GLOW, x, y, 0, 0, 0.35, 30, 110, 1, 0, 0, 0xffa040, LAYER_ADD);
+    this.spawnFx(FX_GLOW, x, y, 0, 0, 0.35, 30, 110, 1, 0, 0, 0xff8a3c, LAYER_ADD);
     this.spawnFx(FX_RING, x, y, 0, 0, 0.3, 20, 90, 0.9, 0, 0, 0xffc070, LAYER_ADD);
     this.sound('explode');
   }
@@ -1177,8 +1317,7 @@ export class World {
     for (let i = F.n - 1; i >= 0; i--) {
       F.life[i] -= DT;
       if (F.life[i] <= 0) {
-        F.n--;
-        if (i < F.n) F.move(F.n, i);
+        F.remove(i);
         continue;
       }
       F.ox[i] = F.x[i];
@@ -1225,7 +1364,7 @@ export class World {
       this.sigilCd -= DT;
       if (this.sigilCd <= 0) {
         this.sigilCd = 6;
-        for (let k = 0; k < 6; k++) {
+        for (let k = 0; k < 5; k++) {
           const j = this.randomEnemyNear(320);
           if (j < 0) break;
           strikeAt(this, this.en.x[j], this.en.y[j], 30 + this.level * 1.5, 34 * this.stats.size, null);
@@ -1239,29 +1378,23 @@ export class World {
   private compact(): void {
     const E = this.en;
     for (let i = 0; i < E.n; ) {
-      if (E.dead[i]) {
-        E.n--;
-        if (i < E.n) E.move(E.n, i);
-      } else {
-        i++;
-      }
+      if (E.dead[i]) E.remove(i);
+      else i++;
     }
     const P = this.pr;
     for (let i = 0; i < P.n; ) {
-      if (P.life[i] <= 0) {
-        P.n--;
-        if (i < P.n) P.move(P.n, i);
-      } else {
-        i++;
-      }
+      if (P.life[i] <= 0) P.remove(i);
+      else i++;
     }
     this.boss.active = false;
     if (this.bossCount > 0) {
       for (let i = 0; i < E.n; i++) {
         if (E.flags[i] & FLAG_BOSS) {
+          const def = ENEMY_LIST[E.type[i]];
           this.boss.active = true;
           this.boss.hp = E.hp[i];
           this.boss.max = E.maxHp[i];
+          this.boss.name = def.id === 'bearer' ? (POWER_BY_ID.get(BANKAI_IDS[E.variant[i]])?.name ?? def.name) : def.name;
           break;
         }
       }
@@ -1277,8 +1410,8 @@ export class World {
         passives: [...this.passives].map(([id, level]) => ({ id, level })),
         powerDefs: POWERS,
         passiveDefs: PASSIVES,
-        maxPowers: 8,
-        maxPassives: 6,
+        maxPowers: 12,
+        maxPassives: 8,
       },
       this.rng,
     );
@@ -1316,29 +1449,49 @@ export class World {
   addPower(id: string): void {
     const owned = this.powers.find((ps) => ps.def.id === id);
     if (owned) {
-      if (owned.level < POWER_MAX_LEVEL - 1) {
+      if (owned.level < upgradeCap(owned.def)) {
         owned.level++;
         refreshPowerStats(owned);
-        this.onPowerChanged(owned);
+        syncPower(this, this.powers.indexOf(owned));
       }
       return;
     }
     const def = POWER_BY_ID.get(id);
-    if (def) this.powers.push(newPowerState(def));
+    if (!def) return;
+    this.powers.push(newPowerState(def));
+    syncPower(this, this.powers.length - 1);
   }
 
   chooseAttribute(id: string, attr: string): void {
     const ps = this.powers.find((q) => q.def.id === id);
-    if (!ps || ps.level !== POWER_MAX_LEVEL - 1) return;
+    if (!ps || !ps.def.attributes || ps.level !== ps.def.maxLevel - 1) return;
     if (!ps.def.attributes.some((a) => a.id === attr)) return;
-    ps.level = POWER_MAX_LEVEL;
+    ps.level = ps.def.maxLevel;
     ps.attr = attr;
     refreshPowerStats(ps);
-    this.onPowerChanged(ps);
+    syncPower(this, this.powers.indexOf(ps));
   }
 
-  private onPowerChanged(ps: PowerState): void {
-    if (ps.def.kind === 'orbit' && ps.active > 0) respawnBlades(this, this.powers.indexOf(ps));
+  /** A medallion was taken back: its bankai joins your powers at Lv 1 (or levels up if you somehow have it). */
+  grantBankai(id: string): boolean {
+    const def = POWER_BY_ID.get(id);
+    if (!def || def.group !== 'bankai') return false;
+    this.addPower(id);
+    const info = BANKAI_BY_ID.get(id);
+    this.banners.push({ kind: 'bankai', title: def.name, sub: info ? `${info.owner}'s bankai, stolen by ${info.thief}` : '' });
+    this.sound('bankai');
+    this.shake = Math.max(this.shake, 10);
+    this.spawnFx(FX_GLOW, 0, 0, 0, 0, 0.8, 40, 600, 1, 0, 0, info?.aura ?? 0xffcb5c, LAYER_ADD, 0, 1);
+    this.spawnFx(FX_RING, 0, 0, 0, 0, 0.7, 30, 520, 1, 0, 0, 0xffe6a0, LAYER_ADD, 0, 1);
+    return true;
+  }
+
+  /** Testing: own a power at a given level (taking the first attribute when it reaches its last level). */
+  give(id: string, level: number): void {
+    const def = POWER_BY_ID.get(id);
+    if (!def) return;
+    for (let guard = 0; guard < 12 && this.powerLevel(id) < Math.min(level, upgradeCap(def)); guard++) this.addPower(id);
+    if (def.attributes && level >= def.maxLevel) this.chooseAttribute(id, def.attributes[0].id);
   }
 
   addPassive(id: string): void {
@@ -1357,6 +1510,7 @@ export class World {
     if (def.special === 'phoenix') this.player.revives++;
     if (def.special === 'stopclock') this.hasClock = true;
     if (def.special === 'wildsigil') this.hasSigil = true;
+    if (def.special === 'sanrei') this.hasSanrei = true;
     this.recomputeStats();
   }
 
@@ -1372,14 +1526,14 @@ export class World {
     const prevCount = this.stats.count;
     const prevSize = this.stats.size;
     this.stats = computeStats(mods);
-    this.dmgMul = damageMultiplier(this.stats);
+    this.baseDmgMul = damageMultiplier(this.stats);
+    this.dmgMul = this.baseDmgMul;
     p.maxHp = this.stats.maxHp;
     if (p.maxHp > prevMax) p.hp += p.maxHp - prevMax;
     p.hp = Math.min(p.hp, p.maxHp);
+    // Orbiters and auras depend on count and size: rebuild them when those change.
     if (this.stats.count !== prevCount || this.stats.size !== prevSize) {
-      for (let s = 0; s < this.powers.length; s++) {
-        if (this.powers[s].def.kind === 'orbit' && this.powers[s].active > 0) respawnBlades(this, s);
-      }
+      for (let s = 0; s < this.powers.length; s++) syncPower(this, s);
     }
   }
 }

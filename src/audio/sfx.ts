@@ -9,6 +9,13 @@ const GAP: Partial<Record<SoundName, number>> = {
   blade: 0.3,
   pulse: 0.12,
   strike: 0.1,
+  beam: 0.12,
+  fire: 0.15,
+  thorn: 0.2,
+  gust: 0.3,
+  warn: 0.25,
+  blast: 0.15,
+  explode: 0.08,
 };
 
 /**
@@ -112,6 +119,37 @@ export class Sfx {
       case 'explode':
         this.burst(0.3, 0.12, 900, 'lowpass');
         this.tone('sine', 120, 40, 0.3, 0.09);
+        break;
+      case 'bankai':
+        // A low gong under a rising shimmer.
+        this.tone('sine', 98, 82, 1.6, 0.16);
+        this.tone('triangle', 196, 164, 1.2, 0.06);
+        [784, 988, 1175, 1568].forEach((f, i) => this.tone('sine', f, f, 0.5, 0.045, 0.1 + i * 0.08));
+        break;
+      case 'warn':
+        this.tone('square', 880, 660, 0.12, 0.03);
+        this.tone('square', 880, 660, 0.12, 0.03, 0.16);
+        break;
+      case 'beam':
+        this.tone('sawtooth', 1800, 300, 0.22, 0.04);
+        this.burst(0.15, 0.05, 4000, 'highpass');
+        break;
+      case 'fire':
+        this.burst(0.3, 0.09, 1400, 'bandpass');
+        break;
+      case 'thorn':
+        this.tone('triangle', 1500, 900, 0.1, 0.03);
+        break;
+      case 'gust':
+        this.burst(0.5, 0.06, 700, 'bandpass');
+        break;
+      case 'shield':
+        this.tone('triangle', 1200, 1600, 0.15, 0.05);
+        this.tone('sine', 400, 380, 0.25, 0.04);
+        break;
+      case 'blast':
+        this.burst(0.55, 0.16, 700, 'lowpass');
+        this.tone('sine', 80, 32, 0.55, 0.13);
         break;
     }
   }

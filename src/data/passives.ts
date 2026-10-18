@@ -3,6 +3,9 @@ import type { StatMods } from '../game/stats';
 export interface PassiveDef {
   id: string;
   name: string;
+  /** Schrift letter, shown as the card icon. */
+  letter?: string;
+  credit?: string;
   /** Effect per level, shown on the card. */
   desc: string;
   icon: string;
@@ -11,14 +14,34 @@ export interface PassiveDef {
   perLevel: StatMods;
 }
 
-/** Regular passives, mirroring the 8-passive table from the analysis (6 for Phase 1). */
+/** Quincy techniques, plus one knight's letter that works as a passive. */
 export const PASSIVES: readonly PassiveDef[] = [
-  { id: 'might', name: 'Might', desc: '+10% attack', icon: 'might', color: '#ff7a6b', max: 5, perLevel: { atk: 10 } },
-  { id: 'celerity', name: 'Celerity', desc: 'Cooldowns -5%', icon: 'hourglass', color: '#7cc8ff', max: 3, perLevel: { cdr: 0.05 } },
-  { id: 'vigor', name: 'Vigor', desc: '+20% max health, +0.2 HP/s', icon: 'heart', color: '#ff5d7a', max: 5, perLevel: { maxHp: 0.2, regen: 0.2 } },
-  { id: 'swift', name: 'Swiftness', desc: '+10% move speed', icon: 'wing', color: '#7dffb0', max: 2, perLevel: { moveSpeed: 0.1 } },
-  { id: 'expanse', name: 'Expanse', desc: '+8% power size', icon: 'circles', color: '#b69cff', max: 3, perLevel: { size: 0.08 } },
-  { id: 'insight', name: 'Insight', desc: '+33% pickup range', icon: 'eye', color: '#ffd27a', max: 3, perLevel: { pickup: 0.33 } },
+  { id: 'arterie', name: 'Blut Arterie', desc: '+10% attack', icon: 'drop', color: '#ff6b7d', max: 5, perLevel: { atk: 10 } },
+  {
+    id: 'vene',
+    name: 'Blut Vene',
+    desc: '+15% max health, -4% damage taken',
+    icon: 'shield',
+    color: '#8fd0ff',
+    max: 5,
+    perLevel: { maxHp: 0.15, dmgTaken: -0.04 },
+  },
+  { id: 'hirenkyaku', name: 'Hirenkyaku', desc: '+10% move speed', icon: 'wing', color: '#7dffb0', max: 2, perLevel: { moveSpeed: 0.1 } },
+  { id: 'absorption', name: 'Reishi Absorption', desc: '+33% pickup range', icon: 'magnet', color: '#ffd27a', max: 3, perLevel: { pickup: 0.33 } },
+  { id: 'control', name: 'Reishi Control', desc: 'Cooldowns -5%', icon: 'hourglass', color: '#9fe7ff', max: 3, perLevel: { cdr: 0.05 } },
+  { id: 'expansion', name: 'Reishi Expansion', desc: '+8% power size', icon: 'circles', color: '#c08bff', max: 3, perLevel: { size: 0.08 } },
+  { id: 'binding', name: 'Reishi Binding', desc: '+10% power duration', icon: 'candle', color: '#e6f4ff', max: 3, perLevel: { duration: 0.1 } },
+  {
+    id: 'underbelly',
+    name: 'The Underbelly',
+    letter: 'U',
+    credit: 'NaNaNa Najahkoop',
+    desc: '+5% critical chance: weak points are marked',
+    icon: 'eye',
+    color: '#ffb37a',
+    max: 3,
+    perLevel: { critChance: 0.05 },
+  },
 ];
 
 export const PASSIVE_BY_ID: ReadonlyMap<string, PassiveDef> = new Map(PASSIVES.map((p) => [p.id, p]));

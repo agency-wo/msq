@@ -1,6 +1,6 @@
 import type { Rng } from '../core/rng';
 import type { PassiveDef } from '../data/passives';
-import { POWER_MAX_LEVEL, type PowerDef } from '../data/powers';
+import { upgradeCap, type PowerDef } from '../data/powers';
 import type { Rarity, RelicDef } from '../data/relics';
 
 export type Offer =
@@ -48,18 +48,24 @@ function drawWeighted<T>(pool: Weighted<T>[], rng: Rng): T {
  * The level-up board: a weighted draw without replacement. A power gets
  * likelier to appear the higher it already is, which is what snowballs a
  * build; the Lv 7 attribute pick is weighted highest so builds get defined.
+ * Bankai never appear as new cards (they come from medallion bearers), but
+ * once owned their upgrades do, weighted a little higher.
  */
 export function generateOffers(input: OfferInput, rng: Rng, count = 3): Offer[] {
   const pool: Weighted<Offer>[] = [];
   const ownedPowers = new Map(input.powers.map((p) => [p.id, p.level]));
+  const defs = new Map(input.powerDefs.map((d) => [d.id, d]));
+  const slotsUsed = input.powers.filter((p) => defs.get(p.id)?.group !== 'bankai').length;
+  // New powers get rarer the more you own, so a build focuses instead of spreading thin across all 16.
+  const newWeight = 2.4 / (1 + slotsUsed * 0.5);
   for (const def of input.powerDefs) {
     const level = ownedPowers.get(def.id);
     if (level === undefined) {
-      if (input.powers.length < input.maxPowers) pool.push({ item: { kind: 'power-new', id: def.id }, w: 2 });
-    } else if (level === POWER_MAX_LEVEL - 1) {
+      if (def.group !== 'bankai' && slotsUsed < input.maxPowers) pool.push({ item: { kind: 'power-new', id: def.id }, w: newWeight });
+    } else if (def.attributes && level === def.maxLevel - 1) {
       pool.push({ item: { kind: 'power-attr', id: def.id }, w: 6 });
-    } else if (level < POWER_MAX_LEVEL - 1) {
-      pool.push({ item: { kind: 'power-up', id: def.id, to: level + 1 }, w: 3 + level });
+    } else if (level < upgradeCap(def)) {
+      pool.push({ item: { kind: 'power-up', id: def.id, to: level + 1 }, w: (def.group === 'bankai' ? 5 : 3) + level });
     }
   }
   const ownedPassives = new Map(input.passives.map((p) => [p.id, p.level]));

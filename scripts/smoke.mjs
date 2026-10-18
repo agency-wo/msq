@@ -3,17 +3,19 @@
 // iPhone, plays with real touch events, and saves screenshots to .smoke/.
 // Fails on any console error, page error or CSP violation.
 //   npm run build && npm run smoke
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { chromium } from 'playwright-core';
 import { preview } from 'vite';
 
 const OUT = join(process.cwd(), '.smoke');
+rmSync(OUT, { recursive: true, force: true });
 mkdirSync(OUT, { recursive: true });
 const PORT = 4317;
 const BASE = `http://localhost:${PORT}/`;
 const IPHONE_UA =
   'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1';
+const BANKAI = ['senbonzakura', 'hyorinmaru', 'raikoben', 'tengen', 'gonryo', 'zanka'];
 
 const server = await preview({ preview: { port: PORT, strictPort: true, open: false } });
 const browser = await chromium.launch({
@@ -58,7 +60,10 @@ const stats = () =>
           level: w.level,
           kills: w.kills,
           enemies: w.en.n,
+          zones: w.zones.n,
+          marks: w.marks.n,
           sprites: m.drawn,
+          powers: w.powers.map((p) => `${p.def.id}${p.level}`).join(' '),
         }
       : { state: m?.state };
   });
@@ -123,61 +128,75 @@ try {
   await page.waitForSelector('.screen.title .btn.primary');
   await wait(400);
   log('title', { installHint: await page.isVisible('.install') });
-  await shot('1-title');
+  await shot('01-title');
 
-  // 2. Start a run with a tap and play: joystick, auto-casting, level-up boards.
+  // 2. Start with a tap and play: joystick, auto-casting, the Auswählen board.
   await page.tap('.screen.title .btn.primary');
   await wait(300);
-  let picks = await steer(9000);
+  let picks = await steer(12000);
   log('early run', { ...(await stats()), picks });
-  await shot('2-early');
-  picks = await steer(9000);
-  log('a little later', { ...(await stats()), picks });
-  await shot('3-later');
+  await shot('02-early');
 
   // 3. Pause from the HUD button, then resume.
   await page.tap('.icon-btn');
   await wait(300);
   log('paused', { state: await state() });
-  await shot('4-pause');
+  await shot('03-pause');
   await page.tap('.screen.pause .btn.primary');
   await wait(250);
-  log('resumed', { state: await state() });
 
   // 4. Phone turned sideways: the rotate overlay covers the game and it pauses.
   await page.setViewportSize({ width: 844, height: 390 });
   await wait(400);
   log('landscape', { overlay: await page.isVisible('.rotate'), state: await state() });
-  await shot('5-landscape');
   await page.setViewportSize({ width: 390, height: 844 });
   await wait(300);
 
-  // 5. Late game at 10:00 (god mode): a dense swarm, many level-ups, Lv 7 attribute picks.
-  await page.goto(`${BASE}?debug&seed=7&play&god&t=600`);
+  // 5. A mid-game build: many Schrift at once (zones, beams, bombs, drones).
+  await page.goto(`${BASE}?debug&seed=7&play&god&t=520&give=xaxis6,explode6,heat6,fear6,wind6,death6,knowledge6,visionary6`);
   await wait(500);
-  picks = await steer(14000);
-  log('late game', { ...(await stats()), picks });
-  await shot('6-late');
+  picks = await steer(9000);
+  log('schrift build', { ...(await stats()), picks });
+  await shot('04-schrift');
 
-  // 6. Boss wave: warning toast, the boss, its health bar.
-  await page.goto(`${BASE}?debug&seed=3&play&god&t=294`);
-  await wait(500);
-  await steer(9000);
-  log('boss', { ...(await stats()), bossBar: await page.isVisible('.bossbar') });
-  await shot('7-boss');
+  // 6. Medallion bearers: each fights with its bankai and warns before it hits.
+  for (const id of ['tengen', 'raikoben', 'gonryo']) {
+    await page.goto(`${BASE}?debug&seed=3&play&god&t=297&bearers=${id}`);
+    await wait(400);
+    await steer(7000, { radius: 20 });
+    log(`bearer ${id}`, { ...(await stats()), bossBar: await page.isVisible('.bossbar') });
+    await shot(`05-bearer-${id}`);
+  }
 
-  // 7. Stress: 1500 enemies with every power maxed. Software WebGL here, so the FPS is only a floor.
-  await page.goto(`${BASE}?debug&stress=1500`);
+  // 7. Taking back a bankai: the gold title card.
+  await page.goto(`${BASE}?debug&seed=5&play&god&t=330`);
+  await wait(600);
+  await page.evaluate(() => window.__msq.world.grantBankai('senbonzakura'));
+  await wait(450);
+  log('bankai banner', { visible: await page.isVisible('.banner.show.bankai') });
+  await shot('06-bankai-banner');
+
+  // 8. Every bankai in action.
+  for (const id of BANKAI) {
+    await page.goto(`${BASE}?debug&seed=9&play&god&t=480&bankai=${id}`);
+    await wait(400);
+    await steer(5000, { radius: 30 });
+    log(`bankai ${id}`, await stats());
+    await shot(`07-bankai-${id}`);
+  }
+
+  // 9. Stress: 1500 enemies, every Schrift maxed, two bankai. Software WebGL here, so FPS is only a floor.
+  await page.goto(`${BASE}?debug&stress=1500&bankai=senbonzakura,gonryo`);
   await wait(6000);
   const samples = [];
   for (let i = 0; i < 6; i++) {
     await wait(1000);
     samples.push(await stats());
   }
-  log('stress', { samples: samples.map((s) => `${s.state} ${s.fps}fps cpu${s.cpu}ms ${s.enemies}e ${s.sprites}spr`) });
-  await shot('8-stress');
+  log('stress', { samples: samples.map((s) => `${s.state} ${s.fps}fps cpu${s.cpu}ms ${s.enemies}e ${s.zones}z ${s.sprites}spr`) });
+  await shot('08-stress');
 
-  // 8. Offline: the service worker serves the whole game with the network off.
+  // 10. Offline: the service worker serves the whole game with the network off.
   await page.goto(`${BASE}?debug`);
   const sw = await page.evaluate(async () => {
     const reg = await navigator.serviceWorker.ready;
@@ -192,7 +211,6 @@ try {
     .catch(() => false);
   await context.setOffline(false);
   log('offline', { serviceWorker: sw, offlineTitle: offlineOk });
-  await shot('9-offline');
 
   summary.csp = await page.evaluate(() => window.__csp);
 } catch (err) {

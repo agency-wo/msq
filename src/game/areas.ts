@@ -1,0 +1,257 @@
+import { DT, PLAYER } from '../config';
+import { TAU } from '../core/math';
+import { enemiesInArc, enemiesInCircle, enemiesOnSegment, inArc, segmentDist } from './casts/common';
+import {
+  DOT_FIRE,
+  FLAG_BOSS,
+  FX_BEAM,
+  FX_BEAMH,
+  FX_CRESCENT,
+  FX_FLAME,
+  FX_GLOW,
+  FX_RING,
+  FX_SNOW,
+  FX_SPARK,
+  HOLD_FREEZE,
+  LAYER_ADD,
+  MF_BURN,
+  MF_CRATER,
+  MF_ENEMY,
+  MF_FREEZE,
+  MF_SLOW,
+  MK_CERO,
+  MK_FIRE,
+  MK_ICE,
+  MK_METEOR,
+  MK_MISSILE,
+  MK_PILLAR,
+  MK_RAIN,
+  MK_SLASH,
+  MS_CIRCLE,
+  MS_LINE,
+  ZF_ENEMY,
+  ZF_FOLLOW,
+  ZF_FREEZE,
+  ZF_PULL,
+  ZF_PUSH,
+  ZF_SPREAD,
+  ZF_VULN,
+  ZF_WANDER,
+  ZK_FIRE,
+  ZK_HEAT,
+  ZK_POISON,
+} from './constants';
+import type { World } from './world';
+
+// ------------------------------------------------------------------ zones
+
+export function updateZones(w: World): void {
+  const Z = w.zones;
+  const E = w.en;
+  const p = w.player;
+  for (let i = Z.n - 1; i >= 0; i--) {
+    Z.life[i] -= DT;
+    if (Z.life[i] <= 0) {
+      Z.remove(i);
+      continue;
+    }
+    Z.ox[i] = Z.x[i];
+    Z.oy[i] = Z.y[i];
+    const flags = Z.flags[i];
+    if (flags & ZF_FOLLOW) {
+      Z.x[i] = p.x;
+      Z.y[i] = p.y;
+    } else {
+      if (flags & ZF_WANDER) steerWander(w, i);
+      Z.x[i] += Z.vx[i] * DT;
+      Z.y[i] += Z.vy[i] * DT;
+    }
+    const x = Z.x[i];
+    const y = Z.y[i];
+    const r = Z.r[i];
+    // Gusts and petal storms shove or drag every step, not just on ticks.
+    if (flags & (ZF_PULL | ZF_PUSH) && !(flags & ZF_ENEMY)) {
+      const n = enemiesInCircle(w, x, y, r);
+      const strength = Z.extra[i] * 0.14;
+      for (let k = 0; k < n; k++) {
+        const j = w.qout[k];
+        if (E.flags[j] & FLAG_BOSS) continue;
+        const dx = E.x[j] - x;
+        const dy = E.y[j] - y;
+        const d = Math.hypot(dx, dy) || 1;
+        if (flags & ZF_PULL) {
+          if (d < 8) continue;
+          E.kx[j] -= (dx / d) * strength;
+          E.ky[j] -= (dy / d) * strength;
+        } else {
+          E.kx[j] += (dx / d) * strength;
+          E.ky[j] += (dy / d) * strength;
+        }
+      }
+    }
+    Z.tickT[i] -= DT;
+    if (Z.tickT[i] > 0) continue;
+    Z.tickT[i] += Z.tickInt[i];
+    if (flags & ZF_ENEMY) {
+      const dx = p.x - x;
+      const dy = p.y - y;
+      const rr = r + PLAYER.radius;
+      if (dx * dx + dy * dy < rr * rr) w.hurtPlayer(Z.dmg[i]);
+      continue;
+    }
+    const kind = Z.kind[i];
+    const noCrit = kind === ZK_POISON || kind === ZK_HEAT;
+    const n = enemiesInCircle(w, x, y, r);
+    for (let k = 0; k < n; k++) {
+      const j = w.qout[k];
+      w.damageEnemy(j, Z.dmg[i], 0, x, y, noCrit);
+      if (E.dead[j]) {
+        if (flags & ZF_SPREAD && Z.n < 60) {
+          w.spawnZone(ZK_POISON, E.x[j], E.y[j], 0, 0, r * 0.6, 2.5, Z.tickInt[i], Z.dmg[i] * 0.7, flags & ~(ZF_SPREAD | ZF_FOLLOW), Z.extra[i]);
+        }
+        continue;
+      }
+      if (flags & ZF_VULN) w.applyVuln(j, Z.tickInt[i] + 0.2, Z.extra[i]);
+      if (flags & ZF_FREEZE) w.applyHold(j, 0.8, HOLD_FREEZE);
+    }
+  }
+}
+
+/** Wandering gusts drift with a lazy random turn and curve back if they stray too far from you. */
+function steerWander(w: World, i: number): void {
+  const Z = w.zones;
+  const p = w.player;
+  const turn = (w.rng.next() - 0.5) * 3 * DT;
+  const c = Math.cos(turn);
+  const s = Math.sin(turn);
+  let vx = Z.vx[i] * c - Z.vy[i] * s;
+  let vy = Z.vx[i] * s + Z.vy[i] * c;
+  const dx = p.x - Z.x[i];
+  const dy = p.y - Z.y[i];
+  const d = Math.hypot(dx, dy);
+  if (d > 240) {
+    const sp = Math.hypot(vx, vy) || 1;
+    vx += (dx / d) * sp * 2 * DT;
+    vy += (dy / d) * sp * 2 * DT;
+    const ns = Math.hypot(vx, vy) || 1;
+    vx = (vx / ns) * sp;
+    vy = (vy / ns) * sp;
+  }
+  Z.vx[i] = vx;
+  Z.vy[i] = vy;
+}
+
+// ------------------------------------------------------------------ marks
+
+export function updateMarks(w: World): void {
+  const M = w.marks;
+  for (let i = M.n - 1; i >= 0; i--) {
+    M.delay[i] -= DT;
+    if (M.delay[i] > 0) continue;
+    resolveMark(w, i);
+    M.remove(i);
+  }
+}
+
+/** The warning ran out: hit whatever stands inside the shape. */
+function resolveMark(w: World, i: number): void {
+  const M = w.marks;
+  const x = M.x[i];
+  const y = M.y[i];
+  const r = M.r[i];
+  const len = M.len[i];
+  const ang = M.ang[i];
+  const dmg = M.dmg[i];
+  const flags = M.flags[i];
+  const kind = M.kind[i];
+  const shape = M.shape[i];
+  if (flags & MF_ENEMY) {
+    const p = w.player;
+    let hit: boolean;
+    if (shape === MS_CIRCLE) hit = Math.hypot(p.x - x, p.y - y) < r + PLAYER.radius;
+    else if (shape === MS_LINE) hit = segmentDist(p.x, p.y, x, y, ang, len) < r / 2 + PLAYER.radius;
+    else hit = inArc(p.x, p.y, x, y, ang, r, len, PLAYER.radius);
+    if (hit) {
+      w.hurtPlayer(dmg);
+      if (flags & (MF_SLOW | MF_FREEZE)) p.slowT = Math.max(p.slowT, 1.5);
+    }
+  } else {
+    const E = w.en;
+    let n: number;
+    if (shape === MS_CIRCLE) n = enemiesInCircle(w, x, y, r);
+    else if (shape === MS_LINE) n = enemiesOnSegment(w, x, y, ang, len, r / 2);
+    else n = enemiesInArc(w, x, y, ang, r, len);
+    const knock = kind === MK_SLASH ? 160 : kind === MK_MISSILE || kind === MK_METEOR ? 110 : 40;
+    for (let k = 0; k < n; k++) {
+      const j = w.qout[k];
+      w.damageEnemy(j, dmg, knock, x, y);
+      if (E.dead[j]) continue;
+      if (flags & MF_FREEZE) {
+        w.applyHold(j, 1.4, HOLD_FREEZE);
+        w.applyVuln(j, 1.4, 0.5);
+      }
+      if (flags & MF_BURN) w.applyDot(j, 3, dmg * 0.2, DOT_FIRE);
+    }
+    if (flags & MF_CRATER) w.spawnZone(ZK_FIRE, x, y, 0, 0, r * 0.7, 3, 0.4, dmg * 0.12, 0);
+  }
+  markFx(w, kind, x, y, r, len, ang, (flags & MF_ENEMY) !== 0);
+}
+
+function markFx(w: World, kind: number, x: number, y: number, r: number, len: number, ang: number, enemy: boolean): void {
+  switch (kind) {
+    case MK_METEOR:
+      w.spawnFx(FX_GLOW, x, y, 0, 0, 0.4, r, r * 2.8, 1, 0, 0, 0xffa24a, LAYER_ADD);
+      w.spawnFx(FX_RING, x, y, 0, 0, 0.35, r * 0.6, r * 2.4, 0.9, 0, 0, 0xffe2a0, LAYER_ADD);
+      sparks(w, x, y, 6, 0xffd27a);
+      w.shake = Math.max(w.shake, 5);
+      w.sound('blast');
+      break;
+    case MK_MISSILE:
+      w.spawnFx(FX_GLOW, x, y, 0, 0, 0.6, r, r * 2.8, 1, 0, 0, 0xffd27a, LAYER_ADD);
+      w.spawnFx(FX_RING, x, y, 0, 0, 0.5, r * 0.5, r * 2.5, 1, 0, 0, 0xffffff, LAYER_ADD);
+      sparks(w, x, y, 10, 0xffe2a0);
+      w.shake = Math.max(w.shake, enemy ? 8 : 12);
+      w.sound('blast');
+      break;
+    case MK_CERO:
+      w.spawnFx(FX_BEAMH, x + (Math.cos(ang) * len) / 2, y + (Math.sin(ang) * len) / 2, 0, 0, 0.35, len, len, 1, ang, 0, 0xff2d4a, LAYER_ADD, 0, 0, r * 1.8);
+      w.spawnFx(FX_GLOW, x, y, 0, 0, 0.35, r, r * 3, 1, 0, 0, 0xff4d6a, LAYER_ADD);
+      w.shake = Math.max(w.shake, 6);
+      w.sound('blast');
+      break;
+    case MK_PILLAR:
+      w.spawnFx(FX_BEAM, x, y, 0, 0, 0.3, r * 1.3, 0, 1, 0, 0, 0xfff3b8, LAYER_ADD);
+      w.spawnFx(FX_GLOW, x, y, 0, 0, 0.3, r, r * 2.4, 0.9, 0, 0, 0xfff0a0, LAYER_ADD);
+      w.sound('strike');
+      break;
+    case MK_ICE:
+      w.spawnFx(FX_GLOW, x, y, 0, 0, 0.4, r, r * 2.4, 0.9, 0, 0, 0x8fd8ff, LAYER_ADD);
+      w.spawnFx(FX_RING, x, y, 0, 0, 0.35, r * 0.5, r * 2.2, 0.9, 0, 0, 0xdff6ff, LAYER_ADD);
+      for (let k = 0; k < 5; k++) {
+        const a = w.rng.next() * TAU;
+        w.spawnFx(FX_SNOW, x, y, Math.cos(a) * 90, Math.sin(a) * 90, 0.5, 14, 6, 1, a, 3, 0xe8f8ff, LAYER_ADD, 2);
+      }
+      w.sound('freeze');
+      break;
+    case MK_SLASH:
+      w.spawnFx(FX_CRESCENT, x + Math.cos(ang) * r * 0.5, y + Math.sin(ang) * r * 0.5, 0, 0, 0.35, r * 1.15, r * 1.25, 1, ang, 0, enemy ? 0xff6a5a : 0xffe2a0, LAYER_ADD);
+      w.shake = Math.max(w.shake, 6);
+      break;
+    case MK_FIRE:
+      w.spawnFx(FX_FLAME, x + (Math.cos(ang) * len) / 2, y + (Math.sin(ang) * len) / 2, 0, 0, 0.4, len, len, 1, ang, 0, 0xff8a3c, LAYER_ADD, 0, 0, r * 2.2);
+      sparks(w, x + Math.cos(ang) * len * 0.3, y + Math.sin(ang) * len * 0.3, 5, 0xffb070);
+      break;
+    case MK_RAIN:
+      w.spawnFx(FX_BEAM, x, y, 0, 0, 0.18, r * 0.8, 0, 1, 0, 0, 0xbfe6ff, LAYER_ADD);
+      w.spawnFx(FX_GLOW, x, y, 0, 0, 0.2, r * 0.6, r * 1.8, 0.8, 0, 0, 0x9fd8ff, LAYER_ADD);
+      break;
+  }
+}
+
+function sparks(w: World, x: number, y: number, n: number, color: number): void {
+  for (let k = 0; k < n; k++) {
+    const a = w.rng.next() * TAU;
+    const v = w.rng.range(100, 260);
+    w.spawnFx(FX_SPARK, x, y, Math.cos(a) * v, Math.sin(a) * v, w.rng.range(0.3, 0.6), 14, 4, 1, a, 6, color, LAYER_ADD, 2.5);
+  }
+}

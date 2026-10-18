@@ -1,11 +1,12 @@
 import { formatTime } from '../core/math';
+import { BANKAI_BY_ID } from '../data/bankai';
 import { PASSIVE_BY_ID } from '../data/passives';
 import { POWER_BY_ID, type PowerDef } from '../data/powers';
 import type { Rarity, RelicDef } from '../data/relics';
 import type { ChestKind, Offer } from '../game/offers';
-import type { World } from '../game/world';
+import type { Banner, World } from '../game/world';
 import type { SaveData, Settings } from '../save/save';
-import { drawIcon } from './icons';
+import { drawEmblem, drawIcon } from './icons';
 
 /**
  * Everything outside the game world is plain DOM with an external stylesheet:
@@ -28,16 +29,18 @@ function button(cls: string, text: string): HTMLButtonElement {
   return b;
 }
 
-const RARITY_COLOR: Readonly<Record<Rarity, string>> = { common: '#c9d1e0', rare: '#6fb6ff', legendary: '#ffb84d' };
+const RARITY_COLOR: Readonly<Record<Rarity, string>> = { common: '#d8d2c4', rare: '#7cc4ff', legendary: '#ffcb5c' };
 const RARITY_LABEL: Readonly<Record<Rarity, string>> = { common: 'Common', rare: 'Rare', legendary: 'Legendary' };
 
 interface CardSpec {
   icon: string;
   color: string;
   title: string;
+  letter?: string;
+  credit?: string;
   badge?: string;
   desc: string;
-  tone?: Rarity | 'attr';
+  tone?: Rarity | 'attr' | 'bankai';
 }
 
 export interface ResultSummary {
@@ -48,7 +51,20 @@ export interface ResultSummary {
   kills: number;
   bestTime: number;
   newBest: boolean;
-  powers: { name: string; icon: string; color: string; level: number; attr: string | null }[];
+  powers: { name: string; icon: string; color: string; letter?: string; level: number; attr: string | null; bankai: boolean }[];
+}
+
+function powerCard(def: PowerDef, badge: string | undefined, desc: string, tone?: CardSpec['tone']): CardSpec {
+  return {
+    icon: def.icon,
+    color: def.color,
+    title: def.name,
+    letter: def.letter,
+    credit: def.group === 'bankai' ? `${def.credit ?? ''}'s bankai` : def.credit,
+    badge,
+    desc,
+    tone: tone ?? (def.group === 'bankai' ? 'bankai' : undefined),
+  };
 }
 
 export class UI {
@@ -59,16 +75,20 @@ export class UI {
   private readonly kills: HTMLElement;
   private readonly timer: HTMLElement;
   private readonly bossBar: HTMLElement;
+  private readonly bossName: HTMLElement;
   private readonly bossFill: HTMLElement;
   private readonly toastEl: HTMLElement;
+  private readonly bannerEl: HTMLElement;
   private readonly screen: HTMLElement;
   private readonly rotateEl: HTMLElement;
   private readonly debugEl: HTMLElement;
   private toastTimer = 0;
+  private bannerTimer = 0;
   private unlockAt = 0;
-  private last = { level: -1, kills: -1, sec: -1, xp: -1, boss: -2 };
+  private last = { level: -1, kills: -1, sec: -1, xp: -1, boss: -2, bossName: '' };
 
   constructor(root: HTMLElement) {
+    const vignette = el('div', 'vignette');
     this.hud = el('div', 'hud hidden');
     const xp = el('div', 'xpbar');
     this.xpFill = el('div', 'xpfill');
@@ -85,25 +105,28 @@ export class UI {
     pause.addEventListener('click', () => this.onPause());
     row.append(left, this.timer, pause);
     this.bossBar = el('div', 'bossbar hidden');
+    this.bossName = el('div', 'boss-name', '');
     const track = el('div', 'boss-track');
     this.bossFill = el('div', 'boss-fill');
     track.append(this.bossFill);
-    this.bossBar.append(el('div', 'boss-name', 'Warden'), track);
+    this.bossBar.append(this.bossName, track);
     this.hud.append(xp, row, this.bossBar);
     this.toastEl = el('div', 'toast');
     this.toastEl.setAttribute('role', 'status');
+    this.bannerEl = el('div', 'banner');
+    this.bannerEl.setAttribute('aria-live', 'polite');
     this.screen = el('div', 'screen hidden');
     this.rotateEl = el('div', 'rotate hidden');
     this.rotateEl.append(el('div', 'rotate-icon'), el('p', 'rotate-text', 'Turn your phone upright to play'));
     this.debugEl = el('div', 'debug hidden');
-    root.append(this.hud, this.toastEl, this.screen, this.rotateEl, this.debugEl);
+    root.append(vignette, this.hud, this.toastEl, this.bannerEl, this.screen, this.rotateEl, this.debugEl);
   }
 
   // ------------------------------------------------------------- HUD
 
   showHud(show: boolean): void {
     this.hud.classList.toggle('hidden', !show);
-    if (show) this.last = { level: -1, kills: -1, sec: -1, xp: -1, boss: -2 };
+    if (show) this.last = { level: -1, kills: -1, sec: -1, xp: -1, boss: -2, bossName: '' };
   }
 
   /** Called every frame; touches the DOM only when a value actually changed. */
@@ -132,15 +155,36 @@ export class UI {
       if (boss >= 0) this.bossFill.style.transform = `scaleX(${boss})`;
       this.last.boss = boss;
     }
+    if (w.boss.active && w.boss.name !== this.last.bossName) {
+      this.last.bossName = w.boss.name;
+      this.bossName.textContent = w.boss.name;
+    }
   }
 
   toast(text: string, kind: 'boss' | 'info' = 'info'): void {
     this.toastEl.textContent = text;
     this.toastEl.className = `toast show ${kind}`;
     window.clearTimeout(this.toastTimer);
-    this.toastTimer = window.setTimeout(() => {
-      this.toastEl.className = 'toast';
-    }, kind === 'boss' ? 3000 : 2200);
+    this.toastTimer = window.setTimeout(
+      () => {
+        this.toastEl.className = 'toast';
+      },
+      kind === 'boss' ? 3000 : 2200,
+    );
+  }
+
+  /** A title card that slides across the middle of the screen; the game keeps running. */
+  banner(b: Banner): void {
+    this.bannerEl.replaceChildren(
+      el('div', 'banner-kicker', b.kind === 'bankai' ? 'Bankai' : 'Boss'),
+      el('div', 'banner-title', b.title),
+      el('div', 'banner-sub', b.sub),
+    );
+    this.bannerEl.className = `banner show ${b.kind}`;
+    window.clearTimeout(this.bannerTimer);
+    this.bannerTimer = window.setTimeout(() => {
+      this.bannerEl.className = `banner ${b.kind}`;
+    }, 2600);
   }
 
   setRotate(show: boolean): void {
@@ -159,21 +203,19 @@ export class UI {
     this.screen.replaceChildren();
   }
 
-  get screenOpen(): boolean {
-    return !this.screen.classList.contains('hidden');
-  }
-
   showTitle(save: SaveData, h: { onPlay: () => void; onSettings: () => void; installHint: boolean }): void {
     const p = this.open('title');
+    const emblem = el('canvas', 'emblem');
+    drawEmblem(emblem, 84);
     const logo = el('div', 'logo');
     logo.append(el('div', 'logo-top', 'QUINCY'), el('div', 'logo-bottom', 'SURVIVAL'));
     const play = button('btn primary', 'Play');
     play.addEventListener('click', this.guard(h.onPlay));
     const settings = button('btn', 'Settings');
     settings.addEventListener('click', this.guard(h.onSettings));
-    p.append(logo, el('p', 'tagline', 'Prototype 0.1 · placeholder powers'), play, settings);
+    p.append(emblem, logo, el('p', 'tagline', 'The Emperor takes back what he gave.'), play, settings);
     if (save.best.time > 0) p.append(el('p', 'best', `Best ${formatTime(save.best.time)} · Lv ${save.best.level}`));
-    p.append(el('p', 'hint', 'Drag anywhere to move. Your powers fire on their own.'));
+    p.append(el('p', 'hint', 'Drag anywhere to move. Your powers fire on their own. Hueco Mundo · 20 minutes.'));
     if (h.installHint) {
       const box = el('div', 'install');
       box.append(el('strong', '', 'Play full-screen'), el('span', '', 'Tap Share, then Add to Home Screen.'));
@@ -202,7 +244,7 @@ export class UI {
 
   showLevelUp(level: number, offers: readonly Offer[], onPick: (o: Offer) => void): void {
     const p = this.open('board');
-    p.append(el('div', 'board-kicker', 'Level up'), el('h2', 'board-title', `Level ${level}`));
+    p.append(el('div', 'board-kicker', 'Auswählen'), el('h2', 'board-title', `Level ${level}`));
     const list = el('div', 'cards');
     for (const o of offers) list.append(this.card(this.offerSpec(o), () => onPick(o)));
     p.append(list);
@@ -213,8 +255,8 @@ export class UI {
     const p = this.open('board');
     p.append(el('div', 'board-kicker', 'Awaken · Lv 7'), el('h2', 'board-title', def.name));
     const list = el('div', 'cards');
-    for (const a of def.attributes) {
-      list.append(this.card({ icon: def.icon, color: def.color, title: a.name, desc: a.desc, tone: 'attr' }, () => onPick(a.id)));
+    for (const a of def.attributes ?? []) {
+      list.append(this.card({ icon: def.icon, color: def.color, letter: def.letter, title: a.name, desc: a.desc, tone: 'attr' }, () => onPick(a.id)));
     }
     p.append(list);
     this.lock();
@@ -242,7 +284,7 @@ export class UI {
     const p = this.open('pause');
     p.append(el('h2', 'board-title', 'Paused'));
     const build = el('div', 'build');
-    for (const ps of w.powers) build.append(this.chip(ps.def.icon, ps.def.color, `${ps.def.name} ${ps.level}`));
+    for (const ps of w.powers) build.append(this.chip(ps.def.icon, ps.def.color, `${ps.def.name} ${ps.level}`, ps.def.letter, ps.def.group === 'bankai'));
     for (const r of w.relics) build.append(this.chip(r.icon, RARITY_COLOR[r.rarity], r.name));
     const resume = button('btn primary', 'Resume');
     resume.addEventListener('click', this.guard(h.onResume));
@@ -254,7 +296,7 @@ export class UI {
 
   showResults(r: ResultSummary, h: { onRetry: () => void; onMenu: () => void }): void {
     const p = this.open(`results ${r.victory ? 'won' : 'lost'}`);
-    const kicker = r.victory ? 'Stage cleared' : r.quit ? 'Run abandoned' : 'You fell';
+    const kicker = r.victory ? 'Hueco Mundo cleared' : r.quit ? 'Run abandoned' : 'You fell';
     p.append(el('div', 'board-kicker', kicker), el('h2', 'board-title', r.victory ? 'Victory' : 'Fallen'));
     const stats = el('div', 'stats');
     const stat = (label: string, value: string): HTMLElement => {
@@ -271,7 +313,9 @@ export class UI {
     p.append(stats);
     if (r.powers.length > 0) {
       const build = el('div', 'build');
-      for (const pw of r.powers) build.append(this.chip(pw.icon, pw.color, `${pw.name} ${pw.level}${pw.attr ? ` · ${pw.attr}` : ''}`));
+      for (const pw of r.powers) {
+        build.append(this.chip(pw.icon, pw.color, `${pw.name} ${pw.level}${pw.attr ? ` · ${pw.attr}` : ''}`, pw.letter, pw.bankai));
+      }
       p.append(build);
     }
     const retry = button('btn primary', 'Play again');
@@ -311,10 +355,13 @@ export class UI {
     const b = button(`card${spec.tone ? ` tone-${spec.tone}` : ''}`, '');
     b.style.setProperty('--accent', spec.color);
     const icon = el('canvas', 'card-icon');
-    drawIcon(icon, spec.icon, spec.color);
+    drawIcon(icon, spec.icon, spec.color, spec.letter);
     const body = el('div', 'card-body');
     const head = el('div', 'card-head');
-    head.append(el('span', 'card-title', spec.title));
+    const titles = el('div', 'card-titles');
+    titles.append(el('span', 'card-title', spec.title));
+    if (spec.credit) titles.append(el('span', 'card-credit', spec.credit));
+    head.append(titles);
     if (spec.badge) head.append(el('span', 'card-badge', spec.badge));
     body.append(head, el('p', 'card-desc', spec.desc));
     b.append(icon, body);
@@ -322,10 +369,10 @@ export class UI {
     return b;
   }
 
-  private chip(icon: string, color: string, text: string): HTMLElement {
-    const chip = el('div', 'chip');
+  private chip(icon: string, color: string, text: string, letter?: string, bankai = false): HTMLElement {
+    const chip = el('div', bankai ? 'chip bankai' : 'chip');
     const c = el('canvas', 'chip-icon');
-    drawIcon(c, icon, color);
+    drawIcon(c, icon, color, letter);
     chip.append(c, el('span', 'chip-text', text));
     return chip;
   }
@@ -356,24 +403,22 @@ export class UI {
     switch (o.kind) {
       case 'power-new': {
         const d = POWER_BY_ID.get(o.id);
-        return d ? { icon: d.icon, color: d.color, title: d.name, badge: 'New', desc: d.desc } : unknownCard;
+        return d ? powerCard(d, 'New', d.desc) : unknownCard;
       }
       case 'power-up': {
         const d = POWER_BY_ID.get(o.id);
-        return d
-          ? { icon: d.icon, color: d.color, title: d.name, badge: `Lv ${o.to - 1} → ${o.to}`, desc: d.levels[o.to - 2]?.desc ?? d.desc }
-          : unknownCard;
+        if (!d) return unknownCard;
+        const label = d.group === 'bankai' ? `Bankai ${o.to - 1} → ${o.to}` : `Lv ${o.to - 1} → ${o.to}`;
+        return powerCard(d, label, d.levels[o.to - 2]?.desc ?? d.desc);
       }
       case 'power-attr': {
         const d = POWER_BY_ID.get(o.id);
-        return d
-          ? { icon: d.icon, color: d.color, title: d.name, badge: 'Lv 7 · Awaken', desc: 'Pick one of three attributes that change how it works.', tone: 'attr' }
-          : unknownCard;
+        return d ? powerCard(d, 'Lv 7 · Awaken', 'Pick one of three attributes that change how it works.', 'attr') : unknownCard;
       }
       case 'passive': {
         const d = PASSIVE_BY_ID.get(o.id);
         return d
-          ? { icon: d.icon, color: d.color, title: d.name, badge: o.to === 1 ? 'New' : `Lv ${o.to - 1} → ${o.to}`, desc: d.desc }
+          ? { icon: d.icon, color: d.color, letter: d.letter, credit: d.credit, title: d.name, badge: o.to === 1 ? 'New' : `Lv ${o.to - 1} → ${o.to}`, desc: d.desc }
           : unknownCard;
       }
       case 'heal':
@@ -385,3 +430,9 @@ export class UI {
 }
 
 const unknownCard: CardSpec = { icon: 'star', color: '#ffffff', title: '?', desc: '' };
+
+/** Who a bankai belonged to and who stole it, for the results screen and banners. */
+export function bankaiLine(id: string): string {
+  const info = BANKAI_BY_ID.get(id);
+  return info ? `${info.owner}'s bankai, stolen by ${info.thief}` : '';
+}

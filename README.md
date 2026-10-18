@@ -4,8 +4,11 @@ A one-thumb survival roguelite in the style of Magic Survival, built as an
 installable web app so it plays full-screen and offline on iPhone with no App
 Store. Live at **https://play.minarankstudio.com**.
 
-Phase 1 is the engine with placeholder powers. The themed content (the
-knights' powers, fusions, bosses, progression) comes next.
+You are the Emperor. Level-ups let you take back the Schrift you gave your
+knights (Auswählen): 12 offensive powers with a Lv 7 attribute pick, plus 4
+utilities. Every run, three random medallion bearers carry stolen bankai; beat
+one and its bankai is yours. Stage: Hueco Mundo, 20 minutes, ending with the
+Vasto Lorde. All art is original and drawn in code.
 
 ## Play on iPhone
 
@@ -35,7 +38,9 @@ BALANCE=1 npx vitest run test/balance.test.ts --silent=false
 
 Add these to the URL: `?debug` (FPS, CPU per frame and entity counts),
 `?stress=1500` (swarm plus every power maxed, no damage), `?god`, `?seed=123`,
-`?t=600` (start at 10:00), `?play` (skip the title).
+`?t=600` (start at 10:00), `?play` (skip the title), `?give=explode7,xaxis5`
+(own powers at those levels), `?bankai=zanka,tengen` (start with bankai),
+`?bearers=raikoben,gonryo` (choose which bankai the bosses carry).
 
 ## How it is built
 

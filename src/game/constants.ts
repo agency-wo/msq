@@ -7,9 +7,21 @@ export const FLAG_BOSS = 2;
 export const PK_ARROW = 0;
 export const PK_BLADE = 1;
 export const PK_SHARD = 2;
+export const PK_PETAL = 3;
+export const PK_BOMB = 4;
+export const PK_THORN = 5;
+export const PK_MISSILE = 6;
+export const PK_DRAGON = 7;
+export const PK_DRONE = 8;
 
-/** Projectile flag: arrows burst on impact (Detonate), blades throw shards (Razor Wind). */
-export const PF_SPECIAL = 1;
+/** Projectile flags. */
+export const PF_SPECIAL = 1; // arrows burst (Sprenger), blades throw shards
+export const PF_HOMING = 2;
+export const PF_STUN = 4;
+export const PF_FREEZE = 8;
+export const PF_VOLATILE = 16;
+export const PF_CLUSTER = 32;
+export const PF_BURST = 64;
 
 /** Visual effect sprites; the renderer maps each to an atlas frame. */
 export const FX_GLOW = 0;
@@ -19,7 +31,73 @@ export const FX_DOT = 3;
 export const FX_BEAM = 4;
 export const FX_BOLT = 5;
 export const FX_SHARD = 6;
+export const FX_BEAMH = 7;
+export const FX_FLAME = 8;
+export const FX_METEOR = 9;
+export const FX_MASK = 10;
+export const FX_ASH = 11;
+export const FX_CRESCENT = 12;
+export const FX_AVATAR = 13;
+export const FX_WINGS = 14;
+export const FX_STAR = 15;
+export const FX_SNOW = 16;
+export const FX_PETAL = 17;
+export const FX_MISSILE = 18;
 
 /** Effect blend layers. */
 export const LAYER_NORMAL = 0;
 export const LAYER_ADD = 1;
+
+/** Zone kinds: lingering areas. */
+export const ZK_FIRE = 0;
+export const ZK_POISON = 1;
+export const ZK_GUST = 2;
+export const ZK_PETALS = 3;
+export const ZK_FROST = 4;
+export const ZK_HEAT = 5;
+
+/** Zone flags. */
+export const ZF_FOLLOW = 1; // sits on the player
+export const ZF_ENEMY = 2; // hurts the player instead of enemies
+export const ZF_PULL = 4;
+export const ZF_PUSH = 8;
+export const ZF_VULN = 16; // enemies inside take extra damage from everything
+export const ZF_WANDER = 32;
+export const ZF_SPREAD = 64; // kills inside spawn a new, smaller zone
+export const ZF_FREEZE = 128;
+
+/** Mark kinds: delayed strikes with a warning shape. */
+export const MK_METEOR = 0;
+export const MK_MISSILE = 1;
+export const MK_CERO = 2;
+export const MK_PILLAR = 3;
+export const MK_ICE = 4;
+export const MK_SLASH = 5;
+export const MK_FIRE = 6;
+export const MK_RAIN = 7;
+
+/** Mark shapes. */
+export const MS_CIRCLE = 0;
+export const MS_LINE = 1;
+export const MS_ARC = 2;
+
+/** Mark flags. */
+export const MF_ENEMY = 1; // aimed at the player
+export const MF_FREEZE = 2;
+export const MF_CRATER = 4; // leaves a burning crater
+export const MF_BURN = 8;
+export const MF_SLOW = 16; // slows the player on hit
+
+/** Enemy bullet kinds and flags. */
+export const EB_BALA = 0;
+export const EB_PETAL = 1;
+export const EB_ICE = 2;
+export const EBF_SLOW = 1;
+
+/** Why an enemy cannot move (drives its tint). */
+export const HOLD_FREEZE = 0;
+export const HOLD_FEAR = 1;
+
+/** Damage-over-time kinds. */
+export const DOT_FIRE = 0;
+export const DOT_POISON = 1;

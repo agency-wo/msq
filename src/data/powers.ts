@@ -1,56 +1,28 @@
+import { BANKAI_POWERS } from './bankai';
+import { stats, type PowerDef } from './powerTypes';
+
+export type { PowerAttribute, PowerDef, PowerGroup, PowerKind, PowerStats } from './powerTypes';
+export { upgradeCap } from './powerTypes';
+
 /**
- * Power definitions. Phase 1 placeholders: one per core archetype from the
- * analysis (projectile at nearest, orbit, aura pulse, sky strike). The knight
- * powers designed in Phase 2 replace these without engine changes.
+ * Powers the Emperor takes back on level-up (Auswählen): Quincy arts, the
+ * knights' Schrift, and four utilities. Offensive powers go Lv 1-6, then Lv 7
+ * picks one of three attributes; utilities stop at Lv 5. Bankai live in
+ * bankai.ts and only come from medallion bearers.
  */
-
-export type PowerKind = 'bolt' | 'orbit' | 'pulse' | 'strike';
-
-export interface PowerStats {
-  damage: number;
-  /** Seconds between casts (pulse interval for auras). */
-  cooldown: number;
-  count: number;
-  /** Projectile speed (units/s) or orbit speed (radians/s). */
-  speed: number;
-  pierce: number;
-  size: number;
-  /** Projectile lifetime or orbit uptime, seconds. */
-  duration: number;
-  /** Hit radius, orbit radius, pulse radius or blast radius depending on kind. */
-  radius: number;
-}
-
-export interface PowerAttribute {
-  id: string;
-  name: string;
-  desc: string;
-}
-
-export interface PowerDef {
-  id: string;
-  kind: PowerKind;
-  name: string;
-  desc: string;
-  icon: string;
-  color: string;
-  base: PowerStats;
-  /** Upgrades for Lv 2 through Lv 6. Lv 7 is the attribute pick. */
-  levels: readonly { desc: string; add: Partial<PowerStats> }[];
-  attributes: readonly [PowerAttribute, PowerAttribute, PowerAttribute];
-}
-
-export const POWER_MAX_LEVEL = 7;
-
-export const POWERS: readonly PowerDef[] = [
+const LEVELED: readonly PowerDef[] = [
   {
-    id: 'arrow',
+    // count arrows, damage each, speed px/s, duration = lifetime, radius = hit radius
+    id: 'heilig',
     kind: 'bolt',
-    name: 'Spirit Arrow',
-    desc: 'Fires arrows of light at the nearest enemy.',
+    group: 'art',
+    name: 'Heilig Pfeil',
+    credit: 'Quincy art',
+    desc: 'Holy arrows fly at the nearest enemy.',
     icon: 'arrow',
-    color: '#7cc8ff',
-    base: { damage: 11, cooldown: 0.8, count: 1, speed: 430, pierce: 0, size: 1, duration: 1.3, radius: 7 },
+    color: '#8fd0ff',
+    maxLevel: 7,
+    base: stats({ damage: 11, cooldown: 0.8, count: 1, speed: 430, duration: 1.3, radius: 7 }),
     levels: [
       { desc: '+1 arrow', add: { count: 1 } },
       { desc: '+5 damage', add: { damage: 5 } },
@@ -59,19 +31,23 @@ export const POWERS: readonly PowerDef[] = [
       { desc: '+7 damage', add: { damage: 7 } },
     ],
     attributes: [
-      { id: 'volley', name: 'Volley', desc: 'Every cast also looses a wide fan of 4 arrows.' },
-      { id: 'lancer', name: 'Lancer', desc: 'Arrows pierce everything, fly 40% faster and grow 25%.' },
-      { id: 'detonate', name: 'Detonate', desc: 'Arrows burst on impact, hitting everything nearby for 60%.' },
+      { id: 'lichtregen', name: 'Licht Regen', desc: 'Every volley also rains five arrows on enemies around you.' },
+      { id: 'bogen', name: 'Heilig Bogen', desc: 'Arrows pierce everything, fly 40% faster and grow 25%.' },
+      { id: 'sprenger', name: 'Sprenger', desc: 'Arrows burst on impact, hitting everything nearby for 60%.' },
     ],
   },
   {
-    id: 'halo',
+    // count blades, speed rad/s, duration = uptime, radius = orbit radius
+    id: 'seele',
     kind: 'orbit',
-    name: 'Halo Blades',
-    desc: 'Blades of light circle you and cut what they touch.',
+    group: 'art',
+    name: 'Seele Schneider',
+    credit: 'Quincy art',
+    desc: 'Blades of reishi circle you and cut what they touch.',
     icon: 'blade',
-    color: '#ffd27a',
-    base: { damage: 9, cooldown: 3, count: 2, speed: 3.4, pierce: 0, size: 1, duration: 3.5, radius: 62 },
+    color: '#bfe6ff',
+    maxLevel: 7,
+    base: stats({ damage: 9, cooldown: 3, count: 2, speed: 3.4, duration: 3.5, radius: 62 }),
     levels: [
       { desc: '+1 blade', add: { count: 1 } },
       { desc: '+4 damage', add: { damage: 4 } },
@@ -81,52 +57,354 @@ export const POWERS: readonly PowerDef[] = [
     ],
     attributes: [
       { id: 'eternal', name: 'Eternal', desc: 'The blades never fade.' },
-      { id: 'twin', name: 'Twin Halo', desc: 'A second, wider ring spins the other way.' },
-      { id: 'razor', name: 'Razor Wind', desc: 'Blades throw shards outward when they cut.' },
+      { id: 'twin', name: 'Twin Ring', desc: 'A second, wider ring spins the other way.' },
+      { id: 'shards', name: 'Shard Spray', desc: 'Blades throw shards outward when they cut.' },
     ],
   },
   {
-    id: 'pulse',
+    // a ring every cooldown, radius = ring reach
+    id: 'roar',
     kind: 'pulse',
-    name: 'Holy Pulse',
-    desc: 'A ring of force pulses out from you.',
+    group: 'schrift',
+    name: 'The Roar',
+    letter: 'R',
+    credit: 'Jerome Guizbatt',
+    desc: 'Shockwave rings burst out from you.',
     icon: 'pulse',
-    color: '#b69cff',
-    base: { damage: 6, cooldown: 1.1, count: 1, speed: 0, pierce: 0, size: 1, duration: 0, radius: 74 },
+    color: '#d7c3ff',
+    maxLevel: 7,
+    base: stats({ damage: 6, cooldown: 1.1, radius: 74 }),
     levels: [
       { desc: '+3 damage', add: { damage: 3 } },
-      { desc: 'Radius +11', add: { radius: 11 } },
-      { desc: 'Pulses 0.15 s faster', add: { cooldown: -0.15 } },
+      { desc: 'Reach +11', add: { radius: 11 } },
+      { desc: 'Rings 0.15 s faster', add: { cooldown: -0.15 } },
       { desc: '+4 damage', add: { damage: 4 } },
-      { desc: 'Radius +14', add: { radius: 14 } },
+      { desc: 'Reach +14', add: { radius: 14 } },
     ],
     attributes: [
-      { id: 'frost', name: 'Frost Field', desc: 'Pulses slow enemies by 45% for 1.5 s.' },
-      { id: 'overcharge', name: 'Overcharge', desc: 'Every 4th pulse hits 5 times harder.' },
-      { id: 'repel', name: 'Repel', desc: 'Pulses hurl enemies away from you.' },
+      { id: 'paralyze', name: 'Paralyzing Roar', desc: 'Rings paralyze enemies for half a second.' },
+      { id: 'overcharge', name: 'Overcharge', desc: 'Every fourth ring hits five times harder.' },
+      { id: 'repel', name: 'Repel', desc: 'Rings hurl enemies away from you.' },
     ],
   },
   {
-    id: 'judgment',
+    // count bolts on random nearby enemies, radius = blast
+    id: 'thunder',
     kind: 'strike',
-    name: 'Judgment',
-    desc: 'Pillars of light strike enemies near you.',
+    group: 'schrift',
+    name: 'The Thunderbolt',
+    letter: 'T',
+    credit: 'Candice Catnipp',
+    desc: 'Lightning strikes enemies near you.',
     icon: 'strike',
     color: '#fff0a0',
-    base: { damage: 28, cooldown: 2.2, count: 1, speed: 0, pierce: 0, size: 1, duration: 0, radius: 34 },
+    maxLevel: 7,
+    base: stats({ damage: 28, cooldown: 2.2, count: 1, radius: 34 }),
     levels: [
-      { desc: '+1 strike', add: { count: 1 } },
+      { desc: '+1 bolt', add: { count: 1 } },
       { desc: '+12 damage', add: { damage: 12 } },
       { desc: 'Cooldown -0.3 s', add: { cooldown: -0.3 } },
-      { desc: '+1 strike', add: { count: 1 } },
+      { desc: '+1 bolt', add: { count: 1 } },
       { desc: '+16 damage, bigger blast', add: { damage: 16, radius: 6 } },
     ],
     attributes: [
-      { id: 'chain', name: 'Chain', desc: 'Each strike arcs to 3 more enemies for half damage.' },
-      { id: 'tempest', name: 'Tempest', desc: '+4 strikes every cast.' },
-      { id: 'execute', name: 'Execution', desc: 'Strikes slay non-boss enemies left under 20% health.' },
+      { id: 'chain', name: 'Chain', desc: 'Each bolt arcs to three more enemies for half damage.' },
+      { id: 'storm', name: 'Storm', desc: '+4 bolts every cast.' },
+      { id: 'electrocute', name: 'Electrocute', desc: 'Bolts slay non-boss enemies left under 20% health.' },
+    ],
+  },
+  {
+    // count beams, radius = beam width
+    id: 'xaxis',
+    kind: 'beam',
+    group: 'schrift',
+    name: 'The X-Axis',
+    letter: 'X',
+    credit: 'Lille Barro',
+    desc: 'A beam pierces everything along its line.',
+    icon: 'beam',
+    color: '#9fe7ff',
+    maxLevel: 7,
+    base: stats({ damage: 26, cooldown: 2, count: 1, radius: 12 }),
+    levels: [
+      { desc: '+10 damage', add: { damage: 10 } },
+      { desc: 'Cooldown -0.25 s', add: { cooldown: -0.25 } },
+      { desc: '+1 beam', add: { count: 1 } },
+      { desc: '+14 damage', add: { damage: 14 } },
+      { desc: 'Wider beam, cooldown -0.2 s', add: { radius: 6, cooldown: -0.2 } },
+    ],
+    attributes: [
+      { id: 'twinaxis', name: 'Twin Axis', desc: 'Every beam is crossed by a second one at a right angle.' },
+      { id: 'sniper', name: 'Sniper', desc: 'Beams hit twice as hard and twice as wide.' },
+      { id: 'rapid', name: 'Rapid Fire', desc: 'Each cast fires three times in quick succession.' },
+    ],
+  },
+  {
+    // count bombs, radius = blast, duration = flight time
+    id: 'explode',
+    kind: 'lob',
+    group: 'schrift',
+    name: 'The Explode',
+    letter: 'E',
+    credit: 'Bambietta Basterbine',
+    desc: 'Reishi bombs are lobbed into the swarm and blow up.',
+    icon: 'bomb',
+    color: '#ffb37a',
+    maxLevel: 7,
+    base: stats({ damage: 22, cooldown: 2.4, count: 1, radius: 46, duration: 0.6 }),
+    levels: [
+      { desc: '+1 bomb', add: { count: 1 } },
+      { desc: '+8 damage', add: { damage: 8 } },
+      { desc: 'Blast +10', add: { radius: 10 } },
+      { desc: '+1 bomb', add: { count: 1 } },
+      { desc: '+12 damage, cooldown -0.3 s', add: { damage: 12, cooldown: -0.3 } },
+    ],
+    attributes: [
+      { id: 'volatile', name: 'Volatile', desc: 'Enemies killed by a blast explode in turn.' },
+      { id: 'cluster', name: 'Cluster', desc: 'Every bomb bursts into four smaller ones.' },
+      { id: 'bigbang', name: 'Big Bang', desc: 'Blasts grow 80% wider and hit 50% harder, a little slower.' },
+    ],
+  },
+  {
+    // count jets, radius = jet length, amount = jet width, duration = Afterburn seconds
+    id: 'heat',
+    kind: 'jet',
+    group: 'schrift',
+    name: 'The Heat',
+    letter: 'H',
+    credit: 'Bazz-B',
+    desc: 'Burner Finger: a jet of fire where you are heading.',
+    icon: 'flame',
+    color: '#ff8a4a',
+    maxLevel: 7,
+    base: stats({ damage: 10, cooldown: 1.2, count: 1, radius: 150, duration: 3, amount: 26 }),
+    levels: [
+      { desc: '+4 damage', add: { damage: 4 } },
+      { desc: 'Longer jet', add: { radius: 30 } },
+      { desc: 'Cooldown -0.2 s', add: { cooldown: -0.2 } },
+      { desc: '+1 jet', add: { count: 1 } },
+      { desc: '+6 damage', add: { damage: 6 } },
+    ],
+    attributes: [
+      { id: 'finger4', name: 'Burner Finger 4', desc: 'Fires four jets in a fan.' },
+      { id: 'ignite', name: 'Ignite', desc: 'Jets leave burning ground behind.' },
+      { id: 'afterburn', name: 'Afterburn', desc: 'Enemies hit keep burning for 3 seconds.' },
+    ],
+  },
+  {
+    // count meteors, radius = impact, duration = warning time
+    id: 'visionary',
+    kind: 'meteor',
+    group: 'schrift',
+    name: 'The Visionary',
+    letter: 'V',
+    credit: 'Gremmy Thoumeaux',
+    desc: 'Imagined meteors crash into the swarm after a warning.',
+    icon: 'meteor',
+    color: '#ffd27a',
+    maxLevel: 7,
+    base: stats({ damage: 40, cooldown: 3.2, count: 1, radius: 62, duration: 0.9 }),
+    levels: [
+      { desc: '+16 damage', add: { damage: 16 } },
+      { desc: 'Impact +12', add: { radius: 12 } },
+      { desc: 'Cooldown -0.4 s', add: { cooldown: -0.4 } },
+      { desc: '+1 meteor', add: { count: 1 } },
+      { desc: '+24 damage', add: { damage: 24 } },
+    ],
+    attributes: [
+      { id: 'shower', name: 'Meteor Shower', desc: 'Each meteor brings three smaller ones.' },
+      { id: 'crater', name: 'Crater', desc: 'Impacts leave a burning crater.' },
+      { id: 'colossus', name: 'Colossus', desc: 'A single meteor, four times the damage and far wider.' },
+    ],
+  },
+  {
+    // count thorns in the ring, duration = paralysis seconds
+    id: 'fear',
+    kind: 'thorns',
+    group: 'schrift',
+    name: 'The Fear',
+    letter: 'F',
+    credit: 'Äs Nödt',
+    desc: 'A ring of fear thorns bursts out; anything hit is paralyzed.',
+    icon: 'thorn',
+    color: '#c08bff',
+    maxLevel: 7,
+    base: stats({ damage: 8, cooldown: 2.6, count: 8, speed: 340, pierce: 1, duration: 0.6, radius: 6 }),
+    levels: [
+      { desc: '+4 thorns', add: { count: 4 } },
+      { desc: '+4 damage', add: { damage: 4 } },
+      { desc: 'Paralysis +0.2 s', add: { duration: 0.2 } },
+      { desc: 'Cooldown -0.4 s', add: { cooldown: -0.4 } },
+      { desc: '+4 thorns, +5 damage', add: { count: 4, damage: 5 } },
+    ],
+    attributes: [
+      { id: 'dread', name: 'Dread', desc: 'Paralysis lasts twice as long.' },
+      { id: 'thornstorm', name: 'Thorn Storm', desc: 'A second ring of thorns follows the first.' },
+      { id: 'terror', name: 'Terror', desc: 'Paralyzed enemies take 50% more damage.' },
+    ],
+  },
+  {
+    // count gusts, damage per tick, speed px/s, radius, duration = lifetime
+    id: 'wind',
+    kind: 'gust',
+    group: 'schrift',
+    name: 'The Wind',
+    letter: 'W',
+    credit: 'Nianzol Weizol',
+    desc: 'Gusts wander through the swarm, cutting and shoving.',
+    icon: 'gust',
+    color: '#e6f4ff',
+    maxLevel: 7,
+    base: stats({ damage: 6, cooldown: 4, count: 1, speed: 110, radius: 46, duration: 3, tick: 0.25 }),
+    levels: [
+      { desc: '+1 gust', add: { count: 1 } },
+      { desc: '+3 damage', add: { damage: 3 } },
+      { desc: 'Lasts 1 s longer', add: { duration: 1 } },
+      { desc: 'Wider gusts', add: { radius: 10 } },
+      { desc: '+1 gust, +4 damage', add: { count: 1, damage: 4 } },
+    ],
+    attributes: [
+      { id: 'gale', name: 'Gale', desc: 'Gusts grow 60% bigger and last 60% longer.' },
+      { id: 'twin', name: 'Twin Gusts', desc: '+1 gust every cast.' },
+      { id: 'vacuum', name: 'Vacuum', desc: 'Gusts drag enemies in instead of pushing them away.' },
+    ],
+  },
+  {
+    // count clouds, damage per tick, radius, duration = lifetime
+    id: 'death',
+    kind: 'cloud',
+    group: 'schrift',
+    name: 'The Deathdealing',
+    letter: 'D',
+    credit: 'Askin Nakk Le Vaar',
+    desc: 'Clouds of a lethal dose poison everything inside.',
+    icon: 'cloud',
+    color: '#9dff8a',
+    maxLevel: 7,
+    base: stats({ damage: 7, cooldown: 3.5, count: 1, radius: 58, duration: 4, tick: 0.5 }),
+    levels: [
+      { desc: '+1 cloud', add: { count: 1 } },
+      { desc: '+4 damage', add: { damage: 4 } },
+      { desc: 'Wider clouds', add: { radius: 12 } },
+      { desc: 'Lasts 1 s longer, cooldown -0.4 s', add: { duration: 1, cooldown: -0.4 } },
+      { desc: '+1 cloud, +5 damage', add: { count: 1, damage: 5 } },
+    ],
+    attributes: [
+      { id: 'lethal', name: 'Lethal Dose', desc: 'Enemies in a cloud take 30% more damage from everything.' },
+      { id: 'spreading', name: 'Spreading', desc: 'Enemies that die in a cloud release a new one.' },
+      { id: 'giftball', name: 'Gift Ball', desc: 'A cloud also wraps around you while it lasts.' },
+    ],
+  },
+  {
+    // count drones, cooldown = fire interval, speed = missile speed, radius = missile burst
+    id: 'knowledge',
+    kind: 'drones',
+    group: 'schrift',
+    name: 'The Knowledge',
+    letter: 'K',
+    credit: 'BG9',
+    desc: 'Mechanical drones hover around you and fire missiles.',
+    icon: 'drone',
+    color: '#a8c4ff',
+    maxLevel: 7,
+    base: stats({ damage: 14, cooldown: 1.4, count: 1, speed: 320, radius: 26 }),
+    levels: [
+      { desc: '+6 damage', add: { damage: 6 } },
+      { desc: '+1 drone', add: { count: 1 } },
+      { desc: 'Fire 0.25 s faster', add: { cooldown: -0.25 } },
+      { desc: '+8 damage', add: { damage: 8 } },
+      { desc: '+1 drone', add: { count: 1 } },
+    ],
+    attributes: [
+      { id: 'arsenal', name: 'Arsenal', desc: '+2 drones.' },
+      { id: 'homing', name: 'Homing', desc: 'Missiles chase their targets.' },
+      { id: 'overclock', name: 'Overclock', desc: 'Drones fire 60% faster.' },
+    ],
+  },
+  {
+    // count = charges, cooldown = recharge, damage = burst when a hit is blocked
+    id: 'iron',
+    kind: 'iron',
+    group: 'utility',
+    name: 'The Iron',
+    letter: 'I',
+    credit: 'Cang Du',
+    desc: 'Steel skin blocks one hit, then recharges over 12 s.',
+    icon: 'shield',
+    color: '#c9d3e3',
+    maxLevel: 5,
+    base: stats({ cooldown: 12, count: 1 }),
+    levels: [
+      { desc: 'Recharges 2 s faster', add: { cooldown: -2 } },
+      { desc: '+1 charge', add: { count: 1 } },
+      { desc: 'Recharges 2 s faster', add: { cooldown: -2 } },
+      { desc: 'Blocked hits release a steel burst', add: { damage: 60 } },
+    ],
+  },
+  {
+    // every cooldown: +amount damage for duration seconds
+    id: 'superstar',
+    kind: 'superstar',
+    group: 'utility',
+    name: 'The Superstar',
+    letter: 'S',
+    credit: 'Mask De Masculine',
+    desc: 'Every 14 s the crowd cheers: +30% damage for 4 s.',
+    icon: 'star',
+    color: '#ffd27a',
+    maxLevel: 5,
+    base: stats({ cooldown: 14, duration: 4, amount: 0.3 }),
+    levels: [
+      { desc: '+5% damage while cheered', add: { amount: 0.05 } },
+      { desc: 'Cheers last 1 s longer', add: { duration: 1 } },
+      { desc: 'Cheers come 2 s sooner', add: { cooldown: -2 } },
+      { desc: '+10% damage while cheered', add: { amount: 0.1 } },
+    ],
+  },
+  {
+    // every `count` kills: +`damage` damage, capped at `amount`
+    id: 'overkill',
+    kind: 'overkill',
+    group: 'utility',
+    name: 'The Overkill',
+    letter: 'O',
+    credit: 'Driscoll Berci',
+    desc: 'Every 40 kills adds 1% damage for the rest of the run, up to +20%.',
+    icon: 'drop',
+    color: '#ff6b6b',
+    maxLevel: 5,
+    base: stats({ count: 40, damage: 0.01, amount: 0.2 }),
+    levels: [
+      { desc: 'Cap +8%', add: { amount: 0.08 } },
+      { desc: 'Every 32 kills', add: { count: -8 } },
+      { desc: 'Cap +10%', add: { amount: 0.1 } },
+      { desc: 'Every 24 kills, cap +12%', add: { count: -8, amount: 0.12 } },
+    ],
+  },
+  {
+    // every cooldown: duration seconds of invulnerability, halved cooldowns and +30% speed
+    id: 'vollstandig',
+    kind: 'vollstandig',
+    group: 'utility',
+    name: 'Quincy: Vollständig',
+    credit: 'Quincy art',
+    desc: 'Every 60 s, wings of light: 5 s of invulnerability, halved cooldowns and +30% speed.',
+    icon: 'wings',
+    color: '#bfe6ff',
+    maxLevel: 5,
+    base: stats({ cooldown: 60, duration: 5 }),
+    levels: [
+      { desc: 'Every 55 s', add: { cooldown: -5 } },
+      { desc: 'Lasts 1 s longer', add: { duration: 1 } },
+      { desc: 'Every 50 s', add: { cooldown: -5 } },
+      { desc: 'Lasts 2 s longer', add: { duration: 2 } },
     ],
   },
 ];
+
+export const STARTING_POWER = 'heilig';
+
+/** Everything that can be owned, bankai included (they never show up as new cards). */
+export const POWERS: readonly PowerDef[] = [...LEVELED, ...BANKAI_POWERS];
 
 export const POWER_BY_ID: ReadonlyMap<string, PowerDef> = new Map(POWERS.map((p) => [p.id, p]));

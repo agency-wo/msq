@@ -13,10 +13,14 @@ export const firstCard: Strategy = (o) => o[0];
 export const sensible: Strategy = (o) =>
   o.find((x) => x.kind === 'power-attr') ?? o.find((x) => x.kind === 'power-up') ?? o.find((x) => x.kind === 'power-new') ?? o[0];
 
-/** Pessimistic: walks a big circle and ignores both enemies and orbs. */
+/** Pessimistic: walks a big circle and ignores enemies, orbs and chests. */
 export const circle: Mover = (w) => [Math.cos(w.t * 0.35), Math.sin(w.t * 0.35)];
 
-/** Closer to a person: backs away from enemies that get close, otherwise heads for the nearest orb. */
+/**
+ * Closer to a person: backs away from enemies that get close and from boss
+ * warnings it is standing in, goes for medallions and chests first, otherwise
+ * the nearest orb.
+ */
 export const bot: Mover = (w) => {
   const p = w.player;
   const E = w.en;
@@ -35,13 +39,24 @@ export const bot: Mover = (w) => {
       my += (dy / d) * k;
     }
   }
-  // Chests first (people always go for them), then the nearest orb.
+  // Step out of circular warnings aimed at you.
+  const M = w.marks;
+  for (let i = 0; i < M.n; i++) {
+    if (!(M.flags[i] & 1) || M.shape[i] !== 0) continue;
+    const dx = p.x - M.x[i];
+    const dy = p.y - M.y[i];
+    const d = Math.hypot(dx, dy);
+    if (d < M.r[i] + 14) {
+      mx += ((d > 1 ? dx / d : 1) * 4);
+      my += ((d > 1 ? dy / d : 0) * 4);
+    }
+  }
   let tx = 0;
   let ty = 0;
   let found = false;
   let bestD = 700 * 700;
   for (const q of w.pickups) {
-    if (q.kind !== 'chest' && q.kind !== 'chestBlack') continue;
+    if (q.kind !== 'chest' && q.kind !== 'chestBlack' && q.kind !== 'medallion') continue;
     const d2 = (q.x - p.x) ** 2 + (q.y - p.y) ** 2;
     if (d2 < bestD) {
       bestD = d2;
@@ -79,8 +94,8 @@ export function resolveChoices(w: World, pick: Strategy): void {
   while (w.pendingLevelUps > 0) {
     const o = pick(w.offers());
     if (o.kind === 'power-attr') {
-      const ps = w.powers.find((p) => p.def.id === o.id);
-      if (ps) w.chooseAttribute(o.id, ps.def.attributes[0].id);
+      const ps = w.powers.find((q) => q.def.id === o.id);
+      if (ps?.def.attributes) w.chooseAttribute(o.id, ps.def.attributes[0].id);
     } else {
       w.applyOffer(o);
     }
