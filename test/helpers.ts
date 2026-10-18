@@ -93,9 +93,18 @@ export const bot: Mover = (w) => {
     } else if (d < M.r[i] + 14) {
       let da = Math.atan2(dy, dx) - M.ang[i];
       da = Math.atan2(Math.sin(da), Math.cos(da));
-      if (Math.abs(da) < M.len[i] + 0.2) {
-        mx += (d > 1 ? dx / d : 1) * 4;
-        my += (d > 1 ? dy / d : 0) * 4;
+      if (Math.abs(da) < M.len[i] + 0.2 && d > 1) {
+        // Out of a wedge by the shorter way: straight back out, or sideways past its edge.
+        const back = M.r[i] + 14 - d;
+        const side = d * Math.sin(Math.max(0, M.len[i] + 0.2 - Math.abs(da)));
+        if (back < side) {
+          mx += (dx / d) * 4;
+          my += (dy / d) * 4;
+        } else {
+          const dir = da >= 0 ? 1 : -1;
+          mx += (-dy / d) * dir * 4;
+          my += (dx / d) * dir * 4;
+        }
       }
     }
   }

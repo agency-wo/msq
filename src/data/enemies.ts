@@ -10,7 +10,10 @@ export type EnemyId =
   | 'flash'
   | 'caster'
   | 'guard'
-  | 'grandmaster';
+  | 'grandmaster'
+  | 'captain'
+  | 'commander'
+  | 'ashen';
 
 /** chase: walks at you · blink: walks, and every few seconds flash-steps closer · ranged: keeps its distance and shoots. */
 export type EnemyBehavior = 'chase' | 'blink' | 'ranged';
@@ -66,6 +69,24 @@ export const ENEMY_LIST: readonly EnemyDef[] = [
     shinigami: true,
     color: 0xffb37a,
   },
+  // Seireitei's bankai bosses: the captains themselves, fighting with their own bankai (variant = which one).
+  { id: 'captain', name: 'Captain', hp: 2600, speed: 46, radius: 30, damage: 25, xp: 60, behavior: 'chase', boss: true, shinigami: true, color: 0xf4f6fb },
+  // Seireitei's final boss: the Captain-Commander and the flames of Ryūjin Jakka.
+  {
+    id: 'commander',
+    name: 'Genryūsai Yamamoto',
+    hp: 2600,
+    speed: 38,
+    radius: 34,
+    damage: 36,
+    xp: 160,
+    behavior: 'chase',
+    boss: true,
+    shinigami: true,
+    color: 0xff7a3c,
+  },
+  // The charred dead the Captain-Commander raises against you.
+  { id: 'ashen', name: 'Ashen Dead', hp: 30, speed: 70, radius: 12, damage: 12, xp: 1, behavior: 'chase', color: 0xc08a5a },
 ];
 
 export const ENEMY_INDEX: Readonly<Record<EnemyId, number>> = {
@@ -81,4 +102,7 @@ export const ENEMY_INDEX: Readonly<Record<EnemyId, number>> = {
   caster: 9,
   guard: 10,
   grandmaster: 11,
+  captain: 12,
+  commander: 13,
+  ashen: 14,
 };

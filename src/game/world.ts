@@ -297,8 +297,8 @@ export class World {
     this.god = !!opts.god || this.stress > 0;
     this.showNumbers = opts.numbers ?? true;
 
-    // Draw this run's bearers: three different bankai, any forced ones first.
-    const pool = BANKAI_IDS.slice();
+    // Draw this run's bearers: three different bankai from the stage's pool, any forced ones first.
+    const pool = (this.stage.bearerPool ?? BANKAI_IDS).slice();
     for (let i = pool.length - 1; i > 0; i--) {
       const j = this.rng.int(i + 1);
       const tmp = pool[i];
@@ -311,7 +311,7 @@ export class World {
     this.warnings = [];
     const events = this.stage.events;
     for (const e of events) {
-      if (e.kind === 'bearer') this.warnings.push({ at: e.at - 4, text: 'A medallion bearer approaches' });
+      if (e.kind === 'bearer') this.warnings.push({ at: e.at - 4, text: this.stage.captains ? 'A captain approaches' : 'A medallion bearer approaches' });
       else if (e.kind === 'boss') this.warnings.push({ at: e.at - 4, text: e.warn });
     }
 
@@ -444,11 +444,19 @@ export class World {
         const id = this.bearers[ev.tier];
         if (!id) break;
         this.edgePoint(80);
-        const i = this.spawnEnemy(ENEMY_INDEX.bearer, this.tx, this.ty, false, ev.hpMul);
+        // In Seireitei the bankai's own captain defends it; elsewhere a medallion bearer carries it.
+        const captain = !!this.stage.captains;
+        const i = this.spawnEnemy(captain ? ENEMY_INDEX.captain : ENEMY_INDEX.bearer, this.tx, this.ty, false, ev.hpMul);
         if (i < 0) break;
         this.en.variant[i] = BANKAI_IDS.indexOf(id);
         this.bossCount++;
-        this.banners.push({ kind: 'boss', title: 'Medallion Bearer', sub: `carries ${POWER_BY_ID.get(id)?.name ?? id}` });
+        const bankaiName = POWER_BY_ID.get(id)?.name ?? id;
+        const info = BANKAI_BY_ID.get(id);
+        this.banners.push(
+          captain && info
+            ? { kind: 'boss', title: info.owner, sub: `${info.rank} · ${bankaiName}` }
+            : { kind: 'boss', title: 'Medallion Bearer', sub: `carries ${bankaiName}` },
+        );
         this.shake = Math.max(this.shake, 8);
         break;
       }
@@ -929,10 +937,11 @@ export class World {
     if (flags & FLAG_BOSS) {
       this.bossCount = Math.max(0, this.bossCount - 1);
       if (E.uid[i] !== this.finalBossUid) this.bossKills++;
-      if (def.id === 'bearer') {
+      const carrier = def.id === 'bearer' || def.id === 'captain';
+      if (carrier) {
         this.addPickup('medallion', x, y, BANKAI_IDS[E.variant[i]]);
         this.addPickup('chestBlack', x + 36, y + 12);
-      } else if (def.id === 'menos') {
+      } else if (def.id === 'menos' || def.id === 'grandmaster') {
         this.addPickup('chest', x, y);
       }
       for (let k = 0; k < 10; k++) {
@@ -941,7 +950,13 @@ export class World {
         this.spawnOrb(x + Math.cos(a) * d, y + Math.sin(a) * d, E.xp[i] * 0.3);
       }
       this.shake = Math.max(this.shake, 14);
-      this.messages.push({ text: def.id === 'bearer' ? 'The bearer falls. Take back its medallion.' : `${def.name} defeated`, kind: 'info' });
+      const fallen =
+        def.id === 'bearer'
+          ? 'The bearer falls. Take back its medallion.'
+          : def.id === 'captain'
+            ? `${BANKAI_BY_ID.get(BANKAI_IDS[E.variant[i]])?.owner ?? 'The captain'} falls. Seize the bankai.`
+            : `${def.name} defeated`;
+      this.messages.push({ text: fallen, kind: 'info' });
       this.bigBurst(x, y, def.color);
       if (E.uid[i] === this.finalBossUid) this.victoryT = 2.2;
     } else {
@@ -1621,7 +1636,13 @@ export class World {
           this.boss.active = true;
           this.boss.hp = E.hp[i];
           this.boss.max = E.maxHp[i];
-          this.boss.name = def.id === 'bearer' ? (POWER_BY_ID.get(BANKAI_IDS[E.variant[i]])?.name ?? def.name) : def.name;
+          const bankai = BANKAI_IDS[E.variant[i]];
+          this.boss.name =
+            def.id === 'bearer'
+              ? (POWER_BY_ID.get(bankai)?.name ?? def.name)
+              : def.id === 'captain'
+                ? (BANKAI_BY_ID.get(bankai)?.owner ?? def.name)
+                : def.name;
           break;
         }
       }

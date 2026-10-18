@@ -1419,8 +1419,6 @@ interface ReaperLook {
   broad?: number;
   /** Cloth over the lower face (scouts). */
   scarf?: boolean;
-  /** Headband (seated officers). */
-  band?: boolean;
   sword?: 'hip' | 'raised' | 'back';
   /** A glowing Kidō orb in the off hand. */
   orb?: string;
@@ -1497,8 +1495,15 @@ function reaper(g: Ctx, cx: number, cy: number, s: number, o: ReaperLook): void 
     g.ellipse(cx + 9 * s * b, cy - 5 * s, 5 * s, 3.2 * s, 0.3, 0, TAU);
     g.fill();
   }
+  // White tabi
+  g.fillStyle = '#f4f2ec';
+  for (const dir of [-1, 1]) {
+    g.beginPath();
+    g.ellipse(cx + dir * 4 * s * b, cy + 20.6 * s, 2.4 * s, 1.3 * s, 0, 0, TAU);
+    g.fill();
+  }
   if (o.sword === 'hip') {
-    // Worn at the left hip: hilt forward, blade sloping back and down.
+    // Worn at the left hip: hilt forward, blade sloping back and down, a round guard between.
     g.save();
     g.translate(cx + 7 * s * b, cy + 5 * s);
     g.rotate(0.9);
@@ -1506,6 +1511,10 @@ function reaper(g: Ctx, cx: number, cy: number, s: number, o: ReaperLook): void 
     g.fillRect(0, -1.2 * s, 15 * s, 2.4 * s);
     g.fillStyle = BONE;
     g.fillRect(-5 * s, -1.2 * s, 5 * s, 2.4 * s);
+    g.fillStyle = '#c9a24a';
+    g.beginPath();
+    g.ellipse(0, 0, 0.9 * s, 2.2 * s, 0, 0, TAU);
+    g.fill();
     g.restore();
   }
   if (o.sword === 'raised') {
@@ -1552,17 +1561,6 @@ function reaper(g: Ctx, cx: number, cy: number, s: number, o: ReaperLook): void 
     g.closePath();
     g.fill();
   }
-  if (o.band) {
-    g.fillStyle = '#f4f6fb';
-    g.fillRect(cx - 6.6 * s, cy - 15 * s, 13.2 * s, 2 * s);
-    poly(g, [
-      [cx - 6 * s, cy - 15 * s],
-      [cx - 12 * s, cy - 11 * s],
-      [cx - 10 * s, cy - 10 * s],
-      [cx - 5 * s, cy - 13.5 * s],
-    ]);
-    g.fill();
-  }
 }
 
 const officer: Draw = (g, w, h) => {
@@ -1585,10 +1583,21 @@ const guard: Draw = (g, w, h) => {
   reaper(g, w / 2, h / 2 + 4, 1.45, { broad: 1.35, sash: '#8a8f9c', sword: 'back' });
 };
 
-/** Elite: a seated officer with a headband and a drawn blade. */
+/** Elite: a lieutenant, the white armband on the left arm, blade drawn. */
 const seated: Draw = (g, w, h) => {
   aura(g, w / 2, h / 2 + 4, 34, 'rgba(255,60,90,0.22)');
-  reaper(g, w / 2 - 3, h / 2 + 5, 1.32, { band: true, sash: '#c23a4a', sword: 'raised' });
+  const s = 1.32;
+  const cx = w / 2 - 3;
+  const cy = h / 2 + 5;
+  reaper(g, cx, cy, s, { sash: '#c23a4a', sword: 'raised' });
+  g.save();
+  g.translate(cx - 10 * s, cy + 0.5 * s);
+  g.rotate(0.25);
+  g.fillStyle = '#f2f2ee';
+  g.fillRect(-4 * s, -1.6 * s, 8 * s, 3.2 * s);
+  g.fillStyle = '#20232e';
+  g.fillRect(-1.1 * s, -1 * s, 2.2 * s, 2 * s);
+  g.restore();
 };
 
 /**
@@ -1687,6 +1696,689 @@ const grandmaster: Draw = (g, w, h) => {
     g.moveTo(cx, cy - 46);
     g.lineTo(cx + k * 12, cy - 26.5);
     g.stroke();
+  }
+};
+
+// --------------------------------------------------------------- captains
+
+/*
+ * The Gotei 13 as chibi homages, in the same proportions as the Soul Reaper
+ * soldiers: each captain is recognisable by their signature features (hair,
+ * the white captain's haori with its diamond-pattern hem, what they carry)
+ * but drawn in this game's own simple style.
+ */
+
+const SKIN = '#efdcc6';
+const HAORI = '#f3f5fa';
+
+interface CaptainLook {
+  /** sleeved: the usual haori · sleeveless: short, bare arms · draped: hung from the shoulders · none: lieutenant. */
+  haori: 'sleeved' | 'sleeveless' | 'draped' | 'none';
+  broad?: number;
+  obi?: string;
+}
+
+/** Black kimono and hakama, white tabi, and the haori over them. Head and props are drawn by each captain. */
+function captainBody(g: Ctx, cx: number, cy: number, s: number, o: CaptainLook): void {
+  const b = o.broad ?? 1;
+  if (o.haori === 'draped') {
+    // Hung from the shoulders like a cape, wider than the body.
+    g.fillStyle = HAORI;
+    g.beginPath();
+    g.moveTo(cx - 9 * s * b, cy - 7 * s);
+    g.quadraticCurveTo(cx - 16 * s * b, cy + 6 * s, cx - 14.5 * s * b, cy + 19 * s);
+    g.lineTo(cx + 14.5 * s * b, cy + 19 * s);
+    g.quadraticCurveTo(cx + 16 * s * b, cy + 6 * s, cx + 9 * s * b, cy - 7 * s);
+    g.closePath();
+    g.fill();
+    g.strokeStyle = 'rgba(20,24,40,0.35)';
+    g.lineWidth = 1;
+    g.stroke();
+    diamondBand(g, cx - 14 * s * b, cx + 14 * s * b, cy + 16.4 * s, s);
+  }
+  // Kimono and hakama
+  const robe = g.createLinearGradient(0, cy - 6 * s, 0, cy + 20 * s);
+  robe.addColorStop(0, '#262935');
+  robe.addColorStop(1, '#07080c');
+  g.fillStyle = robe;
+  g.beginPath();
+  g.moveTo(cx - 8 * s * b, cy - 6 * s);
+  g.lineTo(cx + 8 * s * b, cy - 6 * s);
+  g.lineTo(cx + 11 * s * b, cy + 20 * s);
+  g.lineTo(cx - 11 * s * b, cy + 20 * s);
+  g.closePath();
+  g.fill();
+  g.strokeStyle = 'rgba(214,222,240,0.55)';
+  g.lineWidth = 1;
+  g.stroke();
+  // White tabi and sandals
+  for (const dir of [-1, 1]) {
+    g.fillStyle = '#f4f2ec';
+    g.beginPath();
+    g.ellipse(cx + dir * 4 * s, cy + 20.6 * s, 2.6 * s, 1.4 * s, 0, 0, TAU);
+    g.fill();
+  }
+  // White under-collar
+  g.fillStyle = '#eceff6';
+  poly(g, [
+    [cx - 4.5 * s, cy - 6 * s],
+    [cx, cy + 1.5 * s],
+    [cx + 4.5 * s, cy - 6 * s],
+    [cx + 2.8 * s, cy - 6 * s],
+    [cx, cy - 1.2 * s],
+    [cx - 2.8 * s, cy - 6 * s],
+  ]);
+  g.fill();
+  // Obi
+  g.fillStyle = o.obi ?? '#eceff6';
+  g.fillRect(cx - 9 * s * b, cy + 4 * s, 18 * s * b, 2.2 * s);
+  if (o.haori === 'sleeved' || o.haori === 'sleeveless') {
+    const bottom = o.haori === 'sleeved' ? 18.5 : 13;
+    const panel = g.createLinearGradient(0, cy - 6 * s, 0, cy + bottom * s);
+    panel.addColorStop(0, '#ffffff');
+    panel.addColorStop(1, '#d6dbe6');
+    for (const dir of [-1, 1]) {
+      g.fillStyle = panel;
+      g.beginPath();
+      g.moveTo(cx + dir * 9 * s * b, cy - 6.5 * s);
+      g.lineTo(cx + dir * 2.4 * s, cy - 6.5 * s);
+      g.lineTo(cx + dir * 3.2 * s, cy + bottom * s);
+      g.lineTo(cx + dir * 12.6 * s * b, cy + bottom * s);
+      g.closePath();
+      g.fill();
+      g.strokeStyle = 'rgba(20,24,40,0.35)';
+      g.lineWidth = 0.9;
+      g.stroke();
+    }
+    const y = cy + (bottom - 2.2) * s;
+    diamondBand(g, cx - 12.2 * s * b, cx - 3.4 * s, y, s);
+    diamondBand(g, cx + 3.4 * s, cx + 12.2 * s * b, y, s);
+  }
+  if (o.haori === 'sleeved') {
+    for (const dir of [-1, 1]) {
+      g.fillStyle = HAORI;
+      g.beginPath();
+      g.ellipse(cx + dir * 11 * s * b, cy + 2 * s, 4.6 * s, 8 * s, -dir * 0.25, 0, TAU);
+      g.fill();
+      g.strokeStyle = 'rgba(20,24,40,0.35)';
+      g.lineWidth = 0.9;
+      g.stroke();
+    }
+  } else if (o.haori === 'sleeveless') {
+    for (const dir of [-1, 1]) {
+      g.fillStyle = SKIN;
+      g.beginPath();
+      g.ellipse(cx + dir * 10.2 * s * b, cy + 2 * s, 2.4 * s, 7 * s, -dir * 0.2, 0, TAU);
+      g.fill();
+    }
+  } else {
+    for (const dir of [-1, 1]) {
+      g.fillStyle = '#161820';
+      g.beginPath();
+      g.ellipse(cx + dir * 10.5 * s * b, cy + 1.5 * s, 4 * s, 7.4 * s, -dir * 0.25, 0, TAU);
+      g.fill();
+      g.strokeStyle = 'rgba(214,222,240,0.35)';
+      g.lineWidth = 0.8;
+      g.stroke();
+    }
+  }
+  // Hands
+  g.fillStyle = SKIN;
+  for (const dir of [-1, 1]) {
+    g.beginPath();
+    g.arc(cx + dir * 11.6 * s * b, cy + 9.6 * s, 1.6 * s, 0, TAU);
+    g.fill();
+  }
+}
+
+/** The black diamond pattern along a captain's haori hem. */
+function diamondBand(g: Ctx, x0: number, x1: number, y: number, s: number): void {
+  g.fillStyle = '#14161f';
+  const step = 3 * s;
+  for (let x = x0 + step / 2; x <= x1 - step / 3; x += step) {
+    poly(g, [
+      [x, y - 1.2 * s],
+      [x + 1.25 * s, y],
+      [x, y + 1.2 * s],
+      [x - 1.25 * s, y],
+    ]);
+    g.fill();
+  }
+}
+
+/** A face: skin, with eyes drawn by the caller. Returns nothing; the head centre is (cx, hy). */
+function faceAt(g: Ctx, cx: number, hy: number, s: number, rx = 6, ry = 6.8): void {
+  g.fillStyle = SKIN;
+  g.beginPath();
+  g.ellipse(cx, hy, rx * s, ry * s, 0, 0, TAU);
+  g.fill();
+}
+
+function eyesAt(g: Ctx, cx: number, y: number, s: number, color: string, glow: string, gap = 2.6): void {
+  glowDot(g, cx - gap * s, y, 1.1 * s, 0.75 * s, color, glow, 3 * s);
+  glowDot(g, cx + gap * s, y, 1.1 * s, 0.75 * s, color, glow, 3 * s);
+}
+
+function browsAt(g: Ctx, cx: number, y: number, s: number, color: string, tilt = 1): void {
+  g.strokeStyle = color;
+  g.lineWidth = 1 * s;
+  g.lineCap = 'round';
+  g.beginPath();
+  g.moveTo(cx - 4.6 * s, y - 0.6 * s * tilt);
+  g.lineTo(cx - 1.4 * s, y + 0.6 * s * tilt);
+  g.moveTo(cx + 4.6 * s, y - 0.6 * s * tilt);
+  g.lineTo(cx + 1.4 * s, y + 0.6 * s * tilt);
+  g.stroke();
+}
+
+/** Byakuya Kuchiki: long black hair with white kenseikan, a silver scarf, calm eyes; sakura petals around him. */
+const byakuya: Draw = (g, w, h) => {
+  const s = 2;
+  const cx = w / 2;
+  const cy = h / 2 + 4;
+  const hy = cy - 13 * s;
+  aura(g, cx, cy, 52, 'rgba(255,156,194,0.16)');
+  // The scarf trailing behind
+  g.fillStyle = 'rgba(226,232,248,0.92)';
+  g.beginPath();
+  g.moveTo(cx - 4 * s, cy - 7 * s);
+  g.quadraticCurveTo(cx - 18 * s, cy - 2 * s, cx - 17 * s, cy + 14 * s);
+  g.lineTo(cx - 13 * s, cy + 13 * s);
+  g.quadraticCurveTo(cx - 13 * s, cy, cx - 1 * s, cy - 5 * s);
+  g.closePath();
+  g.fill();
+  captainBody(g, cx, cy, s, { haori: 'sleeved', obi: '#2a2d3a' });
+  // The scarf around the neck
+  g.fillStyle = '#e2e8f8';
+  roundRect(g, cx - 7 * s, cy - 8.6 * s, 14 * s, 3.2 * s, 1.5 * s);
+  g.fill();
+  // Long straight black hair, behind and framing the face
+  g.fillStyle = '#0d0e14';
+  g.beginPath();
+  g.ellipse(cx, hy + 1 * s, 7.6 * s, 8.4 * s, 0, 0, TAU);
+  g.fill();
+  g.fillRect(cx - 7.6 * s, hy, 3 * s, 9 * s);
+  g.fillRect(cx + 4.6 * s, hy, 3 * s, 9 * s);
+  faceAt(g, cx, hy + 1 * s, s, 5.4, 6.4);
+  g.fillStyle = '#0d0e14';
+  g.beginPath();
+  g.ellipse(cx, hy - 3.2 * s, 6.6 * s, 3.6 * s, 0, Math.PI, TAU);
+  g.fill();
+  // The single strand between the eyes
+  g.strokeStyle = '#0d0e14';
+  g.lineWidth = 0.9 * s;
+  g.beginPath();
+  g.moveTo(cx, hy - 4 * s);
+  g.quadraticCurveTo(cx + 0.8 * s, hy, cx - 0.4 * s, hy + 3 * s);
+  g.stroke();
+  // Kenseikan: white ornaments clipped in the hair
+  g.fillStyle = '#ffffff';
+  g.strokeStyle = 'rgba(60,64,80,0.6)';
+  g.lineWidth = 0.6;
+  for (const [x, y] of [
+    [-6.4, -6.2],
+    [-5, -7.8],
+    [-3.4, -9],
+    [4.2, -7.6],
+    [5.6, -6.2],
+  ] as const) {
+    roundRect(g, cx + x * s - 1 * s, hy + y * s - 1.6 * s, 2 * s, 3.2 * s, 0.6 * s);
+    g.fill();
+    g.stroke();
+  }
+  // Calm, level eyes
+  g.strokeStyle = '#1a1c26';
+  g.lineWidth = 0.9 * s;
+  g.beginPath();
+  g.moveTo(cx - 4 * s, hy + 1 * s);
+  g.lineTo(cx - 1.4 * s, hy + 1 * s);
+  g.moveTo(cx + 1.4 * s, hy + 1 * s);
+  g.lineTo(cx + 4 * s, hy + 1 * s);
+  g.stroke();
+  glowDot(g, cx - 2.7 * s, hy + 1.6 * s, 0.8 * s, 0.6 * s, '#cfd6e8', '#9aa6c8', 2);
+  glowDot(g, cx + 2.7 * s, hy + 1.6 * s, 0.8 * s, 0.6 * s, '#cfd6e8', '#9aa6c8', 2);
+  // A few petals
+  g.fillStyle = '#ffb3cf';
+  for (const [x, y, a] of [
+    [17, -14, 0.6],
+    [21, -2, 2.1],
+    [-19, 6, 4],
+  ] as const) {
+    g.beginPath();
+    g.ellipse(cx + x * s, cy + y * s, 1.6 * s, 0.9 * s, a, 0, TAU);
+    g.fill();
+  }
+};
+
+/** Tōshirō Hitsugaya: small, spiky white hair, teal eyes, a green sash holding the sword on his back. */
+const hitsugaya: Draw = (g, w, h) => {
+  const s = 1.75;
+  const cx = w / 2;
+  const cy = h / 2 + 8;
+  const hy = cy - 13 * s;
+  aura(g, cx, cy, 50, 'rgba(143,216,255,0.18)');
+  // The sword on his back, hilt over the right shoulder
+  g.strokeStyle = '#2b3140';
+  g.lineWidth = 2.4 * s;
+  g.lineCap = 'round';
+  g.beginPath();
+  g.moveTo(cx - 6 * s, cy + 8 * s);
+  g.lineTo(cx + 11 * s, cy - 19 * s);
+  g.stroke();
+  g.strokeStyle = '#3aa6a0';
+  g.lineWidth = 1.8 * s;
+  g.beginPath();
+  g.moveTo(cx + 8.5 * s, cy - 15 * s);
+  g.lineTo(cx + 12 * s, cy - 20.5 * s);
+  g.stroke();
+  g.fillStyle = '#d9e4f2';
+  g.beginPath();
+  for (let k = 0; k < 8; k++) {
+    const a = (k / 8) * TAU;
+    const r = k % 2 === 0 ? 2.6 * s : 1 * s;
+    g.lineTo(cx + 8 * s + Math.cos(a) * r, cy - 14 * s + Math.sin(a) * r);
+  }
+  g.closePath();
+  g.fill();
+  captainBody(g, cx, cy, s, { haori: 'sleeved', obi: '#2a2d3a' });
+  // The green sash across the chest
+  g.strokeStyle = '#3f9a5c';
+  g.lineWidth = 2.2 * s;
+  g.lineCap = 'butt';
+  g.beginPath();
+  g.moveTo(cx - 8 * s, cy - 6 * s);
+  g.lineTo(cx + 9 * s, cy + 9 * s);
+  g.stroke();
+  faceAt(g, cx, hy + 0.5 * s, s);
+  // Spiky white hair
+  g.fillStyle = '#eef4ff';
+  g.strokeStyle = 'rgba(120,150,190,0.6)';
+  g.lineWidth = 0.7;
+  g.beginPath();
+  const spikes: [number, number][] = [
+    [-8, -1],
+    [-9.5, -6],
+    [-6, -8],
+    [-6.5, -12.5],
+    [-2.5, -10],
+    [0, -14.5],
+    [2.5, -10],
+    [6.5, -12.5],
+    [6, -8],
+    [9.5, -6],
+    [8, -1],
+  ];
+  g.moveTo(cx - 7 * s, hy + 1 * s);
+  for (let k = 0; k < spikes.length; k++) {
+    const [x, y] = spikes[k];
+    g.lineTo(cx + x * s, hy + y * s);
+    if (k < spikes.length - 1) {
+      const [nx, ny] = spikes[k + 1];
+      g.lineTo(cx + ((x + nx) / 2) * 0.82 * s, hy + ((y + ny) / 2) * 0.72 * s);
+    }
+  }
+  g.lineTo(cx + 7 * s, hy + 1 * s);
+  g.lineTo(cx + 3 * s, hy - 3 * s);
+  g.lineTo(cx + 1 * s, hy + 0.5 * s);
+  g.lineTo(cx - 1.5 * s, hy - 3 * s);
+  g.lineTo(cx - 4 * s, hy + 0.5 * s);
+  g.closePath();
+  g.fill();
+  g.stroke();
+  browsAt(g, cx, hy + 0.4 * s, s, '#cfd8ea', 1.2);
+  eyesAt(g, cx, hy + 1.8 * s, s, '#c8fff6', '#2fd0c0');
+};
+
+/** Suì-Fēng: short black hair, two long braids wrapped in white ending in gold rings, a sleeveless haori, the golden stinger. */
+const soifon: Draw = (g, w, h) => {
+  const s = 1.85;
+  const cx = w / 2;
+  const cy = h / 2 + 6;
+  const hy = cy - 13 * s;
+  aura(g, cx, cy, 50, 'rgba(255,210,122,0.16)');
+  captainBody(g, cx, cy, s, { haori: 'sleeveless', obi: '#e8c04a' });
+  // The golden stinger on her right hand
+  g.save();
+  g.fillStyle = '#ffd27a';
+  g.shadowColor = '#ffb347';
+  g.shadowBlur = 5;
+  poly(g, [
+    [cx + 10.6 * s, cy + 10 * s],
+    [cx + 13 * s, cy + 10 * s],
+    [cx + 13.4 * s, cy + 16.5 * s],
+  ]);
+  g.fill();
+  g.restore();
+  faceAt(g, cx, hy + 0.5 * s, s, 5.6, 6.4);
+  // Short black hair with bangs
+  g.fillStyle = '#0e0f15';
+  g.beginPath();
+  g.ellipse(cx, hy - 1.6 * s, 6.8 * s, 5.8 * s, 0, Math.PI * 0.95, Math.PI * 2.05);
+  g.fill();
+  poly(g, [
+    [cx - 6.6 * s, hy - 1.5 * s],
+    [cx - 5.2 * s, hy + 3 * s],
+    [cx - 3.6 * s, hy - 1 * s],
+    [cx - 1.2 * s, hy + 1 * s],
+    [cx + 1.2 * s, hy - 1.5 * s],
+    [cx + 3.8 * s, hy + 1 * s],
+    [cx + 5.4 * s, hy - 1 * s],
+    [cx + 6.6 * s, hy + 2.5 * s],
+    [cx + 6.8 * s, hy - 3 * s],
+  ]);
+  g.fill();
+  // The braids, wrapped in white, swinging out past her arms, gold rings at the ends
+  for (const dir of [-1, 1]) {
+    const x0 = cx + dir * 6.4 * s;
+    const y0 = hy + 3 * s;
+    const x1 = cx + dir * 14.2 * s;
+    const y1 = cy + 9 * s;
+    const mx = cx + dir * 13.4 * s;
+    const my = hy + 6 * s;
+    g.fillStyle = '#0e0f15';
+    g.beginPath();
+    g.arc(x0, y0, 1.5 * s, 0, TAU);
+    g.fill();
+    g.strokeStyle = 'rgba(70,70,64,0.8)';
+    g.lineWidth = 2.6 * s;
+    g.lineCap = 'round';
+    g.beginPath();
+    g.moveTo(x0, y0);
+    g.quadraticCurveTo(mx, my, x1, y1);
+    g.stroke();
+    g.strokeStyle = '#f2f2ee';
+    g.lineWidth = 1.9 * s;
+    g.beginPath();
+    g.moveTo(x0, y0);
+    g.quadraticCurveTo(mx, my, x1, y1);
+    g.stroke();
+    g.strokeStyle = '#ffd27a';
+    g.lineWidth = 0.9 * s;
+    g.beginPath();
+    g.arc(x1, y1 + 1.8 * s, 1.6 * s, 0, TAU);
+    g.stroke();
+  }
+  browsAt(g, cx, hy + 0.6 * s, s, '#0e0f15', 1.3);
+  eyesAt(g, cx, hy + 2 * s, s, '#e8eaf0', '#8a90a8', 2.4);
+};
+
+/** Sajin Komamura: a towering wolf-headed captain. */
+const komamura: Draw = (g, w, h) => {
+  const s = 2.2;
+  const cx = w / 2;
+  const cy = h / 2 + 6;
+  const hy = cy - 13 * s;
+  aura(g, cx, cy, 62, 'rgba(201,181,138,0.18)');
+  captainBody(g, cx, cy, s, { haori: 'sleeved', broad: 1.35, obi: '#5a4a36' });
+  // Fur ruff at the neck
+  g.fillStyle = '#7a4e28';
+  g.beginPath();
+  for (let k = 0; k <= 14; k++) {
+    const a = Math.PI * (k / 14);
+    const r = (k % 2 === 0 ? 9 : 7) * s;
+    g.lineTo(cx + Math.cos(a) * r * 1.2, cy - 6.5 * s + Math.sin(a) * r * 0.45);
+  }
+  g.closePath();
+  g.fill();
+  // Ears
+  g.fillStyle = '#a8703a';
+  for (const dir of [-1, 1]) {
+    poly(g, [
+      [cx + dir * 3.5 * s, hy - 5 * s],
+      [cx + dir * 8.8 * s, hy - 13 * s],
+      [cx + dir * 9 * s, hy - 3 * s],
+    ]);
+    g.fill();
+    g.fillStyle = '#5a3418';
+    poly(g, [
+      [cx + dir * 5 * s, hy - 5.5 * s],
+      [cx + dir * 8.2 * s, hy - 10.5 * s],
+      [cx + dir * 8.2 * s, hy - 4.5 * s],
+    ]);
+    g.fill();
+    g.fillStyle = '#a8703a';
+  }
+  // Head and muzzle
+  const fur = g.createRadialGradient(cx - 2 * s, hy - 3 * s, 1, cx, hy, 10 * s);
+  fur.addColorStop(0, '#c4884a');
+  fur.addColorStop(1, '#8a5a2e');
+  g.fillStyle = fur;
+  g.beginPath();
+  g.ellipse(cx, hy, 8.6 * s, 8 * s, 0, 0, TAU);
+  g.fill();
+  g.fillStyle = '#ead6b4';
+  g.beginPath();
+  g.ellipse(cx, hy + 3.6 * s, 4.4 * s, 4 * s, 0, 0, TAU);
+  g.fill();
+  g.fillStyle = '#1a1210';
+  g.beginPath();
+  g.ellipse(cx, hy + 1.8 * s, 1.6 * s, 1.1 * s, 0, 0, TAU);
+  g.fill();
+  g.strokeStyle = '#1a1210';
+  g.lineWidth = 0.7 * s;
+  g.beginPath();
+  g.moveTo(cx, hy + 2.8 * s);
+  g.lineTo(cx, hy + 4.4 * s);
+  g.moveTo(cx - 2.4 * s, hy + 5.2 * s);
+  g.quadraticCurveTo(cx, hy + 6.2 * s, cx + 2.4 * s, hy + 5.2 * s);
+  g.stroke();
+  browsAt(g, cx, hy - 3.2 * s, s, '#4a2c14', 1);
+  eyesAt(g, cx, hy - 1.8 * s, s, '#fff2b0', '#ffc23a', 3.4);
+};
+
+/** Chōjirō Sasakibe: a lieutenant, grey hair combed back, a grey mustache, the armband, a rapier. */
+const sasakibe: Draw = (g, w, h) => {
+  const s = 2;
+  const cx = w / 2;
+  const cy = h / 2 + 4;
+  const hy = cy - 13 * s;
+  aura(g, cx, cy, 52, 'rgba(255,243,160,0.16)');
+  // The rapier at the left hip, a cup hilt forward
+  g.strokeStyle = '#d8dde8';
+  g.lineWidth = 1.1 * s;
+  g.beginPath();
+  g.moveTo(cx + 6 * s, cy + 6 * s);
+  g.lineTo(cx + 17 * s, cy + 19 * s);
+  g.stroke();
+  captainBody(g, cx, cy, s, { haori: 'none', obi: '#eceff6' });
+  g.strokeStyle = '#e8c86a';
+  g.lineWidth = 0.9 * s;
+  g.beginPath();
+  g.arc(cx + 6.4 * s, cy + 6.4 * s, 2.2 * s, 0, TAU);
+  g.stroke();
+  // Lieutenant's armband on the left arm
+  g.save();
+  g.translate(cx - 10.5 * s, cy + 0.5 * s);
+  g.rotate(0.25);
+  g.fillStyle = '#f2f2ee';
+  g.fillRect(-4.2 * s, -1.6 * s, 8.4 * s, 3.2 * s);
+  g.fillStyle = '#20232e';
+  g.fillRect(-1.2 * s, -1 * s, 2.4 * s, 2 * s);
+  g.restore();
+  faceAt(g, cx, hy + 0.5 * s, s, 5.6, 6.6);
+  // Grey hair combed back
+  g.fillStyle = '#c9ccd6';
+  g.beginPath();
+  g.ellipse(cx, hy - 2.6 * s, 6.6 * s, 4.6 * s, 0, Math.PI, TAU);
+  g.fill();
+  g.strokeStyle = 'rgba(90,94,110,0.6)';
+  g.lineWidth = 0.6;
+  for (let k = -2; k <= 2; k++) {
+    g.beginPath();
+    g.moveTo(cx + k * 2 * s, hy - 2.8 * s);
+    g.quadraticCurveTo(cx + k * 2.4 * s, hy - 6.4 * s, cx + k * 1.4 * s, hy - 7.2 * s);
+    g.stroke();
+  }
+  browsAt(g, cx, hy, s, '#a0a4b0', 1.1);
+  eyesAt(g, cx, hy + 1.4 * s, s, '#e8eaf0', '#7a8098', 2.5);
+  // Grey mustache, the ends curled up
+  g.fillStyle = '#d8dce4';
+  for (const dir of [-1, 1]) {
+    g.beginPath();
+    g.moveTo(cx, hy + 3.6 * s);
+    g.quadraticCurveTo(cx + dir * 3.4 * s, hy + 3 * s, cx + dir * 5 * s, hy + 2.6 * s);
+    g.quadraticCurveTo(cx + dir * 3.4 * s, hy + 4.8 * s, cx, hy + 4.6 * s);
+    g.closePath();
+    g.fill();
+  }
+};
+
+/**
+ * Genryūsai Yamamoto, the Captain-Commander: bald and scarred, long white
+ * brows and a long white beard tied with a band, the haori draped over his
+ * shoulders, his sword sealed as a wooden cane.
+ */
+const yamamoto: Draw = (g, w, h) => {
+  const s = 2.1;
+  const cx = w / 2;
+  const cy = h / 2 + 8;
+  const hy = cy - 13 * s;
+  aura(g, cx, cy, 60, 'rgba(255,122,60,0.22)');
+  captainBody(g, cx, cy, s, { haori: 'draped', obi: '#2a2d3a' });
+  // The haori sits over his shoulders
+  for (const dir of [-1, 1]) {
+    g.fillStyle = HAORI;
+    g.beginPath();
+    g.moveTo(cx + dir * 4 * s, cy - 7 * s);
+    g.quadraticCurveTo(cx + dir * 12 * s, cy - 8.5 * s, cx + dir * 15 * s, cy - 1 * s);
+    g.lineTo(cx + dir * 11 * s, cy - 2.6 * s);
+    g.quadraticCurveTo(cx + dir * 8 * s, cy - 5.6 * s, cx + dir * 4 * s, cy - 5 * s);
+    g.closePath();
+    g.fill();
+    g.strokeStyle = 'rgba(20,24,40,0.35)';
+    g.lineWidth = 0.9;
+    g.stroke();
+  }
+  // The cane in his right hand
+  g.strokeStyle = '#7a4e28';
+  g.lineWidth = 1.8 * s;
+  g.lineCap = 'round';
+  g.beginPath();
+  g.moveTo(cx + 12 * s, cy - 6 * s);
+  g.lineTo(cx + 12.6 * s, cy + 21 * s);
+  g.stroke();
+  g.strokeStyle = '#4a2c14';
+  g.lineWidth = 0.6 * s;
+  for (const y of [-2, 6, 14]) {
+    g.beginPath();
+    g.moveTo(cx + 11.2 * s, cy + y * s);
+    g.lineTo(cx + 13.4 * s, cy + (y + 0.4) * s);
+    g.stroke();
+  }
+  // Bald, scarred head
+  g.fillStyle = SKIN;
+  g.beginPath();
+  g.ellipse(cx, hy - 0.6 * s, 6.6 * s, 7.6 * s, 0, 0, TAU);
+  g.fill();
+  g.strokeStyle = 'rgba(150,90,70,0.7)';
+  g.lineWidth = 0.6 * s;
+  g.beginPath();
+  g.moveTo(cx - 4.6 * s, hy - 6.4 * s);
+  g.lineTo(cx - 0.6 * s, hy - 3 * s);
+  g.moveTo(cx - 1 * s, hy - 7.2 * s);
+  g.lineTo(cx - 4 * s, hy - 2.6 * s);
+  g.stroke();
+  // Long white beard down the chest, tied with a band
+  g.fillStyle = '#f2f2ee';
+  g.beginPath();
+  g.moveTo(cx - 4.6 * s, hy + 2.6 * s);
+  g.quadraticCurveTo(cx - 5 * s, cy + 2 * s, cx - 1.4 * s, cy + 12 * s);
+  g.lineTo(cx, cy + 15 * s);
+  g.lineTo(cx + 1.4 * s, cy + 12 * s);
+  g.quadraticCurveTo(cx + 5 * s, cy + 2 * s, cx + 4.6 * s, hy + 2.6 * s);
+  g.closePath();
+  g.fill();
+  g.strokeStyle = 'rgba(160,160,150,0.6)';
+  g.lineWidth = 0.6;
+  for (let k = -1; k <= 1; k++) {
+    g.beginPath();
+    g.moveTo(cx + k * 2 * s, hy + 4 * s);
+    g.lineTo(cx + k * 0.8 * s, cy + 9 * s);
+    g.stroke();
+  }
+  g.fillStyle = '#8a5ab8';
+  g.fillRect(cx - 2.2 * s, cy + 8.6 * s, 4.4 * s, 1.4 * s);
+  // Long white brows over closed eyes, and a white mustache
+  g.strokeStyle = '#f2f2ee';
+  g.lineWidth = 1.3 * s;
+  g.lineCap = 'round';
+  for (const dir of [-1, 1]) {
+    g.beginPath();
+    g.moveTo(cx + dir * 1.2 * s, hy - 1.6 * s);
+    g.quadraticCurveTo(cx + dir * 5 * s, hy - 2.6 * s, cx + dir * 7.4 * s, hy + 2.4 * s);
+    g.stroke();
+  }
+  g.strokeStyle = '#3a2a24';
+  g.lineWidth = 0.7 * s;
+  g.beginPath();
+  g.moveTo(cx - 3.6 * s, hy + 0.4 * s);
+  g.lineTo(cx - 1.4 * s, hy + 0.6 * s);
+  g.moveTo(cx + 1.4 * s, hy + 0.6 * s);
+  g.lineTo(cx + 3.6 * s, hy + 0.4 * s);
+  g.stroke();
+  g.fillStyle = '#f2f2ee';
+  for (const dir of [-1, 1]) {
+    g.beginPath();
+    g.moveTo(cx, hy + 2.4 * s);
+    g.quadraticCurveTo(cx + dir * 3.6 * s, hy + 2 * s, cx + dir * 5.4 * s, hy + 5 * s);
+    g.quadraticCurveTo(cx + dir * 3 * s, hy + 3.6 * s, cx, hy + 3.6 * s);
+    g.closePath();
+    g.fill();
+  }
+};
+
+/** The charred dead the Captain-Commander raises: blackened bones, embers for eyes. Original design. */
+const ashen: Draw = (g, w, h) => {
+  const cx = w / 2;
+  const cy = h / 2 + 3;
+  aura(g, cx, cy, 24, 'rgba(255,120,40,0.2)');
+  // Torso of charred bone
+  g.fillStyle = '#2a201c';
+  g.beginPath();
+  g.moveTo(cx - 7, cy - 4);
+  g.lineTo(cx + 7, cy - 4);
+  g.lineTo(cx + 5, cy + 14);
+  g.lineTo(cx - 5, cy + 14);
+  g.closePath();
+  g.fill();
+  g.strokeStyle = '#b89a80';
+  g.lineWidth = 1.3;
+  for (let k = 0; k < 4; k++) {
+    const y = cy - 1 + k * 3.6;
+    g.beginPath();
+    g.moveTo(cx - 5.5 + k * 0.4, y);
+    g.quadraticCurveTo(cx, y + 1.6, cx + 5.5 - k * 0.4, y);
+    g.stroke();
+  }
+  g.beginPath();
+  g.moveTo(cx, cy - 4);
+  g.lineTo(cx, cy + 14);
+  g.stroke();
+  // Arms
+  g.lineWidth = 2;
+  g.beginPath();
+  g.moveTo(cx - 7, cy - 3);
+  g.lineTo(cx - 11, cy + 6);
+  g.moveTo(cx + 7, cy - 3);
+  g.lineTo(cx + 11, cy + 6);
+  g.stroke();
+  // Skull with ember eyes
+  g.fillStyle = '#8a7462';
+  g.beginPath();
+  g.ellipse(cx, cy - 10, 6, 6.4, 0, 0, TAU);
+  g.fill();
+  g.fillStyle = '#2a201c';
+  g.fillRect(cx - 3.6, cy - 5.6, 7.2, 2.4);
+  glowDot(g, cx - 2.3, cy - 10.6, 1.4, 1.4, '#ffd27a', '#ff6a1f', 6);
+  glowDot(g, cx + 2.3, cy - 10.6, 1.4, 1.4, '#ffd27a', '#ff6a1f', 6);
+  // Embers drifting off
+  for (const [x, y] of [
+    [-8, -14],
+    [9, -11],
+    [-10, 2],
+    [10, 9],
+  ] as const) {
+    glowDot(g, cx + x, cy + y, 1, 1, '#ffb070', '#ff6a1f', 4);
   }
 };
 
@@ -1821,6 +2513,13 @@ const ENEMY_DRAW: readonly [string, number, Draw][] = [
   ['officer', 52, officer],
   ['caster', 52, caster],
   ['flash', 48, flashScout],
+  ['cap_senbonzakura', 112, byakuya],
+  ['cap_hyorinmaru', 112, hitsugaya],
+  ['cap_raikoben', 112, soifon],
+  ['cap_tengen', 136, komamura],
+  ['cap_gonryo', 112, sasakibe],
+  ['commander', 128, yamamoto],
+  ['ashen', 52, ashen],
 ];
 
 function specs(): Spec[] {

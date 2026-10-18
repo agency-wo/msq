@@ -12,8 +12,9 @@ three random medallion bearers carry stolen bankai; beat one and its bankai is
 yours. Take back all six across your runs and **A · The Almighty** unlocks: from
 then on it awakens once three Schrift reach Lv 7, stops time every 24 s and
 rewrites the future (enemy fire vanishes, everything on screen is struck down).
-All art is drawn in code: the Emperor is a chibi homage to Yhwach; everything
-else (Hollows, Soul Reapers, bearers, bosses, effects) is an original design.
+All art is drawn in code: the Emperor and the Gotei 13 captains are chibi
+homages to their Bleach designs; everything else (Hollows, Soul Reaper
+soldiers, medallion bearers, the other bosses, effects) is an original design.
 
 Every run pays gold. Spend it in the **Wandenreich Archives** on permanent
 upgrades (attack, health, speed, pickup range, cooldowns, faster level-ups,
@@ -24,8 +25,11 @@ Stages, 20 minutes each:
 
 - **Hueco Mundo**: Hollows, ending with the Vasto Lorde.
 - **Seireitei** (unlocked by clearing Hueco Mundo): Soul Reaper soldiers that
-  flash-step and cast Kidō, seated officers that throw sword waves, and the
-  Kidō Grandmaster, whose binding seal roots you in place.
+  flash-step and cast Kidō, and lieutenants that throw sword waves. The bankai
+  bosses here are the captains themselves (Byakuya, Hitsugaya, Suì-Fēng,
+  Komamura, Lieutenant Sasakibe), each fighting with their own bankai; the Kidō
+  Grandmaster escorts the third, and Captain-Commander Yamamoto ends the stage
+  with Ryūjin Jakka's fire and the ashen dead.
 
 ## Play on iPhone
 

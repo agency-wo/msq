@@ -40,6 +40,10 @@ export interface StageDef {
   xp: number;
   /** Multiplier on the gold a run here pays out. */
   gold: number;
+  /** The bankai bosses are the captains who own them, not medallion bearers. */
+  captains?: boolean;
+  /** Which bankai the bosses can carry (all six when missing). */
+  bearerPool?: readonly string[];
   /** Clearing this stage unlocks this one. */
   unlockedBy?: StageId;
 }
@@ -100,8 +104,9 @@ const HUECO: StageDef = {
 /**
  * Seireitei: the Soul Reapers' walled city, at night. Unlocked by clearing
  * Hueco Mundo, and harder: tougher soldiers, flash-steps that close the gap,
- * Kidō casters that shoot from a distance, and the Kidō Grandmaster at 20:00,
- * whose binding seal roots you in place.
+ * Kidō casters that shoot from a distance. The bankai bosses here are the
+ * captains themselves, defending their own bankai; the Kidō Grandmaster
+ * escorts the third, and Captain-Commander Yamamoto waits at 20:00.
  */
 const SEIREITEI: StageDef = {
   id: 'seireitei',
@@ -122,23 +127,26 @@ const SEIREITEI: StageDef = {
       (t) => (t < 300 ? 'officer' : 'guard'),
       [1.15, 4, 16],
     ),
-    // The third bearer comes with two seated officers instead of a Menos.
-    { at: 905, kind: 'elite', enemy: 'guard' },
-    { at: 908, kind: 'elite', enemy: 'officer' },
+    // The third captain comes with the Kidō Corps instead of a Menos.
+    { at: 905, kind: 'boss', enemy: 'grandmaster', hpMul: 4, final: false, warn: 'The Kidō Corps arrives', sub: 'Its seal binds you where you stand' },
+    { at: 908, kind: 'elite', enemy: 'guard' },
     {
       at: LENGTH,
       kind: 'boss',
-      enemy: 'grandmaster',
+      enemy: 'commander',
       hpMul: 40,
       final: true,
-      warn: 'The Kidō Grandmaster descends',
-      sub: 'Its seal binds you where you stand',
+      warn: 'The Captain-Commander draws Ryūjin Jakka',
+      sub: 'Captain-Commander of the Gotei 13',
     },
   ]),
   hp: 1.2,
   spawn: 1.05,
   xp: 1.2,
   gold: 1.25,
+  captains: true,
+  // Zanka no Tachi belongs to the Captain-Commander, who only fights at the end.
+  bearerPool: ['senbonzakura', 'hyorinmaru', 'raikoben', 'tengen', 'gonryo'],
   unlockedBy: 'hueco',
 };
 

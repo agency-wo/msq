@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { DT } from '../src/config';
+import { BANKAI_BY_ID, BANKAI_IDS } from '../src/data/bankai';
 import { ENEMY_INDEX, ENEMY_LIST } from '../src/data/enemies';
-import { EB_FIRE, MF_ENEMY, MF_ROOT, MK_SEAL, MS_CIRCLE } from '../src/game/constants';
+import { EB_FIRE, MF_ENEMY, MF_ROOT, MK_FIRE, MK_INFERNO, MK_SEAL, MS_CIRCLE } from '../src/game/constants';
 import { World } from '../src/game/world';
 import { bot, play, sensible } from './helpers';
 
@@ -102,13 +103,64 @@ describe('Seireitei', () => {
     expect(free.player.hp).toBe(free.player.maxHp);
   });
 
-  it('clears Seireitei: the Kidō Grandmaster dies and the run ends in victory', { timeout: 300_000 }, () => {
+  it('the bankai bosses are the captains who own them, and Zanka no Tachi only comes at the end', () => {
+    for (let seed = 1; seed < 60; seed++) expect(new World({ seed, stage: 'seireitei' }).bearers).not.toContain('zanka');
+    const w = new World({ seed: 5, stage: 'seireitei', god: true, startTime: 298 });
+    w.powers.length = 0;
+    steps(w, Math.round(3 / DT));
+    let captain = -1;
+    for (let i = 0; i < w.en.n; i++) if (w.en.type[i] === ENEMY_INDEX.captain) captain = i;
+    expect(captain).toBeGreaterThanOrEqual(0);
+    const id = BANKAI_IDS[w.en.variant[captain]];
+    expect(id).toBe(w.bearers[0]);
+    const owner = BANKAI_BY_ID.get(id)?.owner ?? '';
+    expect(w.boss.name).toBe(owner);
+    // Hueco Mundo keeps its medallion bearers.
+    const h = new World({ seed: 5, god: true, startTime: 298 });
+    h.powers.length = 0;
+    steps(h, Math.round(3 / DT));
+    let types = 0;
+    for (let i = 0; i < h.en.n; i++) if (h.en.type[i] === ENEMY_INDEX.bearer) types++;
+    expect(types).toBe(1);
+  });
+
+  it('a fallen captain leaves its bankai and a black chest', () => {
+    const w = quiet(6);
+    const i = w.spawnEnemy(ENEMY_INDEX.captain, w.player.x + 300, w.player.y);
+    w.en.variant[i] = BANKAI_IDS.indexOf('tengen');
+    w.killEnemy(i);
+    expect(w.pickups.some((q) => q.kind === 'medallion' && q.bankai === 'tengen')).toBe(true);
+    expect(w.pickups.some((q) => q.kind === 'chestBlack')).toBe(true);
+  });
+
+  it('the Captain-Commander burns up close, sets fire around you and raises the dead', () => {
+    const w = quiet(7);
+    const p = w.player;
+    // Standing in his heat would kill a normal Emperor in about 2.5 s: give this one room to watch.
+    p.maxHp = p.hp = 1e6;
+    w.spawnEnemy(ENEMY_INDEX.commander, p.x + 90, p.y, false, 40);
+    let fire = false;
+    let rose = 0;
+    for (let s = 0; s < Math.round(12 / DT); s++) {
+      steps(w, 1);
+      for (let k = 0; k < w.marks.n; k++) if (w.marks.kind[k] === MK_FIRE || w.marks.kind[k] === MK_INFERNO) fire = true;
+      let n = 0;
+      for (let k = 0; k < w.en.n; k++) if (w.en.type[k] === ENEMY_INDEX.ashen) n++;
+      rose = Math.max(rose, n);
+    }
+    expect(fire).toBe(true);
+    expect(rose).toBeGreaterThanOrEqual(6);
+    expect(p.hp).toBeLessThan(p.maxHp);
+  });
+
+  it('clears Seireitei: the captains fall, then the Captain-Commander, and the run ends in victory', { timeout: 300_000 }, () => {
     const w = new World({ seed: 7, stage: 'seireitei', god: true });
-    let grandmaster = false;
+    const seen = new Set<string>();
     play(w, w.stage.length + 240, sensible, bot, (world) => {
-      if (world.boss.active && world.boss.name === 'Kidō Grandmaster') grandmaster = true;
+      if (world.boss.active) seen.add(world.boss.name);
     });
-    expect(grandmaster).toBe(true);
+    for (const id of w.bearers) expect(seen.has(BANKAI_BY_ID.get(id)?.owner ?? '?')).toBe(true);
+    expect(seen.has('Genryūsai Yamamoto')).toBe(true);
     expect(w.over).toBe('victory');
     for (const id of w.bearers) expect(w.powers.some((ps) => ps.def.id === id)).toBe(true);
   });

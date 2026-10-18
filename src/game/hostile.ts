@@ -1,7 +1,7 @@
 import { DT, PLAYER } from '../config';
 import { TAU } from '../core/math';
 import { BANKAI_IDS } from '../data/bankai';
-import { ENEMY_LIST } from '../data/enemies';
+import { ENEMY_INDEX, ENEMY_LIST } from '../data/enemies';
 import {
   EB_BALA,
   EB_FIRE,
@@ -20,6 +20,7 @@ import {
   MK_CERO,
   MK_FIRE,
   MK_ICE,
+  MK_INFERNO,
   MK_LANCE,
   MK_MISSILE,
   MK_PILLAR,
@@ -129,7 +130,7 @@ export function bossAI(w: World, i: number, dist: number): void {
   E.atkT[i] -= DT;
   E.atk2T[i] -= DT;
   const def = ENEMY_LIST[E.type[i]];
-  if (def.id === 'bearer') {
+  if (def.id === 'bearer' || def.id === 'captain') {
     bearerAI(w, i, BANKAI_IDS[E.variant[i]] ?? '', dist);
   } else if (def.id === 'menos') {
     if (E.atkT[i] <= 0) {
@@ -146,8 +147,63 @@ export function bossAI(w: World, i: number, dist: number): void {
     }
   } else if (def.id === 'grandmaster') {
     grandmasterAI(w, i);
+  } else if (def.id === 'commander') {
+    commanderAI(w, i, dist);
   }
 }
+
+/**
+ * The Captain-Commander: Ryūjin Jakka's heat burns anyone who comes close,
+ * and he cycles four fire techniques, each warned on the ground first: a
+ * blade of fire down a line, pillars of flame around you, a flare of his whole
+ * body, and the charred dead raised in a ring to close in on you.
+ */
+function commanderAI(w: World, i: number, dist: number): void {
+  const E = w.en;
+  const p = w.player;
+  const x = E.x[i];
+  const y = E.y[i];
+  const dmg = E.dmg[i];
+  if (dist < COMMANDER_HEAT + PLAYER.radius) w.hurtPlayer(dmg * 0.35);
+  if (E.atkT[i] > 0) return;
+  E.atkT[i] = 2.3;
+  const toP = Math.atan2(p.y - y, p.x - x);
+  // The variant byte is free on this boss: use it as the technique counter.
+  const move = E.variant[i] % 4;
+  E.variant[i] = (move + 1) % 4;
+  switch (move) {
+    case 0:
+      // A blade of fire down a long line.
+      w.spawnMark(MK_FIRE, MS_LINE, x, y, 44, 900, toP, 1, dmg, MF_ENEMY);
+      w.sound('warn');
+      break;
+    case 1:
+      // Pillars of flame erupt around you, one right where you stand.
+      for (let k = 0; k < 7; k++) {
+        const a = (k / 7) * TAU + w.rng.next() * 0.4;
+        const d = k === 0 ? 0 : 70 + w.rng.next() * 70;
+        w.spawnMark(MK_INFERNO, MS_CIRCLE, p.x + Math.cos(a) * d, p.y + Math.sin(a) * d, 36, 0, 0, 1 + k * 0.08, dmg * 0.6, MF_ENEMY);
+      }
+      w.sound('warn');
+      break;
+    case 2:
+      // His whole body flares: everything near him burns.
+      w.spawnMark(MK_INFERNO, MS_CIRCLE, x, y, 190, 0, 0, 1.4, dmg * 1.1, MF_ENEMY);
+      w.sound('warn');
+      break;
+    case 3:
+      // The charred dead rise in a ring around you.
+      for (let k = 0; k < 8; k++) {
+        const a = (k / 8) * TAU;
+        w.spawnEnemy(ENEMY_INDEX.ashen, p.x + Math.cos(a) * 230, p.y + Math.sin(a) * 230);
+      }
+      w.sound('rise');
+      break;
+  }
+}
+
+/** How far the Captain-Commander's heat reaches (the renderer draws the same ring). */
+export const COMMANDER_HEAT = 120;
 
 /**
  * The Kidō Grandmaster cycles three spells, each warned on the ground first:
@@ -267,9 +323,10 @@ function bearerAI(w: World, i: number, id: string, dist: number): void {
       break;
     case 'tengen':
       if (E.atkT[i] <= 0) {
-        if (dist < 330) {
+        if (dist < 300) {
           E.atkT[i] = 4.5;
-          w.spawnMark(MK_SLASH, MS_ARC, x, y, 270, 0.7, toP, 1.1, dmg * 1.1, MF_ENEMY);
+          // Wide but readable: 1.35 s is enough to step sideways out of the wedge.
+          w.spawnMark(MK_SLASH, MS_ARC, x, y, 230, 0.7, toP, 1.35, dmg * 1.1, MF_ENEMY);
           w.spawnFx(FX_AVATAR, x - Math.cos(toP) * 30, y - Math.sin(toP) * 30 - 50, 0, 0, 1.4, 170, 170, 0.75, 0, 0, 0xc9b58a, LAYER_ADD);
           w.sound('warn');
         } else {

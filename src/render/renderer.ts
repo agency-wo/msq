@@ -7,6 +7,7 @@ import type { Input } from '../core/input';
 import { BANKAI_BY_ID, BANKAI_IDS } from '../data/bankai';
 import { ENEMY_INDEX, ENEMY_LIST } from '../data/enemies';
 import { DOUBLE_RING, doubleCount } from '../game/casts/schrift2';
+import { COMMANDER_HEAT } from '../game/hostile';
 import {
   EB_FIRE,
   EB_ICE,
@@ -190,6 +191,8 @@ export class Renderer {
   private enemySprites: EnemySprite[] = [];
   /** Per enemy type: Hollows promote to Adjuchas, Soul Reapers to seated officers. */
   private eliteSprites: EnemySprite[] = [];
+  /** Seireitei's captains, by bankai (Zanka no Tachi is the Captain-Commander himself). */
+  private captainSprites: EnemySprite[] = [];
   private bossAura: number[] = [];
   private grounds = new Map<string, Texture>();
   private groundId = '';
@@ -269,8 +272,13 @@ export class Renderer {
       caster: 11,
       guard: 19,
       grandmaster: 28,
+      commander: 30,
+      ashen: 11,
     };
-    this.enemySprites = ENEMY_LIST.map((d) => sprite(d.id, REF[d.id] ?? d.radius));
+    // Types drawn per variant fall back to one of their sprites here.
+    const NAME: Record<string, string> = { captain: 'cap_senbonzakura' };
+    this.enemySprites = ENEMY_LIST.map((d) => sprite(NAME[d.id] ?? d.id, REF[d.id] ?? d.radius));
+    this.captainSprites = BANKAI_IDS.map((id) => (id === 'zanka' ? sprite('commander', 30) : sprite(`cap_${id}`, id === 'tengen' ? 30 : 28)));
     const adjuchas = sprite('adjuchas', 24);
     const seated = sprite('seated', 24);
     this.eliteSprites = ENEMY_LIST.map((d) => (d.shinigami ? seated : adjuchas));
@@ -541,13 +549,22 @@ export class Renderer {
       const boss = (flags & FLAG_BOSS) !== 0;
       const elite = (flags & FLAG_ELITE) !== 0;
       const type = E.type[i];
-      const spr = elite ? this.eliteSprites[type] : this.enemySprites[type];
+      const spr = elite
+        ? this.eliteSprites[type]
+        : type === ENEMY_INDEX.captain
+          ? (this.captainSprites[E.variant[i]] ?? this.enemySprites[type])
+          : this.enemySprites[type];
       const scale = r / spr.ref / ATLAS_SCALE;
       if (elite) L.auras.add(f.ring, x, y, (r * 2.7) / 128, (r * 2.7) / 128, 0, 0xff2d4a, 0.55 + Math.sin(now * 6) * 0.2);
       if (boss) {
-        const bearer = type === ENEMY_INDEX.bearer;
+        const bearer = type === ENEMY_INDEX.bearer || type === ENEMY_INDEX.captain;
         const aura = bearer ? (this.bankaiAura[E.variant[i]] ?? 0xffcb5c) : this.bossAura[type];
         L.auras.add(f.glow, x, y, (r * 3.6) / 64, (r * 3.6) / 64, 0, aura, 0.5 + Math.sin(now * 3) * 0.12);
+        if (type === ENEMY_INDEX.commander) {
+          // Ryūjin Jakka's heat: anything inside this ring burns.
+          const s = (COMMANDER_HEAT * 2) / 110;
+          L.auras.add(f.ring, x, y, s, s, 0, 0xff7a3c, 0.45 + Math.sin(now * 6) * 0.12);
+        }
         if (bearer && BANKAI_IDS[E.variant[i]] === 'zanka') {
           L.auras.add(f.ring, x, y, (95 * 2) / 110, (95 * 2) / 110, 0, 0xff7a3c, 0.4 + Math.sin(now * 6) * 0.1);
         }

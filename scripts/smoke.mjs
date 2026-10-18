@@ -293,12 +293,21 @@ try {
   log('seireitei mid', await stats());
   await shot('11-seireitei-mid');
 
-  // The Kidō Grandmaster: binding seal, fireball fan, lightning lance.
+  // The captains defend their own bankai in Seireitei.
+  for (const id of ['senbonzakura', 'hyorinmaru', 'raikoben', 'tengen', 'gonryo']) {
+    await page.goto(`${BASE}?debug&seed=3&play&god&stage=seireitei&t=298&bearers=${id}`);
+    await wait(400);
+    await steer(6000, { radius: 20 });
+    log(`captain ${id}`, { ...(await stats()), boss: (await page.isVisible('.bossbar')) ? await page.textContent('.boss-name') : null });
+    await shot(`11b-captain-${id}`);
+  }
+
+  // The Captain-Commander: heat, fire lines, pillars of flame, the ashen dead.
   await page.goto(`${BASE}?debug&seed=7&play&god&stage=seireitei&t=1196&give=xaxis6,explode6,heat6,knowledge6`);
   await wait(400);
-  await steer(9000, { radius: 15 });
-  log('grandmaster', { ...(await stats()), bossBar: await page.isVisible('.bossbar'), boss: await page.textContent('.boss-name') });
-  await shot('12-grandmaster');
+  await steer(12000, { radius: 15 });
+  log('captain-commander', { ...(await stats()), bossBar: await page.isVisible('.bossbar'), boss: await page.textContent('.boss-name') });
+  await shot('12-commander');
 
   // A · The Almighty: time stops, an eye opens, then everything on screen is struck down.
   await page.goto(`${BASE}?debug&seed=7&play&god&t=500&almighty&give=xaxis5,explode5`);

@@ -24,6 +24,7 @@ import {
   MK_CERO,
   MK_FIRE,
   MK_ICE,
+  MK_INFERNO,
   MK_LANCE,
   MK_METEOR,
   MK_MISSILE,
@@ -271,6 +272,13 @@ function markFx(w: World, kind: number, x: number, y: number, r: number, len: nu
       w.spawnFx(FX_RING, x, y, 0, 0, 0.5, r * 2.2, r * 1.6, 1, 0, 0, 0xffcb5c, LAYER_ADD);
       w.spawnFx(FX_GLOW, x, y, 0, 0, 0.4, r, r * 2.2, 0.8, 0, 0, 0xffb347, LAYER_ADD);
       w.sound('shield');
+      break;
+    case MK_INFERNO:
+      w.spawnFx(FX_GLOW, x, y, 0, 0, 0.45, r, r * 2.6, 1, 0, 0, 0xff7a3c, LAYER_ADD);
+      w.spawnFx(FX_RING, x, y, 0, 0, 0.4, r * 0.5, r * 2.3, 0.9, 0, 0, 0xffc070, LAYER_ADD);
+      sparks(w, x, y, Math.min(12, 4 + Math.round(r / 20)), 0xffb070);
+      w.shake = Math.max(w.shake, r > 100 ? 8 : 3);
+      w.sound('fire');
       break;
     case MK_LANCE:
       w.spawnFx(FX_BEAMH, x + (Math.cos(ang) * len) / 2, y + (Math.sin(ang) * len) / 2, 0, 0, 0.3, len, len, 1, ang, 0, 0xfff0b0, LAYER_ADD, 0, 0, r * 1.6);

@@ -12,17 +12,19 @@ export interface BankaiInfo {
   owner: string;
   /** Who stole it with a medallion. */
   thief: string;
+  /** The owner's rank in the Gotei 13, shown when they fight you in Seireitei. */
+  rank: string;
   /** Colour of the bearer's aura and of the medallion pickup. */
   aura: number;
 }
 
 export const BANKAI_INFO: readonly BankaiInfo[] = [
-  { id: 'senbonzakura', owner: 'Byakuya Kuchiki', thief: 'Äs Nödt', aura: 0xff9cc2 },
-  { id: 'hyorinmaru', owner: 'Tōshirō Hitsugaya', thief: 'Cang Du', aura: 0x8fd8ff },
-  { id: 'raikoben', owner: 'Suì-Fēng', thief: 'BG9', aura: 0xffd27a },
-  { id: 'tengen', owner: 'Sajin Komamura', thief: 'Bambietta Basterbine', aura: 0xc9b58a },
-  { id: 'gonryo', owner: 'Chōjirō Sasakibe', thief: 'Driscoll Berci', aura: 0xfff3a0 },
-  { id: 'zanka', owner: 'Genryūsai Yamamoto', thief: 'the Emperor', aura: 0xff7a3c },
+  { id: 'senbonzakura', owner: 'Byakuya Kuchiki', thief: 'Äs Nödt', rank: 'Captain of the 6th Division', aura: 0xff9cc2 },
+  { id: 'hyorinmaru', owner: 'Tōshirō Hitsugaya', thief: 'Cang Du', rank: 'Captain of the 10th Division', aura: 0x8fd8ff },
+  { id: 'raikoben', owner: 'Suì-Fēng', thief: 'BG9', rank: 'Captain of the 2nd Division', aura: 0xffd27a },
+  { id: 'tengen', owner: 'Sajin Komamura', thief: 'Bambietta Basterbine', rank: 'Captain of the 7th Division', aura: 0xc9b58a },
+  { id: 'gonryo', owner: 'Chōjirō Sasakibe', thief: 'Driscoll Berci', rank: 'Lieutenant of the 1st Division', aura: 0xfff3a0 },
+  { id: 'zanka', owner: 'Genryūsai Yamamoto', thief: 'the Emperor', rank: 'Captain-Commander of the Gotei 13', aura: 0xff7a3c },
 ];
 
 export const BANKAI_IDS: readonly string[] = BANKAI_INFO.map((b) => b.id);

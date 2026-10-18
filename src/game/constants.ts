@@ -94,6 +94,7 @@ export const MK_FIRE = 6;
 export const MK_RAIN = 7;
 export const MK_SEAL = 8;
 export const MK_LANCE = 9;
+export const MK_INFERNO = 10; // a circle of fire erupting (the Captain-Commander)
 
 /** Mark shapes. */
 export const MS_CIRCLE = 0;
