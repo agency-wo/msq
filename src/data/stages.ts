@@ -38,6 +38,8 @@ export interface StageDef {
   hp: number;
   spawn: number;
   xp: number;
+  /** Multiplier on the gold a run here pays out. */
+  gold: number;
   /** Clearing this stage unlocks this one. */
   unlockedBy?: StageId;
 }
@@ -92,6 +94,7 @@ const HUECO: StageDef = {
   hp: 1,
   spawn: 1,
   xp: 1,
+  gold: 1,
 };
 
 /**
@@ -135,6 +138,7 @@ const SEIREITEI: StageDef = {
   hp: 1.2,
   spawn: 1.05,
   xp: 1.2,
+  gold: 1.25,
   unlockedBy: 'hueco',
 };
 

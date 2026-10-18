@@ -347,6 +347,23 @@ const GLYPHS: Record<string, Glyph> = {
     g.lineTo(36, 36);
     g.stroke();
   },
+  reroll: (g) => {
+    // Two arrows chasing each other round a circle: draw again.
+    for (const start of [0, Math.PI]) {
+      const end = start + Math.PI - 0.45;
+      g.beginPath();
+      g.arc(24, 24, 13, start + 0.3, end);
+      g.stroke();
+      const x = 24 + Math.cos(end) * 13;
+      const y = 24 + Math.sin(end) * 13;
+      const t = end + Math.PI / 2;
+      poly(g, [
+        [x + Math.cos(t) * 7, y + Math.sin(t) * 7],
+        [x + Math.cos(end) * 5, y + Math.sin(end) * 5],
+        [x - Math.cos(end) * 5, y - Math.sin(end) * 5],
+      ]);
+    }
+  },
   twin: (g) => {
     g.beginPath();
     g.arc(17, 24, 10, 0, TAU);

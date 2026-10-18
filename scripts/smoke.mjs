@@ -69,6 +69,7 @@ const stats = () =>
   });
 
 const shotsTaken = new Set();
+let rerollTested = false;
 /** Screenshot each kind of board the first time it shows up. */
 async function shotBoard() {
   const kind = await page.evaluate(() => {
@@ -99,6 +100,15 @@ async function steer(ms, { cx = 195, cy = 620, radius = 45 } = {}) {
       }
       await wait(450); // boards ignore taps for a moment after opening
       await shotBoard();
+      if (!rerollTested && (await page.isVisible('.btn.reroll'))) {
+        // Second Auswählen: redraw the board once and check it came back with one reroll fewer.
+        rerollTested = true;
+        await shot('board-reroll');
+        const before = await page.textContent('.btn.reroll');
+        await page.tap('.btn.reroll');
+        await wait(450);
+        log('reroll', { before, after: (await page.isVisible('.btn.reroll')) ? await page.textContent('.btn.reroll') : 'none left', cards: await page.$$eval('.screen .card', (c) => c.length) });
+      }
       picks += await page.evaluate(() => (window.__msq.pick(0) > 0 ? 1 : 0));
       continue;
     }
@@ -214,6 +224,9 @@ try {
     const save = JSON.parse(localStorage.getItem('msq.save') ?? '{}');
     save.stages = { hueco: { best: 1210, cleared: true }, seireitei: { best: 0, cleared: false } };
     save.taken = ['senbonzakura', 'hyorinmaru', 'zanka', 'tengen'];
+    save.gold = 5000;
+    save.meta = { arterie: 2, reroll: 1 };
+    save.awakened = ['xaxis', 'explode', 'fear'];
     localStorage.setItem('msq.save', JSON.stringify(save));
   });
   await page.reload();
@@ -228,11 +241,50 @@ try {
     collection: await page.textContent('.collection-text'),
   });
   await shot('09-title-seireitei');
+
+  // The Wandenreich Archives: buy an upgrade, pick a starting Schrift.
+  await page.tap('.archives-btn');
+  await page.waitForSelector('.screen.archives .upgrade');
+  await wait(300);
+  const readSave = () => page.evaluate(() => JSON.parse(localStorage.getItem('msq.save') ?? '{}'));
+  await shot('09b-archives');
+  const goldBefore = (await readSave()).gold;
+  await page.tap('.upgrade:nth-child(1) .upgrade-buy');
+  await wait(250);
+  await page.tap('.start-chip:nth-child(2)');
+  await wait(250);
+  const after = await readSave();
+  log('archives', {
+    goldBefore,
+    goldAfter: after.gold,
+    arterie: after.meta.arterie,
+    start: after.start,
+    rows: await page.$$eval('.upgrade', (r) => r.length),
+    starts: await page.$$eval('.start-chip', (c) => c.map((x) => x.textContent)),
+  });
+  await shot('09c-archives-bought');
+  await page.tap('.screen.archives .btn.primary');
+  await page.waitForSelector('.screen.title .btn.primary');
+  await wait(300);
+
   await page.tap('.screen.title .btn.primary');
   await wait(300);
+  log('run with upgrades', await page.evaluate(() => {
+    const w = window.__msq.world;
+    return { first: w.powers[0]?.def.id, atk: w.stats.atk, rerolls: w.rerolls, stage: w.stage.id };
+  }));
   picks = await steer(9000);
   log('seireitei early', { ...(await stats()), picks, stage: await page.evaluate(() => window.__msq.world.stage.id) });
   await shot('10-seireitei-early');
+
+  // Quit: the results pay out gold for the run.
+  await page.tap('.icon-btn');
+  await wait(300);
+  await page.tap('.screen.pause .btn.danger');
+  await page.waitForSelector('.screen.results');
+  await wait(400);
+  log('results gold', { line: await page.textContent('.screen.results .gold-line').catch(() => null), saved: (await readSave()).gold });
+  await shot('10b-results-gold');
 
   // Mid-run: flash-steps, Kidō fire, a seated officer (elite at 7:30).
   await page.goto(`${BASE}?debug&seed=7&play&god&stage=seireitei&t=445&give=xaxis5,explode5,wind5`);

@@ -5,7 +5,7 @@ import { Rng } from '../core/rng';
 import { BANKAI_BY_ID, BANKAI_IDS } from '../data/bankai';
 import { ENEMY_INDEX, ENEMY_LIST } from '../data/enemies';
 import { PASSIVE_BY_ID, PASSIVES } from '../data/passives';
-import { POWER_BY_ID, POWERS, STARTING_POWER, upgradeCap } from '../data/powers';
+import { POWER_BY_ID, POWERS, STARTABLE_IDS, STARTING_POWER, upgradeCap } from '../data/powers';
 import { RELIC_BY_ID, RELICS, type RelicDef } from '../data/relics';
 import { hpScale, phaseAt, spawnRate, speedScale, stageById, xpScale, type StageDef, type TimelineEvent } from '../data/stages';
 import { updateMarks, updateZones } from './areas';
@@ -124,6 +124,12 @@ export interface WorldOptions {
   stage?: string;
   /** A · The Almighty is unlocked: it awakens once three Schrift reach Lv 7. */
   almighty?: boolean;
+  /** Archives upgrades: stat mods for the whole run, extra revives and level-up rerolls. */
+  meta?: StatMods;
+  revives?: number;
+  rerolls?: number;
+  /** The Schrift the run opens with (an attack; anything else falls back to Heilig Pfeil). */
+  start?: string;
 }
 
 interface Warning {
@@ -238,6 +244,12 @@ export class World {
   almightyBoss = 0;
   /** Chance that a hit never happens (The Almighty's foresight). */
   foresight = 0;
+  /** Level-up boards that can still be redrawn this run (Second Auswählen). */
+  rerolls = 0;
+  /** Bosses killed before the final one, for the run's gold. */
+  bossKills = 0;
+  /** Archives upgrades, applied on top of passives and relics. */
+  private readonly metaMods: StatMods | null;
   /** Direction you last moved, radians: aim for powers that fire "where you are heading". */
   aim = -Math.PI / 2;
 
@@ -278,6 +290,7 @@ export class World {
 
   constructor(opts: WorldOptions = {}) {
     this.rng = new Rng(opts.seed);
+    this.metaMods = opts.meta ?? null;
     this.stage = stageById(opts.stage);
     this.almightyUnlocked = !!opts.almighty;
     this.stress = Math.max(0, Math.floor(opts.stress ?? 0));
@@ -308,7 +321,9 @@ export class World {
       while (this.evCursor < events.length && events[this.evCursor].at < start) this.evCursor++;
       while (this.warnCursor < this.warnings.length && this.warnings[this.warnCursor].at < start) this.warnCursor++;
     }
-    this.addPower(STARTING_POWER);
+    this.addPower(opts.start && STARTABLE_IDS.includes(opts.start) ? opts.start : STARTING_POWER);
+    this.player.revives += Math.max(0, Math.floor(opts.revives ?? 0));
+    this.rerolls = Math.max(0, Math.floor(opts.rerolls ?? 0));
     if (this.stress > 0) {
       for (const def of POWERS) {
         if (def.group === 'bankai') continue;
@@ -913,6 +928,7 @@ export class World {
     if (E.volT[i] > 0) this.queueBurst(x, y, 44 * this.stats.size, E.volDmg[i]);
     if (flags & FLAG_BOSS) {
       this.bossCount = Math.max(0, this.bossCount - 1);
+      if (E.uid[i] !== this.finalBossUid) this.bossKills++;
       if (def.id === 'bearer') {
         this.addPickup('medallion', x, y, BANKAI_IDS[E.variant[i]]);
         this.addPickup('chestBlack', x + 36, y + 12);
@@ -1749,6 +1765,7 @@ export class World {
       if (def) mods.push(scaleMods(def.perLevel, level));
     }
     for (const r of this.relics) if (r.mods) mods.push(r.mods);
+    if (this.metaMods) mods.push(this.metaMods);
     const p = this.player;
     const prevMax = p.maxHp;
     const prevCount = this.stats.count;

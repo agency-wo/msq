@@ -1,6 +1,9 @@
 import { SIM_HZ } from '../src/config';
+import { UPGRADES } from '../src/data/archives';
 import type { Offer } from '../src/game/offers';
-import type { World } from '../src/game/world';
+import type { World, WorldOptions } from '../src/game/world';
+import { buyUpgrade, metaMods, metaRerolls, metaRevives } from '../src/save/archives';
+import { defaultSave } from '../src/save/save';
 
 /** Simulated players for headless tests: how they pick cards and how they move. */
 
@@ -168,4 +171,12 @@ export function play(w: World, seconds: number, pick: Strategy, move: Mover, onS
     resolveChoices(w, pick);
     onStep?.(w);
   }
+}
+
+/** World options for a player who bought every Archives upgrade. */
+export function maxedMeta(): Pick<WorldOptions, 'meta' | 'revives' | 'rerolls'> {
+  const s = defaultSave();
+  s.gold = 1_000_000;
+  for (const u of UPGRADES) while (buyUpgrade(s, u.id));
+  return { meta: metaMods(s), revives: metaRevives(s), rerolls: metaRerolls(s) };
 }

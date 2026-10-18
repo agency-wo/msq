@@ -1,4 +1,5 @@
 import { formatTime } from '../core/math';
+import { UPGRADES } from '../data/archives';
 import { BANKAI_BY_ID, BANKAI_IDS } from '../data/bankai';
 import { PASSIVE_BY_ID } from '../data/passives';
 import { POWER_BY_ID, type PowerDef } from '../data/powers';
@@ -6,6 +7,7 @@ import type { Rarity, RelicDef } from '../data/relics';
 import { STAGES, stageById, type StageId } from '../data/stages';
 import type { ChestKind, Offer } from '../game/offers';
 import type { Banner, World } from '../game/world';
+import { nextCost, startOptions, upgradeLevel } from '../save/archives';
 import { almightyUnlocked, stageUnlocked, type SaveData, type Settings } from '../save/save';
 import { drawEmblem, drawIcon } from './icons';
 
@@ -50,6 +52,11 @@ export interface ResultSummary {
   unlocked: string | null;
   /** This run took back the last missing bankai: A · The Almighty is now unlocked. */
   almighty: boolean;
+  /** Gold the run paid out, and the balance after it. */
+  goldEarned: number;
+  goldTotal: number;
+  /** Attacks awakened for the first time (names): new starting options. */
+  starts: string[];
   victory: boolean;
   quit: boolean;
   time: number;
@@ -58,6 +65,11 @@ export interface ResultSummary {
   bestTime: number;
   newBest: boolean;
   powers: { name: string; icon: string; color: string; letter?: string; level: number; attr: string | null; bankai: boolean }[];
+}
+
+/** 1,240 rather than 1240. */
+function gold(n: number): string {
+  return Math.floor(n).toLocaleString('en-US');
 }
 
 function powerCard(def: PowerDef, badge: string | undefined, desc: string, tone?: CardSpec['tone']): CardSpec {
@@ -212,7 +224,7 @@ export class UI {
 
   showTitle(
     save: SaveData,
-    h: { onPlay: () => void; onSettings: () => void; onStage: (id: StageId) => void; installHint: boolean },
+    h: { onPlay: () => void; onArchives: () => void; onSettings: () => void; onStage: (id: StageId) => void; installHint: boolean },
   ): void {
     const p = this.open('title');
     const emblem = el('canvas', 'emblem');
@@ -221,6 +233,9 @@ export class UI {
     logo.append(el('div', 'logo-top', 'QUINCY'), el('div', 'logo-bottom', 'SURVIVAL'));
     const play = button('btn primary', 'Play');
     play.addEventListener('click', this.guard(h.onPlay));
+    const archives = button('btn archives-btn', '');
+    archives.append(el('span', '', 'Archives'), el('span', 'btn-note', `${gold(save.gold)} gold`));
+    archives.addEventListener('click', this.guard(h.onArchives));
     const settings = button('btn', 'Settings');
     settings.addEventListener('click', this.guard(h.onSettings));
     p.append(
@@ -229,6 +244,7 @@ export class UI {
       el('p', 'tagline', 'The Emperor takes back what he gave.'),
       this.stagePicker(save, h.onStage),
       play,
+      archives,
       settings,
       this.collection(save),
     );
@@ -259,13 +275,81 @@ export class UI {
     this.lock(150);
   }
 
-  showLevelUp(level: number, offers: readonly Offer[], onPick: (o: Offer) => void): void {
+  showLevelUp(level: number, offers: readonly Offer[], onPick: (o: Offer) => void, reroll?: { left: number; onReroll: () => void }): void {
     const p = this.open('board');
     p.append(el('div', 'board-kicker', 'Auswählen'), el('h2', 'board-title', `Level ${level}`));
     const list = el('div', 'cards');
     for (const o of offers) list.append(this.card(this.offerSpec(o), () => onPick(o)));
     p.append(list);
+    if (reroll && reroll.left > 0) {
+      const b = button('btn small reroll', `Reroll · ${reroll.left} left`);
+      b.addEventListener('click', this.guard(reroll.onReroll));
+      p.append(b);
+    }
     this.lock();
+  }
+
+  /**
+   * The Wandenreich Archives: gold balance, permanent upgrades with their next
+   * level's price, and the choice of starting Schrift. Redrawn after each
+   * purchase without the tap lock, so buying several in a row feels instant.
+   */
+  showArchives(
+    save: SaveData,
+    h: { onBuy: (id: string) => void; onStart: (id: string) => void; onBack: () => void },
+    relock = true,
+  ): void {
+    const p = this.open('archives');
+    p.append(el('div', 'board-kicker', 'Wandenreich'), el('h2', 'board-title', 'Archives'));
+    const balance = el('p', 'gold-line');
+    const coin = el('canvas', 'gold-icon');
+    drawIcon(coin, 'coin', '#ffd27a');
+    balance.append(coin, el('span', '', `${gold(save.gold)} gold`));
+    p.append(balance, el('p', 'archives-hint', 'Every run pays gold. What you learn here stays with you.'));
+    const list = el('div', 'upgrades');
+    for (const u of UPGRADES) {
+      const level = upgradeLevel(save, u.id);
+      const max = u.costs.length;
+      const cost = nextCost(save, u.id);
+      const row = el('div', 'upgrade');
+      row.style.setProperty('--accent', u.color);
+      const icon = el('canvas', 'upgrade-icon');
+      drawIcon(icon, u.icon, u.color);
+      const body = el('div', 'upgrade-body');
+      const pips = el('div', 'pips');
+      for (let k = 0; k < max; k++) pips.append(el('span', k < level ? 'pip on' : 'pip'));
+      body.append(el('div', 'upgrade-name', u.name), pips, el('p', 'upgrade-desc', `${u.per}${max > 1 ? ' per level' : ''}. ${u.desc}`));
+      const buy = button('upgrade-buy', cost === null ? 'Max' : gold(cost));
+      if (cost === null || save.gold < cost) {
+        buy.disabled = true;
+        buy.classList.add(cost === null ? 'maxed' : 'poor');
+      } else {
+        buy.addEventListener('click', this.guard(() => h.onBuy(u.id)));
+      }
+      buy.setAttribute('aria-label', cost === null ? `${u.name}: maxed` : `Buy ${u.name} level ${level + 1} for ${cost} gold`);
+      row.append(icon, body, buy);
+      list.append(row);
+    }
+    p.append(list, el('h3', 'archives-sub', 'Start with'));
+    const starts = el('div', 'start-chips');
+    const options = startOptions(save);
+    for (const id of options) {
+      const def = POWER_BY_ID.get(id);
+      if (!def) continue;
+      const chip = button(`start-chip${save.start === id ? ' on' : ''}`, '');
+      chip.setAttribute('aria-pressed', String(save.start === id));
+      const c = el('canvas', 'chip-icon');
+      drawIcon(c, def.icon, def.color, def.letter);
+      chip.append(c, el('span', 'chip-text', def.name));
+      chip.addEventListener('click', this.guard(() => h.onStart(id)));
+      starts.append(chip);
+    }
+    p.append(starts);
+    if (options.length <= 1) p.append(el('p', 'archives-hint', 'Awaken an attack to Lv 7 in a run and you can start with it.'));
+    const back = button('btn primary', 'Back');
+    back.addEventListener('click', this.guard(h.onBack));
+    p.append(back);
+    if (relock) this.lock(150);
   }
 
   showAttributes(def: PowerDef, onPick: (attr: string) => void): void {
@@ -317,6 +401,7 @@ export class UI {
     p.append(el('div', 'board-kicker', kicker), el('h2', 'board-title', r.victory ? 'Victory' : 'Fallen'));
     if (r.unlocked) p.append(el('p', 'unlock-note', `New stage unlocked: ${r.unlocked}`));
     if (r.almighty) p.append(el('p', 'unlock-note', 'Every bankai taken back. A · The Almighty is unlocked: it awakens once three Schrift reach Lv 7.'));
+    if (r.starts.length > 0) p.append(el('p', 'unlock-note', `New starting Schrift in the Archives: ${r.starts.join(', ')}`));
     const stats = el('div', 'stats');
     const stat = (label: string, value: string): HTMLElement => {
       const s = el('div', 'stat');
@@ -330,6 +415,13 @@ export class UI {
       stat(r.newBest ? 'New best' : 'Best', formatTime(r.bestTime)),
     );
     p.append(stats);
+    if (r.goldEarned > 0) {
+      const line = el('p', 'gold-line');
+      const coin = el('canvas', 'gold-icon');
+      drawIcon(coin, 'coin', '#ffd27a');
+      line.append(coin, el('span', '', `+${gold(r.goldEarned)} gold · ${gold(r.goldTotal)} to spend in the Archives`));
+      p.append(line);
+    }
     if (r.powers.length > 0) {
       const build = el('div', 'build');
       for (const pw of r.powers) {

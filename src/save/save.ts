@@ -1,4 +1,6 @@
+import { UPGRADES } from '../data/archives';
 import { BANKAI_IDS } from '../data/bankai';
+import { STARTABLE_IDS, STARTING_POWER } from '../data/powers';
 import { STAGE_IDS, STAGES, type StageId } from '../data/stages';
 
 /**
@@ -35,16 +37,27 @@ export interface SaveData {
   stages: Record<StageId, StageRecord>;
   /** Every bankai ever taken back, across runs. All six unlock A · The Almighty. */
   taken: string[];
+  /** Gold to spend in the Archives (totals.gold counts everything ever earned). */
+  gold: number;
+  /** Archives upgrade levels, by upgrade id. */
+  meta: Record<string, number>;
+  /** Attacks ever awakened to Lv 7 in a run: each can open a run. */
+  awakened: string[];
+  /** The Schrift a run opens with. */
+  start: string;
 }
 
 export interface RunResult {
   stage: StageId;
   /** Bankai taken back during the run. */
   bankai?: readonly string[];
+  /** Powers awakened to Lv 7 during the run. */
+  awakened?: readonly string[];
   time: number;
   level: number;
   kills: number;
   cleared: boolean;
+  /** Gold the run paid out (see game/rewards.ts). */
   gold: number;
 }
 
@@ -60,6 +73,10 @@ export function defaultSave(): SaveData {
     stage: 'hueco',
     stages: Object.fromEntries(STAGE_IDS.map((id) => [id, { best: 0, cleared: false }])) as Record<StageId, StageRecord>,
     taken: [],
+    gold: 0,
+    meta: {},
+    awakened: [],
+    start: STARTING_POWER,
   };
 }
 
@@ -107,6 +124,14 @@ export function migrate(raw: unknown): SaveData {
   }
   const stage = STAGE_IDS.find((id) => id === r.stage) ?? 'hueco';
   const taken = Array.isArray(r.taken) ? BANKAI_IDS.filter((id) => (r.taken as unknown[]).includes(id)) : [];
+  const metaRaw = obj(r.meta);
+  const meta: Record<string, number> = {};
+  for (const u of UPGRADES) {
+    const level = Math.floor(num(metaRaw[u.id], 0));
+    if (level > 0) meta[u.id] = Math.min(level, u.costs.length);
+  }
+  const awakened = Array.isArray(r.awakened) ? STARTABLE_IDS.filter((id) => (r.awakened as unknown[]).includes(id)) : [];
+  const start = typeof r.start === 'string' && awakened.includes(r.start) ? r.start : STARTING_POWER;
   return {
     v: 1,
     best: { time: num(best.time, 0), level: num(best.level, 0), kills: num(best.kills, 0) },
@@ -124,6 +149,11 @@ export function migrate(raw: unknown): SaveData {
     stage,
     stages,
     taken,
+    // Saves from before the Archives start with the gold they had already counted.
+    gold: num(r.gold, num(totals.gold, 0)),
+    meta,
+    awakened,
+    start,
   };
 }
 
@@ -184,17 +214,34 @@ export function importCode(code: string): SaveData | null {
   }
 }
 
+export interface RecordOutcome {
+  newBest: boolean;
+  /** A stage this run opened up, if any. */
+  unlocked: StageId | null;
+  /** This run took back the last missing bankai: A · The Almighty is unlocked. */
+  almighty: boolean;
+  /** Attacks awakened for the first time: new starting options. */
+  starts: string[];
+}
+
 /**
- * Fold a finished run into the save. "Best" is the longest survival, overall
- * and per stage; newBest is about the stage just played. `unlocked` names a
- * stage this run opened up, if any.
+ * Fold a finished run into the save: records, the gold it paid, the bankai it
+ * took back and the attacks it awakened. "Best" is the longest survival,
+ * overall and per stage; newBest is about the stage just played.
  */
-export function recordRun(save: SaveData, r: RunResult): { newBest: boolean; unlocked: StageId | null; almighty: boolean } {
+export function recordRun(save: SaveData, r: RunResult): RecordOutcome {
   const hadAlmighty = almightyUnlocked(save);
   for (const id of r.bankai ?? []) if (BANKAI_IDS.includes(id) && !save.taken.includes(id)) save.taken.push(id);
+  const starts: string[] = [];
+  for (const id of r.awakened ?? []) {
+    if (!STARTABLE_IDS.includes(id) || save.awakened.includes(id)) continue;
+    save.awakened.push(id);
+    if (id !== STARTING_POWER) starts.push(id);
+  }
   save.totals.runs++;
   save.totals.kills += r.kills;
   save.totals.gold += r.gold;
+  save.gold += r.gold;
   if (r.cleared) save.totals.clears++;
   if (r.time > save.best.time) save.best = { time: r.time, level: r.level, kills: r.kills };
   const rec = save.stages[r.stage];
@@ -205,5 +252,5 @@ export function recordRun(save: SaveData, r: RunResult): { newBest: boolean; unl
     rec.cleared = true;
     unlocked = STAGES.find((s) => s.unlockedBy === r.stage)?.id ?? null;
   }
-  return { newBest, unlocked, almighty: !hadAlmighty && almightyUnlocked(save) };
+  return { newBest, unlocked, almighty: !hadAlmighty && almightyUnlocked(save), starts };
 }

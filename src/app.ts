@@ -4,13 +4,15 @@ import { FixedLoop } from './core/loop';
 import { POWER_BY_ID } from './data/powers';
 import { STAGE_BY_ID, stageById, type StageId } from './data/stages';
 import type { Offer } from './game/offers';
+import { runGold } from './game/rewards';
 import { World } from './game/world';
 import { installGestureGuards, isIOS, isPhoneLandscape, isStandalone } from './platform/pwa';
 import { Renderer } from './render/renderer';
+import { buyUpgrade, goldMul, metaMods, metaRerolls, metaRevives, setStart } from './save/archives';
 import { almightyUnlocked, exportCode, importCode, loadSave, recordRun, stageUnlocked, writeSave, type SaveData } from './save/save';
 import { UI, type Toggle } from './ui/ui';
 
-type State = 'title' | 'settings' | 'playing' | 'paused' | 'levelup' | 'chest' | 'over';
+type State = 'title' | 'settings' | 'archives' | 'playing' | 'paused' | 'levelup' | 'chest' | 'over';
 
 function numParam(p: URLSearchParams, key: string): number | undefined {
   const v = p.get(key);
@@ -31,7 +33,8 @@ function listParam(p: URLSearchParams, key: string): string[] {
  * URL switches for testing: ?debug (FPS overlay), ?stress=1500 (swarm + maxed
  * powers, no damage), ?god, ?seed=123, ?t=600 (start at 10:00), ?play (skip title),
  * ?give=explode7,xaxis5 (own powers), ?bankai=zanka (grant a bankai), ?bearers=tengen,gonryo,
- * ?stage=seireitei (play a stage, locked or not), ?almighty (start with A · The Almighty).
+ * ?stage=seireitei (play a stage, locked or not), ?almighty (start with A · The Almighty),
+ * ?start=xaxis (open the run with that Schrift, awakened or not).
  */
 export class App {
   private readonly renderer = new Renderer();
@@ -80,6 +83,7 @@ export class App {
     this.renderer.setStage(this.save.stage);
     this.ui.showTitle(this.save, {
       onPlay: () => this.startRun(),
+      onArchives: () => this.showArchives(),
       onSettings: () => this.showSettings(),
       onStage: (id: StageId) => {
         this.save.stage = id;
@@ -88,6 +92,30 @@ export class App {
       },
       installHint: isIOS() && !isStandalone(),
     });
+  }
+
+  /** The Wandenreich Archives: buy upgrades, pick the starting Schrift. Every change is saved at once. */
+  private showArchives(relock = true): void {
+    this.state = 'archives';
+    this.ui.showArchives(
+      this.save,
+      {
+        onBuy: (id) => {
+          if (!buyUpgrade(this.save, id)) return;
+          writeSave(this.save);
+          this.sfx.play('chest');
+          this.showArchives(false);
+        },
+        onStart: (id) => {
+          if (!setStart(this.save, id)) return;
+          writeSave(this.save);
+          this.sfx.play('blade');
+          this.showArchives(false);
+        },
+        onBack: () => this.showTitle(),
+      },
+      relock,
+    );
   }
 
   /** ?stage= wins (testing, even if locked); otherwise the stage picked on the title screen. */
@@ -121,6 +149,11 @@ export class App {
       numbers: this.save.settings.numbers,
       bearers: listParam(p, 'bearers'),
       almighty: almightyUnlocked(this.save),
+      meta: metaMods(this.save),
+      revives: metaRevives(this.save),
+      rerolls: metaRerolls(this.save),
+      // ?start= tries any attack (testing); otherwise the Schrift picked in the Archives.
+      start: p.get('start') ?? this.save.start,
     });
     if (p.has('almighty')) this.world.grantAlmighty();
     // Testing: ?give=explode7,xaxis5 owns powers at those levels; ?bankai=senbonzakura,zanka grants bankai.
@@ -188,20 +221,37 @@ export class App {
     if (!w) return;
     this.halt('levelup');
     const level = w.level - w.pendingLevelUps + 1;
-    this.ui.showLevelUp(level, w.offers(), (o: Offer) => {
-      if (o.kind === 'power-attr') {
-        const def = POWER_BY_ID.get(o.id);
-        if (!def) return;
-        this.ui.showAttributes(def, (attr) => {
-          w.chooseAttribute(o.id, attr);
-          this.sfx.play('level');
-          this.levelDone();
-        });
-        return;
-      }
-      w.applyOffer(o);
-      this.levelDone();
-    });
+    // Second Auswählen: redraw the whole board, a limited number of times per run.
+    const reroll =
+      w.rerolls > 0
+        ? {
+            left: w.rerolls,
+            onReroll: () => {
+              w.rerolls--;
+              this.sfx.play('blade');
+              this.openLevelUp();
+            },
+          }
+        : undefined;
+    this.ui.showLevelUp(
+      level,
+      w.offers(),
+      (o: Offer) => {
+        if (o.kind === 'power-attr') {
+          const def = POWER_BY_ID.get(o.id);
+          if (!def) return;
+          this.ui.showAttributes(def, (attr) => {
+            w.chooseAttribute(o.id, attr);
+            this.sfx.play('level');
+            this.levelDone();
+          });
+          return;
+        }
+        w.applyOffer(o);
+        this.levelDone();
+      },
+      reroll,
+    );
   }
 
   private levelDone(): void {
@@ -258,17 +308,29 @@ export class App {
     if (!w) return;
     this.halt('over');
     const victory = w.over === 'victory';
-    // Test runs (god mode, stress) never touch the real save.
+    // Test runs (god mode, stress) never touch the real save and pay nothing.
+    const earned = w.god
+      ? 0
+      : runGold({
+          stage: w.stage.id,
+          time: w.t,
+          level: w.level,
+          bossKills: w.bossKills,
+          cleared: victory,
+          pickupGold: w.gold,
+          goldMul: goldMul(this.save),
+        });
     const record = w.god
-      ? { newBest: false, unlocked: null, almighty: false }
+      ? { newBest: false, unlocked: null, almighty: false, starts: [] as string[] }
       : recordRun(this.save, {
           stage: w.stage.id,
           time: w.t,
           level: w.level,
           kills: w.kills,
           cleared: victory,
-          gold: w.gold,
+          gold: earned,
           bankai: w.powers.filter((ps) => ps.def.group === 'bankai').map((ps) => ps.def.id),
+          awakened: w.powers.filter((ps) => ps.attr !== null).map((ps) => ps.def.id),
         });
     if (!w.god) writeSave(this.save);
     this.ui.showHud(false);
@@ -277,6 +339,9 @@ export class App {
         stageName: w.stage.name,
         unlocked: record.unlocked ? stageById(record.unlocked).name : null,
         almighty: record.almighty,
+        goldEarned: earned,
+        goldTotal: this.save.gold,
+        starts: record.starts.map((id) => POWER_BY_ID.get(id)?.name ?? id),
         victory,
         quit,
         time: w.t,

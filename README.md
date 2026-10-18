@@ -15,6 +15,11 @@ rewrites the future (enemy fire vanishes, everything on screen is struck down).
 All art is drawn in code: the Emperor is a chibi homage to Yhwach; everything
 else (Hollows, Soul Reapers, bearers, bosses, effects) is an original design.
 
+Every run pays gold. Spend it in the **Wandenreich Archives** on permanent
+upgrades (attack, health, speed, pickup range, cooldowns, faster level-ups,
+more gold, a revive, level-up rerolls), and pick which awakened Schrift a run
+opens with.
+
 Stages, 20 minutes each:
 
 - **Hueco Mundo**: Hollows, ending with the Vasto Lorde.
@@ -56,7 +61,8 @@ Add these to the URL: `?debug` (FPS, CPU per frame and entity counts),
 (own powers at those levels), `?bankai=zanka,tengen` (start with bankai),
 `?bearers=raikoben,gonryo` (choose which bankai the bosses carry),
 `?stage=seireitei` (play a stage even if it is still locked), `?almighty`
-(start with A · The Almighty).
+(start with A · The Almighty), `?start=xaxis` (open the run with that Schrift).
+Add `META=max` to the balance report for a player with every upgrade.
 
 ## How it is built
 

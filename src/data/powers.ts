@@ -625,3 +625,6 @@ export const STARTING_POWER = 'heilig';
 export const POWERS: readonly PowerDef[] = [...LEVELED, ...BANKAI_POWERS, ALMIGHTY];
 
 export const POWER_BY_ID: ReadonlyMap<string, PowerDef> = new Map(POWERS.map((p) => [p.id, p]));
+
+/** Powers with a Lv 7 pick (the attacks): once awakened in any run, a run can start with one of them. */
+export const STARTABLE_IDS: readonly string[] = POWERS.filter((p) => p.attributes).map((p) => p.id);
