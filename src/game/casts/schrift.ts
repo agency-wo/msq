@@ -14,6 +14,7 @@ import {
   HOLD_FEAR,
   LAYER_ADD,
   MF_CRATER,
+  MF_SHATTER,
   MK_METEOR,
   MK_RAIN,
   MS_CIRCLE,
@@ -29,6 +30,7 @@ import {
   PK_DRONE,
   PK_MISSILE,
   PK_THORN,
+  ZF_BLAZE,
   ZF_FOLLOW,
   ZF_PULL,
   ZF_PUSH,
@@ -94,8 +96,10 @@ export function castOrbit(w: World, ps: PowerState, slot: number): void {
         ps.active = 0;
         ps.timer = cooldown(w, st.cooldown);
         w.clearKind(slot, PK_BLADE);
+        return;
       }
     }
+    if (w.resonances.has('seelepfeil')) seelePfeil(w, ps, slot);
     return;
   }
   ps.timer -= DT;
@@ -103,6 +107,26 @@ export function castOrbit(w: World, ps: PowerState, slot: number): void {
   ps.active = ps.attr === 'eternal' ? Infinity : st.duration * w.stats.duration;
   respawnBlades(w, slot);
   w.sound('blade');
+}
+
+/** Seele Pfeil (resonance): every 0.7 s each blade shoots a holy arrow straight outward. */
+function seelePfeil(w: World, ps: PowerState, slot: number): void {
+  ps.timer2 -= DT;
+  if (ps.timer2 > 0) return;
+  ps.timer2 = cooldown(w, 0.7);
+  const heilig = w.power('heilig');
+  if (!heilig) return;
+  const hs = w.powers.indexOf(heilig);
+  const P = w.pr;
+  const speed = 420 * w.stats.projSpeed;
+  const dmg = heilig.stats.damage * 0.6;
+  const n = P.n;
+  for (let i = 0; i < n; i++) {
+    if (P.kind[i] !== PK_BLADE || P.src[i] !== slot || P.life[i] <= 0) continue;
+    const a = P.rot[i];
+    w.spawnProjectile(PK_ARROW, hs, P.x[i], P.y[i], Math.cos(a) * speed, Math.sin(a) * speed, 0.8, dmg, 6 * w.stats.size, 0, 0);
+  }
+  w.sound('shoot');
 }
 
 /** Replace a power's blades, e.g. after a level-up changed their number. */
@@ -142,7 +166,24 @@ export function castPulse(w: World, ps: PowerState): void {
     if (paralyze) w.applyHold(j, 0.5, HOLD_FEAR);
   }
   w.spawnFx(FX_RING, 0, 0, 0, 0, 0.32, R * 0.6, R * 2, over ? 1 : 0.8, 0, 0, over ? 0xffffff : 0xd7c3ff, LAYER_ADD, 0, 1);
+  if (w.resonances.has('sonic')) sonicDrones(w, dmg, knock, R * 0.6);
   w.sound('pulse');
+}
+
+/** Sonic Drones (resonance): the same ring, smaller, from every drone you have. */
+function sonicDrones(w: World, dmg: number, knock: number, R: number): void {
+  const drones = w.power('knowledge');
+  if (!drones) return;
+  const ks = w.powers.indexOf(drones);
+  const P = w.pr;
+  for (let i = 0; i < P.n; i++) {
+    if (P.kind[i] !== PK_DRONE || P.src[i] !== ks || P.life[i] <= 0) continue;
+    const x = P.x[i];
+    const y = P.y[i];
+    const n = enemiesInCircle(w, x, y, R);
+    for (let k = 0; k < n; k++) w.damageEnemy(w.qout[k], dmg * 0.7, knock * 0.5, x, y);
+    w.spawnFx(FX_RING, x, y, 0, 0, 0.28, R * 0.5, R * 2, 0.75, 0, 0, 0xd7c3ff, LAYER_ADD);
+  }
 }
 
 // -------------------------------------------------------- The Thunderbolt
@@ -249,8 +290,20 @@ function fireBeams(w: World, ps: PowerState): boolean {
     const perp = aim + Math.PI / 2;
     beamLine(w, tx - Math.cos(perp) * 450, ty - Math.sin(perp) * 450, perp, 900, width, dmg, 0x9fe7ff, FX_BEAMH, 20, 0, 0);
   }
+  if (w.resonances.has('railgun')) {
+    for (let b = 0; b < count; b++) railgun(w, p.x, p.y, aim + (b - (count - 1) / 2) * 0.16);
+  }
   w.sound('beam');
   return true;
+}
+
+/** Railgun (resonance): lightning strikes at four points along a beam, with The Thunderbolt's numbers. */
+function railgun(w: World, x: number, y: number, ang: number): void {
+  const th = w.power('thunder');
+  if (!th) return;
+  const R = th.stats.radius * th.stats.size * w.stats.size;
+  for (const d of [110, 230, 350, 470]) strikeAt(w, x + Math.cos(ang) * d, y + Math.sin(ang) * d, th.stats.damage * 0.6, R, th.attr);
+  w.sound('strike');
 }
 
 /** Damage along a line, with a stretched sprite for the look. Shared by beams, jets and fire slashes. */
@@ -405,7 +458,7 @@ export function castMeteor(w: World, ps: PowerState): void {
   const size = st.size * w.stats.size;
   const R = st.radius * size * (colossus ? 1.6 : 1);
   const dmg = st.damage * (colossus ? 4 : 1);
-  const flags = ps.attr === 'crater' ? MF_CRATER : 0;
+  const flags = (ps.attr === 'crater' ? MF_CRATER : 0) | (w.resonances.has('armageddon') ? MF_SHATTER : 0);
   let fired = 0;
   for (let k = 0; k < count; k++) {
     let tx: number;
@@ -426,7 +479,7 @@ export function castMeteor(w: World, ps: PowerState): void {
         const a = w.rng.next() * TAU;
         const d = R * (0.8 + w.rng.next());
         const delay = st.duration + 0.15 + s * 0.12;
-        w.spawnMark(MK_METEOR, MS_CIRCLE, tx + Math.cos(a) * d, ty + Math.sin(a) * d, R * 0.5, 0, 0, delay, dmg * 0.5, 0);
+        w.spawnMark(MK_METEOR, MS_CIRCLE, tx + Math.cos(a) * d, ty + Math.sin(a) * d, R * 0.5, 0, 0, delay, dmg * 0.5, flags & MF_SHATTER);
         meteorFall(w, tx + Math.cos(a) * d, ty + Math.sin(a) * d, delay, R * 0.5);
       }
     }
@@ -481,13 +534,16 @@ export function castGust(w: World, ps: PowerState): void {
   const count = st.count + w.stats.count + (ps.attr === 'twin' ? 1 : 0);
   const size = st.size * w.stats.size * (gale ? 1.6 : 1);
   const life = st.duration * w.stats.duration * (gale ? 1.6 : 1);
-  const flags = ZF_WANDER | (ps.attr === 'vacuum' ? ZF_PULL : ZF_PUSH);
+  // Firestorm (resonance): the gusts carry The Heat's fire.
+  const heat = w.resonances.has('firestorm') ? w.power('heat') : undefined;
+  const flags = ZF_WANDER | (ps.attr === 'vacuum' ? ZF_PULL : ZF_PUSH) | (heat ? ZF_BLAZE : 0);
   const p = w.player;
   for (let k = 0; k < count; k++) {
     const a = w.rng.next() * TAU;
-    w.spawnZone(ZK_GUST, p.x, p.y, Math.cos(a) * st.speed, Math.sin(a) * st.speed, st.radius * size, life, st.tick, st.damage, flags, 120);
+    const z = w.spawnZone(ZK_GUST, p.x, p.y, Math.cos(a) * st.speed, Math.sin(a) * st.speed, st.radius * size, life, st.tick, st.damage, flags, 120);
+    if (heat && z >= 0) w.zones.aux[z] = heat.stats.damage * 0.5;
   }
-  w.sound('gust');
+  w.sound(heat ? 'fire' : 'gust');
 }
 
 // -------------------------------------------------------- The Deathdealing

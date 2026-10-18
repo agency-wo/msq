@@ -34,7 +34,7 @@ function listParam(p: URLSearchParams, key: string): string[] {
  * powers, no damage), ?god, ?seed=123, ?t=600 (start at 10:00), ?play (skip title),
  * ?give=explode7,xaxis5 (own powers), ?bankai=zanka (grant a bankai), ?bearers=tengen,gonryo,
  * ?stage=seireitei (play a stage, locked or not), ?almighty (start with A · The Almighty),
- * ?start=xaxis (open the run with that Schrift, awakened or not).
+ * ?start=xaxis (open the run with that Schrift, awakened or not), ?res=firestorm,railgun (own resonances).
  */
 export class App {
   private readonly renderer = new Renderer();
@@ -162,6 +162,7 @@ export class App {
       if (m) this.world.give(m[1], m[2] ? Number(m[2]) : 1);
     }
     for (const id of listParam(p, 'bankai')) this.world.grantBankai(id);
+    for (const id of listParam(p, 'res')) this.world.addResonance(id);
     this.world.banners.length = 0;
     this.ui.hideScreen();
     this.ui.showHud(true);
@@ -349,6 +350,7 @@ export class App {
         kills: w.kills,
         bestTime: this.save.stages[w.stage.id].best,
         newBest: record.newBest,
+        resonances: [...w.resonances],
         powers: w.powers.map((ps) => ({
           name: ps.def.name,
           icon: ps.def.icon,

@@ -12,9 +12,13 @@ export type Mover = (w: World) => [number, number];
 
 export const firstCard: Strategy = (o) => o[0];
 
-/** Roughly what a person does: finish builds, take the Lv 7 pick, then grab new powers. */
+/** Roughly what a person does: take a resonance, finish builds, take the Lv 7 pick, then grab new powers. */
 export const sensible: Strategy = (o) =>
-  o.find((x) => x.kind === 'power-attr') ?? o.find((x) => x.kind === 'power-up') ?? o.find((x) => x.kind === 'power-new') ?? o[0];
+  o.find((x) => x.kind === 'resonance') ??
+  o.find((x) => x.kind === 'power-attr') ??
+  o.find((x) => x.kind === 'power-up') ??
+  o.find((x) => x.kind === 'power-new') ??
+  o[0];
 
 /** Pessimistic: walks a big circle and ignores enemies, orbs and chests. */
 export const circle: Mover = (w) => [Math.cos(w.t * 0.35), Math.sin(w.t * 0.35)];

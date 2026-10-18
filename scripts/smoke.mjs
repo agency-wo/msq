@@ -192,6 +192,22 @@ try {
   });
   await shot('04b-schrift-wave2');
 
+  // 5c. Resonances: Firestorm (burning gusts) and Railgun (lightning down every beam).
+  await page.goto(`${BASE}?debug&seed=7&play&god&t=420&give=heat7,wind7,xaxis7,thunder7&res=firestorm,railgun`);
+  await wait(500);
+  await steer(8000, { radius: 20 });
+  log('resonances', {
+    ...(await stats()),
+    owned: await page.evaluate(() => [...window.__msq.world.resonances]),
+    fires: await page.evaluate(() => {
+      const Z = window.__msq.world.zones;
+      let n = 0;
+      for (let i = 0; i < Z.n; i++) if (Z.kind[i] === 0) n++;
+      return n;
+    }),
+  });
+  await shot('04c-resonances');
+
   // 6. Medallion bearers: each fights with its bankai and warns before it hits.
   for (const id of ['tengen', 'raikoben', 'gonryo']) {
     await page.goto(`${BASE}?debug&seed=3&play&god&t=297&bearers=${id}`);

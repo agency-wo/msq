@@ -8,6 +8,8 @@ export type Offer =
   | { kind: 'power-up'; id: string; to: number }
   /** The power is at Lv 6: picking this opens its three Lv 7 attributes. */
   | { kind: 'power-attr'; id: string }
+  /** Both partners are awakened: their resonance joins the build (no slot). */
+  | { kind: 'resonance'; id: string }
   | { kind: 'passive'; id: string; to: number }
   | { kind: 'heal' }
   | { kind: 'gold' };
@@ -24,6 +26,9 @@ export interface OfferInput {
   passiveDefs: readonly PassiveDef[];
   maxPowers: number;
   maxPassives: number;
+  /** Resonance pairs, and the ones already owned. */
+  resonances?: readonly { id: string; a: string; b: string }[];
+  ownedResonances?: ReadonlySet<string>;
 }
 
 /** Combined weight of every "new power" card before the slots-used falloff. */
@@ -75,6 +80,14 @@ export function generateOffers(input: OfferInput, rng: Rng, count = 3): Offer[] 
     } else if (level < upgradeCap(def)) {
       pool.push({ item: { kind: 'power-up', id: def.id, to: level + 1 }, w: (def.group === 'bankai' ? 5 : 3) + level });
     }
+  }
+  // A resonance is offered, weighted high, once both of its powers are awakened (at their last level).
+  for (const r of input.resonances ?? []) {
+    if (input.ownedResonances?.has(r.id)) continue;
+    const da = defs.get(r.a);
+    const db = defs.get(r.b);
+    if (!da || !db) continue;
+    if (ownedPowers.get(r.a) === da.maxLevel && ownedPowers.get(r.b) === db.maxLevel) pool.push({ item: { kind: 'resonance', id: r.id }, w: 9 });
   }
   const ownedPassives = new Map(input.passives.map((p) => [p.id, p.level]));
   for (const def of input.passiveDefs) {

@@ -186,8 +186,10 @@ export class ZonePool extends Pool {
   readonly dmg = this.f32();
   /** Kind-specific: push/pull strength, vulnerability amount. */
   readonly extra = this.f32();
+  /** Resonance data (Firestorm: burn damage). */
+  readonly aux = this.f32();
   readonly kind = this.u8();
-  readonly flags = this.u8();
+  readonly flags = this.u32();
   readonly src = this.u8();
   readonly seed = this.u8();
 }

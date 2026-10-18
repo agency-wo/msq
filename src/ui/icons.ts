@@ -475,7 +475,8 @@ export function drawIcon(canvas: HTMLCanvasElement, name: string, color: string,
     g.stroke();
     g.shadowBlur = 6;
     g.fillStyle = '#f4f1ea';
-    g.font = `700 28px ${SERIF}`;
+    // Two letters (a resonance) share the ring at a smaller size.
+    g.font = `700 ${letter.length > 1 ? 19 : 28}px ${SERIF}`;
     g.textAlign = 'center';
     g.textBaseline = 'middle';
     g.fillText(letter, 24, 26);

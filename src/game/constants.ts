@@ -82,6 +82,7 @@ export const ZF_VULN = 16; // enemies inside take extra damage from everything
 export const ZF_WANDER = 32;
 export const ZF_SPREAD = 64; // kills inside spawn a new, smaller zone
 export const ZF_FREEZE = 128;
+export const ZF_BLAZE = 256; // Firestorm: burns what it touches and leaves fire behind (aux = burn damage)
 
 /** Mark kinds: delayed strikes with a warning shape. */
 export const MK_METEOR = 0;
@@ -108,6 +109,7 @@ export const MF_CRATER = 4; // leaves a burning crater
 export const MF_BURN = 8;
 export const MF_SLOW = 16; // slows the player on hit
 export const MF_ROOT = 32; // roots the player in place on hit
+export const MF_SHATTER = 64; // Armageddon: the impact flings reishi bombs
 
 /** Enemy bullet kinds and flags. */
 export const EB_BALA = 0;

@@ -4,6 +4,7 @@ import { BANKAI_BY_ID, BANKAI_IDS } from '../data/bankai';
 import { PASSIVE_BY_ID } from '../data/passives';
 import { POWER_BY_ID, type PowerDef } from '../data/powers';
 import type { Rarity, RelicDef } from '../data/relics';
+import { RESONANCE_BY_ID } from '../data/resonances';
 import { STAGES, stageById, type StageId } from '../data/stages';
 import type { ChestKind, Offer } from '../game/offers';
 import type { Banner, World } from '../game/world';
@@ -43,7 +44,7 @@ interface CardSpec {
   credit?: string;
   badge?: string;
   desc: string;
-  tone?: Rarity | 'attr' | 'bankai';
+  tone?: Rarity | 'attr' | 'bankai' | 'resonance';
 }
 
 export interface ResultSummary {
@@ -65,6 +66,8 @@ export interface ResultSummary {
   bestTime: number;
   newBest: boolean;
   powers: { name: string; icon: string; color: string; letter?: string; level: number; attr: string | null; bankai: boolean }[];
+  /** Resonance ids owned at the end. */
+  resonances: string[];
 }
 
 /** 1,240 rather than 1240. */
@@ -193,7 +196,7 @@ export class UI {
 
   /** A title card that slides across the middle of the screen; the game keeps running. */
   banner(b: Banner): void {
-    const kicker = b.kind === 'bankai' ? 'Bankai' : b.kind === 'almighty' ? 'A · Awakened' : 'Boss';
+    const kicker = b.kind === 'bankai' ? 'Bankai' : b.kind === 'almighty' ? 'A · Awakened' : b.kind === 'resonance' ? 'Resonance' : 'Boss';
     this.bannerEl.replaceChildren(
       el('div', 'banner-kicker', kicker),
       el('div', 'banner-title', b.title),
@@ -386,6 +389,7 @@ export class UI {
     p.append(el('h2', 'board-title', 'Paused'));
     const build = el('div', 'build');
     for (const ps of w.powers) build.append(this.chip(ps.def.icon, ps.def.color, `${ps.def.name} ${ps.level}`, ps.def.letter, ps.def.group === 'bankai'));
+    for (const id of w.resonances) build.append(this.resonanceChip(id));
     for (const r of w.relics) build.append(this.chip(r.icon, RARITY_COLOR[r.rarity], r.name));
     const resume = button('btn primary', 'Resume');
     resume.addEventListener('click', this.guard(h.onResume));
@@ -427,6 +431,7 @@ export class UI {
       for (const pw of r.powers) {
         build.append(this.chip(pw.icon, pw.color, `${pw.name} ${pw.level}${pw.attr ? ` · ${pw.attr}` : ''}`, pw.letter, pw.bankai));
       }
+      for (const id of r.resonances) build.append(this.resonanceChip(id));
       p.append(build);
     }
     const retry = button('btn primary', 'Play again');
@@ -539,6 +544,13 @@ export class UI {
     return b;
   }
 
+  private resonanceChip(id: string): HTMLElement {
+    const def = RESONANCE_BY_ID.get(id);
+    const chip = this.chip('star', def?.color ?? '#ffffff', def?.name ?? id, def?.letters);
+    chip.classList.add('resonance');
+    return chip;
+  }
+
   private chip(icon: string, color: string, text: string, letter?: string, bankai = false): HTMLElement {
     const chip = el('div', bankai ? 'chip bankai' : 'chip');
     const c = el('canvas', 'chip-icon');
@@ -590,6 +602,13 @@ export class UI {
         return d
           ? { icon: d.icon, color: d.color, letter: d.letter, credit: d.credit, title: d.name, badge: o.to === 1 ? 'New' : `Lv ${o.to - 1} → ${o.to}`, desc: d.desc }
           : unknownCard;
+      }
+      case 'resonance': {
+        const r = RESONANCE_BY_ID.get(o.id);
+        if (!r) return unknownCard;
+        const a = POWER_BY_ID.get(r.a)?.name ?? r.a;
+        const b = POWER_BY_ID.get(r.b)?.name ?? r.b;
+        return { icon: 'star', color: r.color, letter: r.letters, title: r.name, credit: `${a} + ${b}`, badge: 'Resonance', desc: r.desc, tone: 'resonance' };
       }
       case 'heal':
         return { icon: 'heart', color: '#ff6b8a', title: 'Restore', desc: 'Recover 30% of your health.' };

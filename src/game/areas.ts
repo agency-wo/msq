@@ -20,6 +20,7 @@ import {
   MF_ENEMY,
   MF_FREEZE,
   MF_ROOT,
+  MF_SHATTER,
   MF_SLOW,
   MK_CERO,
   MK_FIRE,
@@ -34,6 +35,8 @@ import {
   MK_SLASH,
   MS_CIRCLE,
   MS_LINE,
+  PK_BOMB,
+  ZF_BLAZE,
   ZF_ENEMY,
   ZF_FOLLOW,
   ZF_FREEZE,
@@ -55,6 +58,8 @@ export function updateZones(w: World): void {
   const Z = w.zones;
   const E = w.en;
   const p = w.player;
+  const plague = w.resonances.has('plague');
+  const nightmare = w.resonances.has('nightmare');
   for (let i = Z.n - 1; i >= 0; i--) {
     Z.life[i] -= DT;
     if (Z.life[i] <= 0) {
@@ -108,10 +113,15 @@ export function updateZones(w: World): void {
     }
     const kind = Z.kind[i];
     const noCrit = kind === ZK_POISON || kind === ZK_HEAT;
+    const blaze = (flags & ZF_BLAZE) !== 0;
     const n = enemiesInCircle(w, x, y, r);
     for (let k = 0; k < n; k++) {
       const j = w.qout[k];
+      // Plague: whatever breathes the cloud is infected before the tick lands, so a cloud kill rises.
+      if (plague && kind === ZK_POISON) E.infT[j] = Math.max(E.infT[j], 3);
       w.damageEnemy(j, Z.dmg[i], 0, x, y, noCrit);
+      if (blaze && !E.dead[j]) w.applyDot(j, 3, Z.aux[i], DOT_FIRE);
+      if (nightmare && kind === ZK_CAGE && !E.dead[j]) w.applyVuln(j, Z.tickInt[i] + 0.2, 0.5);
       if (E.dead[j]) {
         if (flags & ZF_SPREAD && Z.n < 60) {
           w.spawnZone(ZK_POISON, E.x[j], E.y[j], 0, 0, r * 0.6, 2.5, Z.tickInt[i], Z.dmg[i] * 0.7, flags & ~(ZF_SPREAD | ZF_FOLLOW), Z.extra[i]);
@@ -122,6 +132,8 @@ export function updateZones(w: World): void {
       if (flags & ZF_FREEZE) w.applyHold(j, 0.8, HOLD_FREEZE);
       if (kind === ZK_CAGE) w.applyHold(j, Z.tickInt[i] + 0.15, HOLD_JAIL);
     }
+    // Firestorm: a blazing gust leaves fire on the ground behind it.
+    if (blaze && Z.n < 80 && w.rng.next() < 0.4) w.spawnZone(ZK_FIRE, x, y, 0, 0, r * 0.55, 1.8, 0.4, Z.aux[i] * 0.7, 0);
   }
 }
 
@@ -216,8 +228,27 @@ function resolveMark(w: World, i: number): void {
       if (flags & MF_BURN) w.applyDot(j, 3, dmg * 0.2, DOT_FIRE);
     }
     if (flags & MF_CRATER) w.spawnZone(ZK_FIRE, x, y, 0, 0, r * 0.7, 3, 0.4, dmg * 0.12, 0);
+    if (flags & MF_SHATTER) shatter(w, x, y);
   }
   markFx(w, kind, x, y, r, len, ang, (flags & MF_ENEMY) !== 0);
+}
+
+/** Armageddon (resonance): a meteor's impact flings four of The Explode's bombs outward. */
+function shatter(w: World, x: number, y: number): void {
+  const ex = w.power('explode');
+  if (!ex) return;
+  const slot = w.powers.indexOf(ex);
+  const st = ex.stats;
+  const R = st.radius * st.size * w.stats.size * 0.6;
+  for (let k = 0; k < 4; k++) {
+    const a = (k / 4) * TAU + w.rng.range(-0.4, 0.4);
+    const d = w.rng.range(60, 110);
+    const b = w.spawnProjectile(PK_BOMB, slot, x, y, (Math.cos(a) * d) / 0.4, (Math.sin(a) * d) / 0.4, 0.4, st.damage * 0.6, 6, 0, 0);
+    if (b >= 0) {
+      w.pr.pa[b] = R;
+      w.pr.pb[b] = 0.4;
+    }
+  }
 }
 
 function markFx(w: World, kind: number, x: number, y: number, r: number, len: number, ang: number, enemy: boolean): void {

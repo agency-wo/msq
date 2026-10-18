@@ -16,6 +16,11 @@ All art is drawn in code: the Emperor and the Gotei 13 captains are chibi
 homages to their Bleach designs; everything else (Hollows, Soul Reaper
 soldiers, medallion bearers, the other bosses, effects) is an original design.
 
+Two awakened Schrift can **resonate**: every attack has one partner, and once
+both are at Lv 7 a Resonance card joins the level-up board. Both powers keep
+working as before; the resonance ties them together (Firestorm: gusts carry
+The Heat's fire; Railgun: lightning down every beam; nine pairs in all).
+
 Every run pays gold. Spend it in the **Wandenreich Archives** on permanent
 upgrades (attack, health, speed, pickup range, cooldowns, faster level-ups,
 more gold, a revive, level-up rerolls), and pick which awakened Schrift a run
@@ -65,7 +70,8 @@ Add these to the URL: `?debug` (FPS, CPU per frame and entity counts),
 (own powers at those levels), `?bankai=zanka,tengen` (start with bankai),
 `?bearers=raikoben,gonryo` (choose which bankai the bosses carry),
 `?stage=seireitei` (play a stage even if it is still locked), `?almighty`
-(start with A · The Almighty), `?start=xaxis` (open the run with that Schrift).
+(start with A · The Almighty), `?start=xaxis` (open the run with that Schrift),
+`?res=firestorm,railgun` (own resonances).
 Add `META=max` to the balance report for a player with every upgrade.
 
 ## How it is built

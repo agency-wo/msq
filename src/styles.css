@@ -891,6 +891,39 @@ body {
     0 0 26px rgba(255, 203, 92, 0.3);
 }
 
+.card.tone-resonance {
+  border-color: rgba(255, 230, 160, 0.75);
+  background:
+    linear-gradient(135deg, rgba(255, 203, 92, 0.12), rgba(89, 184, 255, 0.12)),
+    var(--panel);
+  box-shadow:
+    0 0 0 1px rgba(159, 220, 255, 0.35),
+    0 0 26px rgba(255, 210, 120, 0.22);
+}
+
+.card.tone-resonance .card-title {
+  color: #fff6dc;
+  text-shadow: 0 0 12px rgba(255, 220, 140, 0.6);
+}
+
+.chip.resonance {
+  border-color: rgba(255, 230, 160, 0.6);
+}
+
+.banner.resonance .banner-kicker {
+  color: var(--quincy-soft);
+}
+
+.banner.resonance .banner-title {
+  color: #fff6dc;
+  text-shadow: 0 0 16px rgba(159, 220, 255, 0.7);
+}
+
+.banner.resonance {
+  border-top: 1px solid rgba(159, 220, 255, 0.6);
+  border-bottom: 1px solid rgba(255, 230, 160, 0.6);
+}
+
 .card.tone-bankai .card-title {
   color: #ffe7b0;
 }

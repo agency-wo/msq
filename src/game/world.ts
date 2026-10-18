@@ -7,6 +7,7 @@ import { ENEMY_INDEX, ENEMY_LIST } from '../data/enemies';
 import { PASSIVE_BY_ID, PASSIVES } from '../data/passives';
 import { POWER_BY_ID, POWERS, STARTABLE_IDS, STARTING_POWER, upgradeCap } from '../data/powers';
 import { RELIC_BY_ID, RELICS, type RelicDef } from '../data/relics';
+import { RESONANCE_BY_ID, RESONANCES } from '../data/resonances';
 import { hpScale, phaseAt, spawnRate, speedScale, stageById, xpScale, type StageDef, type TimelineEvent } from '../data/stages';
 import { updateMarks, updateZones } from './areas';
 import { rewrite } from './casts/almighty';
@@ -48,6 +49,7 @@ import {
   PK_MISSILE,
   PK_PETAL,
   PK_SHARD,
+  ZK_POISON,
 } from './constants';
 import { blinkAI, bossAI, casterAI, eliteAI, updateEnemyBullets } from './hostile';
 import { generateOffers, rollRelics, type ChestKind, type Offer } from './offers';
@@ -72,9 +74,9 @@ export interface Message {
   kind: 'boss' | 'info';
 }
 
-/** A title card: a boss arriving, a bankai taken back, or The Almighty awakening. */
+/** A title card: a boss arriving, a bankai taken back, a resonance, or The Almighty awakening. */
 export interface Banner {
-  kind: 'bankai' | 'boss' | 'almighty';
+  kind: 'bankai' | 'boss' | 'almighty' | 'resonance';
   title: string;
   sub: string;
 }
@@ -200,6 +202,8 @@ export class World {
 
   readonly powers: PowerState[] = [];
   readonly passives = new Map<string, number>();
+  /** Resonances owned this run (two awakened Schrift working together). */
+  readonly resonances = new Set<string>();
   readonly relics: RelicDef[] = [];
   stats: Stats = computeStats([]);
   /** Damage multiplier used by every hit: stats plus temporary boosts (Superstar, Overkill, Sanrei). */
@@ -927,6 +931,9 @@ export class World {
       // The risen crumble: no mana, no drops, not a kill.
       this.zombieN = Math.max(0, this.zombieN - 1);
       if (flags & FLAG_BLOODBURST) this.queueBurst(x, y, 56 * this.stats.size, E.charmDmg[i] * 2.5);
+      // Plague: the risen leave a lethal cloud behind.
+      const death = this.resonances.has('plague') ? this.power('death') : undefined;
+      if (death) this.spawnZone(ZK_POISON, x, y, 0, 0, 44 * this.stats.size, 2.5, death.stats.tick, death.stats.damage * 0.7, 0, 0.3);
       this.spawnFx(FX_GLOW, x, y, 0, 0, 0.3, E.r[i], E.r[i] * 2.6, 0.6, 0, 0, 0xff3050, LAYER_ADD);
       return;
     }
@@ -1269,6 +1276,7 @@ export class World {
     Z.tickInt[i] = Math.max(0.05, tickInt);
     Z.dmg[i] = dmg;
     Z.extra[i] = extra;
+    Z.aux[i] = 0;
     Z.kind[i] = kind;
     Z.flags[i] = flags;
     Z.src[i] = src;
@@ -1660,6 +1668,8 @@ export class World {
         passiveDefs: PASSIVES,
         maxPowers: 12,
         maxPassives: 8,
+        resonances: RESONANCES,
+        ownedResonances: this.resonances,
       },
       this.rng,
     );
@@ -1687,7 +1697,32 @@ export class World {
       case 'power-attr':
         // Resolved by chooseAttribute once the player picks one of the three.
         break;
+      case 'resonance':
+        this.addResonance(o.id);
+        break;
     }
+  }
+
+  /** Two awakened Schrift resonate: the new effect joins the build, with a title card. */
+  addResonance(id: string): boolean {
+    const def = RESONANCE_BY_ID.get(id);
+    if (!def || this.resonances.has(id)) return false;
+    this.resonances.add(id);
+    const a = POWER_BY_ID.get(def.a)?.name ?? def.a;
+    const b = POWER_BY_ID.get(def.b)?.name ?? def.b;
+    this.banners.push({ kind: 'resonance', title: def.name, sub: `${a} + ${b}` });
+    this.sound('bankai');
+    this.shake = Math.max(this.shake, 8);
+    const color = Number.parseInt(def.color.slice(1), 16);
+    this.spawnFx(FX_GLOW, 0, 0, 0, 0, 0.8, 50, 520, 0.9, 0, 0, color, LAYER_ADD, 0, 1);
+    this.spawnFx(FX_RING, 0, 0, 0, 0, 0.7, 30, 460, 1, 0, 0, 0xffffff, LAYER_ADD, 0, 1);
+    return true;
+  }
+
+  /** An owned power by id (the resonances read their partner's numbers through this). */
+  power(id: string): PowerState | undefined {
+    for (const ps of this.powers) if (ps.def.id === id) return ps;
+    return undefined;
   }
 
   powerLevel(id: string): number {

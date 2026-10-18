@@ -11,9 +11,11 @@ import {
   LAYER_ADD,
   PF_CHARM,
   PF_INFECT,
+  PF_STUN,
   PK_ARROW,
   PK_BLOOD,
   PK_HEART,
+  PK_THORN,
   ZK_CAGE,
 } from '../constants';
 import type { PowerState } from '../powers';
@@ -123,6 +125,7 @@ export function castJail(w: World, ps: PowerState): void {
     placed++;
     w.spawnZone(ZK_CAGE, E.x[best], E.y[best], 0, 0, R, life, st.tick, st.damage, 0, extra);
     w.spawnFx(FX_RING, E.x[best], E.y[best], 0, 0, 0.25, R * 3, R * 2.2, 0.9, 0, 0, 0xcfe0ff, LAYER_ADD);
+    if (w.resonances.has('nightmare')) fearRing(w, E.x[best], E.y[best]);
   }
   if (placed === 0) {
     ps.timer = 0.3;
@@ -130,6 +133,24 @@ export function castJail(w: World, ps: PowerState): void {
   }
   ps.timer = cooldown(w, st.cooldown);
   w.sound('shield');
+}
+
+/** Nightmare Prison (resonance): a ring of The Fear's thorns from where a cage dropped. */
+function fearRing(w: World, x: number, y: number): void {
+  const fear = w.power('fear');
+  if (!fear) return;
+  const fs = w.powers.indexOf(fear);
+  const st = fear.stats;
+  const size = st.size * w.stats.size;
+  const off = w.rng.next() * TAU;
+  for (let k = 0; k < 8; k++) {
+    const a = off + (k / 8) * TAU;
+    const i = w.spawnProjectile(PK_THORN, fs, x, y, Math.cos(a) * st.speed, Math.sin(a) * st.speed, 0.6, st.damage, st.radius * size, st.pierce, PF_STUN);
+    if (i >= 0) {
+      w.pr.pa[i] = st.duration * (fear.attr === 'dread' ? 2 : 1);
+      w.pr.pb[i] = fear.attr === 'terror' ? 0.5 : 0;
+    }
+  }
 }
 
 // --------------------------------------------------------------- The Love
@@ -216,6 +237,7 @@ function punch(w: World, ps: PowerState): boolean {
     w.damageEnemy(j, dmg, 240, p.x, p.y);
     if (quake && !E.dead[j]) w.applyHold(j, 0.8, HOLD_STUN);
   }
+  if (w.resonances.has('devour')) devour(w, n, E.x[t], E.y[t], aim, reach);
   const cos = Math.cos(aim);
   const sin = Math.sin(aim);
   w.spawnFx(FX_FIST, p.x + cos * 12, p.y + sin * 12, cos * 520, sin * 520, 0.13, 34 * size, 40 * size, 1, aim, 0, 0xffffff, 0);
@@ -223,6 +245,24 @@ function punch(w: World, ps: PowerState): boolean {
   w.shake = Math.max(w.shake, 3);
   w.sound('punch');
   return true;
+}
+
+/** Devouring Fist (resonance): what the shockwave left under 30% is swallowed whole; The Glutton heals you for each. */
+function devour(w: World, n: number, tx: number, ty: number, aim: number, reach: number): void {
+  const glutton = w.power('glutton');
+  if (!glutton) return;
+  const E = w.en;
+  let eaten = 0;
+  for (let k = 0; k < n; k++) {
+    const j = w.qout[k];
+    if (E.dead[j] || E.flags[j] & FLAG_BOSS || E.hp[j] >= E.maxHp[j] * 0.3) continue;
+    w.killEnemy(j);
+    eaten++;
+  }
+  if (eaten === 0) return;
+  w.healFlat(Math.min(eaten, MAX_HEALED_PER_BITE) * glutton.stats.amount);
+  w.spawnFx(FX_MAW, tx, ty, 0, 0, 0.25, reach * 0.9, reach * 0.7, 1, aim, 0, 0xffd0c8, 0);
+  w.sound('bite');
 }
 
 // ------------------------------------------------------------ The Yourself
@@ -275,6 +315,7 @@ export function castDouble(w: World, ps: PowerState, slot: number): void {
         const a = aim + (s - (shots - 1) / 2) * 0.14;
         w.spawnProjectile(PK_ARROW, slot, x, y, Math.cos(a) * speed, Math.sin(a) * speed, 1.2, st.damage, st.radius * size, st.pierce + (perfect ? 2 : 0), 0);
       }
+      if (w.resonances.has('narcissus')) narcissus(w, x, y, aim);
       fired++;
     }
     if (fired > 0) w.sound('shoot');
@@ -290,6 +331,20 @@ export function castDouble(w: World, ps: PowerState, slot: number): void {
     w.spawnFx(FX_GLOW, w.tx, w.ty, 0, 0, 0.35, 20, 70, 0.8, 0, 0, 0x9fd0ff, LAYER_ADD);
   }
   w.sound('blade');
+}
+
+/** Narcissus (resonance): a double also fires one of The Love's hearts. */
+function narcissus(w: World, x: number, y: number, aim: number): void {
+  const love = w.power('love');
+  if (!love) return;
+  const ls = w.powers.indexOf(love);
+  const st = love.stats;
+  const speed = st.speed * w.stats.projSpeed;
+  const i = w.spawnProjectile(PK_HEART, ls, x, y, Math.cos(aim) * speed, Math.sin(aim) * speed, 1.4, st.damage, st.radius * st.size * w.stats.size, 0, PF_CHARM);
+  if (i >= 0) {
+    w.pr.pa[i] = st.duration * w.stats.duration * (love.attr === 'adoration' ? 2 : 1);
+    w.pr.pb[i] = st.amount;
+  }
 }
 
 // ------------------------------------------------------------- The Zombie

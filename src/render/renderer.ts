@@ -63,6 +63,7 @@ import {
   ZK_HEAT,
   ZK_PETALS,
   ZK_POISON,
+  ZF_BLAZE,
   ZF_FOLLOW,
 } from '../game/constants';
 import type { World } from '../game/world';
@@ -412,10 +413,13 @@ export class Renderer {
           L.zonesA.add(f.firezone, x, y, s * flick, s * flick, seed, tint, 0.75 * a);
           break;
         }
-        case ZK_GUST:
-          L.zonesA.add(f.gust, x, y, s, s, now * 6 + seed, tint, 0.8 * a);
-          L.zonesA.add(f.glow, x, y, (r * 2) / 64, (r * 2) / 64, 0, 0x9fd8ff, 0.18 * a);
+        case ZK_GUST: {
+          // Firestorm: a gust carrying The Heat's fire glows orange.
+          const blaze = (Z.flags[i] & ZF_BLAZE) !== 0;
+          L.zonesA.add(f.gust, x, y, s, s, now * 6 + seed, blaze ? 0xffb070 : tint, 0.8 * a);
+          L.zonesA.add(f.glow, x, y, (r * 2) / 64, (r * 2) / 64, 0, blaze ? 0xff6a2c : 0x9fd8ff, (blaze ? 0.3 : 0.18) * a);
           break;
+        }
         case ZK_PETALS: {
           L.zonesA.add(f.gust, x, y, s, s, -now * 5 + seed, tint, 0.7 * a);
           for (let k = 0; k < 10; k++) {
