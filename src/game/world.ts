@@ -27,6 +27,8 @@ import {
   FX_ASH,
   FX_DOT,
   FX_GLOW,
+  FX_SHOCK,
+  FX_SMOKE,
   FX_MASK,
   FX_RING,
   FX_SPARK,
@@ -1034,7 +1036,8 @@ export class World {
       if (dx * dx + dy * dy > R * R) continue;
       this.damageEnemy(i, dmg, knock, p.x, p.y);
     }
-    this.spawnFx(FX_RING, 0, 0, 0, 0, 0.5, 40, R * 2.2, 1, 0, 0, 0xffe6a0, LAYER_ADD, 0, 1);
+    this.spawnFx(FX_SHOCK, 0, 0, 0, 0, 0.5, 40, R * 2.2, 1, 0, 0, 0xffe6a0, LAYER_ADD, 0, 1);
+    this.spawnFx(FX_RING, 0, 0, 0, 0, 0.45, 40, R * 2.2, 0.6, 0, 0, 0xffffff, LAYER_ADD, 0, 1);
     this.shake = Math.max(this.shake, 10);
   }
 
@@ -1198,6 +1201,7 @@ export class World {
         if (f & PF_SPECIAL) burstAt(this, x, y, 36 * this.stats.size, P.dmg[i] * 0.6, j, true, 0x9fd8ff);
         if (f & PF_BURST) {
           burstAt(this, x, y, P.pa[i], P.dmg[i] * 0.7, j, true, 0xa8c4ff);
+          this.spawnFx(FX_SHOCK, x, y, 0, 0, 0.22, P.pa[i] * 0.5, P.pa[i] * 2, 0.75, 0, 0, 0xc8d8ff, LAYER_ADD);
           P.life[i] = -1;
           break;
         }
@@ -1546,9 +1550,25 @@ export class World {
   }
 
   private explosionFx(x: number, y: number): void {
-    this.spawnFx(FX_GLOW, x, y, 0, 0, 0.35, 30, 110, 1, 0, 0, 0xff8a3c, LAYER_ADD);
-    this.spawnFx(FX_RING, x, y, 0, 0, 0.3, 20, 90, 0.9, 0, 0, 0xffc070, LAYER_ADD);
+    this.blastFx(x, y, 40, 0xff8a3c);
     this.sound('explode');
+  }
+
+  /** An explosion: a white-hot flash, the coloured blast, a shockwave ring, embers and drifting smoke. */
+  blastFx(x: number, y: number, R: number, color: number, smoke = 3): void {
+    this.spawnFx(FX_GLOW, x, y, 0, 0, 0.16, R * 0.6, R * 1.6, 1, 0, 0, 0xffffff, LAYER_ADD);
+    this.spawnFx(FX_GLOW, x, y, 0, 0, 0.36, R, R * 2.6, 0.9, 0, 0, color, LAYER_ADD);
+    this.spawnFx(FX_SHOCK, x, y, 0, 0, 0.32, R * 0.6, R * 2.4, 0.9, 0, 0, color, LAYER_ADD);
+    for (let k = 0; k < 6; k++) {
+      const a = this.rng.next() * TAU;
+      const v = this.rng.range(120, 260);
+      this.spawnFx(FX_SPARK, x, y, Math.cos(a) * v, Math.sin(a) * v, this.rng.range(0.25, 0.45), 10, 3, 1, a, 6, 0xffe2b0, LAYER_ADD, 3);
+    }
+    for (let k = 0; k < smoke; k++) {
+      const a = this.rng.next() * TAU;
+      const d = R * 0.3;
+      this.spawnFx(FX_SMOKE, x + Math.cos(a) * d, y + Math.sin(a) * d, Math.cos(a) * 20, -25 + Math.sin(a) * 10, this.rng.range(0.6, 1), R * 0.5, R * 1.1, 0.35, this.rng.next() * TAU, this.rng.range(-1, 1), 0x3a3540, LAYER_NORMAL, 1);
+    }
   }
 
   private bigBurst(x: number, y: number, color: number): void {

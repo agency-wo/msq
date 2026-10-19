@@ -58,6 +58,9 @@ export const FX_MISSILE = 18;
 export const FX_MAW = 19;
 export const FX_FIST = 20;
 export const FX_EYE = 21;
+export const FX_LIGHTNING = 22; // a bolt from the sky; sy = its height
+export const FX_SHOCK = 23; // a filled shockwave ring
+export const FX_SMOKE = 24;
 
 /** Effect blend layers. */
 export const LAYER_NORMAL = 0;

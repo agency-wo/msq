@@ -9,7 +9,9 @@ import {
   FX_CRESCENT,
   FX_FLAME,
   FX_GLOW,
+  FX_LIGHTNING,
   FX_RING,
+  FX_SHOCK,
   FX_SNOW,
   FX_SPARK,
   HOLD_FREEZE,
@@ -254,16 +256,15 @@ function shatter(w: World, x: number, y: number): void {
 function markFx(w: World, kind: number, x: number, y: number, r: number, len: number, ang: number, enemy: boolean): void {
   switch (kind) {
     case MK_METEOR:
-      w.spawnFx(FX_GLOW, x, y, 0, 0, 0.4, r, r * 2.8, 1, 0, 0, 0xffa24a, LAYER_ADD);
-      w.spawnFx(FX_RING, x, y, 0, 0, 0.35, r * 0.6, r * 2.4, 0.9, 0, 0, 0xffe2a0, LAYER_ADD);
-      sparks(w, x, y, 6, 0xffd27a);
+      w.blastFx(x, y, r, 0xffa24a, 3);
+      sparks(w, x, y, 4, 0xffd27a);
       w.shake = Math.max(w.shake, 5);
       w.sound('blast');
       break;
     case MK_MISSILE:
-      w.spawnFx(FX_GLOW, x, y, 0, 0, 0.6, r, r * 2.8, 1, 0, 0, 0xffd27a, LAYER_ADD);
+      w.blastFx(x, y, r, 0xffd27a, 5);
       w.spawnFx(FX_RING, x, y, 0, 0, 0.5, r * 0.5, r * 2.5, 1, 0, 0, 0xffffff, LAYER_ADD);
-      sparks(w, x, y, 10, 0xffe2a0);
+      sparks(w, x, y, 8, 0xffe2a0);
       w.shake = Math.max(w.shake, enemy ? 8 : 12);
       w.sound('blast');
       break;
@@ -274,8 +275,9 @@ function markFx(w: World, kind: number, x: number, y: number, r: number, len: nu
       w.sound('blast');
       break;
     case MK_PILLAR:
-      w.spawnFx(FX_BEAM, x, y, 0, 0, 0.3, r * 1.3, 0, 1, 0, 0, 0xfff3b8, LAYER_ADD);
+      w.spawnFx(FX_LIGHTNING, x, y, 0, 0, 0.24, r * 1.4, r * 1.4, 1, w.rng.next() < 0.5 ? 1 : -1, 0, 0xfff3b8, LAYER_ADD, 0, 0, 240);
       w.spawnFx(FX_GLOW, x, y, 0, 0, 0.3, r, r * 2.4, 0.9, 0, 0, 0xfff0a0, LAYER_ADD);
+      w.spawnFx(FX_SHOCK, x, y, 0, 0, 0.24, r * 0.5, r * 2, 0.7, 0, 0, 0xfff3b8, LAYER_ADD);
       w.sound('strike');
       break;
     case MK_ICE:

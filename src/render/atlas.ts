@@ -628,38 +628,156 @@ const crescent: Draw = (g, w, h) => {
   g.restore();
 };
 
-/** An original armored giant seen from behind its shoulder: helm with a crest, pauldrons. Drawn in light. */
+/**
+ * Tengen's warrior: a giant in armour rising behind you, seen from the front,
+ * drawn in translucent gold light: crested helm with a glowing visor slit,
+ * broad pauldrons, a great blade raised over the right shoulder. Original design.
+ */
 const avatar: Draw = (g, w, h) => {
   const cx = w / 2;
   g.save();
-  g.globalAlpha = 0.9;
-  g.fillStyle = 'rgba(255,240,210,0.55)';
-  // Pauldrons and torso
-  g.beginPath();
-  g.ellipse(cx - w * 0.28, h * 0.42, w * 0.2, h * 0.11, -0.25, 0, TAU);
-  g.ellipse(cx + w * 0.28, h * 0.42, w * 0.2, h * 0.11, 0.25, 0, TAU);
-  g.fill();
+  g.shadowColor = 'rgba(255,214,140,0.9)';
+  g.shadowBlur = 10;
+  // The great blade, raised behind the right shoulder
+  g.fillStyle = 'rgba(255,246,222,0.7)';
   poly(g, [
-    [cx - w * 0.3, h * 0.42],
-    [cx + w * 0.3, h * 0.42],
-    [cx + w * 0.22, h * 0.98],
-    [cx - w * 0.22, h * 0.98],
+    [cx + w * 0.3, h * 0.5],
+    [cx + w * 0.36, h * 0.5],
+    [cx + w * 0.47, h * 0.02],
+    [cx + w * 0.42, h * 0.04],
   ]);
   g.fill();
-  // Helm and crest
-  g.fillStyle = 'rgba(255,248,230,0.75)';
-  g.beginPath();
-  g.ellipse(cx, h * 0.26, w * 0.15, h * 0.15, 0, 0, TAU);
-  g.fill();
+  g.fillStyle = 'rgba(200,160,90,0.8)';
+  g.fillRect(cx + w * 0.27, h * 0.48, w * 0.12, h * 0.03);
+  // Body and skirt of plates
+  const body = g.createLinearGradient(0, h * 0.3, 0, h);
+  body.addColorStop(0, 'rgba(255,236,190,0.75)');
+  body.addColorStop(1, 'rgba(255,220,150,0.08)');
+  g.fillStyle = body;
   poly(g, [
-    [cx - w * 0.03, h * 0.14],
-    [cx, h * 0.01],
-    [cx + w * 0.03, h * 0.14],
+    [cx - w * 0.24, h * 0.36],
+    [cx + w * 0.24, h * 0.36],
+    [cx + w * 0.3, h * 0.98],
+    [cx - w * 0.3, h * 0.98],
   ]);
   g.fill();
-  g.fillStyle = 'rgba(40,30,20,0.6)';
-  g.fillRect(cx - w * 0.1, h * 0.25, w * 0.2, h * 0.03);
+  g.strokeStyle = 'rgba(140,100,40,0.45)';
+  g.lineWidth = 1.5;
+  for (let k = 1; k < 5; k++) {
+    const y = h * (0.36 + k * 0.13);
+    g.beginPath();
+    g.moveTo(cx - w * (0.24 + k * 0.012), y);
+    g.lineTo(cx + w * (0.24 + k * 0.012), y);
+    g.stroke();
+  }
+  // Pauldrons
+  g.fillStyle = 'rgba(255,240,205,0.85)';
+  for (const dir of [-1, 1]) {
+    g.beginPath();
+    g.ellipse(cx + dir * w * 0.27, h * 0.36, w * 0.17, h * 0.085, dir * 0.2, 0, TAU);
+    g.fill();
+  }
+  // Helm with a crest and a glowing visor slit
+  g.fillStyle = 'rgba(255,246,222,0.9)';
+  g.beginPath();
+  g.ellipse(cx, h * 0.23, w * 0.13, h * 0.12, 0, 0, TAU);
+  g.fill();
+  poly(g, [
+    [cx - w * 0.035, h * 0.13],
+    [cx, h * 0.02],
+    [cx + w * 0.035, h * 0.13],
+  ]);
+  g.fill();
   g.restore();
+  glowDot(g, cx, h * 0.24, w * 0.08, h * 0.012, '#fff8e0', '#ffb347', 8);
+};
+
+/** A bolt of lightning from the sky down to the bottom edge: jagged, branching, white-hot core. */
+const lightning: Draw = (g, w, h) => {
+  const rnd = seeded(77);
+  const cx = w / 2;
+  const pts: [number, number][] = [[cx + (rnd() - 0.5) * 8, 0]];
+  const segs = 9;
+  for (let k = 1; k <= segs; k++) {
+    const y = (h - 2) * (k / segs);
+    const x = k === segs ? cx : cx + (rnd() - 0.5) * w * 0.6;
+    pts.push([x, y]);
+  }
+  const stroke = (width: number, color: string, blur: number, path: [number, number][]): void => {
+    g.save();
+    g.strokeStyle = color;
+    g.lineWidth = width;
+    g.lineJoin = 'round';
+    g.lineCap = 'round';
+    g.shadowColor = 'rgba(255,240,170,0.9)';
+    g.shadowBlur = blur;
+    g.beginPath();
+    path.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y)));
+    g.stroke();
+    g.restore();
+  };
+  // Two forks off the main bolt
+  const forks: [number, number][][] = [];
+  for (const at of [3, 6]) {
+    const [x0, y0] = pts[at];
+    const dir = rnd() < 0.5 ? -1 : 1;
+    forks.push([
+      [x0, y0],
+      [x0 + dir * w * 0.18, y0 + h * 0.07],
+      [x0 + dir * w * 0.3, y0 + h * 0.14],
+    ]);
+  }
+  stroke(w * 0.34, 'rgba(255,236,160,0.28)', 14, pts);
+  for (const f of forks) stroke(w * 0.12, 'rgba(255,236,160,0.35)', 8, f);
+  stroke(w * 0.11, 'rgba(255,248,210,0.95)', 6, pts);
+  for (const f of forks) stroke(w * 0.05, 'rgba(255,250,230,0.9)', 4, f);
+  stroke(w * 0.04, '#ffffff', 0, pts);
+};
+
+/** A shockwave: a bright rim fading inward, for rings of force. */
+const shock: Draw = (g, w) => {
+  const c = w / 2;
+  const grad = g.createRadialGradient(c, c, c * 0.45, c, c, c - 2);
+  grad.addColorStop(0, 'rgba(255,255,255,0)');
+  grad.addColorStop(0.7, 'rgba(255,255,255,0.18)');
+  grad.addColorStop(0.92, 'rgba(255,255,255,0.85)');
+  grad.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = grad;
+  g.beginPath();
+  g.arc(c, c, c - 1, 0, TAU);
+  g.fill();
+};
+
+/** A motion streak, faint at the tail (left) and bright at the head (right), tapering. */
+const trail: Draw = (g, w, h) => {
+  const cy = h / 2;
+  const grad = g.createLinearGradient(0, 0, w, 0);
+  grad.addColorStop(0, 'rgba(255,255,255,0)');
+  grad.addColorStop(1, 'rgba(255,255,255,0.9)');
+  g.fillStyle = grad;
+  g.beginPath();
+  g.moveTo(0, cy);
+  g.lineTo(w - 2, cy - h * 0.42);
+  g.quadraticCurveTo(w, cy, w - 2, cy + h * 0.42);
+  g.closePath();
+  g.fill();
+};
+
+/** A soft puff of smoke. */
+const smoke: Draw = (g, w) => {
+  const rnd = seeded(31);
+  for (let k = 0; k < 5; k++) {
+    const x = w / 2 + (rnd() - 0.5) * w * 0.3;
+    const y = w / 2 + (rnd() - 0.5) * w * 0.3;
+    const r = w * (0.22 + rnd() * 0.12);
+    const grad = g.createRadialGradient(x, y, 0, x, y, r);
+    grad.addColorStop(0, 'rgba(255,255,255,0.45)');
+    grad.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = grad;
+    g.beginPath();
+    g.arc(x, y, r, 0, TAU);
+    g.fill();
+  }
 };
 
 /** Quincy: Vollständig wings of light, spread to both sides. */
@@ -2540,6 +2658,10 @@ function specs(): Spec[] {
     { name: 'fist', w: 64, h: 40, draw: fist },
     { name: 'loveheart', w: 24, h: 22, draw: loveHeart },
     { name: 'eye', w: 192, h: 96, draw: eye },
+    { name: 'lightning', w: 48, h: 256, draw: lightning },
+    { name: 'shock', w: 128, h: 128, draw: shock },
+    { name: 'trail', w: 64, h: 16, draw: trail },
+    { name: 'smoke', w: 48, h: 48, draw: smoke },
     { name: 'beamh', w: 256, h: 32, draw: beamh },
     { name: 'flame', w: 192, h: 48, draw: flame },
     { name: 'dragon', w: 120, h: 48, draw: dragon },

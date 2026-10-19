@@ -3,14 +3,14 @@ import { TAU } from '../../core/math';
 import {
   DOT_FIRE,
   FLAG_BOSS,
-  FX_BEAM,
   FX_BEAMH,
   FX_BOLT,
   FX_FLAME,
   FX_GLOW,
+  FX_LIGHTNING,
   FX_METEOR,
   FX_RING,
-  FX_SPARK,
+  FX_SHOCK,
   HOLD_FEAR,
   LAYER_ADD,
   MF_CRATER,
@@ -165,7 +165,10 @@ export function castPulse(w: World, ps: PowerState): void {
     w.damageEnemy(j, dmg, knock, p.x, p.y);
     if (paralyze) w.applyHold(j, 0.5, HOLD_FEAR);
   }
-  w.spawnFx(FX_RING, 0, 0, 0, 0, 0.32, R * 0.6, R * 2, over ? 1 : 0.8, 0, 0, over ? 0xffffff : 0xd7c3ff, LAYER_ADD, 0, 1);
+  // A filled shockwave with a crisp edge riding on it.
+  const col = over ? 0xffffff : 0xd7c3ff;
+  w.spawnFx(FX_SHOCK, 0, 0, 0, 0, 0.34, R * 0.5, R * 2.05, over ? 1 : 0.75, 0, 0, col, LAYER_ADD, 0, 1);
+  w.spawnFx(FX_RING, 0, 0, 0, 0, 0.3, R * 0.6, R * 2, over ? 0.9 : 0.55, 0, 0, col, LAYER_ADD, 0, 1);
   if (w.resonances.has('sonic')) sonicDrones(w, dmg, knock, R * 0.6);
   w.sound('pulse');
 }
@@ -182,7 +185,7 @@ function sonicDrones(w: World, dmg: number, knock: number, R: number): void {
     const y = P.y[i];
     const n = enemiesInCircle(w, x, y, R);
     for (let k = 0; k < n; k++) w.damageEnemy(w.qout[k], dmg * 0.7, knock * 0.5, x, y);
-    w.spawnFx(FX_RING, x, y, 0, 0, 0.28, R * 0.5, R * 2, 0.75, 0, 0, 0xd7c3ff, LAYER_ADD);
+    w.spawnFx(FX_SHOCK, x, y, 0, 0, 0.28, R * 0.5, R * 2, 0.7, 0, 0, 0xd7c3ff, LAYER_ADD);
   }
 }
 
@@ -222,8 +225,10 @@ export function strikeAt(w: World, x: number, y: number, dmg: number, R: number,
     w.damageEnemy(j, dmg, 40, x, y);
     if (attr === 'electrocute' && !E.dead[j] && !(E.flags[j] & FLAG_BOSS) && E.hp[j] < E.maxHp[j] * 0.2) w.killEnemy(j);
   }
-  w.spawnFx(FX_BEAM, x, y, 0, 0, 0.3, R * 1.25, 0, 1, 0, 0, 0xfff3b8, LAYER_ADD);
-  w.spawnFx(FX_GLOW, x, y, 0, 0, 0.3, R * 1.4, R * 2.8, 0.9, 0, 0, 0xfff0a0, LAYER_ADD);
+  // A jagged bolt from the sky (mirrored at random), a flash and a ring where it lands.
+  w.spawnFx(FX_LIGHTNING, x, y, 0, 0, 0.22, R * 1.3, R * 1.3, 1, w.rng.next() < 0.5 ? 1 : -1, 0, 0xfff6c8, LAYER_ADD, 0, 0, 230);
+  w.spawnFx(FX_GLOW, x, y, 0, 0, 0.26, R * 1.2, R * 2.6, 0.9, 0, 0, 0xfff0a0, LAYER_ADD);
+  w.spawnFx(FX_SHOCK, x, y, 0, 0, 0.22, R * 0.5, R * 1.8, 0.7, 0, 0, 0xfff6c8, LAYER_ADD);
   if (attr !== 'chain') return;
   // Arc to up to 3 other enemies within reach, for half damage.
   n = w.grid.query(x - 150, y - 150, x + 150, y + 150, buf);
@@ -396,13 +401,7 @@ export function explodeBomb(w: World, i: number): void {
     }
     w.damageEnemy(j, dmg, 90, x, y);
   }
-  w.spawnFx(FX_GLOW, x, y, 0, 0, 0.3, R * 0.9, R * 2.4, 1, 0, 0, 0xffb37a, LAYER_ADD);
-  w.spawnFx(FX_RING, x, y, 0, 0, 0.28, R * 0.5, R * 2.1, 0.9, 0, 0, 0xbfe6ff, LAYER_ADD);
-  for (let s = 0; s < 4; s++) {
-    const a = w.rng.next() * TAU;
-    const v = w.rng.range(80, 180);
-    w.spawnFx(FX_SPARK, x, y, Math.cos(a) * v, Math.sin(a) * v, 0.3, 10, 3, 1, a, 6, 0xffd9a8, LAYER_ADD, 3);
-  }
+  w.blastFx(x, y, R, 0xffb37a, R > 40 ? 3 : 1);
   if (flags & PF_CLUSTER) {
     for (let c = 0; c < 4; c++) {
       const a = (c / 4) * TAU + w.rng.range(-0.4, 0.4);

@@ -26,6 +26,7 @@ import {
   FX_FIST,
   FX_FLAME,
   FX_GLOW,
+  FX_LIGHTNING,
   FX_MASK,
   FX_MAW,
   FX_METEOR,
@@ -33,6 +34,8 @@ import {
   FX_PETAL,
   FX_RING,
   FX_SHARD,
+  FX_SHOCK,
+  FX_SMOKE,
   FX_SNOW,
   FX_SPARK,
   FX_STAR,
@@ -307,6 +310,9 @@ export class Renderer {
     byId[FX_MISSILE] = fx('missile');
     byId[FX_MAW] = fx('maw');
     byId[FX_FIST] = fx('fist');
+    byId[FX_LIGHTNING] = fx('lightning');
+    byId[FX_SHOCK] = fx('shock');
+    byId[FX_SMOKE] = fx('smoke');
     this.fxSprites = byId;
     this.digits = Array.from({ length: 10 }, (_, d) => f[`d${d}`]);
     this.bankaiAura = BANKAI_IDS.map((id) => BANKAI_BY_ID.get(id)?.aura ?? 0xffcb5c);
@@ -405,9 +411,18 @@ export class Renderer {
       const seed = Z.seed[i];
       const tint = ZONE_TINT[kind] ?? 0xffffff;
       switch (kind) {
-        case ZK_POISON:
+        case ZK_POISON: {
           L.zonesN.add(f.cloud, x, y, s, s, now * 0.3 + seed, tint, 0.42 * a);
+          // Bubbles rising through the dose.
+          for (let k = 0; k < 4; k++) {
+            const ph = (now * 0.55 + k * 0.25 + seed * 0.013) % 1;
+            const bx = x + Math.sin(seed + k * 2.1 + ph * 3) * r * 0.45;
+            const by = y + r * 0.35 - ph * r * 0.8;
+            const bs = (3 + (k % 2) * 2) / 16;
+            L.zonesA.add(f.dot, bx, by, bs, bs, 0, 0xb8ff9a, Math.sin(ph * Math.PI) * 0.6 * a);
+          }
           break;
+        }
         case ZK_FIRE: {
           const flick = 1 + Math.sin(now * 14 + seed) * 0.05;
           L.zonesA.add(f.firezone, x, y, s * flick, s * flick, seed, tint, 0.75 * a);
@@ -416,8 +431,14 @@ export class Renderer {
         case ZK_GUST: {
           // Firestorm: a gust carrying The Heat's fire glows orange.
           const blaze = (Z.flags[i] & ZF_BLAZE) !== 0;
-          L.zonesA.add(f.gust, x, y, s, s, now * 6 + seed, blaze ? 0xffb070 : tint, 0.8 * a);
-          L.zonesA.add(f.glow, x, y, (r * 2) / 64, (r * 2) / 64, 0, blaze ? 0xff6a2c : 0x9fd8ff, (blaze ? 0.3 : 0.18) * a);
+          // A translucent swirl with streaks of wind (and fire, for Firestorm) racing round it.
+          L.zonesA.add(f.gust, x, y, s, s, now * 6 + seed, blaze ? 0xffb070 : 0xcfe8ff, (blaze ? 0.6 : 0.42) * a);
+          L.zonesA.add(f.glow, x, y, (r * 2) / 64, (r * 2) / 64, 0, blaze ? 0xff6a2c : 0x9fd8ff, (blaze ? 0.3 : 0.14) * a);
+          for (let k = 0; k < 5; k++) {
+            const ang = now * 5 + k * 1.26 + seed;
+            const rr = r * (0.45 + (k % 3) * 0.17);
+            L.zonesA.add(f.trail, x + Math.cos(ang) * rr, y + Math.sin(ang) * rr, (r * 0.5) / 64, 0.5, ang + Math.PI / 2, blaze ? 0xffc890 : 0xffffff, 0.45 * a, 1, 0.5);
+          }
           break;
         }
         case ZK_PETALS: {
@@ -442,6 +463,12 @@ export class Renderer {
           const pulse = 0.28 + Math.sin(now * 5) * 0.06;
           L.zonesA.add(f.ring, x, y, (r * 2) / 110, (r * 2) / 110, 0, tint, pulse);
           L.zonesA.add(f.glow, x, y, (r * 2.2) / 64, (r * 2.2) / 64, 0, 0xff5a1f, 0.16);
+          // Flames lick up around the edge of the heat.
+          for (let k = 0; k < 10; k++) {
+            const ang = (k / 10) * Math.PI * 2 + now * 0.6;
+            const flick = 0.75 + Math.sin(now * 13 + k * 1.7) * 0.25;
+            L.zonesA.add(f.flame, x + Math.cos(ang) * r, y + Math.sin(ang) * r, (18 * flick) / 192, (14 * flick) / 48, ang, 0xff8a3c, 0.55, 0, 0.5);
+          }
           break;
         }
       }
@@ -628,10 +655,21 @@ export class Renderer {
     if (frac > 0) L.player.add(f.square, x - bw / 2, y + 21, (bw * frac) / sq, bh / sq, 0, 0xff3d5e, 1, 0, 0.5);
   }
 
+  /** A motion streak behind a moving projectile, as long as it is fast. */
+  private streak(x: number, y: number, vx: number, vy: number, width: number, tint: number, alpha: number): void {
+    const speed = Math.hypot(vx, vy);
+    if (speed < 60) return;
+    const len = Math.min(70, speed * 0.075);
+    this.L.proj.add(this.atlas.frames.trail, x, y, len / 64, width / 16, Math.atan2(vy, vx), tint, alpha, 1, 0.5);
+  }
+
   private drawProjectiles(w: World, alpha: number, now: number): void {
     const P = w.pr;
     const f = this.atlas.frames;
     const L = this.L;
+    const p = w.player;
+    const px = p.ox + (p.x - p.ox) * alpha;
+    const py = p.oy + (p.y - p.oy) * alpha;
     for (let i = 0; i < P.n; i++) {
       if (P.life[i] <= 0) continue;
       const x = P.ox[i] + (P.x[i] - P.ox[i]) * alpha;
@@ -639,11 +677,17 @@ export class Renderer {
       switch (P.kind[i]) {
         case PK_ARROW: {
           const s = (P.r[i] / 7) * 0.5;
+          this.streak(x, y, P.vx[i], P.vy[i], P.r[i] * 1.6, 0x9fd8ff, 0.5);
           L.proj.add(f.arrow, x, y, s, s, P.rot[i]);
           break;
         }
         case PK_BLADE: {
           const s = (P.r[i] / 10) * 0.6;
+          // An after-image a little behind on the orbit, for the sweep.
+          const ring = P.pb[i];
+          const back = P.rot[i] - (ring < 0 ? -1 : 1) * 0.28;
+          const rad = Math.abs(ring);
+          L.proj.add(f.blade, px + Math.cos(back) * rad, py + Math.sin(back) * rad, s * 0.9, s * 0.9, back + now * 9, 0x9fd8ff, 0.35);
           L.proj.add(f.blade, x, y, s, s, P.rot[i] + now * 9);
           break;
         }
@@ -655,16 +699,20 @@ export class Renderer {
         case PK_BOMB: {
           const t = P.pb[i] > 0 ? 1 - P.life[i] / P.pb[i] : 1;
           const h = Math.sin(Math.PI * Math.min(1, Math.max(0, t))) * 46;
-          L.shadows.add(f.shadow, x, y, 0.3, 0.3, 0, 0xffffff, 0.6);
-          L.allies.add(f.bomb, x, y - h, 0.55, 0.55, now * 6);
+          L.shadows.add(f.shadow, x, y, 0.36, 0.36, 0, 0xffffff, 0.6);
+          // A reishi bomb with a spark that flickers faster as it falls.
+          L.auras.add(f.glow, x, y - h, 0.85, 0.85, 0, 0xff9a4a, 0.5 + Math.sin(now * (20 + t * 30)) * 0.2);
+          L.allies.add(f.bomb, x, y - h, 0.78, 0.78, now * 6);
           break;
         }
         case PK_THORN: {
           const s = (P.r[i] / 6) * 0.7;
+          this.streak(x, y, P.vx[i], P.vy[i], P.r[i] * 1.4, 0xb98bff, 0.45);
           L.proj.add(f.thorn, x, y, s, s, P.rot[i], 0xd8b8ff);
           break;
         }
         case PK_MISSILE:
+          this.streak(x, y, P.vx[i], P.vy[i], 8, 0xd8e4ff, 0.4);
           L.proj.add(f.missile, x, y, 0.6, 0.6, P.rot[i]);
           break;
         case PK_DRAGON: {
@@ -677,15 +725,18 @@ export class Renderer {
           break;
         case PK_HEART: {
           const s = (P.r[i] * 2.4) / 24;
+          this.streak(x, y, P.vx[i], P.vy[i], P.r[i] * 1.6, 0xff9cc8, 0.4);
           L.proj.add(f.loveheart, x, y, s, s, Math.sin(now * 10 + i) * 0.3);
           break;
         }
         case PK_BLOOD: {
           const s = (P.r[i] / 6) * 0.8;
+          this.streak(x, y, P.vx[i], P.vy[i], P.r[i] * 1.5, 0xc81e3c, 0.5);
           L.proj.add(f.thorn, x, y, s, s, P.rot[i], 0xff3a50);
           break;
         }
         default:
+          this.streak(x, y, P.vx[i], P.vy[i], 6, 0xbfe6ff, 0.4);
           L.proj.add(f.shard, x, y, 0.6, 0.6, P.rot[i], 0xbfe6ff);
           break;
       }
@@ -741,7 +792,10 @@ export class Renderer {
       const tint = F.tint[i];
       // Big silhouettes sit behind the player; everything else on top.
       const layer = frame === FX_WINGS || frame === FX_AVATAR ? L.auras : F.layer[i] === LAYER_ADD ? L.fxAdd : L.fx;
-      if (frame === FX_BEAM) {
+      if (frame === FX_LIGHTNING) {
+        const flicker = t < 0.5 ? 1 : 0.55 + 0.45 * Math.sin(t * 60);
+        layer.add(spr.tex, x, y, (size / spr.w) * (F.rot[i] < 0 ? -1 : 1), F.sy[i] / spr.h, 0, tint, a * flicker, 0.5, 0.98);
+      } else if (frame === FX_BEAM) {
         const s = size / spr.w;
         layer.add(spr.tex, x, y, s, s * (0.7 + 0.3 * (1 - t)), 0, tint, a, 0.5, 0.95);
       } else if (frame === FX_CRESCENT) {
