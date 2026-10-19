@@ -29,3 +29,18 @@ export function enemySpriteName(type: number, variant = 0): string {
   if (id === 'defender') return `heroes_${HERO_IDS[variant] ?? 'renji'}`;
   return SPRITE_NAME[id] ?? id;
 }
+
+/** The sprite for a boss in the form it is in (phase 1: what it shows at half health), for the HUD's portrait. */
+export function bossSpriteName(type: number, variant: number, phase: number): string {
+  const base = enemySpriteName(type, variant);
+  if (phase <= 0) return base;
+  const id = ENEMY_LIST[type]?.id;
+  if (id === 'defender') {
+    const hero = HERO_IDS[variant];
+    if (hero === 'renji' || hero === 'rukia') return `${base}_bankai`;
+  }
+  if (id === 'ichigo') return 'ichigo_mask';
+  if (id === 'harribel') return 'harribel_tiburon';
+  if (id === 'royal' && base === 'royal_kirio') return 'royal_kirio_slim';
+  return base;
+}

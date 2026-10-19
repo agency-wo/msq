@@ -71,8 +71,10 @@ twice as often). Twenty-six in all.
 The story is told in short chapters that unlock as you play (the prologue
 before your first run, the invasion before your first Seireitei run, others
 for your first bankai, each stage cleared, and The Almighty), all rereadable in
-the **Chronicle**. Every boss says one line as it arrives: the bearers are your
-own knights, the captains defend their city.
+the **Chronicle**. Every boss is announced by a warning of its own a few
+seconds before it comes, and says one line as it arrives: the bearers are your
+own knights, the captains defend their city. Endless brings every boss of a
+stage once before any of them returns.
 
 Music is composed note by note and synthesized live with Web Audio (nothing to
 download): a regal title theme, the eerie "White Moon" for Hueco Mundo, taiko
@@ -151,13 +153,15 @@ Stages, 20 minutes each:
 - **Wahrwelt** (unlocked by clearing the Soul King Palace): the finale. The
   Emperor has cut down the Soul King and raised the true world from his
   palace, and every world climbs up after him at once, Soul Reapers and
-  Hollows together. Three of four defenders stand in the way: Renji Abarai
-  (Zabimaru, fangs closing in, the bone cannon, then Sōō Zabimaru), Rukia
-  Kuchiki (Tsukishiro, Hakuren, then Hakka no Togame), Uryū Ishida (arrows and
-  Licht Regen; his Antithesis turns his wounds back once, and his silver arrow
-  silences The Almighty for a while) and Sōsuke Aizen (Kyōka Suigetsu's copies,
-  only one of them real, and Kurohitsugi). Ichigo Kurosaki ends it with
-  Getsuga Tenshō, and at half health his Hollow mask.
+  Hollows together. All four defenders stand in the way every run: Renji
+  Abarai (Zabimaru, fangs closing in, the bone cannon, then Sōō Zabimaru's fur
+  mantle and bone arm), Rukia Kuchiki (Tsukishiro, Hakuren, then Hakka no
+  Togame, white from head to foot) and Uryū Ishida (arrows and Licht Regen; his
+  Antithesis turns his wounds back once, and his silver arrow silences The
+  Almighty for a while) in a different order at 5:00, 10:00 and 15:00, then
+  Sōsuke Aizen at 18:00, let out of Muken (Kyōka Suigetsu's copies, only one
+  of them real, and Kurohitsugi). Ichigo Kurosaki ends it with Getsuga
+  Tenshō, and at half health his Hollow mask.
 
 ## Play on iPhone
 

@@ -236,6 +236,8 @@ export class Renderer {
   /** The runaway, by stage: a gorged Adjuchas in Hueco Mundo, Kon above the clouds, Ganju and Bonnie elsewhere. */
   private runners: Record<string, EnemySprite> = {};
   private heroSprites: EnemySprite[] = [];
+  /** Renji's and Rukia's bankai forms, worn from half health on. */
+  private heroBankai: (EnemySprite | null)[] = [];
   /** Ichigo once his Hollow mask forms. */
   private ichigoMasked: EnemySprite | null = null;
   private kirioSlim: EnemySprite | null = null;
@@ -348,7 +350,10 @@ export class Renderer {
     this.thiefSprites = BANKAI_IDS.map((id, v) => sprite(enemySpriteName(ENEMY_INDEX.bearer, v), id === 'gonryo' ? 30 : 28));
     const kon = sprite('kon', 12);
     this.runners = { hueco: sprite('adjuchas', 22), palace: kon, wahrwelt: kon };
-    this.heroSprites = HERO_IDS.map((_, v) => sprite(enemySpriteName(ENEMY_INDEX.defender, v), 28));
+    // Rukia is drawn small, Renji large: no two defenders read alike.
+    const heroRef: Readonly<Record<string, number>> = { renji: 27, rukia: 31 };
+    this.heroSprites = HERO_IDS.map((id, v) => sprite(enemySpriteName(ENEMY_INDEX.defender, v), heroRef[id] ?? 28));
+    this.heroBankai = HERO_IDS.map((id, v) => (id === 'renji' || id === 'rukia' ? sprite(`${enemySpriteName(ENEMY_INDEX.defender, v)}_bankai`, heroRef[id] ?? 28) : null));
     this.ichigoMasked = sprite('ichigo_mask', 30);
     this.kirioSlim = sprite('royal_kirio_slim', 26);
     this.harribelReleased = sprite('harribel_tiburon', 31);
@@ -729,7 +734,7 @@ export class Renderer {
             : type === ENEMY_INDEX.gotei
               ? (this.goteiSprites[E.variant[i]] ?? this.enemySprites[type])
             : type === ENEMY_INDEX.defender
-              ? (this.heroSprites[E.variant[i]] ?? this.enemySprites[type])
+              ? ((w.phaseOf(i) > 0 && this.heroBankai[E.variant[i]]) || (this.heroSprites[E.variant[i]] ?? this.enemySprites[type]))
             : type === ENEMY_INDEX.ichigo && E.r[i] >= ICHIGO_MASKED && this.ichigoMasked
               ? this.ichigoMasked
             : type === ENEMY_INDEX.harribel && E.r[i] >= HARRIBEL_RELEASED && this.harribelReleased

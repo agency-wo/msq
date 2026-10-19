@@ -14,6 +14,11 @@ export const CSP =
 export default defineConfig({
   // Relative URLs: the same build works on play.minarankstudio.com and on a github.io sub-path.
   base: './',
+  resolve: {
+    // The project can live in a OneDrive folder, whose files and folders are reparse points: followed
+    // as symlinks, they make the bundler lose node_modules. Nothing here is symlinked, so keep paths as they are.
+    preserveSymlinks: true,
+  },
   build: {
     target: 'es2022',
     // Never inline assets as data: URIs; everything is a same-origin file.

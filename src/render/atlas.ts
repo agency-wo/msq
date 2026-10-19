@@ -4660,105 +4660,320 @@ function lieutenantBadge(g: Ctx, cx: number, cy: number, s: number): void {
   g.restore();
 }
 
+/** Renji's crimson hair, gathered high at the back of his head and fanning into spikes. */
+function renjiTail(g: Ctx, cx: number, hy: number, s: number): void {
+  g.fillStyle = '#c4202a';
+  g.beginPath();
+  g.moveTo(cx - 2 * s, hy - 6 * s);
+  g.quadraticCurveTo(cx + 3 * s, hy - 16 * s, cx + 11 * s, hy - 15.5 * s);
+  g.lineTo(cx + 9 * s, hy - 12.6 * s);
+  g.lineTo(cx + 16 * s, hy - 11.4 * s);
+  g.lineTo(cx + 10.6 * s, hy - 9 * s);
+  g.lineTo(cx + 16.4 * s, hy - 5.6 * s);
+  g.lineTo(cx + 10 * s, hy - 5.4 * s);
+  g.lineTo(cx + 13 * s, hy - 1 * s);
+  g.lineTo(cx + 6.4 * s, hy - 3.6 * s);
+  g.quadraticCurveTo(cx + 3 * s, hy - 5 * s, cx + 1 * s, hy - 3.4 * s);
+  g.closePath();
+  g.fill();
+  g.strokeStyle = '#7e0e16';
+  g.lineWidth = 0.5 * s;
+  g.beginPath();
+  g.moveTo(cx + 1.6 * s, hy - 7 * s);
+  g.quadraticCurveTo(cx + 6 * s, hy - 12 * s, cx + 12.4 * s, hy - 11.6 * s);
+  g.moveTo(cx + 2.4 * s, hy - 5.6 * s);
+  g.quadraticCurveTo(cx + 7 * s, hy - 8 * s, cx + 12.6 * s, hy - 6.4 * s);
+  g.stroke();
+}
+
+/** Renji's bare arms, the kimono's sleeves torn off at the shoulder, with black tattoo stripes down them. */
+function renjiArmInk(g: Ctx, cx: number, cy: number, s: number, b: number): void {
+  for (const dir of [-1, 1]) {
+    const ax = cx + dir * 10.5 * s * b;
+    g.fillStyle = SKIN;
+    g.beginPath();
+    g.ellipse(ax, cy + 2.4 * s, 2.9 * s, 6.4 * s, -dir * 0.25, 0, TAU);
+    g.fill();
+    g.fillStyle = '#161820';
+    g.beginPath();
+    g.ellipse(ax - dir * 0.9 * s, cy - 3.6 * s, 2.8 * s, 1.7 * s, -dir * 0.3, 0, TAU);
+    g.fill();
+  }
+  g.strokeStyle = '#14161f';
+  g.lineWidth = 0.55 * s;
+  g.beginPath();
+  for (const dir of [-1, 1]) {
+    const ax = cx + dir * 10.2 * s * b;
+    for (let k = 0; k < 3; k++) {
+      const y = cy - 2.4 * s + k * 3.2 * s;
+      g.moveTo(ax - 1.8 * s, y);
+      g.lineTo(ax, y + 1.1 * s);
+      g.lineTo(ax + 1.8 * s, y);
+    }
+  }
+  g.stroke();
+}
+
+/** Renji's head: the face, crimson hair swept back, a white bandana, the tattoos above his brows, a fighter's grin. */
+function renjiHead(g: Ctx, cx: number, hy: number, s: number): void {
+  faceAt(g, cx, hy + 0.8 * s, s, 5.6, 6.4);
+  g.fillStyle = '#c4202a';
+  g.beginPath();
+  g.ellipse(cx, hy - 2.6 * s, 6.9 * s, 5 * s, 0, Math.PI * 0.95, Math.PI * 2.05);
+  g.fill();
+  for (let k = 0; k < 4; k++) {
+    const a = Math.PI * (1.12 + k * 0.17);
+    poly(g, [
+      [cx + Math.cos(a - 0.16) * 5.4 * s, hy - 2.6 * s + Math.sin(a - 0.16) * 5.4 * s],
+      [cx + Math.cos(a) * 8.4 * s, hy - 2.6 * s + Math.sin(a) * 8.4 * s],
+      [cx + Math.cos(a + 0.16) * 5.4 * s, hy - 2.6 * s + Math.sin(a + 0.16) * 5.4 * s],
+    ]);
+    g.fill();
+  }
+  // The white bandana across his brow, its ends flying out behind him
+  g.fillStyle = '#f4f2ec';
+  g.beginPath();
+  g.moveTo(cx - 6.4 * s, hy - 2.8 * s);
+  g.quadraticCurveTo(cx, hy - 4.8 * s, cx + 6.4 * s, hy - 2.8 * s);
+  g.lineTo(cx + 6.2 * s, hy - 1.2 * s);
+  g.quadraticCurveTo(cx, hy - 3 * s, cx - 6.2 * s, hy - 1.2 * s);
+  g.closePath();
+  g.fill();
+  poly(g, [
+    [cx - 6 * s, hy - 2.4 * s],
+    [cx - 11 * s, hy - 4.4 * s],
+    [cx - 10.4 * s, hy - 2.6 * s],
+    [cx - 12.6 * s, hy - 0.6 * s],
+    [cx - 6 * s, hy - 1.2 * s],
+  ]);
+  g.fill();
+  g.strokeStyle = 'rgba(40,40,60,0.35)';
+  g.lineWidth = 0.4 * s;
+  g.stroke();
+  // The tattoos where his brows should be
+  g.strokeStyle = '#14161f';
+  g.lineWidth = 0.65 * s;
+  g.beginPath();
+  for (const dir of [-1, 1]) {
+    g.moveTo(cx + dir * 1.2 * s, hy - 0.4 * s);
+    g.lineTo(cx + dir * 2.4 * s, hy - 1 * s);
+    g.lineTo(cx + dir * 3.6 * s, hy - 0.2 * s);
+    g.lineTo(cx + dir * 5 * s, hy - 1 * s);
+  }
+  g.stroke();
+  eyesAt(g, cx, hy + 1.9 * s, s, '#f6e0c0', '#c06030', 2.5);
+  // A wide, toothy grin
+  g.fillStyle = '#ffffff';
+  g.beginPath();
+  g.moveTo(cx - 2.4 * s, hy + 4.2 * s);
+  g.quadraticCurveTo(cx, hy + 6.2 * s, cx + 2.4 * s, hy + 4.2 * s);
+  g.closePath();
+  g.fill();
+  g.strokeStyle = '#5a2a20';
+  g.lineWidth = 0.45 * s;
+  g.stroke();
+}
+
+/** Zabimaru released: a long blade of jagged segments, each with a hooked tooth, held high. */
+function zabimaru(g: Ctx, hx: number, hy: number, s: number, ang: number, segs: number): void {
+  g.save();
+  g.translate(hx, hy);
+  g.rotate(ang);
+  g.fillStyle = '#2a2f3a';
+  g.fillRect(-1 * s, -5 * s, 2 * s, 5 * s);
+  g.fillStyle = '#c9a040';
+  g.fillRect(-2.4 * s, -0.7 * s, 4.8 * s, 1.4 * s);
+  for (let k = 0; k < segs; k++) {
+    const y0 = (1 + k * 4.6) * s;
+    g.fillStyle = k % 2 ? '#dfe5ee' : '#cfd6e2';
+    poly(g, [
+      [-1.6 * s, y0],
+      [1.6 * s, y0],
+      [3.6 * s, y0 + 1.2 * s],
+      [1.6 * s, y0 + 1.6 * s],
+      [1.4 * s, y0 + 3.8 * s],
+      [-1.6 * s, y0 + 3.8 * s],
+    ]);
+    g.fill();
+    g.strokeStyle = 'rgba(40,46,60,0.7)';
+    g.lineWidth = 0.45 * s;
+    g.stroke();
+  }
+  g.fillStyle = '#e6ebf3';
+  const tip = (1 + segs * 4.6) * s;
+  poly(g, [
+    [-1.6 * s, tip - 0.4 * s],
+    [1.6 * s, tip - 0.4 * s],
+    [0, tip + 3.4 * s],
+  ]);
+  g.fill();
+  g.restore();
+}
+
 /**
- * Renji Abarai (a chibi homage): long red hair tied high, the tattoos
- * across his brow, a lieutenant's badge, and Zabimaru's segmented blade.
+ * Renji Abarai (a chibi homage): crimson hair tied high in a spiked
+ * ponytail, a white bandana, the tattoos on his brow and his bare arms, and
+ * Zabimaru released, a long blade of jagged segments held high.
  */
 const renji: Draw = (g, w, h) => {
   const s = 2;
-  const cx = w / 2;
-  const cy = h / 2 + 7;
+  const cx = w / 2 - 6;
+  const cy = h / 2 + 10;
   const hy = cy - 13 * s;
-  aura(g, cx, cy, 56, 'rgba(255,106,74,0.18)');
-  // The ponytail, behind
-  g.fillStyle = '#c8282e';
-  g.beginPath();
-  g.moveTo(cx - 2 * s, hy - 6 * s);
-  g.quadraticCurveTo(cx + 10 * s, hy - 14 * s, cx + 12 * s, hy - 2 * s);
-  g.quadraticCurveTo(cx + 8 * s, hy - 7 * s, cx + 2 * s, hy - 4 * s);
-  g.closePath();
-  g.fill();
-  captainBody(g, cx, cy, s, { haori: 'none' });
+  aura(g, cx, cy, 58, 'rgba(255,90,60,0.22)');
+  renjiTail(g, cx, hy, s);
+  captainBody(g, cx, cy, s, { haori: 'none', broad: 1.12 });
+  renjiArmInk(g, cx, cy, s, 1.12);
   lieutenantBadge(g, cx, cy, s);
-  // Zabimaru: a blade made of segments
-  g.save();
-  g.translate(cx + 12 * s, cy + 9.6 * s);
-  g.rotate(-0.3);
-  g.fillStyle = '#2a2f3a';
-  g.fillRect(-0.9 * s, -5 * s, 1.8 * s, 5 * s);
-  g.fillStyle = '#d8dee8';
-  for (let k = 0; k < 5; k++) {
-    poly(g, [
-      [-1.2 * s, (0.6 + k * 2.8) * s],
-      [1.6 * s, (0.6 + k * 2.8) * s],
-      [0.8 * s, (2.9 + k * 2.8) * s],
-      [-1.2 * s, (2.9 + k * 2.8) * s],
-    ]);
-    g.fill();
-  }
-  g.restore();
-  faceAt(g, cx, hy + 0.8 * s, s, 5.6, 6.4);
-  // Red hair swept back, spiking at the crown
-  g.fillStyle = '#c8282e';
-  g.beginPath();
-  g.ellipse(cx, hy - 2.4 * s, 6.8 * s, 5 * s, 0, Math.PI * 0.95, Math.PI * 2.05);
-  g.fill();
-  for (let k = 0; k < 5; k++) {
-    const a = Math.PI * (1.1 + k * 0.2);
-    poly(g, [
-      [cx + Math.cos(a - 0.15) * 5.4 * s, hy - 2.4 * s + Math.sin(a - 0.15) * 5.4 * s],
-      [cx + Math.cos(a) * 8.6 * s, hy - 2.4 * s + Math.sin(a) * 8.6 * s],
-      [cx + Math.cos(a + 0.15) * 5.4 * s, hy - 2.4 * s + Math.sin(a + 0.15) * 5.4 * s],
-    ]);
-    g.fill();
-  }
-  // The tattoos above his brows
-  g.strokeStyle = '#14161f';
-  g.lineWidth = 0.6 * s;
-  g.beginPath();
-  for (const dir of [-1, 1]) {
-    g.moveTo(cx + dir * 1.4 * s, hy - 1.4 * s);
-    g.lineTo(cx + dir * 2.6 * s, hy - 2.6 * s);
-    g.lineTo(cx + dir * 3.8 * s, hy - 1.6 * s);
-    g.lineTo(cx + dir * 5 * s, hy - 2.8 * s);
-  }
-  g.stroke();
-  browsAt(g, cx, hy + 0.4 * s, s, '#7a1418', 1.4);
-  eyesAt(g, cx, hy + 1.9 * s, s, '#f0e2d0', '#a07040', 2.5);
-  g.strokeStyle = '#5a3a30';
-  g.lineWidth = 0.6 * s;
-  g.beginPath();
-  g.moveTo(cx - 1.8 * s, hy + 4.6 * s);
-  g.lineTo(cx + 1.8 * s, hy + 4.4 * s);
-  g.stroke();
+  zabimaru(g, cx + 13 * s, cy + 9.6 * s, s, Math.PI + 0.42, 6);
+  renjiHead(g, cx, hy, s);
 };
 
 /**
- * Rukia Kuchiki (a chibi homage): short black hair with one lock falling
- * between her eyes, a lieutenant's badge, and Sode no Shirayuki, all white,
- * its long ribbon trailing.
+ * Renji in Sōō Zabimaru (a chibi homage): Hihiō Zabimaru, the baboon king,
+ * a huge crimson fur mantle over his shoulders and a great arm of bone with
+ * claws in place of his right hand.
  */
-const rukia: Draw = (g, w, h) => {
-  const s = 1.9;
-  const cx = w / 2;
-  const cy = h / 2 + 8;
+const renjiBankai: Draw = (g, w, h) => {
+  const s = 2;
+  const cx = w / 2 - 4;
+  const cy = h / 2 + 12;
   const hy = cy - 13 * s;
-  aura(g, cx, cy, 52, 'rgba(207,238,255,0.22)');
-  captainBody(g, cx, cy, s, { haori: 'none' });
-  lieutenantBadge(g, cx, cy, s);
-  // Sode no Shirayuki: a white blade, a white guard, a long white ribbon
-  heldSword(g, cx + 12 * s, cy + 9.6 * s, s, 14, -0.3, '#f8fbff');
-  g.save();
-  g.strokeStyle = 'rgba(248,251,255,0.9)';
-  g.lineWidth = 0.8 * s;
+  aura(g, cx, cy, 66, 'rgba(255,70,50,0.3)');
+  renjiTail(g, cx, hy, s);
+  // The fur mantle, behind and around him: ragged tufts all the way round
+  const fur = g.createRadialGradient(cx, cy - 4 * s, 4 * s, cx, cy, 22 * s);
+  fur.addColorStop(0, '#d8463a');
+  fur.addColorStop(0.7, '#9a1e22');
+  fur.addColorStop(1, '#5a0e14');
+  g.fillStyle = fur;
   g.beginPath();
-  g.moveTo(cx + 13.4 * s, cy + 4.8 * s);
-  g.bezierCurveTo(cx + 18 * s, cy + 2 * s, cx + 16 * s, cy + 12 * s, cx + 20 * s, cy + 14 * s);
+  const n = 22;
+  for (let k = 0; k <= n; k++) {
+    const a = Math.PI * 0.92 + (k / n) * Math.PI * 1.16;
+    const r = (k % 2 ? 17.5 : 21) * s;
+    const x = cx + Math.cos(a) * r;
+    const y = cy + 2 * s + Math.sin(a) * r * 0.82;
+    if (k === 0) g.moveTo(x, y);
+    else g.lineTo(x, y);
+  }
+  g.lineTo(cx + 15 * s, cy + 18 * s);
+  g.lineTo(cx - 15 * s, cy + 18 * s);
+  g.closePath();
+  g.fill();
+  captainBody(g, cx, cy, s, { haori: 'none', broad: 1.12 });
+  renjiArmInk(g, cx, cy, s, 1.12);
+  // The mantle's collar, thick fur across both shoulders
+  g.fillStyle = '#b8282a';
+  for (let k = 0; k < 9; k++) {
+    const x = cx - 12 * s + k * 3 * s;
+    g.beginPath();
+    g.ellipse(x, cy - 5.6 * s + Math.abs(k - 4) * 0.5 * s, 2.6 * s, 3.4 * s, (k - 4) * 0.12, 0, TAU);
+    g.fill();
+  }
+  g.fillStyle = '#e8705a';
+  for (let k = 0; k < 9; k += 2) {
+    const x = cx - 12 * s + k * 3 * s;
+    g.beginPath();
+    g.ellipse(x, cy - 6.6 * s + Math.abs(k - 4) * 0.5 * s, 1 * s, 1.4 * s, 0, 0, TAU);
+    g.fill();
+  }
+  // The bone arm: a huge skeletal forearm and fist with claws, raised at his side
+  g.save();
+  g.translate(cx + 14 * s, cy + 2 * s);
+  g.rotate(-0.35);
+  const bone = g.createLinearGradient(-5 * s, 0, 5 * s, 0);
+  bone.addColorStop(0, '#f6f0e2');
+  bone.addColorStop(1, '#c9bca2');
+  g.fillStyle = bone;
+  g.beginPath();
+  g.ellipse(0, -2 * s, 4.2 * s, 7.4 * s, 0, 0, TAU);
+  g.fill();
+  g.strokeStyle = '#7a6a52';
+  g.lineWidth = 0.5 * s;
+  g.stroke();
+  g.beginPath();
+  g.ellipse(0, 7.6 * s, 6 * s, 5 * s, 0, 0, TAU);
+  g.fillStyle = bone;
+  g.fill();
+  g.stroke();
+  // Ridges along the bone and claws at the knuckles
+  g.beginPath();
+  for (let k = 0; k < 3; k++) {
+    g.moveTo(-3 * s, -6 * s + k * 3.2 * s);
+    g.lineTo(3 * s, -5.2 * s + k * 3.2 * s);
+  }
+  g.stroke();
+  g.fillStyle = '#fbf8f0';
+  for (let k = -2; k <= 2; k++) {
+    poly(g, [
+      [k * 2.2 * s - 1 * s, 11.6 * s],
+      [k * 2.2 * s + 1 * s, 11.6 * s],
+      [k * 2.6 * s, 16 * s],
+    ]);
+    g.fill();
+    g.stroke();
+  }
+  g.restore();
+  renjiHead(g, cx, hy, s);
+};
+
+/** A small six-armed snowflake. */
+function snowflake(g: Ctx, x: number, y: number, r: number, color: string): void {
+  g.strokeStyle = color;
+  g.lineWidth = Math.max(0.8, r * 0.28);
+  g.lineCap = 'round';
+  g.beginPath();
+  for (let k = 0; k < 3; k++) {
+    const a = (k / 3) * Math.PI;
+    g.moveTo(x - Math.cos(a) * r, y - Math.sin(a) * r);
+    g.lineTo(x + Math.cos(a) * r, y + Math.sin(a) * r);
+  }
+  g.stroke();
+}
+
+/** Sode no Shirayuki: white from hilt to tip, a ring for a guard, its long white ribbon looping out behind. */
+function shirayuki(g: Ctx, hx: number, hy: number, s: number, len: number, ang: number, ribbonFront: boolean): void {
+  g.save();
+  g.translate(hx, hy);
+  g.rotate(ang);
+  // The ribbon, tied at the pommel, swinging in a long loop
+  g.strokeStyle = 'rgba(250,252,255,0.95)';
+  g.lineWidth = 1.3 * s;
+  g.lineCap = 'round';
+  g.beginPath();
+  g.moveTo(0, -5 * s);
+  if (ribbonFront) g.bezierCurveTo(-9 * s, -12 * s, -16 * s, 2 * s, -10 * s, 12 * s);
+  else g.bezierCurveTo(8 * s, -14 * s, 16 * s, -2 * s, 12 * s, 10 * s);
+  g.stroke();
+  g.strokeStyle = 'rgba(160,200,240,0.5)';
+  g.lineWidth = 0.4 * s;
+  g.stroke();
+  g.fillStyle = '#f2f6fc';
+  g.fillRect(-0.9 * s, -5 * s, 1.8 * s, 5 * s);
+  g.strokeStyle = '#f8fbff';
+  g.lineWidth = 0.6 * s;
+  g.beginPath();
+  g.arc(0, 0, 2 * s, 0, TAU);
+  g.stroke();
+  g.fillStyle = '#ffffff';
+  g.beginPath();
+  g.moveTo(-1 * s, 0.6 * s);
+  g.lineTo(-1 * s, len * s * 0.94);
+  g.lineTo(0, len * s);
+  g.lineTo(1 * s, len * s * 0.94);
+  g.lineTo(1 * s, 0.6 * s);
+  g.closePath();
+  g.fill();
+  g.strokeStyle = 'rgba(120,160,210,0.6)';
+  g.lineWidth = 0.4 * s;
   g.stroke();
   g.restore();
-  faceAt(g, cx, hy + 0.8 * s, s, 5.4, 6.2);
-  // Short black hair to the jaw, one lock between the eyes
-  g.fillStyle = '#0d0e14';
+}
+
+/** Rukia's short hair to the jaw with one lock falling between her eyes (black, or white in her bankai). */
+function rukiaHair(g: Ctx, cx: number, hy: number, s: number, color: string): void {
+  g.fillStyle = color;
   g.beginPath();
   g.ellipse(cx, hy - 1.8 * s, 6.6 * s, 5.2 * s, 0, Math.PI * 0.95, Math.PI * 2.05);
   g.fill();
@@ -4777,7 +4992,126 @@ const rukia: Draw = (g, w, h) => {
     [cx + 0.2 * s, hy + 2.8 * s],
   ]);
   g.fill();
-  eyesAt(g, cx, hy + 1.9 * s, s, '#d8c8ff', '#7a5ab8', 2.7);
+}
+
+/**
+ * Rukia Kuchiki (a chibi homage): small, short black hair with one lock
+ * between her violet eyes, a lieutenant's badge, and Sode no Shirayuki,
+ * white from hilt to tip, its long ribbon looping round her, snow in the air.
+ */
+const rukia: Draw = (g, w, h) => {
+  const s = 1.72;
+  const cx = w / 2 - 2;
+  const cy = h / 2 + 12;
+  const hy = cy - 13 * s;
+  aura(g, cx, cy, 52, 'rgba(190,230,255,0.28)');
+  captainBody(g, cx, cy, s, { haori: 'none', broad: 0.9 });
+  lieutenantBadge(g, cx, cy, s);
+  shirayuki(g, cx + 10.6 * s, cy + 9.6 * s, s, 16, -0.55, false);
+  faceAt(g, cx, hy + 0.8 * s, s, 5.4, 6.2);
+  rukiaHair(g, cx, hy, s, '#0d0e14');
+  eyesAt(g, cx, hy + 1.9 * s, s, '#e0d0ff', '#8a64d0', 2.7);
+  for (const [dx, dy, r] of [
+    [-17, -8, 2.2],
+    [-13, 10, 1.6],
+    [19, -16, 1.8],
+    [-20, 20, 1.4],
+  ] as const) {
+    snowflake(g, cx + dx * s, cy + dy * s, r * s, 'rgba(240,248,255,0.9)');
+  }
+};
+
+/**
+ * Rukia in Hakka no Togame (a chibi homage): her bankai at absolute zero.
+ * Everything about her has turned white, hair, skin and a long robe that
+ * trails like frost, with an ice ornament in her hair and cold mist at her feet.
+ */
+const rukiaBankai: Draw = (g, w, h) => {
+  const s = 1.72;
+  const cx = w / 2 - 2;
+  const cy = h / 2 + 10;
+  const hy = cy - 13 * s;
+  aura(g, cx, cy, 60, 'rgba(170,225,255,0.4)');
+  // Mist rolling at her feet
+  g.fillStyle = 'rgba(220,240,255,0.35)';
+  for (const [dx, r] of [
+    [-12, 7],
+    [0, 9],
+    [12, 7],
+  ] as const) {
+    g.beginPath();
+    g.ellipse(cx + dx * s, cy + 21 * s, r * s, 2.6 * s, 0, 0, TAU);
+    g.fill();
+  }
+  // The white robe, flaring out into a long trailing hem
+  const robe = g.createLinearGradient(0, cy - 7 * s, 0, cy + 22 * s);
+  robe.addColorStop(0, '#ffffff');
+  robe.addColorStop(1, '#cfe6f8');
+  g.fillStyle = robe;
+  g.beginPath();
+  g.moveTo(cx - 7 * s, cy - 6.5 * s);
+  g.lineTo(cx + 7 * s, cy - 6.5 * s);
+  g.quadraticCurveTo(cx + 10 * s, cy + 8 * s, cx + 15 * s, cy + 21.5 * s);
+  g.lineTo(cx - 15 * s, cy + 21.5 * s);
+  g.quadraticCurveTo(cx - 10 * s, cy + 8 * s, cx - 7 * s, cy - 6.5 * s);
+  g.closePath();
+  g.fill();
+  g.strokeStyle = 'rgba(110,160,210,0.55)';
+  g.lineWidth = 1;
+  g.stroke();
+  // Frost along the hem
+  g.fillStyle = '#e6f6ff';
+  for (let k = -6; k <= 6; k++) {
+    poly(g, [
+      [cx + k * 2.3 * s - 1 * s, cy + 21.4 * s],
+      [cx + k * 2.3 * s + 1 * s, cy + 21.4 * s],
+      [cx + k * 2.3 * s, cy + (k % 2 ? 24 : 23) * s],
+    ]);
+    g.fill();
+  }
+  // A pale sash, and long white sleeves
+  g.fillStyle = '#b8dcf4';
+  g.fillRect(cx - 8 * s, cy + 4 * s, 16 * s, 2 * s);
+  for (const dir of [-1, 1]) {
+    g.fillStyle = '#f6fbff';
+    g.beginPath();
+    g.ellipse(cx + dir * 9.6 * s, cy + 3.5 * s, 3.6 * s, 8.6 * s, -dir * 0.3, 0, TAU);
+    g.fill();
+    g.strokeStyle = 'rgba(110,160,210,0.45)';
+    g.lineWidth = 0.8;
+    g.stroke();
+    g.fillStyle = '#f2f6ff';
+    g.beginPath();
+    g.arc(cx + dir * 11.2 * s, cy + 10.6 * s, 1.5 * s, 0, TAU);
+    g.fill();
+  }
+  shirayuki(g, cx + 11 * s, cy + 10.6 * s, s, 17, -0.5, false);
+  // Pale face, white hair, an ornament of ice
+  g.fillStyle = '#f4f8ff';
+  g.beginPath();
+  g.ellipse(cx, hy + 0.8 * s, 5.4 * s, 6.2 * s, 0, 0, TAU);
+  g.fill();
+  rukiaHair(g, cx, hy, s, '#f8fcff');
+  g.strokeStyle = 'rgba(140,190,230,0.6)';
+  g.lineWidth = 0.4 * s;
+  g.beginPath();
+  g.ellipse(cx, hy - 1.8 * s, 6.6 * s, 5.2 * s, 0, Math.PI * 0.95, Math.PI * 2.05);
+  g.stroke();
+  g.save();
+  g.shadowColor = 'rgba(150,215,255,0.95)';
+  g.shadowBlur = 6;
+  snowflake(g, cx - 5.6 * s, hy - 4.4 * s, 2.6 * s, '#bfe8ff');
+  g.restore();
+  eyesAt(g, cx, hy + 1.9 * s, s, '#e8f6ff', '#7ac8ff', 2.7);
+  for (const [dx, dy, r] of [
+    [-18, -10, 2.2],
+    [-15, 12, 1.8],
+    [19, -18, 2],
+    [17, 4, 1.4],
+    [-21, 22, 1.6],
+  ] as const) {
+    snowflake(g, cx + dx * s, cy + dy * s, r * s, 'rgba(235,248,255,0.95)');
+  }
 };
 
 /**
@@ -5610,8 +5944,10 @@ const ENEMY_DRAW: readonly [string, number, Draw][] = [
   ['gotei_kensei', 112, kensei],
   ['kyoraku', 128, kyoraku],
   ['jizo', 128, jizo],
-  ['heroes_renji', 112, renji],
+  ['heroes_renji', 120, renji],
+  ['heroes_renji_bankai', 132, renjiBankai],
   ['heroes_rukia', 104, rukia],
+  ['heroes_rukia_bankai', 112, rukiaBankai],
   ['heroes_uryu', 112, uryu],
   ['heroes_aizen', 112, aizen],
   ['ichigo', 120, ichigo],

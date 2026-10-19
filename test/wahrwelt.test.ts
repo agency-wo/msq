@@ -2,11 +2,12 @@ import { describe, expect, it } from 'vitest';
 import { CODEX_ENEMIES } from '../src/data/codex';
 import { dailyFor } from '../src/data/daily';
 import { ENEMY_INDEX } from '../src/data/enemies';
-import { HERO_IDS } from '../src/data/heroes';
+import { HERO_BY_ID, HERO_IDS, HERO_INFO } from '../src/data/heroes';
 import { STAGES } from '../src/data/stages';
 import { BOSS_LINES } from '../src/data/story';
 import { EB_ARROW, EB_GETSUGA, EB_ICE, EB_SWORD, MF_FREEZE, MK_CERO, MK_ICE, MK_INK, MK_RAIN, MK_SILVER, MS_CIRCLE, MS_LINE } from '../src/game/constants';
 import { ICHIGO_MASKED } from '../src/game/hostile';
+import { bossSpriteName, enemySpriteName } from '../src/render/names';
 import { World } from '../src/game/world';
 import { defaultSave, recordRun, stageUnlocked } from '../src/save/save';
 import { chaptersAfter, chaptersBefore } from '../src/save/story';
@@ -64,6 +65,7 @@ function alive(w: World, type: number): number {
 }
 
 const hero = (id: string): number => HERO_IDS.indexOf(id);
+const w0 = (): World => new World({ seed: 1, stage: 'wahrwelt' });
 
 describe('Wahrwelt', () => {
   it('is the last stage, opened by clearing the Soul King Palace', () => {
@@ -75,14 +77,63 @@ describe('Wahrwelt', () => {
     expect(stageUnlocked(s, 'wahrwelt')).toBe(true);
   });
 
-  it('draws three of its four defenders each run, and ends with Ichigo', () => {
-    const w = new World({ seed: 3, stage: 'wahrwelt', god: true });
-    expect(new Set(w.bearers).size).toBe(3);
-    for (const id of w.bearers) expect(HERO_IDS).toContain(id);
-    const last = w.stage.events.filter((e) => e.kind === 'boss').pop();
+  it('brings all four defenders every run, each once, Aizen always last before Ichigo', () => {
+    for (let seed = 1; seed <= 40; seed++) {
+      const w = new World({ seed, stage: 'wahrwelt', god: true });
+      expect(w.bearers).toHaveLength(4);
+      expect(new Set(w.bearers)).toEqual(new Set(HERO_IDS));
+      expect(w.bearers[3]).toBe('aizen');
+    }
+    // The other three still come in a different order from run to run.
+    const firsts = new Set(Array.from({ length: 30 }, (_, k) => new World({ seed: k + 1, stage: 'wahrwelt' }).bearers[0]));
+    expect(firsts.size).toBe(3);
+    // A forced defender goes first (testing switch) and nobody is lost.
+    const forced = new World({ seed: 5, stage: 'wahrwelt', bearers: ['uryu'] });
+    expect(forced.bearers[0]).toBe('uryu');
+    expect(new Set(forced.bearers)).toEqual(new Set(HERO_IDS));
+    const last = w0().stage.events.filter((e) => e.kind === 'boss').pop();
     expect(last?.kind === 'boss' && last.enemy).toBe('ichigo');
     for (const id of HERO_IDS) expect(BOSS_LINES[`heroes:${id}`]).toBeTruthy();
     expect(BOSS_LINES['boss:ichigo']).toBeTruthy();
+  });
+
+  it('never shows two defenders alike: name, title, warning, sprite and bankai form are all their own', { timeout: 60_000 }, () => {
+    for (const key of ['name', 'title', 'warn'] as const) expect(new Set(HERO_INFO.map((h) => h[key])).size).toBe(HERO_INFO.length);
+    const sprites = HERO_IDS.map((_, v) => enemySpriteName(ENEMY_INDEX.defender, v));
+    expect(new Set(sprites).size).toBe(HERO_IDS.length);
+    expect(bossSpriteName(ENEMY_INDEX.defender, hero('renji'), 1)).toBe('heroes_renji_bankai');
+    expect(bossSpriteName(ENEMY_INDEX.defender, hero('rukia'), 1)).toBe('heroes_rukia_bankai');
+    expect(bossSpriteName(ENEMY_INDEX.defender, hero('aizen'), 1)).toBe('heroes_aizen');
+    // In a run, every defender that arrives carries its own name and title on the boss bar, and its own warning.
+    const w = new World({ seed: 11, stage: 'wahrwelt', god: true });
+    Object.assign(w as unknown as Record<string, unknown>, { spawnTick: () => undefined });
+    const seen: string[] = [];
+    const warned: string[] = [];
+    for (let s = 0; s < 1090 * 60; s++) {
+      w.step(0, 0);
+      w.pendingLevelUps = 0;
+      w.pendingChests.length = 0;
+      for (const m of w.messages.splice(0)) if (HERO_INFO.some((h) => h.warn === m.text)) warned.push(m.text);
+      if (w.boss.active && w.boss.type === ENEMY_INDEX.defender && !seen.includes(w.boss.name)) {
+        const info = HERO_BY_ID.get(HERO_IDS[w.boss.variant]);
+        expect(w.boss.name).toBe(info?.name);
+        expect(w.boss.sub).toBe(info?.title);
+        seen.push(w.boss.name);
+        for (let i = 0; i < w.en.n; i++) if (w.en.type[i] === ENEMY_INDEX.defender && !w.en.dead[i]) w.killEnemy(i);
+      }
+    }
+    expect(seen).toEqual(w.bearers.map((id) => HERO_BY_ID.get(id)?.name));
+    expect(warned).toEqual(w.bearers.map((id) => HERO_BY_ID.get(id)?.warn));
+  });
+
+  it('shows Renji and Rukia in their bankai once they pass half health', () => {
+    const { w, i } = arena(ENEMY_INDEX.defender, hero('rukia'));
+    (w as unknown as { bossCount: number }).bossCount = 1;
+    expect(w.phaseOf(i)).toBe(0);
+    w.en.hp[i] = w.en.maxHp[i] * 0.4;
+    steps(w, 1);
+    expect(w.phaseOf(i)).toBe(1);
+    expect(w.boss.phase).toBe(1);
   });
 
   it('Renji: Zabimaru, fangs closing in, the bone cannon', () => {
@@ -195,9 +246,12 @@ describe('Wahrwelt', () => {
     expect(n).toBeGreaterThan(0);
   });
 
-  it('its Boss Rush ends with Ichigo', () => {
+  it('its Boss Rush brings all four defenders, Aizen last, then Ichigo', () => {
     const w = new World({ seed: 2, stage: 'wahrwelt', god: true, bossRush: true });
-    const queue = (w as unknown as { rushQueue: { kind: string; enemy?: string; final?: boolean }[][] }).rushQueue;
+    const queue = (w as unknown as { rushQueue: { kind: string; enemy?: string; final?: boolean; tier?: number }[][] }).rushQueue;
+    expect(queue).toHaveLength(5);
+    expect(queue.map((wave) => wave.find((e) => e.kind === 'bearer')?.tier ?? -1)).toEqual([0, 1, 2, 3, -1]);
+    expect(w.bearers[3]).toBe('aizen');
     expect(queue[queue.length - 1].some((e) => e.kind === 'boss' && e.enemy === 'ichigo' && e.final)).toBe(true);
   });
 });

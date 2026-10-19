@@ -11,15 +11,17 @@ export interface RoyalInfo {
   name: string;
   /** Under the name on the boss bar and the title card. */
   title: string;
+  /** The warning a few seconds before they arrive. */
+  warn: string;
   /** Aura colour around the boss. */
   aura: number;
 }
 
 export const ROYAL_INFO: readonly RoyalInfo[] = [
-  { id: 'tenjiro', name: 'Tenjirō Kirinji', title: 'Keeper of the Healing Springs', aura: 0x8fe0ff },
-  { id: 'kirio', name: 'Kirio Hikifune', title: 'Keeper of the Palace of Grain', aura: 0xffb38a },
-  { id: 'oetsu', name: 'Ōetsu Nimaiya', title: 'Forger of Every Blade', aura: 0xffe08a },
-  { id: 'senjumaru', name: 'Senjumaru Shutara', title: 'The Great Weaver', aura: 0xd8b8ff },
+  { id: 'tenjiro', name: 'Tenjirō Kirinji', title: 'Keeper of the Healing Springs', warn: 'Steam rolls in: Tenjirō Kirinji has left his springs', aura: 0x8fe0ff },
+  { id: 'kirio', name: 'Kirio Hikifune', title: 'Keeper of the Palace of Grain', warn: 'Kirio Hikifune steps out of the Palace of Grain', aura: 0xffb38a },
+  { id: 'oetsu', name: 'Ōetsu Nimaiya', title: 'Forger of Every Blade', warn: 'Ōetsu Nimaiya strikes a pose, his blades already out', aura: 0xffe08a },
+  { id: 'senjumaru', name: 'Senjumaru Shutara', title: 'The Great Weaver', warn: 'Threads glint in the air: Senjumaru Shutara', aura: 0xd8b8ff },
 ];
 
 export const ROYAL_IDS: readonly string[] = ROYAL_INFO.map((r) => r.id);

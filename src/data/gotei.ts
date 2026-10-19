@@ -11,15 +11,17 @@ export interface GoteiInfo {
   name: string;
   /** Under the name on the boss bar and the title card. */
   title: string;
+  /** The warning a few seconds before they arrive. */
+  warn: string;
   /** Aura colour around the boss. */
   aura: number;
 }
 
 export const GOTEI_INFO: readonly GoteiInfo[] = [
-  { id: 'kenpachi', name: 'Kenpachi Zaraki', title: 'Captain of the 11th Division', aura: 0xffe08a },
-  { id: 'mayuri', name: 'Mayuri Kurotsuchi', title: 'Captain of the 12th Division', aura: 0x9dff8a },
-  { id: 'shinji', name: 'Shinji Hirako', title: 'Captain of the 5th Division', aura: 0xffb8e0 },
-  { id: 'kensei', name: 'Kensei Muguruma', title: 'Captain of the 9th Division', aura: 0xcfe6ff },
+  { id: 'kenpachi', name: 'Kenpachi Zaraki', title: 'Captain of the 11th Division', warn: 'Bells ring closer: Kenpachi Zaraki has found you', aura: 0xffe08a },
+  { id: 'mayuri', name: 'Mayuri Kurotsuchi', title: 'Captain of the 12th Division', warn: 'Mayuri Kurotsuchi wants a closer look at you', aura: 0x9dff8a },
+  { id: 'shinji', name: 'Shinji Hirako', title: 'Captain of the 5th Division', warn: 'The street tilts: Shinji Hirako is near', aura: 0xffb8e0 },
+  { id: 'kensei', name: 'Kensei Muguruma', title: 'Captain of the 9th Division', warn: 'Wind howls down the street: Kensei Muguruma', aura: 0xcfe6ff },
 ];
 
 export const GOTEI_IDS: readonly string[] = GOTEI_INFO.map((g) => g.id);

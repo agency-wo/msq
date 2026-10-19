@@ -19,17 +19,20 @@ export interface BankaiInfo {
   thiefSchrift: string;
   /** The owner's rank in the Gotei 13, shown when they fight you in Seireitei. */
   rank: string;
+  /** The warnings a few seconds before the thief (Hueco Mundo) or the owner (Seireitei) arrives. */
+  thiefWarn: string;
+  ownerWarn: string;
   /** Colour of the bearer's aura and of the medallion pickup. */
   aura: number;
 }
 
 export const BANKAI_INFO: readonly BankaiInfo[] = [
-  { id: 'senbonzakura', owner: 'Byakuya Kuchiki', thief: 'Äs Nödt', thiefLetter: 'F', thiefSchrift: 'The Fear', rank: 'Captain of the 6th Division', aura: 0xff9cc2 },
-  { id: 'hyorinmaru', owner: 'Tōshirō Hitsugaya', thief: 'Cang Du', thiefLetter: 'I', thiefSchrift: 'The Iron', rank: 'Captain of the 10th Division', aura: 0x8fd8ff },
-  { id: 'raikoben', owner: 'Suì-Fēng', thief: 'BG9', thiefLetter: 'K', thiefSchrift: 'The Knowledge', rank: 'Captain of the 2nd Division', aura: 0xffd27a },
-  { id: 'tengen', owner: 'Sajin Komamura', thief: 'Bambietta Basterbine', thiefLetter: 'E', thiefSchrift: 'The Explode', rank: 'Captain of the 7th Division', aura: 0xc9b58a },
-  { id: 'gonryo', owner: 'Chōjirō Sasakibe', thief: 'Driscoll Berci', thiefLetter: 'O', thiefSchrift: 'The Overkill', rank: 'Lieutenant of the 1st Division', aura: 0xfff3a0 },
-  { id: 'zanka', owner: 'Genryūsai Yamamoto', thief: 'the Emperor', thiefLetter: '', thiefSchrift: '', rank: 'Captain-Commander of the Gotei 13', aura: 0xff7a3c },
+  { id: 'senbonzakura', owner: 'Byakuya Kuchiki', thief: 'Äs Nödt', thiefLetter: 'F', thiefSchrift: 'The Fear', rank: 'Captain of the 6th Division', thiefWarn: 'Dread creeps over the sand: Äs Nödt', ownerWarn: 'Petals drift over the wall: Byakuya Kuchiki', aura: 0xff9cc2 },
+  { id: 'hyorinmaru', owner: 'Tōshirō Hitsugaya', thief: 'Cang Du', thiefLetter: 'I', thiefSchrift: 'The Iron', rank: 'Captain of the 10th Division', thiefWarn: 'Iron footsteps in the sand: Cang Du', ownerWarn: 'Frost spreads over the stones: Tōshirō Hitsugaya', aura: 0x8fd8ff },
+  { id: 'raikoben', owner: 'Suì-Fēng', thief: 'BG9', thiefLetter: 'K', thiefSchrift: 'The Knowledge', rank: 'Captain of the 2nd Division', thiefWarn: 'BG9 has finished studying you', ownerWarn: 'Suì-Fēng is already behind you', aura: 0xffd27a },
+  { id: 'tengen', owner: 'Sajin Komamura', thief: 'Bambietta Basterbine', thiefLetter: 'E', thiefSchrift: 'The Explode', rank: 'Captain of the 7th Division', thiefWarn: 'Something blows up nearby: Bambietta Basterbine', ownerWarn: 'The ground shakes: Sajin Komamura', aura: 0xc9b58a },
+  { id: 'gonryo', owner: 'Chōjirō Sasakibe', thief: 'Driscoll Berci', thiefLetter: 'O', thiefSchrift: 'The Overkill', rank: 'Lieutenant of the 1st Division', thiefWarn: 'Driscoll Berci is counting his kills', ownerWarn: 'Lightning on a clear night: Chōjirō Sasakibe', aura: 0xfff3a0 },
+  { id: 'zanka', owner: 'Genryūsai Yamamoto', thief: 'the Emperor', thiefLetter: '', thiefSchrift: '', rank: 'Captain-Commander of the Gotei 13', thiefWarn: '', ownerWarn: '', aura: 0xff7a3c },
 ];
 
 export const BANKAI_IDS: readonly string[] = BANKAI_INFO.map((b) => b.id);

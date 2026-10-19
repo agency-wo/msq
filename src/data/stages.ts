@@ -20,7 +20,7 @@ export type RuneKind = 'magnet' | 'heart';
 export type TimelineEvent =
   | { at: number; kind: 'ring'; enemy: EnemyId; count: number }
   | { at: number; kind: 'elite'; enemy: EnemyId }
-  /** The `tier`th of the run's three medallion bearers. */
+  /** The `tier`th of the run's roster bosses (three; four in the Wahrwelt). */
   | { at: number; kind: 'bearer'; tier: number; hpMul: number }
   /** `warn` shows 4 s before it arrives, `sub` under its name on the title card. */
   | { at: number; kind: 'boss'; enemy: EnemyId; hpMul: number; final: boolean; warn: string; sub: string }
@@ -53,6 +53,11 @@ export interface StageDef {
    * Silbern's captains or the Wahrwelt's defenders (who leave black chests).
    */
   roster?: 'royal' | 'gotei' | 'heroes';
+  /**
+   * A roster member who is never left out and always takes the last slot
+   * (Aizen: Kyōraku lets him out of Muken, and he is the last before Ichigo).
+   */
+  lastBearer?: string;
   /** Clearing this stage unlocks this one. */
   unlockedBy?: StageId;
 }
@@ -267,9 +272,10 @@ const SILBERN: StageDef = {
 /**
  * The Wahrwelt: the world the Emperor raised from the Soul King's palace once
  * he had taken the Soul King into himself. Every world comes up after him at
- * once, Soul Reapers and Hollows together; three of Renji, Rukia, Uryū and
- * Aizen stand in his way, and Ichigo Kurosaki waits at 20:00. The hardest
- * stage, opened by clearing the Soul King Palace.
+ * once, Soul Reapers and Hollows together. All four defenders stand in his
+ * way every run: Renji, Rukia and Uryū in a different order at 5:00, 10:00
+ * and 15:00, then Aizen, let out of Muken, at 18:00. Ichigo Kurosaki waits at
+ * 20:00. The hardest stage, opened by clearing the Soul King Palace.
  */
 const WAHRWELT: StageDef = {
   id: 'wahrwelt',
@@ -290,6 +296,8 @@ const WAHRWELT: StageDef = {
       (t) => (t < 300 ? 'brute' : 'guard'),
       [1.4, 5, 20],
     ),
+    // Kyōraku lets Aizen out of Muken: he always comes, and always last before Ichigo.
+    { at: 1080, kind: 'bearer', tier: 3, hpMul: 30 },
     {
       at: LENGTH,
       kind: 'boss',
@@ -305,6 +313,7 @@ const WAHRWELT: StageDef = {
   xp: 1.3,
   gold: 1.8,
   roster: 'heroes',
+  lastBearer: 'aizen',
   unlockedBy: 'palace',
 };
 

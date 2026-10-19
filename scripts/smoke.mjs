@@ -595,6 +595,16 @@ try {
     await steer(6500, { radius: 20 });
     log(`wahrwelt ${id}`, { ...(await stats()), boss: (await page.isVisible('.bossbar')) ? await page.textContent('.boss-name') : null, copies: await page.evaluate(() => { const w = window.__msq.world; let n = 0; for (let i = 0; i < w.en.n; i++) if (w.en.type[i] === 33 && !w.en.dead[i]) n++; return n; }) });
     await shot(`12g-wahrwelt-${id}`);
+    if (id === 'renji' || id === 'rukia') {
+      // Past half health: the bankai form, in the world and on the boss bar's portrait.
+      await page.evaluate(() => {
+        const w = window.__msq.world;
+        for (let i = 0; i < w.en.n; i++) if (w.en.type[i] === 31 && !w.en.dead[i]) w.en.hp[i] = w.en.maxHp[i] * 0.45;
+      });
+      await steer(2500, { radius: 20 });
+      log(`wahrwelt ${id} bankai`, { ...(await stats()), phase: await page.evaluate(() => window.__msq.world.boss.phase) });
+      await shot(`12g-wahrwelt-${id}-bankai`);
+    }
   }
   await page.goto(`${BASE}?debug&seed=7&play&god&stage=wahrwelt&t=1196&give=xaxis6,explode6,heat6`);
   await wait(400);

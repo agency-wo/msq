@@ -3,6 +3,8 @@ import { DT } from '../src/config';
 import { ENEMY_INDEX } from '../src/data/enemies';
 import { trialMods } from '../src/data/stages';
 import { runGold } from '../src/game/rewards';
+import { enemyKey } from '../src/data/codex';
+import { FLAG_BOSS } from '../src/game/constants';
 import { World } from '../src/game/world';
 import { defaultSave, endlessOpen, recordRun, trialsOpen } from '../src/save/save';
 
@@ -68,6 +70,31 @@ describe('Endless', () => {
     expect(w.boss.active).toBe(true);
     expect(w.over).toBeNull();
     expect(w.t).toBeGreaterThan(w.stage.length + 60);
+  });
+
+  it('brings every boss of the roster once before any of them returns', () => {
+    for (const stage of ['silbern', 'wahrwelt', 'hueco'] as const) {
+      const w = new World({ seed: 6, god: true, stage, endless: true });
+      const tick = (w as unknown as { endlessWaveTick: () => void }).endlessWaveTick.bind(w);
+      const order: string[] = [];
+      for (let k = 0; k < 15; k++) {
+        tick();
+        for (let i = 0; i < w.en.n; i++) {
+          if (w.en.dead[i] || !(w.en.flags[i] & FLAG_BOSS)) continue;
+          const key = enemyKey(w.en.type[i], w.en.variant[i]);
+          if (!key.includes(':')) {
+            w.killEnemy(i);
+            continue;
+          }
+          order.push(key);
+          w.killEnemy(i);
+        }
+      }
+      const size = stage === 'hueco' ? 5 : 4;
+      expect(new Set(order.slice(0, size)).size, stage).toBe(size);
+      expect(new Set(order.slice(size, size * 2)).size, stage).toBe(size);
+      for (let k = 1; k < order.length; k++) expect(order[k], stage).not.toBe(order[k - 1]);
+    }
   });
 
   it('keeps its own record', () => {

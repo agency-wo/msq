@@ -80,7 +80,7 @@ import {
   MF_ENEMY,
   MS_CIRCLE,
 } from './constants';
-import { blinkAI, bossAI, casterAI, chargeAI, COMMANDER_HEAT, eliteAI, eventAI, updateEnemyBullets } from './hostile';
+import { blinkAI, bossAI, casterAI, chargeAI, COMMANDER_HEAT, eliteAI, eventAI, HARRIBEL_RELEASED, ICHIGO_MASKED, updateEnemyBullets } from './hostile';
 import { generateOffers, rollRelics, type ChestKind, type Offer } from './offers';
 import { EBulletPool, EnemyPool, FxPool, HITS, MarkPool, NumberRing, OrbPool, ProjPool, ZonePool } from './pools';
 import { newPowerState, refreshPowerStats, syncPower, updatePowers, type PowerState } from './powers';
@@ -394,7 +394,7 @@ export class World {
   freezeAllT = 0;
   /** The first live boss, for the boss health bar (final: it is the stage's last boss). */
   /** The boss on screen, for the HUD: who it is (type and variant pick the portrait) and how hurt. */
-  readonly boss = { active: false, hp: 0, max: 1, name: '', sub: '', final: false, type: -1, variant: 0, uid: -1 };
+  readonly boss = { active: false, hp: 0, max: 1, name: '', sub: '', final: false, type: -1, variant: 0, uid: -1, phase: 0 };
   /** Bumped whenever a power is gained, levelled or awakened, so the HUD redraws its tray only then. */
   buildVersion = 0;
   /** Ichimonji: the power slot that is silenced, and for how long. */
@@ -425,6 +425,9 @@ export class World {
   private huntUid = -1;
   /** Timeline events a pact already brought forward. */
   private readonly calledEarly = new Set<number>();
+  /** Endless: the roster bosses still to come before any returns, and the last one that came. */
+  private endlessBag: string[] = [];
+  private endlessLast = '';
   /**
    * How far the Emperor has visibly evolved this run: 1 reishi wings, 2 eyes
    * on his cloak, 3 the Almighty's shadow. A new tier is revealed a moment
@@ -487,8 +490,8 @@ export class World {
     this.god = !!opts.god || this.stress > 0;
     this.showNumbers = opts.numbers ?? true;
 
-    // Draw this run's bearers: three different bankai from the stage's pool (in the palace, three
-    // of the Royal Guard), any forced ones first.
+    // Draw this run's bosses: different bankai from the stage's pool (or members of its roster), one
+    // per boss slot, any forced ones first. A stage's last bearer always comes, in the last slot.
     const roster = this.rosterIds();
     const pool = (this.stage.roster ? roster : (this.stage.bearerPool ?? BANKAI_IDS)).slice();
     for (let i = pool.length - 1; i > 0; i--) {
@@ -497,22 +500,18 @@ export class World {
       pool[i] = pool[j];
       pool[j] = tmp;
     }
+    const slots = this.stage.events.filter((e) => e.kind === 'bearer').length;
     const forced = (opts.bearers ?? []).filter((id) => roster.includes(id));
-    this.bearers = [...forced, ...pool.filter((id) => !forced.includes(id))].slice(0, 3);
+    let order = [...forced, ...pool.filter((id) => !forced.includes(id))];
+    const last = this.stage.lastBearer;
+    if (last && order.includes(last) && !forced.includes(last)) order = [...order.filter((id) => id !== last).slice(0, slots - 1), last];
+    this.bearers = order.slice(0, slots);
 
     this.warnings = [];
     const events = this.stage.events;
     events.forEach((e, ev) => {
       if (e.kind === 'bearer') {
-        const text =
-          this.stage.roster === 'royal'
-            ? 'A guardian of the palace approaches'
-            : this.stage.roster === 'gotei' || this.stage.captains
-              ? 'A captain approaches'
-              : this.stage.roster === 'heroes'
-                ? 'Someone climbs up to meet you'
-                : 'A Sternritter approaches';
-        this.warnings.push({ at: e.at - 4, text, ev });
+        this.warnings.push({ at: e.at - 4, text: this.bearerWarning(this.bearers[e.tier]), ev });
       }
       else if (e.kind === 'boss') this.warnings.push({ at: e.at - 4, text: e.warn, ev });
     });
@@ -826,7 +825,18 @@ export class World {
     return i;
   }
 
-  /** The bosses a stage draws its three from: the Royal Guard, Silbern's captains, or the six bankai. */
+  /** The warning a few seconds before a roster boss arrives: who is coming, in a line of their own. */
+  private bearerWarning(id: string | undefined): string {
+    const roster = this.stage.roster;
+    if (roster === 'royal') return (id && ROYAL_BY_ID.get(id)?.warn) || 'A guardian of the palace approaches';
+    if (roster === 'gotei') return (id && GOTEI_BY_ID.get(id)?.warn) || 'A captain approaches';
+    if (roster === 'heroes') return (id && HERO_BY_ID.get(id)?.warn) || 'Someone climbs up to meet you';
+    const info = id ? BANKAI_BY_ID.get(id) : undefined;
+    if (this.stage.captains) return info?.ownerWarn || 'A captain approaches';
+    return info?.thiefWarn || 'A Sternritter approaches';
+  }
+
+  /** The bosses a stage draws from: the Royal Guard, Silbern's captains, the Wahrwelt's defenders, or the six bankai. */
   private rosterIds(): readonly string[] {
     if (this.stage.roster === 'royal') return ROYAL_IDS;
     if (this.stage.roster === 'gotei') return GOTEI_IDS;
@@ -878,6 +888,19 @@ export class World {
   /** A little memory for bosses whose variant byte is taken (it says who they are): move counter, phase, a timer. */
   private readonly memos = new Map<number, { move: number; phase: number; t: number }>();
 
+  /**
+   * Which form a boss is in: 1 once it has shown what it was holding back at
+   * half health (a bankai, a Hollow mask, a release, Kirio's shed weight).
+   */
+  phaseOf(i: number): number {
+    const E = this.en;
+    const id = ENEMY_LIST[E.type[i]]?.id;
+    if (id === 'ichigo') return E.r[i] >= ICHIGO_MASKED ? 1 : 0;
+    if (id === 'harribel') return E.r[i] >= HARRIBEL_RELEASED ? 1 : 0;
+    if (id === 'royal' && ROYAL_IDS[E.variant[i]] === 'kirio') return E.r[i] < 26 ? 1 : 0;
+    return this.memos.get(E.uid[i])?.phase ?? 0;
+  }
+
   bossMemo(i: number): { move: number; phase: number; t: number } {
     const uid = this.en.uid[i];
     let m = this.memos.get(uid);
@@ -926,8 +949,21 @@ export class World {
         }
       }
     } else {
-      const pool = this.stage.roster ? this.rosterIds() : (this.stage.bearerPool ?? BANKAI_IDS);
-      this.spawnBearer(pool[this.rng.int(pool.length)], 14 * Math.pow(1.35, k));
+      // Every boss of the roster once, in a shuffled order, before any of them comes back.
+      if (this.endlessBag.length === 0) {
+        const bag = (this.stage.roster ? this.rosterIds() : (this.stage.bearerPool ?? BANKAI_IDS)).slice();
+        for (let i = bag.length - 1; i > 0; i--) {
+          const j = this.rng.int(i + 1);
+          const tmp = bag[i];
+          bag[i] = bag[j];
+          bag[j] = tmp;
+        }
+        if (bag.length > 1 && bag[0] === this.endlessLast) bag.push(bag.shift() as string);
+        this.endlessBag = bag;
+      }
+      const id = this.endlessBag.shift() as string;
+      this.endlessLast = id;
+      this.spawnBearer(id, 14 * Math.pow(1.35, k));
     }
     this.edgePoint();
     this.spawnEnemy(this.regularType(), this.tx, this.ty, true);
@@ -2297,6 +2333,7 @@ export class World {
           B.final = E.uid[i] === this.finalBossUid;
           B.hp = E.hp[i];
           B.max = E.maxHp[i];
+          B.phase = this.phaseOf(i);
           if (B.uid !== E.uid[i]) {
             B.uid = E.uid[i];
             B.type = E.type[i];

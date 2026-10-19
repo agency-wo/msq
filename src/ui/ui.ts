@@ -13,7 +13,7 @@ import { CHAPTERS, type Chapter } from '../data/story';
 import type { ChestKind, Offer } from '../game/offers';
 import type { Banner, World } from '../game/world';
 import { drawEmperor, drawSprite } from '../render/atlas';
-import { enemySpriteName } from '../render/names';
+import { bossSpriteName, enemySpriteName } from '../render/names';
 import { armoryRelics, nextCost, nextVerseCost, startOptions, upgradeLevel } from '../save/archives';
 import { almightyUnlocked, endlessOpen, rushOpen, stageUnlocked, trialsOpen, type DailyRecord, type SaveData, type Settings } from '../save/save';
 import { chapterUnlocked } from '../save/story';
@@ -235,7 +235,7 @@ export class UI {
   private last = UI.fresh();
 
   private static fresh() {
-    return { level: -1, kills: -1, sec: -1, xp: -1, boss: -2, bossUid: -1, streak: -1, tier: -1, build: -1, danger: false };
+    return { level: -1, kills: -1, sec: -1, xp: -1, boss: -2, bossUid: -1, bossPhase: -1, streak: -1, tier: -1, build: -1, danger: false };
   }
 
   constructor(root: HTMLElement) {
@@ -339,11 +339,15 @@ export class UI {
       if (boss >= 0) this.bossFill.style.transform = `scaleX(${boss})`;
       this.last.boss = boss;
     }
-    if (w.boss.active && w.boss.uid !== this.last.bossUid) {
+    if (w.boss.active && (w.boss.uid !== this.last.bossUid || w.boss.phase !== this.last.bossPhase)) {
+      if (w.boss.uid !== this.last.bossUid) {
+        this.bossName.textContent = w.boss.name;
+        this.bossSub.textContent = w.boss.sub;
+      }
       this.last.bossUid = w.boss.uid;
-      this.bossName.textContent = w.boss.name;
-      this.bossSub.textContent = w.boss.sub;
-      drawSprite(this.bossPortrait, enemySpriteName(w.boss.type, w.boss.variant), 40);
+      this.last.bossPhase = w.boss.phase;
+      // The portrait changes with the boss: a bankai, a mask, a release.
+      drawSprite(this.bossPortrait, bossSpriteName(w.boss.type, w.boss.variant, w.boss.phase), 40);
     }
   }
 
