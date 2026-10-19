@@ -225,6 +225,16 @@ try {
   });
   await shot('04c-resonances');
 
+  // 5d. Run events: a rift, a golden runner, a Reishi Storm, an ambush.
+  for (const kind of ['rift', 'golden', 'storm', 'ambush']) {
+    await page.goto(`${BASE}?debug&seed=7&play&god&t=200&give=xaxis5`);
+    await wait(400);
+    await page.evaluate((k) => window.__msq.world.startEvent(k), kind);
+    await wait(1200);
+    log(`event ${kind}`, { ...(await stats()), banner: (await page.isVisible('.banner.show.event')) ? await page.textContent('.banner .banner-title') : null });
+    await shot(`04d-event-${kind}`);
+  }
+
   // 6. Medallion bearers: each fights with its bankai and warns before it hits.
   for (const id of ['tengen', 'raikoben', 'gonryo']) {
     await page.goto(`${BASE}?debug&seed=3&play&god&t=297&bearers=${id}`);

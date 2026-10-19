@@ -17,10 +17,12 @@ import { explodeBomb, steerMissile, strikeAt } from './casts/schrift';
 import {
   BH_BLINK,
   BH_CHASE,
+  BH_FLEE,
   BH_RANGED,
   FLAG_BLOODBURST,
   FLAG_BOSS,
   FLAG_ELITE,
+  FLAG_EVENT,
   FLAG_HEARTBREAK,
   FLAG_PLAGUE,
   FLAG_ZOMBIE,
@@ -54,7 +56,7 @@ import {
   PK_SHARD,
   ZK_POISON,
 } from './constants';
-import { blinkAI, bossAI, casterAI, eliteAI, updateEnemyBullets } from './hostile';
+import { blinkAI, bossAI, casterAI, eliteAI, eventAI, updateEnemyBullets } from './hostile';
 import { generateOffers, rollRelics, type ChestKind, type Offer } from './offers';
 import { EBulletPool, EnemyPool, FxPool, HITS, MarkPool, NumberRing, OrbPool, ProjPool, ZonePool } from './pools';
 import { newPowerState, refreshPowerStats, syncPower, updatePowers, type PowerState } from './powers';
@@ -77,9 +79,9 @@ export interface Message {
   kind: 'boss' | 'info';
 }
 
-/** A title card: a boss arriving, a bankai taken back, a resonance, or The Almighty awakening. */
+/** A title card: a boss arriving, a bankai taken back, a resonance, an event, or The Almighty awakening. */
 export interface Banner {
-  kind: 'bankai' | 'boss' | 'almighty' | 'resonance';
+  kind: 'bankai' | 'boss' | 'almighty' | 'resonance' | 'event';
   title: string;
   sub: string;
   /** What a boss says (or does) as it arrives. */
@@ -150,7 +152,13 @@ function orbTier(v: number): number {
 
 const MAX_BURSTS = 64;
 
-const BEHAVIOR_CODE = { chase: BH_CHASE, blink: BH_BLINK, ranged: BH_RANGED } as const;
+/** Blut Rush: kills chained without being hit, each tier adding damage and speed while the chain holds. */
+export const RUSH_TIERS = [60, 200, 500] as const;
+const RUSH_WINDOW = 2;
+const RUSH_DAMAGE = 0.05;
+const RUSH_SPEED = 0.03;
+
+const BEHAVIOR_CODE = { chase: BH_CHASE, blink: BH_BLINK, ranged: BH_RANGED, flee: BH_FLEE } as const;
 /** Per enemy type, for the hot loop. */
 const BEHAVIOR = Uint8Array.from(ENEMY_LIST, (d) => BEHAVIOR_CODE[d.behavior]);
 
@@ -255,6 +263,18 @@ export class World {
   foresight = 0;
   /** Level-up boards that can still be redrawn this run (Second Auswählen). */
   rerolls = 0;
+  /** Blut Rush: kills in the current chain, seconds since the last one, and the tier reached. */
+  streak = 0;
+  streakT = 0;
+  rushTier = 0;
+  /** Longest chain this run. */
+  bestStreak = 0;
+  /** Highest Blut Rush tier announced this run (each is announced once). */
+  private rushAnnounced = 0;
+  /** Run events: when the next may come, and the Reishi Storm's time left. */
+  nextEventT = 0;
+  stormT = 0;
+  private stormAcc = 0;
   /** Bosses killed before the final one, for the run's gold. */
   bossKills = 0;
   /** Archives upgrades, applied on top of passives and relics. */
@@ -330,6 +350,7 @@ export class World {
       while (this.evCursor < events.length && events[this.evCursor].at < start) this.evCursor++;
       while (this.warnCursor < this.warnings.length && this.warnings[this.warnCursor].at < start) this.warnCursor++;
     }
+    this.nextEventT = this.t + this.rng.range(100, 140);
     this.addPower(opts.start && STARTABLE_IDS.includes(opts.start) ? opts.start : STARTING_POWER);
     this.player.revives += Math.max(0, Math.floor(opts.revives ?? 0));
     this.rerolls = Math.max(0, Math.floor(opts.rerolls ?? 0));
@@ -357,6 +378,7 @@ export class World {
     p.oy = p.y;
     let speed = PLAYER.speed * this.stats.moveSpeed;
     if (this.vollT > 0) speed *= 1.3;
+    if (this.rushTier > 0) speed *= 1 + RUSH_SPEED * this.rushTier;
     if (p.slowT > 0) {
       p.slowT -= DT;
       speed *= 0.6;
@@ -406,6 +428,7 @@ export class World {
       mul *= 1 + Math.min(this.overkillCap, stacks * this.overkillPer);
     }
     if (this.miracleAmt > 0) mul *= 1 + this.miracleAmt * (1 - Math.max(0, this.player.hp) / this.player.maxHp);
+    if (this.rushTier > 0) mul *= 1 + RUSH_DAMAGE * this.rushTier;
     if (this.hasSanrei) {
       if (!this.sanreiOff && this.t >= 480) {
         this.sanreiOff = true;
@@ -427,6 +450,7 @@ export class World {
     }
     const events = this.stage.events;
     while (this.evCursor < events.length && this.t >= events[this.evCursor].at) this.fire(events[this.evCursor++]);
+    if (this.t >= this.nextEventT) this.runEvent();
     if (this.victoryT > 0) {
       this.victoryT -= DT;
       if (this.victoryT <= 0) this.over = 'victory';
@@ -496,6 +520,58 @@ export class World {
     }
   }
 
+  /**
+   * Something happens between the bosses: a rift, a golden runner, a storm of
+   * mana, an ambush. Never during a boss fight or just before one.
+   */
+  private runEvent(): void {
+    const soon = this.stage.events.some((e) => (e.kind === 'bearer' || e.kind === 'boss') && e.at > this.t - 5 && e.at < this.t + 25);
+    if (this.boss.active || soon || this.t > this.stage.length - 40) {
+      this.nextEventT = this.t + 15;
+      return;
+    }
+    this.nextEventT = this.t + this.rng.range(120, 170);
+    const roll = this.rng.next() * 10;
+    this.startEvent(roll < 3 ? 'rift' : roll < 6 ? 'golden' : roll < 8 ? 'storm' : 'ambush');
+  }
+
+  /** Start one run event now. */
+  startEvent(kind: 'rift' | 'golden' | 'storm' | 'ambush'): void {
+    const sei = this.stage.id === 'seireitei';
+    const p = this.player;
+    if (kind === 'rift') {
+      const a = this.rng.next() * TAU;
+      const i = this.spawnEnemy(ENEMY_INDEX.rift, p.x + Math.cos(a) * 230, p.y + Math.sin(a) * 230);
+      if (i >= 0) {
+        this.en.flags[i] |= FLAG_EVENT;
+        this.en.atkT[i] = 0.5;
+        this.en.atk2T[i] = 25;
+      }
+      this.banners.push({ kind: 'event', title: sei ? 'Senkaimon' : 'Garganta', sub: 'A rift tears open. Close it before it seals.' });
+    } else if (kind === 'golden') {
+      const a = this.rng.next() * TAU;
+      const i = this.spawnEnemy(ENEMY_INDEX.golden, p.x + Math.cos(a) * 160, p.y + Math.sin(a) * 160);
+      if (i >= 0) {
+        this.en.flags[i] |= FLAG_EVENT;
+        this.en.atk2T[i] = 18;
+      }
+      this.banners.push({ kind: 'event', title: sei ? 'Treasury Runner' : 'Golden Hollow', sub: 'Catch it before it escapes.' });
+    } else if (kind === 'storm') {
+      this.stormT = 15;
+      this.banners.push({ kind: 'event', title: 'Reishi Storm', sub: 'Mana falls like rain.' });
+    } else {
+      const heavy = ENEMY_INDEX[sei ? 'guard' : 'brute'];
+      this.spawnEnemy(heavy, p.x - 230, p.y, true);
+      this.spawnEnemy(heavy, p.x + 230, p.y, true);
+      for (let k = 0; k < 24; k++) {
+        const a = (k / 24) * TAU;
+        this.spawnEnemy(this.regularType(), p.x + Math.cos(a) * 290, p.y + Math.sin(a) * 290);
+      }
+      this.banners.push({ kind: 'event', title: 'Ambush', sub: 'They were waiting for you.' });
+    }
+    this.sound('warn');
+  }
+
   private spawnTick(): void {
     // Nothing arrives while time stands still.
     if (this.almightyT > 0) return;
@@ -518,11 +594,12 @@ export class World {
         break;
       }
       this.edgePoint();
-      this.spawnEnemy(this.pickType(), this.tx, this.ty);
+      this.spawnEnemy(this.regularType(), this.tx, this.ty);
     }
   }
 
-  private pickType(): number {
+  /** A regular enemy type from the stage's current mix. */
+  regularType(): number {
     const mix = phaseAt(this.stage, this.t).mix;
     let total = 0;
     for (const entry of mix) total += entry[1];
@@ -722,6 +799,9 @@ export class World {
           x += (dx / dist) * v;
           y += (dy / dist) * v;
         }
+      } else if (behavior === BH_FLEE) {
+        x -= (dx / dist) * v;
+        y -= (dy / dist) * v;
       } else if (behavior === BH_RANGED && !(flags & FLAG_ELITE)) {
         // Casters hold a ring around you: close in, back off, or circle.
         if (dist > 220) {
@@ -784,7 +864,7 @@ export class World {
             }
           }
         }
-        if (px !== 0 || py !== 0) {
+        if ((px !== 0 || py !== 0) && !(flags & FLAG_EVENT && E.spd[i] === 0)) {
           const mass = boss ? 0.04 : r > 15 ? 0.25 : 0.5;
           let sx = px * mass;
           let sy = py * mass;
@@ -802,12 +882,13 @@ export class World {
       if (boss) bossAI(this, i, dist);
       else if (charmed) {
         // Allies neither shoot at you nor flash-step.
-      } else if (flags & FLAG_ELITE) eliteAI(this, i, dist);
+      } else if (flags & FLAG_EVENT) eventAI(this, i);
+      else if (flags & FLAG_ELITE) eliteAI(this, i, dist);
       else if (k > 0 && behavior === BH_BLINK) blinkAI(this, i, dist);
       else if (k > 0 && behavior === BH_RANGED) casterAI(this, i, dist);
       if (E.dead[i]) continue;
-      if (!charmed && dist < E.r[i] + PLAYER.radius + 2) this.contact(i);
-      else if (dist2 > recycle2 && !boss) this.recycle(i);
+      if (!charmed && E.dmg[i] > 0 && dist < E.r[i] + PLAYER.radius + 2) this.contact(i);
+      else if (dist2 > recycle2 && !boss && !(flags & FLAG_EVENT)) this.recycle(i);
     }
   }
 
@@ -839,7 +920,7 @@ export class World {
     const dmg = base * this.dmgMul * vul * (crit ? this.stats.critMult : 1);
     E.hp[i] -= dmg;
     E.flash[i] = 0.07;
-    if (knock > 0 && !(E.flags[i] & FLAG_BOSS)) {
+    if (knock > 0 && !(E.flags[i] & (FLAG_BOSS | FLAG_EVENT))) {
       const dx = E.x[i] - srcX;
       const dy = E.y[i] - srcY;
       const d = Math.hypot(dx, dy) || 1;
@@ -865,7 +946,7 @@ export class World {
   /** Unable to move for `secs` (bosses ignore it, elites shake it off twice as fast). */
   applyHold(i: number, secs: number, kind: number): void {
     const E = this.en;
-    if (E.dead[i] || E.flags[i] & FLAG_BOSS) return;
+    if (E.dead[i] || E.flags[i] & (FLAG_BOSS | FLAG_EVENT)) return;
     const s = E.flags[i] & FLAG_ELITE ? secs * 0.5 : secs;
     if (s > E.freezeT[i]) {
       E.freezeT[i] = s;
@@ -892,7 +973,7 @@ export class World {
   /** Charm an enemy (The Love): it fights for you for a while. Bosses and the risen are immune; elites resist unless Adoration. */
   charm(j: number, secs: number, dps: number, attr: string | null): void {
     const E = this.en;
-    if (E.dead[j] || E.flags[j] & FLAG_ZOMBIE) return;
+    if (E.dead[j] || E.flags[j] & (FLAG_ZOMBIE | FLAG_EVENT)) return;
     if (E.flags[j] & FLAG_BOSS) {
       // Bosses cannot be charmed, but they are flustered: more damage from everything for a while.
       this.applyVuln(j, secs, 0.25);
@@ -944,6 +1025,7 @@ export class World {
       return;
     }
     this.kills++;
+    this.chainKill();
     if (E.charmT[i] > 0 && flags & FLAG_HEARTBREAK) this.queueBurst(x, y, 60 * this.stats.size, E.charmDmg[i] * 3);
     this.spawnOrb(x, y, E.xp[i]);
     if (E.volT[i] > 0) this.queueBurst(x, y, 44 * this.stats.size, E.volDmg[i]);
@@ -973,7 +1055,18 @@ export class World {
       this.bigBurst(x, y, def.color);
       if (E.uid[i] === this.finalBossUid) this.victoryT = 2.2;
     } else {
-      if (flags & FLAG_ELITE) {
+      if (flags & FLAG_EVENT) {
+        // A sealed rift or a caught runner pays out.
+        const golden = def.id === 'golden';
+        this.gold += golden ? 80 : 40;
+        this.addPickup('chest', x, y);
+        if (golden) this.addPickup('heart', x + 20, y);
+        for (let k = 0; k < (golden ? 12 : 6); k++) {
+          const a = this.rng.next() * TAU;
+          this.spawnOrb(x + Math.cos(a) * 30, y + Math.sin(a) * 30, E.xp[i] * 0.15);
+        }
+        this.messages.push({ text: golden ? 'Caught. Gold spills everywhere.' : 'The rift is sealed. Something was left behind.', kind: 'info' });
+      } else if (flags & FLAG_ELITE) {
         this.addPickup('chest', x, y);
       } else {
         const roll = this.rng.next();
@@ -983,9 +1076,31 @@ export class World {
       }
       if (def.shinigami) this.spiritFx(x, y, E.r[i]);
       else this.deathFx(x, y, def.color, E.r[i]);
-      if (E.infT[i] > 0 && this.zombieN < this.zombieMax) this.raise(E.type[i], x, y);
+      if (E.infT[i] > 0 && this.zombieN < this.zombieMax && !(flags & FLAG_EVENT)) this.raise(E.type[i], x, y);
     }
     this.sound('kill');
+  }
+
+  /** A kill extends the Blut Rush chain; passing a threshold raises the tier. */
+  private chainKill(): void {
+    this.streak++;
+    this.streakT = 0;
+    if (this.streak > this.bestStreak) this.bestStreak = this.streak;
+    if (this.rushTier < RUSH_TIERS.length && this.streak >= RUSH_TIERS[this.rushTier]) {
+      this.rushTier++;
+      this.spawnFx(FX_RING, 0, 0, 0, 0, 0.4, 20, 150, 0.8, 0, 0, 0xff4d6a, LAYER_ADD, 0, 1);
+      if (this.rushTier > this.rushAnnounced) {
+        this.rushAnnounced = this.rushTier;
+        this.messages.push({ text: `Blut Rush ${['I', 'II', 'III'][this.rushTier - 1]}: +${Math.round(RUSH_DAMAGE * this.rushTier * 100)}% damage`, kind: 'info' });
+        this.sound('level');
+      }
+    }
+  }
+
+  /** The chain breaks: a hit landed, or nothing died for a while. */
+  private breakChain(): void {
+    this.streak = 0;
+    this.rushTier = 0;
   }
 
   hurtPlayer(amount: number): void {
@@ -1008,6 +1123,7 @@ export class World {
     }
     p.hp -= amount * this.stats.dmgTaken * (1 - this.balanceCut);
     p.iframes = PLAYER.iframes;
+    this.breakChain();
     this.shake = Math.max(this.shake, 5);
     this.sound('hurt');
     // The Balance: the misfortune is shared with everything around you.
@@ -1617,10 +1733,15 @@ export class World {
   private updateTimers(): void {
     const p = this.player;
     if (p.iframes > 0) p.iframes -= DT;
+    if (this.streak > 0) {
+      this.streakT += DT;
+      if (this.streakT > RUSH_WINDOW) this.breakChain();
+    }
     if (this.stats.regen > 0 && p.hp < p.maxHp) p.hp = Math.min(p.maxHp, p.hp + this.stats.regen * DT);
     if (this.miracleRegen > 0 && p.alive && p.hp < p.maxHp * 0.35) p.hp += this.miracleRegen * DT;
     if (this.shake > 0) this.shake = Math.max(0, this.shake - 28 * DT);
     if (this.freezeAllT > 0) this.freezeAllT -= DT;
+    if (this.stormT > 0) this.reishiStorm();
     if (this.almightyT > 0) {
       this.almightyT -= DT;
       if (this.almightyT <= 0) rewrite(this);
@@ -1645,6 +1766,21 @@ export class World {
         }
         this.sound('strike');
       }
+    }
+  }
+
+  /** Reishi Storm: mana orbs fall all over the screen for a while. */
+  private reishiStorm(): void {
+    this.stormT -= DT;
+    this.stormAcc += DT;
+    const p = this.player;
+    const value = 1.5 * xpScale(this.t) * this.stage.xp;
+    while (this.stormAcc >= 0.07) {
+      this.stormAcc -= 0.07;
+      const x = p.x + this.rng.range(-this.viewHalfW + 20, this.viewHalfW - 20);
+      const y = p.y + this.rng.range(-this.viewHalfH + 60, this.viewHalfH - 60);
+      this.spawnOrb(x, y, value);
+      if (this.rng.next() < 0.3) this.spawnFx(FX_SPARK, x, y - 40, 0, 220, 0.18, 10, 4, 0.9, Math.PI / 2, 0, 0x9fd8ff, LAYER_ADD);
     }
   }
 

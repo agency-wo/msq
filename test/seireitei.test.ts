@@ -34,7 +34,9 @@ describe('Seireitei', () => {
     play(w, 360, sensible, bot, (world) => {
       for (let i = 0; i < world.en.n; i++) seen.add(ENEMY_LIST[world.en.type[i]].id);
     });
-    for (const id of seen) expect(ENEMY_LIST[ENEMY_INDEX[id as keyof typeof ENEMY_INDEX]].shinigami || id === 'bearer').toBe(true);
+    // Run events (rifts, treasure runners) belong to no stage; everything else here is a Soul Reaper.
+    const eventIds = ['rift', 'golden'];
+    for (const id of seen) expect(ENEMY_LIST[ENEMY_INDEX[id as keyof typeof ENEMY_INDEX]].shinigami || eventIds.includes(id)).toBe(true);
     for (const id of ['officer', 'flash', 'caster', 'guard']) expect(seen.has(id)).toBe(true);
 
     const hueco = new World({ seed: 1 });

@@ -32,6 +32,12 @@ download): a regal title theme, the eerie "White Moon" for Hueco Mundo, taiko
 and flute for Seireitei, a driving boss theme with a Seireitei version and a
 finale, and victory and defeat stingers. It can be turned off in Settings.
 
+Between the bosses, **events** break the rhythm: a Garganta (a Senkaimon in
+Seireitei) pours out enemies until you destroy it, a Golden Hollow (a Treasury
+Runner) flees with treasure, a Reishi Storm rains mana, or an ambush closes in.
+Chain kills without being hit for **Blut Rush**: three tiers of extra damage and
+speed, shown by the counter beside your kills.
+
 Every run pays gold. Spend it in the **Wandenreich Archives** on permanent
 upgrades (attack, health, speed, pickup range, cooldowns, faster level-ups,
 more gold, a revive, level-up rerolls), and pick which awakened Schrift a run

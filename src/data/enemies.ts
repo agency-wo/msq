@@ -13,10 +13,12 @@ export type EnemyId =
   | 'grandmaster'
   | 'captain'
   | 'commander'
-  | 'ashen';
+  | 'ashen'
+  | 'rift'
+  | 'golden';
 
-/** chase: walks at you · blink: walks, and every few seconds flash-steps closer · ranged: keeps its distance and shoots. */
-export type EnemyBehavior = 'chase' | 'blink' | 'ranged';
+/** chase: walks at you · blink: walks, and every few seconds flash-steps closer · ranged: keeps its distance and shoots · flee: runs from you. */
+export type EnemyBehavior = 'chase' | 'blink' | 'ranged' | 'flee';
 
 export interface EnemyDef {
   id: EnemyId;
@@ -87,6 +89,9 @@ export const ENEMY_LIST: readonly EnemyDef[] = [
   },
   // The charred dead the Captain-Commander raises against you.
   { id: 'ashen', name: 'Ashen Dead', hp: 30, speed: 70, radius: 12, damage: 12, xp: 1, behavior: 'chase', color: 0xc08a5a },
+  // Run events: a rift that pours out enemies until destroyed, and a treasure runner that flees.
+  { id: 'rift', name: 'Garganta', hp: 900, speed: 0, radius: 26, damage: 0, xp: 30, behavior: 'chase', color: 0xff2d4a },
+  { id: 'golden', name: 'Golden Hollow', hp: 400, speed: 105, radius: 13, damage: 0, xp: 40, behavior: 'flee', color: 0xffd27a },
 ];
 
 export const ENEMY_INDEX: Readonly<Record<EnemyId, number>> = {
@@ -105,4 +110,6 @@ export const ENEMY_INDEX: Readonly<Record<EnemyId, number>> = {
   captain: 12,
   commander: 13,
   ashen: 14,
+  rift: 15,
+  golden: 16,
 };

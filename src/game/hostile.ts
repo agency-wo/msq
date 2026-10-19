@@ -90,6 +90,29 @@ export function eliteAI(w: World, i: number, dist: number): void {
 }
 
 /**
+ * Run events. A rift pours out the stage's enemies until it is destroyed,
+ * and seals itself (with nothing left behind) when its time runs out; a
+ * golden runner flees, and escapes when its time runs out.
+ */
+export function eventAI(w: World, i: number): void {
+  const E = w.en;
+  E.atk2T[i] -= DT;
+  if (E.atk2T[i] <= 0) {
+    E.dead[i] = 1;
+    w.spawnFx(FX_GLOW, E.x[i], E.y[i], 0, 0, 0.4, E.r[i] * 2, E.r[i] * 4, 0.8, 0, 0, E.type[i] === ENEMY_INDEX.rift ? 0x6a1830 : 0xffd27a, LAYER_ADD);
+    w.messages.push({ text: E.type[i] === ENEMY_INDEX.rift ? 'The rift seals itself.' : 'It got away.', kind: 'info' });
+    return;
+  }
+  if (E.type[i] !== ENEMY_INDEX.rift) return;
+  E.atkT[i] -= DT;
+  if (E.atkT[i] > 0) return;
+  E.atkT[i] = 0.55;
+  const a = w.rng.next() * TAU;
+  const d = w.rng.range(30, 60);
+  w.spawnEnemy(w.regularType(), E.x[i] + Math.cos(a) * d, E.y[i] + Math.sin(a) * d);
+}
+
+/**
  * Flash-step scouts: every few seconds, vanish and reappear most of the way
  * to you, never right on top of you, leaving an afterimage where they stood.
  */

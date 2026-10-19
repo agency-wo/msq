@@ -98,6 +98,7 @@ export class UI {
   private readonly xpFill: HTMLElement;
   private readonly lvl: HTMLElement;
   private readonly kills: HTMLElement;
+  private readonly rush: HTMLElement;
   private readonly timer: HTMLElement;
   private readonly bossBar: HTMLElement;
   private readonly bossName: HTMLElement;
@@ -110,7 +111,7 @@ export class UI {
   private toastTimer = 0;
   private bannerTimer = 0;
   private unlockAt = 0;
-  private last = { level: -1, kills: -1, sec: -1, xp: -1, boss: -2, bossName: '' };
+  private last = { level: -1, kills: -1, sec: -1, xp: -1, boss: -2, bossName: '', streak: -1, tier: -1 };
 
   constructor(root: HTMLElement) {
     const vignette = el('div', 'vignette');
@@ -122,7 +123,8 @@ export class UI {
     const left = el('div', 'hud-left');
     this.lvl = el('span', 'hud-level', 'Lv 1');
     this.kills = el('span', 'hud-kills', '0');
-    left.append(this.lvl, this.kills);
+    this.rush = el('span', 'hud-rush hidden', '');
+    left.append(this.lvl, this.kills, this.rush);
     this.timer = el('div', 'hud-timer', '0:00');
     const pause = button('icon-btn', '');
     pause.setAttribute('aria-label', 'Pause');
@@ -151,7 +153,7 @@ export class UI {
 
   showHud(show: boolean): void {
     this.hud.classList.toggle('hidden', !show);
-    if (show) this.last = { level: -1, kills: -1, sec: -1, xp: -1, boss: -2, bossName: '' };
+    if (show) this.last = { level: -1, kills: -1, sec: -1, xp: -1, boss: -2, bossName: '', streak: -1, tier: -1 };
   }
 
   /** Called every frame; touches the DOM only when a value actually changed. */
@@ -164,6 +166,14 @@ export class UI {
     if (w.level !== this.last.level) {
       this.last.level = w.level;
       this.lvl.textContent = `Lv ${w.level}`;
+    }
+    // Blut Rush: the chain counter shows from 10 kills, coloured by tier.
+    const streak = w.streak >= 10 ? w.streak : 0;
+    if (streak !== this.last.streak || w.rushTier !== this.last.tier) {
+      this.last.streak = streak;
+      this.last.tier = w.rushTier;
+      this.rush.textContent = streak > 0 ? `Blut ×${streak}` : '';
+      this.rush.className = `hud-rush${streak > 0 ? '' : ' hidden'}${w.rushTier > 0 ? ` tier${w.rushTier}` : ''}`;
     }
     if (w.kills !== this.last.kills) {
       this.last.kills = w.kills;
@@ -200,7 +210,8 @@ export class UI {
 
   /** A title card that slides across the middle of the screen; the game keeps running. */
   banner(b: Banner): void {
-    const kicker = b.kind === 'bankai' ? 'Bankai' : b.kind === 'almighty' ? 'A · Awakened' : b.kind === 'resonance' ? 'Resonance' : 'Boss';
+    const kicker =
+      b.kind === 'bankai' ? 'Bankai' : b.kind === 'almighty' ? 'A · Awakened' : b.kind === 'resonance' ? 'Resonance' : b.kind === 'event' ? 'Event' : 'Boss';
     this.bannerEl.replaceChildren(
       el('div', 'banner-kicker', kicker),
       el('div', 'banner-title', b.title),

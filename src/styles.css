@@ -129,6 +129,30 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
+.hud-rush {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: #c9cbd4;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+}
+
+.hud-rush.tier1 {
+  color: #ff9aa8;
+}
+
+.hud-rush.tier2 {
+  color: #ff5a72;
+  text-shadow: 0 0 8px rgba(255, 45, 74, 0.6);
+}
+
+.hud-rush.tier3 {
+  color: #ffffff;
+  text-shadow:
+    0 0 6px #ff2d4a,
+    0 0 14px rgba(255, 45, 74, 0.8);
+}
+
 .hud-kills::before {
   content: '';
   display: inline-block;
@@ -319,6 +343,15 @@ body {
 .banner.almighty {
   border-top: 1px solid rgba(255, 230, 160, 0.75);
   border-bottom: 1px solid rgba(255, 230, 160, 0.75);
+}
+
+.banner.event .banner-kicker {
+  color: #9fe8ff;
+}
+
+.banner.event {
+  border-top: 1px solid rgba(159, 232, 255, 0.5);
+  border-bottom: 1px solid rgba(159, 232, 255, 0.5);
 }
 
 .banner.boss .banner-kicker {

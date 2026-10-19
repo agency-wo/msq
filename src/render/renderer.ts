@@ -278,9 +278,11 @@ export class Renderer {
       grandmaster: 28,
       commander: 30,
       ashen: 11,
+      rift: 22,
+      golden: 11,
     };
-    // Types drawn per variant fall back to one of their sprites here.
-    const NAME: Record<string, string> = { captain: 'cap_senbonzakura' };
+    // Types drawn per variant (or per stage) fall back to one of their sprites here.
+    const NAME: Record<string, string> = { captain: 'cap_senbonzakura', golden: 'hollow' };
     this.enemySprites = ENEMY_LIST.map((d) => sprite(NAME[d.id] ?? d.id, REF[d.id] ?? d.radius));
     this.captainSprites = BANKAI_IDS.map((id) => (id === 'zanka' ? sprite('commander', 30) : sprite(`cap_${id}`, id === 'tengen' ? 30 : 28)));
     const adjuchas = sprite('adjuchas', 24);
@@ -584,7 +586,18 @@ export class Renderer {
         ? this.eliteSprites[type]
         : type === ENEMY_INDEX.captain
           ? (this.captainSprites[E.variant[i]] ?? this.enemySprites[type])
-          : this.enemySprites[type];
+          : type === ENEMY_INDEX.golden && w.stage.id === 'seireitei'
+            ? this.enemySprites[ENEMY_INDEX.officer]
+            : this.enemySprites[type];
+      if (type === ENEMY_INDEX.golden) {
+        // A treasure runner: gold, glowing, impossible to miss.
+        L.auras.add(f.glow, x, y, (r * 4) / 64, (r * 4) / 64, 0, 0xffd27a, 0.55 + Math.sin(now * 8) * 0.2);
+      } else if (type === ENEMY_INDEX.rift) {
+        // The rift pulses, and a ring shrinks as it runs out of time.
+        const left = Math.max(0, Math.min(1, E.atk2T[i] / 25));
+        L.auras.add(f.glow, x, y, (r * 4.4) / 64, (r * 4.4) / 64, 0, w.stage.id === 'seireitei' ? 0xffe2a0 : 0xff2d4a, 0.45 + Math.sin(now * 5) * 0.15);
+        L.auras.add(f.ring, x, y, (r * 3.4 * left) / 110 + 0.05, (r * 3.4 * left) / 110 + 0.05, 0, 0xffffff, 0.55);
+      }
       const scale = r / spr.ref / ATLAS_SCALE;
       if (elite) L.auras.add(f.ring, x, y, (r * 2.7) / 128, (r * 2.7) / 128, 0, 0xff2d4a, 0.55 + Math.sin(now * 6) * 0.2);
       if (boss) {
@@ -601,7 +614,7 @@ export class Renderer {
         }
         L.shadows.add(f.shadow, x, y + r * 0.85, (r * 2.2) / 48, (r * 2.2) / 48, 0, 0xffffff, 0.8);
       }
-      let tint = 0xffffff;
+      let tint = type === ENEMY_INDEX.golden ? 0xffd27a : type === ENEMY_INDEX.rift && w.stage.id === 'seireitei' ? 0xfff0d0 : 0xffffff;
       if (E.charmT[i] > 0) tint = flags & FLAG_ZOMBIE ? 0x9fd88a : 0xff9cc8;
       else if (E.freezeT[i] > 0) tint = HOLD_TINT[E.holdKind[i]] ?? 0x8fd0ff;
       else if (frozenAll && !boss) tint = 0x8fd0ff;

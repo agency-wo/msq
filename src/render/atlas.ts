@@ -2500,6 +2500,47 @@ const ashen: Draw = (g, w, h) => {
   }
 };
 
+/** A rift (Garganta, or a Senkaimon in Seireitei): a jagged tear in the air, black inside, red light at its edge. */
+const rift: Draw = (g, w, h) => {
+  const cx = w / 2;
+  const cy = h / 2;
+  const rnd = seeded(13);
+  aura(g, cx, cy, w * 0.5, 'rgba(255,40,80,0.25)');
+  const pts: [number, number][] = [];
+  const n = 22;
+  for (let k = 0; k < n; k++) {
+    const t = (k / n) * TAU;
+    const jag = 1 + (rnd() - 0.5) * 0.3;
+    // A tall lens, pinched at the top and bottom.
+    const x = cx + Math.sin(t) * w * 0.2 * jag * (0.35 + 0.65 * Math.abs(Math.sin(t)));
+    const y = cy - Math.cos(t) * h * 0.42 * (k % 2 ? 0.96 : 1);
+    pts.push([x, y]);
+  }
+  const inside = g.createRadialGradient(cx, cy, 2, cx, cy, h * 0.42);
+  inside.addColorStop(0, '#3a0c22');
+  inside.addColorStop(0.6, '#12040c');
+  inside.addColorStop(1, '#050208');
+  g.save();
+  g.fillStyle = inside;
+  g.shadowColor = '#ff2d4a';
+  g.shadowBlur = 12;
+  poly(g, pts);
+  g.fill();
+  g.restore();
+  g.strokeStyle = '#ff6a7e';
+  g.lineWidth = 2;
+  poly(g, pts);
+  g.stroke();
+  // A slow swirl of red inside
+  g.strokeStyle = 'rgba(255,60,100,0.45)';
+  g.lineWidth = 1.4;
+  for (let k = 0; k < 3; k++) {
+    g.beginPath();
+    g.ellipse(cx, cy, w * (0.05 + k * 0.035), h * (0.14 + k * 0.08), 0, k * 0.8, Math.PI + k * 0.8);
+    g.stroke();
+  }
+};
+
 // -------------------------------------------------------------- pickups
 
 function chest(body: string, lid: string, band: string, glowColor: string): Draw {
@@ -2638,6 +2679,7 @@ const ENEMY_DRAW: readonly [string, number, Draw][] = [
   ['cap_gonryo', 112, sasakibe],
   ['commander', 128, yamamoto],
   ['ashen', 52, ashen],
+  ['rift', 96, rift],
 ];
 
 function specs(): Spec[] {

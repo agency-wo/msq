@@ -10,6 +10,8 @@ export const FLAG_HEARTBREAK = 8;
 export const FLAG_PLAGUE = 16;
 /** Zombie with Blood Burst: bursts when it falls. */
 export const FLAG_BLOODBURST = 32;
+/** Event enemies (rifts, golden runners): no knockback, holds, charm or zombies, no contact damage. */
+export const FLAG_EVENT = 64;
 
 /** Projectile kinds. */
 export const PK_ARROW = 0;
@@ -126,6 +128,7 @@ export const EBF_SLOW = 1;
 export const BH_CHASE = 0;
 export const BH_BLINK = 1;
 export const BH_RANGED = 2;
+export const BH_FLEE = 3;
 
 /** Why an enemy cannot move (drives its tint). */
 export const HOLD_FREEZE = 0;
