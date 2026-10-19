@@ -10,10 +10,12 @@ import { MAX_TRIAL, STAGES, stageById, TRIAL_NAMES, trialBlurb, type StageId } f
 import { CHAPTERS, type Chapter } from '../data/story';
 import type { ChestKind, Offer } from '../game/offers';
 import type { Banner, World } from '../game/world';
+import { drawSprite } from '../render/atlas';
 import { nextCost, startOptions, upgradeLevel } from '../save/archives';
 import { almightyUnlocked, endlessOpen, stageUnlocked, trialsOpen, type DailyRecord, type SaveData, type Settings } from '../save/save';
 import { chapterUnlocked } from '../save/story';
 import { drawEmblem, drawIcon } from './icons';
+import { drawVista } from './vistas';
 
 /**
  * Everything outside the game world is plain DOM with an external stylesheet:
@@ -266,36 +268,44 @@ export class UI {
     },
   ): void {
     const p = this.open('title');
+    // Gold at the top, always in view.
+    const top = el('div', 'topbar');
+    const purse = el('span', 'topbar-gold');
+    const coin = el('canvas', 'topbar-icon');
+    drawIcon(coin, 'coin', '#ffd27a');
+    purse.append(coin, el('span', '', gold(save.gold)));
+    top.append(purse);
+    // The Emperor, painted from his own sprite in front of the reishi star.
+    const hero = el('div', 'title-hero');
     const emblem = el('canvas', 'emblem');
-    drawEmblem(emblem, 84);
+    drawEmblem(emblem, 140);
+    const portrait = el('canvas', 'hero-portrait');
+    drawSprite(portrait, 'player', 104);
+    hero.append(emblem, portrait);
     const logo = el('div', 'logo');
     logo.append(el('div', 'logo-top', 'QUINCY'), el('div', 'logo-bottom', 'SURVIVAL'));
     const play = button('btn primary', 'Play');
     play.addEventListener('click', this.guard(h.onPlay));
-    const daily = button('btn daily-btn', '');
-    daily.append(el('span', '', 'Daily Trial'), el('span', 'btn-note', h.daily.mods.map((m) => DAILY_MOD_BY_ID.get(m)?.name ?? m).join(' + ')));
-    daily.addEventListener('click', this.guard(h.onDaily));
-    const archives = button('btn archives-btn', '');
-    archives.append(el('span', '', 'Archives'), el('span', 'btn-note', `${gold(save.gold)} gold`));
-    archives.addEventListener('click', this.guard(h.onArchives));
-    const row = el('div', 'row-btns');
-    const chronicle = button('btn', 'Chronicle');
-    chronicle.addEventListener('click', this.guard(h.onChronicle));
-    const settings = button('btn', 'Settings');
-    settings.addEventListener('click', this.guard(h.onSettings));
-    row.append(chronicle, settings);
+    const nav = el('nav', 'title-nav');
+    nav.setAttribute('aria-label', 'More');
+    nav.append(
+      this.navButton('archives-btn', 'vault', 'Archives', '#ffd27a', h.onArchives),
+      this.navButton('chronicle-btn', 'feather', 'Chronicle', '#9fdcff', h.onChronicle),
+      this.navButton('settings-btn', 'gear', 'Settings', '#c9cbd4', h.onSettings),
+    );
     p.append(
-      emblem,
+      top,
+      hero,
       logo,
       el('p', 'tagline', 'The Emperor takes back what he gave.'),
       this.stagePicker(save, h.onStage, h.onMode),
       play,
-      daily,
-      archives,
-      row,
+      this.dailyCard(save, h.daily, h.onDaily),
+      nav,
       this.collection(save),
     );
-    p.append(el('p', 'hint', 'Drag anywhere to move. Your powers fire on their own. Each stage lasts 20 minutes.'));
+    // New players get the controls in one line; everyone else already knows.
+    if (save.totals.runs === 0) p.append(el('p', 'hint', 'Drag anywhere to move. Your powers fire on their own. Each stage lasts 20 minutes.'));
     if (h.installHint) {
       const box = el('div', 'install');
       box.append(el('strong', '', 'Play full-screen'), el('span', '', 'Tap Share, then Add to Home Screen.'));
@@ -569,6 +579,30 @@ export class UI {
     this.lock(150);
   }
 
+  /** Today's Daily Trial on the title: its rules, and how today has gone so far. */
+  private dailyCard(save: SaveData, spec: DailySpec, onDaily: () => void): HTMLButtonElement {
+    const b = button('daily-btn daily-card', '');
+    const icon = el('canvas', 'daily-icon');
+    drawIcon(icon, 'calendar', '#ff8b9b');
+    const text = el('span', 'daily-text');
+    text.append(el('span', 'daily-title', 'Daily Trial'), el('span', 'btn-note', spec.mods.map((m) => DAILY_MOD_BY_ID.get(m)?.name ?? m).join(' + ')));
+    const today = save.daily.date === spec.date ? save.daily : null;
+    const status = today?.cleared ? 'Cleared' : today && today.best > 0 ? formatTime(today.best) : 'New';
+    b.append(icon, text, el('span', `daily-status${today?.cleared ? ' done' : ''}`, status));
+    b.addEventListener('click', this.guard(onDaily));
+    return b;
+  }
+
+  /** An icon and a label in the title's bottom row. */
+  private navButton(cls: string, glyph: string, label: string, color: string, onTap: () => void): HTMLButtonElement {
+    const b = button(`nav-btn ${cls}`, '');
+    const icon = el('canvas', 'nav-icon');
+    drawIcon(icon, glyph, color);
+    b.append(icon, el('span', 'nav-label', label));
+    b.addEventListener('click', this.guard(onTap));
+    return b;
+  }
+
   /** The six bankai as medallions, lit once taken back in any run, and what all six unlock. */
   private collection(save: SaveData): HTMLElement {
     const box = el('div', 'collection');
@@ -589,26 +623,33 @@ export class UI {
   }
 
   /**
-   * One button per stage; locked ones say what opens them. Under a cleared
-   * stage, a trial selector and the Endless toggle. The line underneath
-   * describes the pick.
+   * One painted card per stage; locked ones say what opens them. Under a
+   * cleared stage, Standard or Endless and the trial stepper. The line
+   * underneath describes the pick.
    */
   private stagePicker(save: SaveData, onStage: (id: StageId) => void, onMode: () => void): HTMLElement {
     const box = el('div', 'stages');
-    const row = el('div', 'stage-row');
+    const row = el('div', `stage-row n${STAGES.length}`);
     row.setAttribute('role', 'radiogroup');
     row.setAttribute('aria-label', 'Stage');
     const info = el('p', 'stage-info');
     const buttons: HTMLButtonElement[] = [];
     const modes = el('div', 'mode-row');
-    const prev = button('mode-step', '‹');
+    const seg = el('div', 'mode-seg');
+    seg.setAttribute('role', 'radiogroup');
+    seg.setAttribute('aria-label', 'Mode');
+    const standard = button('mode-opt mode-standard', 'Standard');
+    const endless = button('mode-opt mode-endless', 'Endless');
+    for (const b of [standard, endless]) b.setAttribute('role', 'radio');
+    seg.append(standard, endless);
+    const trialBox = el('div', 'mode-trial');
+    const prev = button('mode-step mode-prev', '‹');
     prev.setAttribute('aria-label', 'Easier trial');
     const label = el('span', 'mode-label', '');
-    const next = button('mode-step', '›');
+    const next = button('mode-step mode-next', '›');
     next.setAttribute('aria-label', 'Harder trial');
-    const endless = button('mode-endless', 'Endless');
-    endless.setAttribute('role', 'switch');
-    modes.append(prev, label, next, endless);
+    trialBox.append(prev, label, next);
+    modes.append(seg, trialBox);
     let current: StageId = 'hueco';
     const select = (id: StageId): void => {
       current = id;
@@ -626,6 +667,8 @@ export class UI {
       label.textContent = TRIAL_NAMES[trial];
       prev.disabled = trial <= 0;
       next.disabled = trial >= open || trial >= MAX_TRIAL;
+      standard.classList.toggle('on', !isEndless);
+      standard.setAttribute('aria-checked', String(!isEndless));
       endless.classList.toggle('on', isEndless);
       endless.setAttribute('aria-checked', String(isEndless));
       const best = rec.best > 0 ? ` Best ${formatTime(rec.best)}${rec.cleared ? ' · cleared' : ''}.` : '';
@@ -642,16 +685,32 @@ export class UI {
       onMode();
       select(current);
     });
-    endless.addEventListener('click', () => {
-      save.endless = !save.endless;
-      onMode();
-      select(current);
-    });
+    for (const [b, on] of [
+      [standard, false],
+      [endless, true],
+    ] as const) {
+      b.addEventListener('click', () => {
+        save.endless = on;
+        onMode();
+        select(current);
+      });
+    }
     for (const def of STAGES) {
       const open = stageUnlocked(save, def.id);
+      const rec = save.stages[def.id];
       const b = button(`stage-btn${open ? '' : ' locked'}`, '');
       b.setAttribute('role', 'radio');
-      b.append(el('span', 'stage-name', def.name), el('span', 'stage-sub', open ? (save.stages[def.id].cleared ? 'Cleared' : '20:00') : 'Locked'));
+      const vista = el('canvas', 'stage-vista');
+      drawVista(vista, def.id);
+      const text = el('span', 'stage-label');
+      const sub = !open ? 'Locked' : rec.cleared ? 'Cleared' : rec.best > 0 ? `Best ${formatTime(rec.best)}` : '20:00';
+      text.append(el('span', 'stage-name', def.name), el('span', 'stage-sub', sub));
+      b.append(vista, text);
+      if (!open) {
+        const lock = el('canvas', 'stage-lock');
+        drawIcon(lock, 'lock', '#d8dce8');
+        b.append(lock);
+      }
       b.addEventListener('click', () => {
         if (!open) {
           this.toast(`Clear ${stageById(def.unlockedBy).name} to unlock ${def.name}`);

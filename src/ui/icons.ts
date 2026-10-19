@@ -441,6 +441,62 @@ const GLYPHS: Record<string, Glyph> = {
     g.arc(24, 24, 8, 0, TAU);
     g.fill();
   },
+  // The Archives: a pediment on four columns.
+  vault: (g) => {
+    poly(g, [
+      [6, 18],
+      [24, 7],
+      [42, 18],
+    ]);
+    g.fillRect(8, 20, 32, 3);
+    for (const x of [10, 18, 26, 34]) g.fillRect(x, 25, 4, 11);
+    g.fillRect(7, 37, 34, 4);
+  },
+  // The Codex: an open book.
+  book: (g) => {
+    g.beginPath();
+    g.moveTo(24, 14);
+    g.quadraticCurveTo(15, 9, 6, 12);
+    g.lineTo(6, 36);
+    g.quadraticCurveTo(15, 33, 24, 38);
+    g.quadraticCurveTo(33, 33, 42, 36);
+    g.lineTo(42, 12);
+    g.quadraticCurveTo(33, 9, 24, 14);
+    g.closePath();
+    g.stroke();
+    g.beginPath();
+    g.moveTo(24, 15);
+    g.lineTo(24, 37);
+    g.stroke();
+  },
+  gear: (g) => {
+    g.save();
+    g.translate(24, 24);
+    for (let k = 0; k < 8; k++) {
+      g.rotate(TAU / 8);
+      g.fillRect(-3, -18, 6, 7);
+    }
+    g.restore();
+    g.beginPath();
+    g.arc(24, 24, 11, 0, TAU);
+    g.stroke();
+    g.beginPath();
+    g.arc(24, 24, 4, 0, TAU);
+    g.fill();
+  },
+  calendar: (g) => {
+    g.strokeRect(9, 13, 30, 26);
+    g.fillRect(9, 13, 30, 7);
+    g.fillRect(15, 8, 3, 8);
+    g.fillRect(30, 8, 3, 8);
+    g.fillRect(26, 27, 7, 7);
+  },
+  lock: (g) => {
+    g.beginPath();
+    g.arc(24, 21, 8, Math.PI, 0);
+    g.stroke();
+    g.fillRect(13, 21, 22, 17);
+  },
 };
 
 function setup(canvas: HTMLCanvasElement, size: number): Ctx | null {

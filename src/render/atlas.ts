@@ -2798,6 +2798,23 @@ export function buildAtlas(): Atlas {
   return { canvas, base, frames, px };
 }
 
+/**
+ * Paint one atlas sprite into its own canvas for the DOM (the title's Emperor,
+ * boss portraits, the Codex). `cssWidth` is the canvas's CSS width; it is
+ * drawn at the device's pixel ratio so it stays sharp.
+ */
+export function drawSprite(canvas: HTMLCanvasElement, name: string, cssWidth: number): boolean {
+  const spec = specs().find((s) => s.name === name);
+  const g = spec ? canvas.getContext('2d') : null;
+  if (!spec || !g) return false;
+  const k = (cssWidth / spec.w) * Math.min(window.devicePixelRatio || 1, 3);
+  canvas.width = Math.round(spec.w * k);
+  canvas.height = Math.round(spec.h * k);
+  g.scale(k, k);
+  spec.draw(g, spec.w, spec.h);
+  return true;
+}
+
 /** A 1024 px tile covering 512 world units, one per stage. */
 export function buildGroundTile(stage: string): Texture {
   const S = 1024;
