@@ -433,7 +433,7 @@ const LEVELED: readonly PowerDef[] = [
     group: 'schrift',
     name: 'The Yourself',
     letter: 'Y',
-    credit: 'Lloyd Lloyd',
+    credit: 'Loyd and Royd Lloyd',
     desc: 'A double of you steps out and fires arrows of its own for a while.',
     icon: 'double',
     color: '#9fd0ff',

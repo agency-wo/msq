@@ -36,6 +36,7 @@ import {
   BH_CHASE,
   BH_FLEE,
   BH_RANGED,
+  DOT_FIRE,
   FLAG_BLOODBURST,
   FLAG_BOSS,
   FLAG_ELITE,
@@ -565,7 +566,11 @@ export class World {
       const stacks = Math.floor((this.kills - this.overkillStart) / this.overkillEvery);
       mul *= 1 + Math.min(this.overkillCap, stacks * this.overkillPer);
     }
-    if (this.miracleAmt > 0) mul *= 1 + this.miracleAmt * (1 - Math.max(0, this.player.hp) / this.player.maxHp);
+    if (this.miracleAmt > 0) {
+      // Heart of the King: while the Heart beats, The Miracle counts you as all but fallen.
+      const lost = this.surgeT > 0 && this.resonances.has('kingsheart') ? 1 : 1 - Math.max(0, this.player.hp) / this.player.maxHp;
+      mul *= 1 + this.miracleAmt * lost;
+    }
     if (this.rushTier > 0) mul *= 1 + RUSH_DAMAGE * this.rushTier;
     if (this.hasSanrei) {
       if (!this.sanreiOff && this.t >= 480) {
@@ -1435,6 +1440,8 @@ export class World {
     this.sound('hurt');
     // The Balance: the misfortune is shared with everything around you.
     if (this.balanceDmg > 0) this.credit('balance', () => this.shockwave(this.balanceR, this.balanceDmg, 140));
+    // Old Friends: the shared misfortune catches fire.
+    if (this.balanceDmg > 0 && this.resonances.has('oldfriends')) this.credit('heat', () => this.oldFriends());
     if (p.hp > 0) return;
     if (p.revives > 0) {
       p.revives--;
@@ -2472,6 +2479,16 @@ export class World {
     this.takenSince = Math.max(0, this.takenSince - lost * 0.25);
     const j = this.nearestEnemy(300);
     if (j >= 0) reverseWound(this, j, (lost / p.maxHp) * 3);
+  }
+
+  /** Old Friends: everything inside The Balance's burst burns with The Heat for 3 s. */
+  private oldFriends(): void {
+    const heat = this.power('heat');
+    if (!heat) return;
+    const p = this.player;
+    const n = enemiesInCircle(this, p.x, p.y, this.balanceR);
+    for (let k = 0; k < n; k++) this.applyDot(this.qout[k], 3, heat.stats.damage * 1.5, DOT_FIRE);
+    this.spawnFx(FX_RING, 0, 0, 0, 0, 0.4, 20, this.balanceR, 0.9, 0, 0, 0xff9a4a, LAYER_ADD, 0, 1);
   }
 
   /** Frozen Steel: everything close freezes, and takes more damage while it is frozen. */

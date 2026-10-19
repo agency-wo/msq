@@ -39,8 +39,8 @@ function post(w: World, dx: number, dy: number, type = ENEMY_INDEX.brute): numbe
 }
 
 describe('resonances', () => {
-  it('the attack pairs give no attack two partners, and every attack resonates with something', () => {
-    const attackPairs = RESONANCES.filter((r) => STARTABLE_IDS.includes(r.a) && STARTABLE_IDS.includes(r.b));
+  it('the core attack pairs give no attack two partners, and every attack resonates with something', () => {
+    const attackPairs = RESONANCES.filter((r) => !r.story && STARTABLE_IDS.includes(r.a) && STARTABLE_IDS.includes(r.b));
     const used = attackPairs.flatMap((r) => [r.a, r.b]);
     expect(new Set(used).size).toBe(used.length);
     for (const id of STARTABLE_IDS) expect(RESONANCES.some((r) => r.a === id || r.b === id), id).toBe(true);

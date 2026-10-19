@@ -55,8 +55,11 @@ Sternritter's Schrift with the bankai that knight stole (The Fear with
 Senbonzakura, The Iron with Hyōrinmaru, The Knowledge with Raikōben, The
 Explode with Tengen, The Overkill with Gonryō Rikyū) and the Emperor's own with
 The Almighty (Haschwalth's Balance, Royd Lloyd's Yourself, the stolen Zanka no
-Tachi). Uryū's Antithesis resonates with Haschwalth's Balance, A against B.
-Eighteen in all.
+Tachi, and Uryū's Antithesis, the letter of the heir he named). The knights'
+own bonds resonate too: Uryū's Antithesis with Haschwalth's Balance, Giselle's
+Zombie with Bambietta's Explode, Bazz-B's Heat with his old friend's Balance,
+and Gerard Valkyrie's Miracle with the Heart of the Soul King he turned out to
+be. Twenty-two in all.
 
 The story is told in short chapters that unlock as you play (the prologue
 before your first run, the invasion before your first Seireitei run, others

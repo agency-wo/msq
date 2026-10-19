@@ -74,9 +74,11 @@ export function castNerves(w: World, ps: PowerState): void {
 export function castHeartSurge(w: World, ps: PowerState): void {
   if (ps.timer > 0) ps.timer -= DT;
   const p = w.player;
-  if (ps.timer > 0 || !p.alive || p.hp >= p.maxHp * 0.3) return;
+  // Heart of the King: it beats sooner, and twice as often.
+  const king = w.resonances.has('kingsheart');
+  if (ps.timer > 0 || !p.alive || p.hp >= p.maxHp * (king ? 0.45 : 0.3)) return;
   const st = ps.stats;
-  ps.timer = st.cooldown;
+  ps.timer = king ? st.cooldown / 2 : st.cooldown;
   p.hp = Math.min(p.maxHp, p.hp + p.maxHp * 0.5);
   w.surgeT = Math.max(w.surgeT, st.duration);
   const R = st.radius * w.stats.size;

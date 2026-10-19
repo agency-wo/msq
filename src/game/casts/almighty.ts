@@ -3,7 +3,7 @@ import { DOT_FIRE, FLAG_BOSS, FX_GLOW, FX_RING, FX_STAR, LAYER_ADD, MF_ENEMY } f
 import type { PowerState } from '../powers';
 import type { World } from '../world';
 import { enemiesInCircle } from './common';
-import { DOUBLE_RING, doubleCount } from './schrift2';
+import { DOUBLE_RING, doubleCount, reverseWound } from './schrift2';
 
 /**
  * A · The Almighty. Every cooldown, with enemies in sight: time stands still
@@ -43,6 +43,7 @@ export function rewrite(w: World): void {
   const otherHalf = w.resonances.has('otherhalf');
   const zanka = w.resonances.has('tenchikaijin') ? w.power('zanka') : undefined;
   const mul = (otherHalf ? 1.3 : 1) * (zanka ? 1.2 : 1);
+  if (w.resonances.has('successor')) successor(w, hw, hh);
   for (let i = 0; i < E.n; i++) {
     if (E.dead[i] || E.charmT[i] > 0) continue;
     if (Math.abs(E.x[i] - p.x) > hw || Math.abs(E.y[i] - p.y) > hh) continue;
@@ -57,6 +58,25 @@ export function rewrite(w: World): void {
   w.spawnFx(FX_GLOW, 0, 0, 0, 0, 0.45, 300, 1400, 0.8, 0, 0, 0xffe6a0, LAYER_ADD, 0, 1);
   w.shake = Math.max(w.shake, 12);
   w.sound('blast');
+}
+
+/**
+ * The Successor: the rewritten future leaves your wounds out. You heal what
+ * you were missing (up to half your health), and everything on screen loses
+ * that share of its own health (bosses a quarter of it).
+ */
+function successor(w: World, hw: number, hh: number): void {
+  const p = w.player;
+  const share = Math.min(0.5, Math.max(0, p.maxHp - p.hp) / p.maxHp);
+  if (share <= 0) return;
+  p.hp = Math.min(p.maxHp, p.hp + share * p.maxHp);
+  const E = w.en;
+  for (let i = 0; i < E.n; i++) {
+    if (E.dead[i] || E.charmT[i] > 0) continue;
+    if (Math.abs(E.x[i] - p.x) > hw || Math.abs(E.y[i] - p.y) > hh) continue;
+    reverseWound(w, i, share);
+  }
+  w.spawnFx(FX_GLOW, 0, 0, 0, 0, 0.6, 40, 260, 0.8, 0, 0, 0xcfe8ff, LAYER_ADD, 0, 1);
 }
 
 /** Body Double: when the future is rewritten, each of The Yourself's doubles strikes everything around it. */

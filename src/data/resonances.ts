@@ -6,7 +6,9 @@
  *
  * The first nine pair the attacks, each with one partner. The rest follow
  * the story: each Sternritter's Schrift with the bankai that knight stole
- * with a medallion, and the Emperor's own powers with The Almighty.
+ * with a medallion, the bonds between the knights themselves (Uryū and
+ * Haschwalth, Giselle and Bambietta, Bazz-B and Haschwalth), Gerard Valkyrie
+ * and the Soul King's heart, and the Emperor's own powers with The Almighty.
  */
 
 export interface ResonanceDef {
@@ -22,6 +24,8 @@ export interface ResonanceDef {
   /** Levels each power needs (default: its last level). Bankai resonate from Lv 3. */
   needA?: number;
   needB?: number;
+  /** From the story, not one of the nine core pairs: an attack can have more than one of these. */
+  story?: boolean;
 }
 
 export const RESONANCES: readonly ResonanceDef[] = [
@@ -116,6 +120,7 @@ export const RESONANCES: readonly ResonanceDef[] = [
     desc: 'Äs Nödt stole Senbonzakura. Its petals carry The Fear: what they cut freezes in terror and takes more damage.',
     color: '#d8a8ff',
     needB: 3,
+    story: true,
   },
   {
     id: 'ironice',
@@ -126,6 +131,7 @@ export const RESONANCES: readonly ResonanceDef[] = [
     desc: 'Cang Du stole Hyōrinmaru. When your iron skin turns a blow aside, ice bursts out and freezes everything close.',
     color: '#bfe8ff',
     needB: 3,
+    story: true,
   },
   {
     id: 'barrage',
@@ -136,6 +142,7 @@ export const RESONANCES: readonly ResonanceDef[] = [
     desc: 'BG9 stole Suì-Fēng’s bankai. Every other volley, each of your drones also calls a Raikōben missile down on the enemy nearest it.',
     color: '#ffe08a',
     needB: 3,
+    story: true,
   },
   {
     id: 'giantblast',
@@ -146,6 +153,7 @@ export const RESONANCES: readonly ResonanceDef[] = [
     desc: 'Bambietta stole Komamura’s bankai. Every sweep of the armoured giant’s blade explodes all along its arc.',
     color: '#ffb070',
     needB: 3,
+    story: true,
   },
   {
     id: 'overthunder',
@@ -156,6 +164,7 @@ export const RESONANCES: readonly ResonanceDef[] = [
     desc: 'Driscoll Berci stole Sasakibe’s bankai. Every 40 enemies you defeat, its lightning strikes eight more.',
     color: '#fff3a0',
     needB: 3,
+    story: true,
   },
   {
     id: 'scales',
@@ -165,6 +174,37 @@ export const RESONANCES: readonly ResonanceDef[] = [
     letters: 'AB',
     desc: 'Uryū and Haschwalth fought letter against letter, A against B. Whenever you are hurt, a quarter of the wound is undone at once, and the nearest enemy loses three times the share of health you lost.',
     color: '#d8ecff',
+    story: true,
+  },
+  {
+    id: 'bambietta',
+    name: 'Risen Bambietta',
+    a: 'zombie',
+    b: 'explode',
+    letters: 'ZE',
+    desc: 'Giselle made a zombie of Bambietta. Everything The Explode’s blasts hit is infected, and rises on your side when it dies.',
+    color: '#ff8a7a',
+    story: true,
+  },
+  {
+    id: 'oldfriends',
+    name: 'Old Friends',
+    a: 'heat',
+    b: 'balance',
+    letters: 'HB',
+    desc: 'Bazz-B and Haschwalth grew up together and joined the Wandenreich side by side. Every burst of The Balance sets what it hits burning with The Heat.',
+    color: '#ffb07a',
+    story: true,
+  },
+  {
+    id: 'kingsheart',
+    name: 'Heart of the King',
+    a: 'heart',
+    b: 'miracle',
+    letters: 'HM',
+    desc: 'Gerard Valkyrie was the Soul King’s heart all along. The Heart beats below 45% health, twice as often, and while it beats The Miracle is at its height.',
+    color: '#ffd89a',
+    story: true,
   },
   // The Emperor's own.
   {
@@ -175,6 +215,7 @@ export const RESONANCES: readonly ResonanceDef[] = [
     letters: 'BA',
     desc: 'Haschwalth holds The Almighty while the Emperor sleeps. Every rewritten future heals you by a quarter and strikes 30% harder.',
     color: '#cfe0ff',
+    story: true,
   },
   {
     id: 'bodydouble',
@@ -184,6 +225,7 @@ export const RESONANCES: readonly ResonanceDef[] = [
     letters: 'YA',
     desc: 'Royd Lloyd once stood in for the Emperor himself. When the future is rewritten, each of your doubles strikes everything around it too.',
     color: '#ffe6a0',
+    story: true,
   },
   {
     id: 'tenchikaijin',
@@ -194,6 +236,17 @@ export const RESONANCES: readonly ResonanceDef[] = [
     desc: 'The Emperor took Zanka no Tachi from the Captain-Commander. Every rewritten future sets what it strikes burning, heaven and earth turned to ash.',
     color: '#ff8a4a',
     needA: 3,
+    story: true,
+  },
+  {
+    id: 'successor',
+    name: 'The Successor',
+    a: 'antithesis',
+    b: 'almighty',
+    letters: 'AA',
+    desc: 'The Emperor named Uryū his successor and gave him the letter A. A rewritten future leaves your wounds out: you heal what you were missing (up to half your health), and everything on screen loses that share of its health (bosses a quarter).',
+    color: '#e8f4ff',
+    story: true,
   },
 ];
 

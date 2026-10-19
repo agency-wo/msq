@@ -401,6 +401,8 @@ export function explodeBomb(w: World, i: number): void {
       E.volT[j] = 0.25;
       E.volDmg[j] = dmg * 0.5;
     }
+    // Risen Bambietta: infected before the hit, so what this blast kills rises too.
+    if (w.resonances.has('bambietta')) E.infT[j] = Math.max(E.infT[j], 4);
     w.damageEnemy(j, dmg, 90, x, y);
   }
   w.blastFx(x, y, R, 0xffb37a, R > 40 ? 3 : 1);
