@@ -256,7 +256,7 @@ export function bossAI(w: World, i: number, dist: number): void {
 export const HARRIBEL_RELEASED = 36;
 
 /**
- * Tier Harribel, the Tres Espada, who has ruled Las Noches since Aizen fell.
+ * Tier Harribel, the Third Espada, who has ruled Las Noches since Aizen fell.
  * Ola Azul: waves cut from the hollow of her blade, in a fan at you. Sonído:
  * a lane is warned and she is already through it. Below half health she
  * releases Tiburón: bigger and faster, wider fans, and Cascada, a torrent

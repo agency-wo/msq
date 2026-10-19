@@ -117,7 +117,7 @@ export const ENEMY_LIST: readonly EnemyDef[] = [
   // The Royal Guard (variant = which of them, see data/royal.ts) and Ichibē, who ends the stage.
   { id: 'royal', name: 'Royal Guard', hp: 2600, speed: 46, radius: 30, damage: 26, xp: 70, behavior: 'chase', boss: true, color: 0xfff6dc },
   { id: 'ichibe', name: 'Ichibē Hyōsube', hp: 2600, speed: 36, radius: 36, damage: 38, xp: 180, behavior: 'chase', boss: true, color: 0x9a7aff },
-  // Hueco Mundo's final boss: Tier Harribel, the Tres Espada, who has ruled Las Noches since Aizen fell.
+  // Hueco Mundo's final boss: Tier Harribel, the Third Espada, who has ruled Las Noches since Aizen fell.
   { id: 'harribel', name: 'Tier Harribel', hp: 2600, speed: 50, radius: 30, damage: 36, xp: 170, behavior: 'chase', boss: true, color: 0x5ac8ff },
 ];
 

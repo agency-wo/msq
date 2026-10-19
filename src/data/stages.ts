@@ -108,7 +108,7 @@ const HUECO: StageDef = {
       hpMul: 60,
       final: true,
       warn: 'Tier Harribel bars the way to Las Noches',
-      sub: 'Tres Espada · Queen of Hueco Mundo',
+      sub: 'Third Espada · Queen of Hueco Mundo',
     },
   ]),
   hp: 1,

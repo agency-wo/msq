@@ -19,6 +19,8 @@ function conditionMet(save: SaveData, c: Chapter): boolean {
       return almightyUnlocked(save);
     case 'palace':
       return save.stages.palace.cleared;
+    case 'heir':
+      return save.codex.powers.includes('antithesis');
   }
 }
 

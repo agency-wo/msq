@@ -3683,7 +3683,7 @@ function harribelHead(g: Ctx, cx: number, hy: number, s: number, guard: (y: numb
 }
 
 /**
- * Tier Harribel, the Tres Espada (a chibi homage): dark skin, short messy
+ * Tier Harribel, the Third Espada (a chibi homage): dark skin, short messy
  * blonde hair with three braids, narrow green eyes, the tall white collar of
  * her Arrancar jacket hiding everything below them, and Tiburón, a broad
  * blade with a hollow down its middle, slung across her back.

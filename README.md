@@ -105,7 +105,7 @@ opens with.
 Stages, 20 minutes each:
 
 - **Hueco Mundo**: Hollows. A Vasto Lorde rises at 18:00, and Tier Harribel,
-  the Tres Espada who has ruled Las Noches since Aizen fell, ends the stage:
+  the Third Espada who has ruled Las Noches since Aizen fell, ends the stage:
   Ola Azul waves, a Sonído rush down a warned lane, and below half health
   Tiburón released and Cascada falling where you stand (in the story, the
   Emperor beats her in front of her own palace).

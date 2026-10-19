@@ -35,6 +35,15 @@ describe('the story', () => {
     expect(chaptersAfter(s).map((c) => c.id)).toEqual(['ash', 'almighty']);
   });
 
+  it('tells of the heir once The Antithesis has been taken back', () => {
+    const s = defaultSave();
+    const run = { stage: 'hueco' as const, time: 400, level: 30, kills: 3000, cleared: false, gold: 0 };
+    recordRun(s, run);
+    expect(chaptersAfter(s).map((c) => c.id)).not.toContain('heir');
+    recordRun(s, { ...run, codex: { powers: ['heilig', 'antithesis'], relics: [], resonances: [], kills: {} } });
+    expect(chaptersAfter(s).map((c) => c.id)).toContain('heir');
+  });
+
   it('the Chronicle shows what an old save has already done, and hides the rest', () => {
     const old = migrate({ stages: { hueco: { best: 1210, cleared: true } }, taken: ['zanka'] });
     const open = CHAPTERS.filter((c) => chapterUnlocked(old, c)).map((c) => c.id);

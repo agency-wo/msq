@@ -6,7 +6,7 @@
 /** When a chapter is shown: before a run (on a given stage) or after one, once its condition holds. */
 export type ChapterTrigger =
   | { when: 'before'; stage?: string }
-  | { when: 'after'; condition: 'bankai' | 'hueco' | 'seireitei' | 'almighty' | 'palace' };
+  | { when: 'after'; condition: 'bankai' | 'hueco' | 'seireitei' | 'almighty' | 'palace' | 'heir' };
 
 export interface Chapter {
   id: string;
@@ -68,6 +68,18 @@ export const CHAPTERS: readonly Chapter[] = [
       'The gates of the Seireitei do not open for him, so he walks through the walls.',
       'Soldiers in black pour out of every courtyard. Kidō burns the night. Somewhere above the rooftops the captains of the Gotei 13 are already moving, each one carrying a bankai he has not taken yet.',
       'Let them come one at a time. A captain is only a medallion that has not been filled.',
+    ],
+  },
+  {
+    id: 'heir',
+    kicker: 'Interlude',
+    title: 'The Heir',
+    hint: 'Take back The Antithesis.',
+    trigger: { when: 'after', condition: 'heir' },
+    text: [
+      'Nine years ago the Auswählen took back the power of every Quincy of mixed blood, and their lives with it. One boy of mixed blood lived through it: Uryū Ishida.',
+      'The Emperor named him his successor and gave him a letter, the same letter as his own. A: The Antithesis, which turns back what has already happened.',
+      'An heir is only a promise. Everything the Emperor gives, he takes back in the end, and this letter has come home with the rest.',
     ],
   },
   {
