@@ -8,9 +8,10 @@ import { BANKAI_BY_ID, BANKAI_IDS } from '../data/bankai';
 import { ENEMY_INDEX, ENEMY_LIST } from '../data/enemies';
 import { TRAIL_BY_ID } from '../data/looks';
 import { GOTEI_IDS, GOTEI_INFO } from '../data/gotei';
+import { HERO_IDS, HERO_INFO } from '../data/heroes';
 import { ROYAL_IDS, ROYAL_INFO } from '../data/royal';
 import { DOUBLE_RING, doubleCount } from '../game/casts/schrift2';
-import { COMMANDER_HEAT, HARRIBEL_RELEASED } from '../game/hostile';
+import { COMMANDER_HEAT, HARRIBEL_RELEASED, ICHIGO_MASKED } from '../game/hostile';
 import { enemySpriteName } from './names';
 import {
   EB_FIRE,
@@ -77,6 +78,8 @@ import {
   ZF_FOLLOW,
   MK_GAS,
   MK_MIST,
+  EB_GETSUGA,
+  EB_ARROW,
 } from '../game/constants';
 import type { World } from '../game/world';
 import { ATLAS_SCALE, buildAtlas, buildGroundTile, CAPE_PIVOT, type Atlas } from './atlas';
@@ -229,6 +232,9 @@ export class Renderer {
   /** The Royal Guard by variant, and Kirio once she has shed her bulk. */
   private royalSprites: EnemySprite[] = [];
   private goteiSprites: EnemySprite[] = [];
+  private heroSprites: EnemySprite[] = [];
+  /** Ichigo once his Hollow mask forms. */
+  private ichigoMasked: EnemySprite | null = null;
   private kirioSlim: EnemySprite | null = null;
   /** Tier Harribel once Tiburón is released. */
   private harribelReleased: EnemySprite | null = null;
@@ -327,6 +333,8 @@ export class Renderer {
       specimen: 14,
       kyoraku: 30,
       jizo: 30,
+      ichigo: 29,
+      mirage: 28,
     };
     // Types drawn per variant (or per stage) fall back to one of their sprites here.
     this.enemySprites = ENEMY_LIST.map((d, t) => sprite(enemySpriteName(t), REF[d.id] ?? d.radius));
@@ -334,6 +342,8 @@ export class Renderer {
     this.artScale = ENEMY_LIST.map((d) => (d.boss || d.shinigami || d.behavior === 'flee' || d.id === 'rift' || d.id === 'ashen' ? 1 : 1.1));
     this.royalSprites = ROYAL_IDS.map((id, v) => sprite(enemySpriteName(ENEMY_INDEX.royal, v), id === 'kirio' ? 30 : 28));
     this.goteiSprites = GOTEI_IDS.map((id, v) => sprite(enemySpriteName(ENEMY_INDEX.gotei, v), id === 'kenpachi' ? 30 : 28));
+    this.heroSprites = HERO_IDS.map((_, v) => sprite(enemySpriteName(ENEMY_INDEX.defender, v), 28));
+    this.ichigoMasked = sprite('ichigo_mask', 30);
     this.kirioSlim = sprite('royal_kirio_slim', 26);
     this.harribelReleased = sprite('harribel_tiburon', 31);
     const adjuchas = sprite('adjuchas', 24);
@@ -708,6 +718,10 @@ export class Renderer {
               : (this.royalSprites[E.variant[i]] ?? this.enemySprites[type])
             : type === ENEMY_INDEX.gotei
               ? (this.goteiSprites[E.variant[i]] ?? this.enemySprites[type])
+            : type === ENEMY_INDEX.defender
+              ? (this.heroSprites[E.variant[i]] ?? this.enemySprites[type])
+            : type === ENEMY_INDEX.ichigo && E.r[i] >= ICHIGO_MASKED && this.ichigoMasked
+              ? this.ichigoMasked
             : type === ENEMY_INDEX.golden && w.stage.id === 'seireitei'
             ? this.enemySprites[ENEMY_INDEX.officer]
             : type === ENEMY_INDEX.harribel && E.r[i] >= HARRIBEL_RELEASED && this.harribelReleased
@@ -732,7 +746,9 @@ export class Renderer {
             ? (ROYAL_INFO[E.variant[i]]?.aura ?? 0xfff6dc)
             : type === ENEMY_INDEX.gotei
               ? (GOTEI_INFO[E.variant[i]]?.aura ?? 0xf4f6fb)
-              : this.bossAura[type];
+              : type === ENEMY_INDEX.defender
+                ? (HERO_INFO[E.variant[i]]?.aura ?? 0xf4f6fb)
+                : this.bossAura[type];
         L.auras.add(f.glow, x, y, (r * 3.6) / 64, (r * 3.6) / 64, 0, aura, 0.5 + Math.sin(now * 3) * 0.12);
         if (type === ENEMY_INDEX.commander && !w.zankaStolen) {
           // Zanka no Tachi's heat: anything inside this ring burns (until the bankai is taken from him).
@@ -752,7 +768,9 @@ export class Renderer {
       else if (E.vulnT[i] > 0) tint = 0xd8ffcf;
       else if (E.infT[i] > 0) tint = 0xffb8c0;
       const bob = E.freezeT[i] > 0 ? 0 : Math.sin(now * 7 + E.uid[i] * 1.7) * 0.05;
-      L.enemies.add(E.flash[i] > 0 ? spr.flash : spr.tex, x, y, scale * (1 + bob), scale * (1 - bob), 0, tint);
+      // Kyōka Suigetsu's copies are a little less there than the real one.
+      const ghost = type === ENEMY_INDEX.mirage ? 0.62 + Math.sin(now * 5 + E.uid[i]) * 0.1 : 1;
+      L.enemies.add(E.flash[i] > 0 ? spr.flash : spr.tex, x, y, scale * (1 + bob), scale * (1 - bob), 0, tint, ghost);
     }
   }
 
@@ -1012,6 +1030,15 @@ export class Renderer {
           // Ola Azul: a crescent of sea-blue water, bright at its edge.
           L.add(f.crescent, x, y, (r * 2.6) / 256, (r * 3.4) / 128, rot, 0x5ac8ff);
           L.add(f.crescent, x, y, (r * 2) / 256, (r * 2.6) / 128, rot, 0xd8f4ff, 0.7);
+          break;
+        case EB_GETSUGA:
+          // Getsuga Tenshō: a great crescent, red at its edge and white at its heart.
+          L.add(f.crescent, x, y, (r * 2.8) / 256, (r * 3.6) / 128, rot, 0xff3048);
+          L.add(f.crescent, x, y, (r * 2) / 256, (r * 2.6) / 128, rot, 0xfff0f0, 0.8);
+          break;
+        case EB_ARROW:
+          // A Quincy's arrow of light.
+          L.add(f.arrow, x, y, (r * 3.4) / 56, (r * 1.6) / 20, rot, 0x8fd0ff);
           break;
         default:
           L.add(f.bala, x, y, (r * 2.8) / 20, (r * 2.8) / 20);

@@ -23,6 +23,8 @@ function conditionMet(save: SaveData, c: Chapter): boolean {
       return save.codex.powers.includes('antithesis');
     case 'silbern':
       return save.stages.silbern.cleared;
+    case 'wahrwelt':
+      return save.stages.wahrwelt.cleared;
   }
 }
 

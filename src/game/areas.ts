@@ -62,6 +62,7 @@ import {
   MF_INVERT,
   FX_SMOKE,
   LAYER_NORMAL,
+  MK_SILVER,
 } from './constants';
 import type { World } from './world';
 
@@ -226,6 +227,7 @@ function resolveMark(w: World, i: number): void {
       if (flags & (MF_SLOW | MF_FREEZE)) p.slowT = Math.max(p.slowT, 1.5);
       if (flags & MF_ROOT && w.vollT <= 0) p.rootT = Math.max(p.rootT, 1);
       if (flags & MF_INVERT) w.invert(3);
+      if (kind === MK_SILVER) w.silver(8);
     }
   } else {
     const E = w.en;
@@ -407,6 +409,11 @@ function markFx(w: World, kind: number, x: number, y: number, r: number, len: nu
         w.spawnFx(FX_SMOKE, x + Math.cos(a) * r * 0.5, y + Math.sin(a) * r * 0.5, Math.cos(a) * 20, Math.sin(a) * 20, 1, r * 0.4, r, 0.45, 0, 0, 0xffc8e8, LAYER_NORMAL, 1);
       }
       w.sound('shield');
+      break;
+    case MK_SILVER:
+      // The silver arrow streaks down its line.
+      w.spawnFx(FX_BEAMH, x + (Math.cos(ang) * len) / 2, y + (Math.sin(ang) * len) / 2, 0, 0, 0.3, len, len, 1, ang, 0, 0xe8eef8, LAYER_ADD, 0, 0, r * 0.8);
+      w.sound('strike');
       break;
     case MK_WATER:
       // Water: a blade of it down the lane, or a torrent crashing down and spraying out.

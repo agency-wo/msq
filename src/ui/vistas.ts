@@ -321,7 +321,59 @@ const silbern: Paint = (g, w, h) => {
   g.fill();
 };
 
-const VISTAS: Readonly<Partial<Record<StageId, Paint>>> = { hueco, seireitei, silbern, palace };
+/** The Wahrwelt: a black castle on what is left of the palace, under a red sky with an eye in it. */
+const wahrwelt: Paint = (g, w, h) => {
+  const rnd = seeded(47);
+  const sky = g.createLinearGradient(0, 0, 0, h);
+  sky.addColorStop(0, '#0a0408');
+  sky.addColorStop(0.55, '#4a0e1c');
+  sky.addColorStop(1, '#a03040');
+  g.fillStyle = sky;
+  g.fillRect(0, 0, w, h);
+  stars(g, w, h * 0.3, 10, rnd);
+  // The eye in the sky
+  const ex = w * 0.5;
+  const ey = h * 0.26;
+  halo(g, ex, ey, h * 0.4, '255,60,80', 0.3);
+  g.fillStyle = 'rgba(255,220,220,0.85)';
+  g.beginPath();
+  g.ellipse(ex, ey, w * 0.09, h * 0.05, 0, 0, TAU);
+  g.fill();
+  g.fillStyle = '#c0102a';
+  g.beginPath();
+  g.arc(ex, ey, h * 0.04, 0, TAU);
+  g.fill();
+  g.fillStyle = '#120408';
+  g.beginPath();
+  g.arc(ex, ey, h * 0.018, 0, TAU);
+  g.fill();
+  clouds(g, w, h * 0.86, 'rgba(60,20,30,0.85)', 16, rnd);
+  // The castle on its rock
+  island(g, w * 0.5, h * 0.66, w * 0.3, h * 0.1, '#1a1018', '#0a0408');
+  g.fillStyle = '#0c0810';
+  for (const [x, top, width] of [
+    [0.36, 0.44, 10],
+    [0.43, 0.36, 12],
+    [0.5, 0.28, 16],
+    [0.57, 0.36, 12],
+    [0.64, 0.44, 10],
+  ] as const) {
+    const px = w * x;
+    g.beginPath();
+    g.moveTo(px - width / 2, h * 0.64);
+    g.lineTo(px - width / 2, h * top + 6);
+    g.lineTo(px, h * top);
+    g.lineTo(px + width / 2, h * top + 6);
+    g.lineTo(px + width / 2, h * 0.64);
+    g.closePath();
+    g.fill();
+  }
+  g.fillStyle = 'rgba(255,60,80,0.7)';
+  for (let k = 0; k < 7; k++) g.fillRect(w * (0.4 + rnd() * 0.2), h * (0.42 + rnd() * 0.18), 1.5, 2.5);
+  clouds(g, w, h * 0.96, 'rgba(30,8,14,0.95)', 20, rnd);
+};
+
+const VISTAS: Readonly<Partial<Record<StageId, Paint>>> = { hueco, seireitei, silbern, palace, wahrwelt };
 
 /** Paint a stage's vista into a canvas; `w` and `h` are its CSS size (CSS covers the card with it). */
 export function drawVista(canvas: HTMLCanvasElement, stage: StageId, w = 200, h = 104, ratio = Math.min(window.devicePixelRatio || 1, 3)): void {

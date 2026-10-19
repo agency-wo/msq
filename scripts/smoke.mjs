@@ -588,6 +588,27 @@ try {
   log('karamatsu', { ...(await stats()), marks: await page.evaluate(() => window.__msq.world.marks.n) });
   await shot('12f-karamatsu');
 
+  // Wahrwelt: its defenders, then Ichigo and his Hollow mask.
+  for (const id of ['renji', 'rukia', 'uryu', 'aizen']) {
+    await page.goto(`${BASE}?debug&seed=3&play&god&stage=wahrwelt&t=298&bearers=${id}`);
+    await wait(400);
+    await steer(6500, { radius: 20 });
+    log(`wahrwelt ${id}`, { ...(await stats()), boss: (await page.isVisible('.bossbar')) ? await page.textContent('.boss-name') : null, copies: await page.evaluate(() => { const w = window.__msq.world; let n = 0; for (let i = 0; i < w.en.n; i++) if (w.en.type[i] === 33 && !w.en.dead[i]) n++; return n; }) });
+    await shot(`12g-wahrwelt-${id}`);
+  }
+  await page.goto(`${BASE}?debug&seed=7&play&god&stage=wahrwelt&t=1196&give=xaxis6,explode6,heat6`);
+  await wait(400);
+  await steer(8000, { radius: 15 });
+  log('ichigo', { ...(await stats()), boss: await page.textContent('.boss-name'), sub: await page.textContent('.boss-sub') });
+  await shot('12h-ichigo');
+  await page.evaluate(() => {
+    const w = window.__msq.world;
+    for (let i = 0; i < w.en.n; i++) if (w.en.type[i] === 32 && !w.en.dead[i]) w.en.hp[i] = w.en.maxHp[i] * 0.45;
+  });
+  await steer(5000, { radius: 15 });
+  log('hollow mask', { ...(await stats()), radius: await page.evaluate(() => { const w = window.__msq.world; for (let i = 0; i < w.en.n; i++) if (w.en.type[i] === 32 && !w.en.dead[i]) return w.en.r[i]; return 0; }) });
+  await shot('12i-hollow-mask');
+
   // The captains defend their own bankai in Seireitei.
   for (const id of ['senbonzakura', 'hyorinmaru', 'raikoben', 'tengen', 'gonryo']) {
     await page.goto(`${BASE}?debug&seed=3&play&god&stage=seireitei&t=298&bearers=${id}`);

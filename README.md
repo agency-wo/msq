@@ -31,7 +31,7 @@ a portrait and a title. The pause and results screens break down the **damage**
 each power dealt (total, share and damage per second), and **Share** on the
 results turns the run into a picture for the phone's share sheet.
 
-Thirty-one **Feats** give long goals (a hundred thousand kills, every letter
+Thirty-two **Feats** give long goals (a hundred thousand kills, every letter
 awakened, Trial V, a Boss Rush under 4:00, all three fragments in one run...),
 each paying gold once; some open one of three new looks for the Emperor
 (Wandenreich White, Crimson, Gilded) or a relic that can then turn up in chests
@@ -142,6 +142,16 @@ Stages, 20 minutes each:
   Arm stills everything around you, the Left Arm binds the sturdiest enemies,
   the Heart surges you back from the brink. Ichibē ends the stage with ink, and
   with Ichimonji, which silences one of your attacks for a while.
+- **Wahrwelt** (unlocked by clearing the Soul King Palace): the finale. The
+  Emperor has cut down the Soul King and raised the true world from his
+  palace, and every world climbs up after him at once, Soul Reapers and
+  Hollows together. Three of four defenders stand in the way: Renji Abarai
+  (Zabimaru, fangs closing in, the bone cannon, then Sōō Zabimaru), Rukia
+  Kuchiki (Tsukishiro, Hakuren, then Hakka no Togame), Uryū Ishida (arrows and
+  Licht Regen; his Antithesis turns his wounds back once, and his silver arrow
+  silences The Almighty for a while) and Sōsuke Aizen (Kyōka Suigetsu's copies,
+  only one of them real, and Kurohitsugi). Ichigo Kurosaki ends it with
+  Getsuga Tenshō, and at half health his Hollow mask.
 
 ## Play on iPhone
 

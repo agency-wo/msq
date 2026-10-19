@@ -4645,6 +4645,471 @@ const specimen: Draw = (g, w, h) => {
   }
 };
 
+// ------------------------------------------------------------ Wahrwelt
+
+/** A lieutenant's badge on the left arm: a white band with a small mark. */
+function lieutenantBadge(g: Ctx, cx: number, cy: number, s: number): void {
+  g.fillStyle = '#f4f2ec';
+  g.save();
+  g.translate(cx - 11 * s, cy + 1 * s);
+  g.rotate(0.25);
+  g.fillRect(-2.6 * s, -1.6 * s, 5.2 * s, 3.2 * s);
+  g.fillStyle = '#14161f';
+  g.fillRect(-0.8 * s, -0.8 * s, 1.6 * s, 1.6 * s);
+  g.restore();
+}
+
+/**
+ * Renji Abarai (a chibi homage): long red hair tied high, the tattoos
+ * across his brow, a lieutenant's badge, and Zabimaru's segmented blade.
+ */
+const renji: Draw = (g, w, h) => {
+  const s = 2;
+  const cx = w / 2;
+  const cy = h / 2 + 7;
+  const hy = cy - 13 * s;
+  aura(g, cx, cy, 56, 'rgba(255,106,74,0.18)');
+  // The ponytail, behind
+  g.fillStyle = '#c8282e';
+  g.beginPath();
+  g.moveTo(cx - 2 * s, hy - 6 * s);
+  g.quadraticCurveTo(cx + 10 * s, hy - 14 * s, cx + 12 * s, hy - 2 * s);
+  g.quadraticCurveTo(cx + 8 * s, hy - 7 * s, cx + 2 * s, hy - 4 * s);
+  g.closePath();
+  g.fill();
+  captainBody(g, cx, cy, s, { haori: 'none' });
+  lieutenantBadge(g, cx, cy, s);
+  // Zabimaru: a blade made of segments
+  g.save();
+  g.translate(cx + 12 * s, cy + 9.6 * s);
+  g.rotate(-0.3);
+  g.fillStyle = '#2a2f3a';
+  g.fillRect(-0.9 * s, -5 * s, 1.8 * s, 5 * s);
+  g.fillStyle = '#d8dee8';
+  for (let k = 0; k < 5; k++) {
+    poly(g, [
+      [-1.2 * s, (0.6 + k * 2.8) * s],
+      [1.6 * s, (0.6 + k * 2.8) * s],
+      [0.8 * s, (2.9 + k * 2.8) * s],
+      [-1.2 * s, (2.9 + k * 2.8) * s],
+    ]);
+    g.fill();
+  }
+  g.restore();
+  faceAt(g, cx, hy + 0.8 * s, s, 5.6, 6.4);
+  // Red hair swept back, spiking at the crown
+  g.fillStyle = '#c8282e';
+  g.beginPath();
+  g.ellipse(cx, hy - 2.4 * s, 6.8 * s, 5 * s, 0, Math.PI * 0.95, Math.PI * 2.05);
+  g.fill();
+  for (let k = 0; k < 5; k++) {
+    const a = Math.PI * (1.1 + k * 0.2);
+    poly(g, [
+      [cx + Math.cos(a - 0.15) * 5.4 * s, hy - 2.4 * s + Math.sin(a - 0.15) * 5.4 * s],
+      [cx + Math.cos(a) * 8.6 * s, hy - 2.4 * s + Math.sin(a) * 8.6 * s],
+      [cx + Math.cos(a + 0.15) * 5.4 * s, hy - 2.4 * s + Math.sin(a + 0.15) * 5.4 * s],
+    ]);
+    g.fill();
+  }
+  // The tattoos above his brows
+  g.strokeStyle = '#14161f';
+  g.lineWidth = 0.6 * s;
+  g.beginPath();
+  for (const dir of [-1, 1]) {
+    g.moveTo(cx + dir * 1.4 * s, hy - 1.4 * s);
+    g.lineTo(cx + dir * 2.6 * s, hy - 2.6 * s);
+    g.lineTo(cx + dir * 3.8 * s, hy - 1.6 * s);
+    g.lineTo(cx + dir * 5 * s, hy - 2.8 * s);
+  }
+  g.stroke();
+  browsAt(g, cx, hy + 0.4 * s, s, '#7a1418', 1.4);
+  eyesAt(g, cx, hy + 1.9 * s, s, '#f0e2d0', '#a07040', 2.5);
+  g.strokeStyle = '#5a3a30';
+  g.lineWidth = 0.6 * s;
+  g.beginPath();
+  g.moveTo(cx - 1.8 * s, hy + 4.6 * s);
+  g.lineTo(cx + 1.8 * s, hy + 4.4 * s);
+  g.stroke();
+};
+
+/**
+ * Rukia Kuchiki (a chibi homage): short black hair with one lock falling
+ * between her eyes, a lieutenant's badge, and Sode no Shirayuki, all white,
+ * its long ribbon trailing.
+ */
+const rukia: Draw = (g, w, h) => {
+  const s = 1.9;
+  const cx = w / 2;
+  const cy = h / 2 + 8;
+  const hy = cy - 13 * s;
+  aura(g, cx, cy, 52, 'rgba(207,238,255,0.22)');
+  captainBody(g, cx, cy, s, { haori: 'none' });
+  lieutenantBadge(g, cx, cy, s);
+  // Sode no Shirayuki: a white blade, a white guard, a long white ribbon
+  heldSword(g, cx + 12 * s, cy + 9.6 * s, s, 14, -0.3, '#f8fbff');
+  g.save();
+  g.strokeStyle = 'rgba(248,251,255,0.9)';
+  g.lineWidth = 0.8 * s;
+  g.beginPath();
+  g.moveTo(cx + 13.4 * s, cy + 4.8 * s);
+  g.bezierCurveTo(cx + 18 * s, cy + 2 * s, cx + 16 * s, cy + 12 * s, cx + 20 * s, cy + 14 * s);
+  g.stroke();
+  g.restore();
+  faceAt(g, cx, hy + 0.8 * s, s, 5.4, 6.2);
+  // Short black hair to the jaw, one lock between the eyes
+  g.fillStyle = '#0d0e14';
+  g.beginPath();
+  g.ellipse(cx, hy - 1.8 * s, 6.6 * s, 5.2 * s, 0, Math.PI * 0.95, Math.PI * 2.05);
+  g.fill();
+  for (const dir of [-1, 1]) {
+    poly(g, [
+      [cx + dir * 4.6 * s, hy - 2.6 * s],
+      [cx + dir * 6.8 * s, hy - 0.4 * s],
+      [cx + dir * 6.2 * s, hy + 5.2 * s],
+      [cx + dir * 4.4 * s, hy + 1.6 * s],
+    ]);
+    g.fill();
+  }
+  poly(g, [
+    [cx - 1 * s, hy - 3 * s],
+    [cx + 0.9 * s, hy - 3 * s],
+    [cx + 0.2 * s, hy + 2.8 * s],
+  ]);
+  g.fill();
+  eyesAt(g, cx, hy + 1.9 * s, s, '#d8c8ff', '#7a5ab8', 2.7);
+};
+
+/**
+ * Uryū Ishida (a chibi homage): glasses, straight black hair, the
+ * Wandenreich's white uniform with its cape, and a bow of blue reishi.
+ */
+const uryu: Draw = (g, w, h) => {
+  const s = 2;
+  const cx = w / 2;
+  const cy = h / 2 + 7;
+  const hy = cy - 13 * s;
+  aura(g, cx, cy, 56, 'rgba(143,208,255,0.2)');
+  // The white cape
+  g.fillStyle = '#eef2f8';
+  g.beginPath();
+  g.moveTo(cx - 9 * s, cy - 7 * s);
+  g.quadraticCurveTo(cx - 16 * s, cy + 6 * s, cx - 14 * s, cy + 19.5 * s);
+  g.lineTo(cx + 14 * s, cy + 19.5 * s);
+  g.quadraticCurveTo(cx + 16 * s, cy + 6 * s, cx + 9 * s, cy - 7 * s);
+  g.closePath();
+  g.fill();
+  g.strokeStyle = 'rgba(40,60,100,0.35)';
+  g.lineWidth = 1;
+  g.stroke();
+  // The white uniform, a high collar, a blue Quincy cross at the chest
+  const coat = g.createLinearGradient(0, cy - 6 * s, 0, cy + 20 * s);
+  coat.addColorStop(0, '#ffffff');
+  coat.addColorStop(1, '#c9d2e2');
+  g.fillStyle = coat;
+  g.beginPath();
+  g.moveTo(cx - 8 * s, cy - 6 * s);
+  g.lineTo(cx + 8 * s, cy - 6 * s);
+  g.lineTo(cx + 10.6 * s, cy + 20 * s);
+  g.lineTo(cx - 10.6 * s, cy + 20 * s);
+  g.closePath();
+  g.fill();
+  g.strokeStyle = 'rgba(40,60,100,0.4)';
+  g.stroke();
+  g.strokeStyle = 'rgba(40,60,100,0.3)';
+  g.beginPath();
+  g.moveTo(cx, cy - 4 * s);
+  g.lineTo(cx, cy + 20 * s);
+  g.stroke();
+  g.fillStyle = '#59b8ff';
+  g.beginPath();
+  for (let k = 0; k < 10; k++) {
+    const a = (k / 10) * TAU - Math.PI / 2;
+    const r = k % 2 === 0 ? 2.2 * s : 0.9 * s;
+    g.lineTo(cx - 4 * s + Math.cos(a) * r, cy - 1 * s + Math.sin(a) * r);
+  }
+  g.closePath();
+  g.fill();
+  for (const dir of [-1, 1]) {
+    g.fillStyle = '#eef2f8';
+    g.beginPath();
+    g.ellipse(cx + dir * 10.4 * s, cy + 1.5 * s, 3.8 * s, 7.2 * s, -dir * 0.25, 0, TAU);
+    g.fill();
+    g.fillStyle = SKIN;
+    g.beginPath();
+    g.arc(cx + dir * 11.6 * s, cy + 9.6 * s, 1.6 * s, 0, TAU);
+    g.fill();
+  }
+  // A bow of blue reishi in his left hand
+  g.save();
+  g.strokeStyle = '#8fd0ff';
+  g.shadowColor = 'rgba(143,208,255,0.9)';
+  g.shadowBlur = 8;
+  g.lineWidth = 1.2 * s;
+  g.beginPath();
+  g.arc(cx - 15 * s, cy + 4 * s, 9 * s, -1.1, 1.1);
+  g.stroke();
+  g.lineWidth = 0.4 * s;
+  g.beginPath();
+  g.moveTo(cx - 15 * s + Math.cos(-1.1) * 9 * s, cy + 4 * s + Math.sin(-1.1) * 9 * s);
+  g.lineTo(cx - 15 * s + Math.cos(1.1) * 9 * s, cy + 4 * s + Math.sin(1.1) * 9 * s);
+  g.stroke();
+  g.restore();
+  faceAt(g, cx, hy + 0.8 * s, s, 5.4, 6.4);
+  // Straight black hair, a fringe swept to one side
+  g.fillStyle = '#0d0e14';
+  g.beginPath();
+  g.ellipse(cx, hy - 2 * s, 6.6 * s, 5 * s, 0, Math.PI * 0.95, Math.PI * 2.05);
+  g.fill();
+  poly(g, [
+    [cx - 6.4 * s, hy - 2 * s],
+    [cx + 5 * s, hy - 3.6 * s],
+    [cx + 1.6 * s, hy + 1.4 * s],
+    [cx - 5.2 * s, hy + 3.6 * s],
+  ]);
+  g.fill();
+  eyesAt(g, cx, hy + 1.9 * s, s, '#cfe0ff', '#5a7ab8', 2.5);
+  // Glasses
+  g.strokeStyle = '#c9d2e2';
+  g.lineWidth = 0.5 * s;
+  for (const dir of [-1, 1]) g.strokeRect(cx + dir * 2.5 * s - 1.6 * s, hy + 1 * s, 3.2 * s, 1.9 * s);
+  g.beginPath();
+  g.moveTo(cx - 0.9 * s, hy + 1.8 * s);
+  g.lineTo(cx + 0.9 * s, hy + 1.8 * s);
+  g.stroke();
+};
+
+/**
+ * Sōsuke Aizen (a chibi homage): long wavy brown hair with one lock over his
+ * brow, a calm smile, the white of a prisoner bound in black restraints, and
+ * Kyōka Suigetsu at his side.
+ */
+const aizen: Draw = (g, w, h) => {
+  const s = 2;
+  const cx = w / 2;
+  const cy = h / 2 + 7;
+  const hy = cy - 13 * s;
+  aura(g, cx, cy, 56, 'rgba(184,154,255,0.2)');
+  // Long hair falling down his back
+  g.fillStyle = '#6a4228';
+  g.beginPath();
+  g.ellipse(cx, hy + 6 * s, 8 * s, 11 * s, 0, 0, TAU);
+  g.fill();
+  // White robes, bound in black straps
+  const robe = g.createLinearGradient(0, cy - 6 * s, 0, cy + 20 * s);
+  robe.addColorStop(0, '#ffffff');
+  robe.addColorStop(1, '#cfcad8');
+  g.fillStyle = robe;
+  g.beginPath();
+  g.moveTo(cx - 8.4 * s, cy - 6.5 * s);
+  g.lineTo(cx + 8.4 * s, cy - 6.5 * s);
+  g.lineTo(cx + 11 * s, cy + 20 * s);
+  g.lineTo(cx - 11 * s, cy + 20 * s);
+  g.closePath();
+  g.fill();
+  g.strokeStyle = 'rgba(40,30,60,0.4)';
+  g.lineWidth = 1;
+  g.stroke();
+  g.strokeStyle = '#1a1622';
+  g.lineWidth = 1.4 * s;
+  g.beginPath();
+  g.moveTo(cx - 8.4 * s, cy - 4 * s);
+  g.lineTo(cx + 9 * s, cy + 8 * s);
+  g.moveTo(cx + 8.4 * s, cy - 4 * s);
+  g.lineTo(cx - 9 * s, cy + 8 * s);
+  g.moveTo(cx - 10 * s, cy + 13 * s);
+  g.lineTo(cx + 10 * s, cy + 13 * s);
+  g.stroke();
+  g.fillStyle = '#8a8296';
+  for (const [dx, dy] of [
+    [0, 2],
+    [-5, -1],
+    [5, -1],
+  ] as const) {
+    g.fillRect(cx + dx * s - 1 * s, cy + dy * s - 1 * s, 2 * s, 2 * s);
+  }
+  for (const dir of [-1, 1]) {
+    g.fillStyle = '#f4f2f8';
+    g.beginPath();
+    g.ellipse(cx + dir * 10.6 * s, cy + 1.5 * s, 3.8 * s, 7.2 * s, -dir * 0.25, 0, TAU);
+    g.fill();
+    g.fillStyle = SKIN;
+    g.beginPath();
+    g.arc(cx + dir * 11.6 * s, cy + 9.6 * s, 1.6 * s, 0, TAU);
+    g.fill();
+  }
+  heldSword(g, cx + 12 * s, cy + 9.6 * s, s, 14, -0.22);
+  faceAt(g, cx, hy + 0.8 * s, s, 5.6, 6.4);
+  // Wavy brown hair, one lock over the brow
+  g.fillStyle = '#6a4228';
+  g.beginPath();
+  g.ellipse(cx, hy - 2 * s, 7 * s, 5.2 * s, 0, Math.PI * 0.95, Math.PI * 2.05);
+  g.fill();
+  for (const dir of [-1, 1]) {
+    g.beginPath();
+    g.moveTo(cx + dir * 5.4 * s, hy - 2 * s);
+    g.quadraticCurveTo(cx + dir * 8.6 * s, hy + 4 * s, cx + dir * 7.4 * s, hy + 10 * s);
+    g.lineTo(cx + dir * 5.6 * s, hy + 6 * s);
+    g.quadraticCurveTo(cx + dir * 6 * s, hy + 1 * s, cx + dir * 4.4 * s, hy - 0.6 * s);
+    g.closePath();
+    g.fill();
+  }
+  g.strokeStyle = '#6a4228';
+  g.lineWidth = 0.8 * s;
+  g.beginPath();
+  g.moveTo(cx + 0.4 * s, hy - 4 * s);
+  g.quadraticCurveTo(cx - 1.4 * s, hy - 1 * s, cx + 0.6 * s, hy + 1.6 * s);
+  g.stroke();
+  // Calm eyes, a faint smile
+  g.strokeStyle = '#3a2416';
+  g.lineWidth = 0.7 * s;
+  g.beginPath();
+  g.moveTo(cx - 4 * s, hy + 1.6 * s);
+  g.quadraticCurveTo(cx - 2.6 * s, hy + 1 * s, cx - 1.3 * s, hy + 1.6 * s);
+  g.moveTo(cx + 1.3 * s, hy + 1.6 * s);
+  g.quadraticCurveTo(cx + 2.6 * s, hy + 1 * s, cx + 4 * s, hy + 1.6 * s);
+  g.moveTo(cx - 1.6 * s, hy + 4.4 * s);
+  g.quadraticCurveTo(cx, hy + 5.2 * s, cx + 1.6 * s, hy + 4.4 * s);
+  g.stroke();
+};
+
+/** Ichigo's two blades: the great cleaver in his right hand, the short one in his left. */
+function ichigoBlades(g: Ctx, cx: number, cy: number, s: number): void {
+  // The cleaver: broad, no guard, its hilt wrapped and trailing cloth
+  g.save();
+  g.translate(cx + 12.4 * s, cy + 9.6 * s);
+  g.rotate(-0.35);
+  g.fillStyle = '#1a1c26';
+  g.fillRect(-0.9 * s, -5.4 * s, 1.8 * s, 5.4 * s);
+  g.fillStyle = '#e8eef8';
+  g.beginPath();
+  g.moveTo(-1.2 * s, 0);
+  g.lineTo(4.2 * s, 0);
+  g.lineTo(4.2 * s, 15 * s);
+  g.lineTo(1.4 * s, 18 * s);
+  g.lineTo(-1.2 * s, 15 * s);
+  g.closePath();
+  g.fill();
+  g.strokeStyle = 'rgba(40,46,60,0.6)';
+  g.lineWidth = 0.5 * s;
+  g.stroke();
+  g.fillStyle = '#14161f';
+  g.fillRect(-1.2 * s, 0, 1.4 * s, 15 * s);
+  g.restore();
+  heldSword(g, cx - 12 * s, cy + 9.6 * s, s, 8, 0.45, '#e8eef8');
+}
+
+/** Ichigo's spiked orange hair. */
+function ichigoHair(g: Ctx, cx: number, hy: number, s: number): void {
+  g.fillStyle = '#ff8a2a';
+  g.beginPath();
+  g.ellipse(cx, hy - 2.4 * s, 6.8 * s, 5 * s, 0, Math.PI * 0.95, Math.PI * 2.05);
+  g.fill();
+  for (let k = 0; k < 9; k++) {
+    const a = Math.PI * (1.02 + (k / 8) * 0.96);
+    poly(g, [
+      [cx + Math.cos(a - 0.17) * 5.4 * s, hy - 1.8 * s + Math.sin(a - 0.17) * 5.4 * s],
+      [cx + Math.cos(a) * (9.4 + (k % 2) * 1.6) * s, hy - 1.8 * s + Math.sin(a) * (9.4 + (k % 2) * 1.6) * s],
+      [cx + Math.cos(a + 0.17) * 5.4 * s, hy - 1.8 * s + Math.sin(a + 0.17) * 5.4 * s],
+    ]);
+    g.fill();
+  }
+  poly(g, [
+    [cx - 5 * s, hy - 3 * s],
+    [cx - 1.4 * s, hy + 1.4 * s],
+    [cx + 0.2 * s, hy - 2.6 * s],
+    [cx + 2.2 * s, hy + 0.8 * s],
+    [cx + 5 * s, hy - 3 * s],
+  ]);
+  g.fill();
+}
+
+/**
+ * Ichigo Kurosaki (a chibi homage): spiked orange hair, a scowl, a long black
+ * coat over his robes, and both of his blades.
+ */
+const ichigo: Draw = (g, w, h) => {
+  const s = 2;
+  const cx = w / 2;
+  const cy = h / 2 + 7;
+  const hy = cy - 13 * s;
+  aura(g, cx, cy, 58, 'rgba(255,106,60,0.18)');
+  // The long black coat, flared
+  g.fillStyle = '#0a0b10';
+  g.beginPath();
+  g.moveTo(cx - 9 * s, cy - 7 * s);
+  g.quadraticCurveTo(cx - 17 * s, cy + 8 * s, cx - 15 * s, cy + 20 * s);
+  g.lineTo(cx + 15 * s, cy + 20 * s);
+  g.quadraticCurveTo(cx + 17 * s, cy + 8 * s, cx + 9 * s, cy - 7 * s);
+  g.closePath();
+  g.fill();
+  g.strokeStyle = 'rgba(255,90,70,0.45)';
+  g.lineWidth = 1;
+  g.stroke();
+  captainBody(g, cx, cy, s, { haori: 'none' });
+  ichigoBlades(g, cx, cy, s);
+  faceAt(g, cx, hy + 0.8 * s, s, 5.6, 6.4);
+  ichigoHair(g, cx, hy, s);
+  browsAt(g, cx, hy + 0.6 * s, s, '#c8641a', 1.8);
+  eyesAt(g, cx, hy + 2 * s, s, '#f0e0c8', '#a06030', 2.5);
+  g.strokeStyle = '#5a3a30';
+  g.lineWidth = 0.6 * s;
+  g.beginPath();
+  g.moveTo(cx - 1.6 * s, hy + 4.8 * s);
+  g.lineTo(cx + 1.6 * s, hy + 4.8 * s);
+  g.stroke();
+};
+
+/** Ichigo with his Hollow mask: white, red stripes down its left side, black eyes with yellow irises. */
+const ichigoMask: Draw = (g, w, h) => {
+  const s = 2;
+  const cx = w / 2;
+  const cy = h / 2 + 7;
+  const hy = cy - 13 * s;
+  aura(g, cx, cy, 64, 'rgba(255,48,72,0.26)');
+  g.fillStyle = '#0a0b10';
+  g.beginPath();
+  g.moveTo(cx - 9 * s, cy - 7 * s);
+  g.quadraticCurveTo(cx - 17 * s, cy + 8 * s, cx - 15 * s, cy + 20 * s);
+  g.lineTo(cx + 15 * s, cy + 20 * s);
+  g.quadraticCurveTo(cx + 17 * s, cy + 8 * s, cx + 9 * s, cy - 7 * s);
+  g.closePath();
+  g.fill();
+  g.strokeStyle = 'rgba(255,48,72,0.7)';
+  g.lineWidth = 1.2;
+  g.stroke();
+  captainBody(g, cx, cy, s, { haori: 'none' });
+  ichigoBlades(g, cx, cy, s);
+  ichigoHair(g, cx, hy, s);
+  // The mask over his face
+  g.fillStyle = '#f8f6f0';
+  g.beginPath();
+  g.ellipse(cx, hy + 1.2 * s, 5.8 * s, 6.6 * s, 0, 0, TAU);
+  g.fill();
+  g.strokeStyle = '#c8202e';
+  g.lineWidth = 0.9 * s;
+  g.beginPath();
+  for (const dx of [-3.6, -2.2]) {
+    g.moveTo(cx + dx * s, hy - 4.6 * s);
+    g.lineTo(cx + dx * s - 0.6 * s, hy + 6 * s);
+  }
+  g.stroke();
+  for (const dir of [-1, 1]) {
+    g.fillStyle = '#0a0b10';
+    g.beginPath();
+    g.ellipse(cx + dir * 2.6 * s, hy + 1.4 * s, 1.8 * s, 1.2 * s, 0, 0, TAU);
+    g.fill();
+    glowDot(g, cx + dir * 2.6 * s, hy + 1.4 * s, 0.7 * s, 0.7 * s, '#ffd84a', 'rgba(255,216,74,0.9)', 4);
+  }
+  g.strokeStyle = '#14161f';
+  g.lineWidth = 0.4 * s;
+  g.beginPath();
+  for (let k = -3; k <= 3; k++) {
+    g.moveTo(cx + k * 0.9 * s, hy + 4.2 * s);
+    g.lineTo(cx + k * 0.9 * s, hy + 6 * s);
+  }
+  g.stroke();
+};
+
 // ------------------------------------------------------------ packing
 
 const ENEMY_DRAW: readonly [string, number, Draw][] = [
@@ -4692,6 +5157,12 @@ const ENEMY_DRAW: readonly [string, number, Draw][] = [
   ['gotei_kensei', 112, kensei],
   ['kyoraku', 128, kyoraku],
   ['jizo', 128, jizo],
+  ['heroes_renji', 112, renji],
+  ['heroes_rukia', 104, rukia],
+  ['heroes_uryu', 112, uryu],
+  ['heroes_aizen', 112, aizen],
+  ['ichigo', 120, ichigo],
+  ['ichigo_mask', 128, ichigoMask],
 ];
 
 function specs(): Spec[] {
@@ -4888,6 +5359,7 @@ export function buildGroundTile(stage: string): Texture {
   if (stage === 'seireitei') seireiteiGround(g, S);
   else if (stage === 'palace') palaceGround(g, S);
   else if (stage === 'silbern') silbernGround(g, S);
+  else if (stage === 'wahrwelt') wahrweltGround(g, S);
   else huecoGround(g, S);
   const tex = Texture.from(c);
   tex.source.addressMode = 'repeat';
@@ -4969,6 +5441,73 @@ function silbernGround(g: Ctx, S: number): void {
     const y = rnd() * S;
     g.fillStyle = `rgba(160,210,255,${0.12 + rnd() * 0.2})`;
     g.fillRect(x - 1, y, 2, 2 + rnd() * 6);
+  }
+}
+
+/**
+ * The Wahrwelt: black stone the Emperor raised from the Soul King's palace,
+ * cracked with red reiatsu, silver stars set in it, and here and there an eye
+ * of The Almighty half open in the rock.
+ */
+function wahrweltGround(g: Ctx, S: number): void {
+  g.fillStyle = '#100e16';
+  g.fillRect(0, 0, S, S);
+  const rnd = seeded(9091);
+  const tile = 128;
+  for (let ty = 0; ty < S; ty += tile) {
+    for (let tx = 0; tx < S; tx += tile) {
+      const v = Math.floor(rnd() * 8);
+      g.fillStyle = `rgb(${22 + v},${19 + v},${30 + v})`;
+      g.fillRect(tx + 2, ty + 2, tile - 4, tile - 4);
+      if (rnd() < 0.16) {
+        // A silver star, the Wandenreich's mark
+        const cx = tx + tile / 2;
+        const cy = ty + tile / 2;
+        g.fillStyle = 'rgba(200,214,240,0.1)';
+        g.beginPath();
+        for (let k = 0; k < 10; k++) {
+          const a = (k / 10) * TAU - Math.PI / 2;
+          const r = k % 2 === 0 ? 30 : 12;
+          g.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r);
+        }
+        g.closePath();
+        g.fill();
+      }
+    }
+  }
+  // Red reiatsu running through the cracks
+  g.lineCap = 'round';
+  for (let k = 0; k < 14; k++) {
+    let x = rnd() * S;
+    let y = rnd() * S;
+    g.strokeStyle = `rgba(255,45,74,${0.12 + rnd() * 0.14})`;
+    g.lineWidth = 1.5 + rnd() * 1.5;
+    g.beginPath();
+    g.moveTo(x, y);
+    for (let q = 0; q < 5; q++) {
+      x += (rnd() - 0.5) * 90;
+      y += (rnd() - 0.5) * 90;
+      g.lineTo(x, y);
+    }
+    g.stroke();
+  }
+  // Seams between the stones
+  g.strokeStyle = 'rgba(160,140,200,0.1)';
+  g.lineWidth = 2;
+  for (let k = 0; k <= S; k += tile) {
+    g.beginPath();
+    g.moveTo(k, 0);
+    g.lineTo(k, S);
+    g.moveTo(0, k);
+    g.lineTo(S, k);
+    g.stroke();
+  }
+  // A few eyes in the stone
+  for (let k = 0; k < 5; k++) {
+    g.save();
+    g.globalAlpha = 0.28;
+    crimsonEye(g, 60 + rnd() * (S - 120), 60 + rnd() * (S - 120), 2.2 + rnd() * 1.5);
+    g.restore();
   }
 }
 

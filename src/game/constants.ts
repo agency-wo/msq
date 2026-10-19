@@ -108,6 +108,7 @@ export const MK_SWORD = 14; // a falling blade (Ōetsu)
 export const MK_WATER = 15; // a lane or a falling torrent of water (Harribel)
 export const MK_GAS = 16; // a cloud of poison gas (Mayuri, his specimens, Konjiki Ashisogi Jizō)
 export const MK_MIST = 17; // Sakanade's sweet mist: it does no harm, it turns you around (Shinji)
+export const MK_SILVER = 18; // the silver arrow: struck, The Almighty falls silent for a while (Uryū)
 
 /** Mark shapes. */
 export const MS_CIRCLE = 0;
@@ -133,6 +134,8 @@ export const EB_WAVE = 4; // sword wave
 export const EB_SWORD = 5; // a flying asauchi (Ōetsu)
 export const EB_THREAD = 6; // a weaver's thread
 export const EB_WATER = 7; // a wave of water (Harribel's Ola Azul)
+export const EB_GETSUGA = 8; // Getsuga Tenshō (Ichigo)
+export const EB_ARROW = 9; // a Quincy's arrow of light (Uryū)
 export const EBF_SLOW = 1;
 export const EBF_ROOT = 2; // roots you briefly
 

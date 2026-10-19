@@ -3,6 +3,7 @@ import { TAU } from '../core/math';
 import { BANKAI_IDS } from '../data/bankai';
 import { ENEMY_INDEX, ENEMY_LIST } from '../data/enemies';
 import { GOTEI_BY_ID, GOTEI_IDS } from '../data/gotei';
+import { HERO_BY_ID, HERO_IDS } from '../data/heroes';
 import { ROYAL_IDS } from '../data/royal';
 import { enemiesInCircle } from './casts/common';
 import {
@@ -46,6 +47,10 @@ import {
   MS_ARC,
   MS_CIRCLE,
   MS_LINE,
+  MK_RAIN,
+  MK_SILVER,
+  EB_GETSUGA,
+  EB_ARROW,
 } from './constants';
 import type { World } from './world';
 
@@ -268,6 +273,215 @@ export function bossAI(w: World, i: number, dist: number): void {
     goteiAI(w, i, GOTEI_IDS[E.variant[i]] ?? 'kenpachi');
   } else if (def.id === 'kyoraku') {
     kyorakuAI(w, i);
+  } else if (def.id === 'defender') {
+    defenderAI(w, i, HERO_IDS[E.variant[i]] ?? 'renji');
+  } else if (def.id === 'ichigo') {
+    ichigoAI(w, i);
+  }
+}
+
+/**
+ * The Wahrwelt's defenders, each with what is canon for them, every attack
+ * warned first. Renji: Zabimaru's segments whipping out, fangs closing in on
+ * you, the bone cannon (Hikotsu Taihō); at half health, Sōō Zabimaru. Rukia:
+ * Tsukishiro's circle of ice, Hakuren's wave; at half, Hakka no Togame
+ * freezes everything near her. Uryū: volleys and Licht Regen's rain; at half
+ * his Antithesis turns his wounds back once, and his silver arrow can silence
+ * The Almighty. Aizen: Kyōka Suigetsu's copies (only one Aizen is real),
+ * Kurohitsugi closing around you, and cuts you never see coming.
+ */
+function defenderAI(w: World, i: number, id: string): void {
+  const E = w.en;
+  const p = w.player;
+  const x = E.x[i];
+  const y = E.y[i];
+  const toP = Math.atan2(p.y - y, p.x - x);
+  const dmg = E.dmg[i];
+  const memo = w.bossMemo(i);
+  if (memo.phase === 0 && E.hp[i] < E.maxHp[i] * 0.5) {
+    memo.phase = 1;
+    E.atkT[i] = 1.2;
+    w.spawnFx(FX_RING, x, y, 0, 0, 0.6, 30, 300, 1, 0, 0, HERO_BY_ID.get(id)?.aura ?? 0xffffff, LAYER_ADD);
+    w.shake = Math.max(w.shake, 6);
+    w.sound('bankai');
+    if (id === 'renji') w.messages.push({ text: 'Bankai: Sōō Zabimaru', kind: 'boss' });
+    else if (id === 'rukia') w.messages.push({ text: 'Bankai: Hakka no Togame', kind: 'boss' });
+    else if (id === 'uryu') {
+      // The Antithesis: half of what he has lost turns back.
+      E.hp[i] = Math.min(E.maxHp[i], E.hp[i] + (E.maxHp[i] - E.hp[i]) * 0.5);
+      w.messages.push({ text: 'Uryū’s Antithesis turns his wounds back', kind: 'boss' });
+    } else w.messages.push({ text: 'Aizen smiles. Which of him is real?', kind: 'boss' });
+  }
+  // Kyōka Suigetsu's copies fade when their time is up.
+  if (id === 'aizen' && memo.t > 0 && w.t > memo.t) {
+    memo.t = 0;
+    w.clearMirages();
+  }
+  if (E.atkT[i] > 0) return;
+  const two = memo.phase === 1;
+  const move = memo.move++ % 3;
+  switch (id) {
+    case 'renji':
+      E.atkT[i] = two ? 2 : 2.5;
+      if (move === 0) {
+        // Zabimaru's segments whip out down a long lane.
+        w.spawnMark(MK_SLASH, MS_LINE, x, y, two ? 46 : 34, 560, toP, 0.75, dmg, MF_ENEMY);
+        w.sound('warn');
+      } else if (move === 1) {
+        // Fangs ring you and close in: slip out through a gap.
+        const n = two ? 12 : 9;
+        const off = w.rng.next() * TAU;
+        for (let k = 0; k < n; k++) {
+          const a = off + (k / n) * TAU;
+          w.spawnEnemyBullet(EB_SWORD, p.x + Math.cos(a) * 250, p.y + Math.sin(a) * 250, -Math.cos(a) * 150, -Math.sin(a) * 150, 7, 3.4, dmg * 0.45);
+        }
+        w.sound('blade');
+      } else {
+        // Hikotsu Taihō: the bone cannon.
+        w.spawnMark(MK_CERO, MS_LINE, x, y, two ? 66 : 54, 900, toP, 1.1, dmg * 1.2, MF_ENEMY);
+        w.sound('warn');
+      }
+      break;
+    case 'rukia':
+      E.atkT[i] = two ? 2.1 : 2.6;
+      if (move === 0) {
+        // Some no Mai, Tsukishiro: a circle of ice rises where you stand.
+        w.spawnMark(MK_ICE, MS_CIRCLE, p.x, p.y, 70, 0, 0, 1.1, dmg, MF_ENEMY | MF_FREEZE);
+        w.sound('warn');
+      } else if (move === 1) {
+        // Tsugi no Mai, Hakuren: a wave of cold rushing out at you.
+        for (let k = -2; k <= 2; k++) {
+          const a = toP + k * 0.12;
+          w.spawnEnemyBullet(EB_ICE, x, y, Math.cos(a) * 190, Math.sin(a) * 190, 12, 3.4, dmg * 0.5, EBF_SLOW);
+        }
+        w.sound('blade');
+      } else if (two) {
+        // Hakka no Togame: everything near her freezes.
+        w.spawnMark(MK_ICE, MS_CIRCLE, x, y, 210, 0, 0, 1.3, dmg * 1.2, MF_ENEMY | MF_FREEZE);
+        w.sound('warn');
+      } else {
+        // Shards of ice all around her.
+        const off = w.rng.next() * TAU;
+        for (let k = 0; k < 8; k++) {
+          const a = off + (k / 8) * TAU;
+          w.spawnEnemyBullet(EB_ICE, x, y, Math.cos(a) * 150, Math.sin(a) * 150, 9, 3.5, dmg * 0.4, EBF_SLOW);
+        }
+        w.sound('blade');
+      }
+      break;
+    case 'uryu':
+      E.atkT[i] = two ? 2 : 2.4;
+      if (move === 0) {
+        // A volley of arrows.
+        for (let k = -2; k <= 2; k++) {
+          const a = toP + k * 0.14;
+          w.spawnEnemyBullet(EB_ARROW, x, y, Math.cos(a) * 260, Math.sin(a) * 260, 7, 2.6, dmg * 0.45);
+        }
+        w.sound('blade');
+      } else if (move === 1) {
+        // Licht Regen: arrows of light rain down around you.
+        for (let k = 0; k < 9; k++) {
+          const a = w.rng.next() * TAU;
+          const d = k === 0 ? 0 : 50 + w.rng.next() * 110;
+          w.spawnMark(MK_RAIN, MS_CIRCLE, p.x + Math.cos(a) * d, p.y + Math.sin(a) * d, 30, 0, 0, 0.9 + k * 0.07, dmg * 0.45, MF_ENEMY);
+        }
+        w.sound('warn');
+      } else if (two && w.power('almighty')) {
+        // The silver arrow: struck by it, The Almighty falls silent for a while.
+        w.spawnMark(MK_SILVER, MS_LINE, x, y, 26, 900, toP, 1, dmg * 0.8, MF_ENEMY);
+        w.sound('warn');
+      } else {
+        // One heavy arrow, fast and straight.
+        w.spawnEnemyBullet(EB_ARROW, x, y, Math.cos(toP) * 330, Math.sin(toP) * 330, 10, 2.8, dmg * 0.8);
+        w.sound('blade');
+      }
+      break;
+    default:
+      // Sōsuke Aizen.
+      E.atkT[i] = two ? 2.2 : 2.8;
+      if (move === 0) {
+        // Kyōka Suigetsu: copies of him step out of the air. Only one Aizen is real.
+        const n = two ? 4 : 3;
+        for (let k = 0; k < n; k++) {
+          const a = w.rng.next() * TAU;
+          w.spawnEnemy(ENEMY_INDEX.mirage, x + Math.cos(a) * 90, y + Math.sin(a) * 90);
+        }
+        memo.t = w.t + 9;
+        w.sound('rise');
+      } else if (move === 1) {
+        // Hadō #90, Kurohitsugi: a black coffin closes around you. Be out of it when it does.
+        const r = 90;
+        for (const a of [0, Math.PI / 2, Math.PI, Math.PI * 1.5]) {
+          const sx = p.x + Math.cos(a) * r - Math.cos(a + Math.PI / 2) * r;
+          const sy = p.y + Math.sin(a) * r - Math.sin(a + Math.PI / 2) * r;
+          w.spawnMark(MK_INK, MS_LINE, sx, sy, 22, r * 2, a + Math.PI / 2, 1.2, dmg * 0.6, MF_ENEMY);
+        }
+        w.spawnMark(MK_INK, MS_CIRCLE, p.x, p.y, 80, 0, 0, 1.45, dmg * 1.1, MF_ENEMY);
+        w.sound('warn');
+      } else {
+        // A cut down a lane, and he is already past you.
+        w.spawnMark(MK_SLASH, MS_LINE, x, y, 36, 420, toP, 0.6, dmg, MF_ENEMY);
+        E.kx[i] = Math.cos(toP) * 1250;
+        E.ky[i] = Math.sin(toP) * 1250;
+        w.sound('warn');
+      }
+      break;
+  }
+}
+
+/** Ichigo's size once his Hollow mask forms (the renderer switches to the masked sprite). */
+export const ICHIGO_MASKED = 34;
+
+/**
+ * Ichigo Kurosaki: Getsuga Tenshō, a crescent of his own power flung at you;
+ * flash steps that close any distance; and a blow from above where you stand.
+ * Below half health his Hollow mask forms: bigger, faster, and the Getsuga
+ * comes three at a time.
+ */
+function ichigoAI(w: World, i: number): void {
+  const E = w.en;
+  const p = w.player;
+  const x = E.x[i];
+  const y = E.y[i];
+  const dmg = E.dmg[i];
+  const masked = E.hp[i] < E.maxHp[i] * 0.5;
+  if (masked && E.r[i] < ICHIGO_MASKED) {
+    E.r[i] = ICHIGO_MASKED;
+    E.spd[i] *= 1.3;
+    E.atkT[i] = 1.2;
+    w.spawnFx(FX_RING, x, y, 0, 0, 0.6, 30, 320, 1, 0, 0, 0xff3048, LAYER_ADD);
+    w.shake = Math.max(w.shake, 8);
+    w.messages.push({ text: 'Ichigo’s Hollow mask forms', kind: 'boss' });
+    w.sound('rise');
+  }
+  if (E.atkT[i] > 0) return;
+  E.atkT[i] = masked ? 1.9 : 2.5;
+  const memo = w.bossMemo(i);
+  const move = memo.move++ % 3;
+  const toP = Math.atan2(p.y - y, p.x - x);
+  switch (move) {
+    case 0: {
+      // Getsuga Tenshō.
+      const n = masked ? 3 : 1;
+      for (let k = 0; k < n; k++) {
+        const a = toP + (k - (n - 1) / 2) * 0.3;
+        w.spawnEnemyBullet(EB_GETSUGA, x, y, Math.cos(a) * 240, Math.sin(a) * 240, 24, 3.6, dmg * 0.9);
+      }
+      w.sound('blade');
+      break;
+    }
+    case 1:
+      // A flash step down a warned lane, and he is already through it.
+      w.spawnMark(MK_SLASH, MS_LINE, x, y, 40, 460, toP, 0.6, dmg, MF_ENEMY);
+      E.kx[i] = Math.cos(toP) * 1400;
+      E.ky[i] = Math.sin(toP) * 1400;
+      w.sound('warn');
+      break;
+    default:
+      // He comes down on you from above: a great blow where you stand.
+      w.spawnMark(MK_STEAM, MS_CIRCLE, p.x, p.y, masked ? 100 : 80, 0, 0, 1.1, dmg * 1.3, MF_ENEMY);
+      w.sound('warn');
+      break;
   }
 }
 

@@ -11,6 +11,7 @@ import { POWER_BY_ID, POWERS, STARTABLE_IDS, STARTING_POWER, upgradeCap } from '
 import { RELIC_BY_ID, RELICS, type RelicDef } from '../data/relics';
 import { PACT_BY_ID, PACTS, type PactDef } from '../data/shrines';
 import { GOTEI_BY_ID, GOTEI_IDS } from '../data/gotei';
+import { HERO_BY_ID, HERO_IDS } from '../data/heroes';
 import { ROYAL_BY_ID, ROYAL_IDS } from '../data/royal';
 import { RESONANCE_BY_ID, RESONANCES, resonanceParts } from '../data/resonances';
 import { BOSS_LINES } from '../data/story';
@@ -341,6 +342,8 @@ export class World {
   rainT = 0;
   /** Sakanade: seconds left with your directions inverted. */
   invertT = 0;
+  /** The silver arrow: seconds The Almighty stays silent. */
+  silverT = 0;
   /** Schutzstaffel: the slots (as bits) of The X-Axis and The Deathdealing, which grow with your wounds. */
   private schutzBits = 0;
   /** The Almighty is on its way: earned, arriving a moment later under its own title card. */
@@ -497,7 +500,9 @@ export class World {
             ? 'A guardian of the palace approaches'
             : this.stage.roster === 'gotei' || this.stage.captains
               ? 'A captain approaches'
-              : 'A medallion bearer approaches';
+              : this.stage.roster === 'heroes'
+                ? 'Someone climbs up to meet you'
+                : 'A medallion bearer approaches';
         this.warnings.push({ at: e.at - 4, text, ev });
       }
       else if (e.kind === 'boss') this.warnings.push({ at: e.at - 4, text: e.warn, ev });
@@ -794,6 +799,7 @@ export class World {
     this.edgePoint(80);
     if (this.stage.roster === 'royal') return this.spawnRoyal(id, hpMul);
     if (this.stage.roster === 'gotei') return this.spawnGotei(id, hpMul);
+    if (this.stage.roster === 'heroes') return this.spawnDefender(id, hpMul);
     const captain = !!this.stage.captains;
     const i = this.spawnEnemy(captain ? ENEMY_INDEX.captain : ENEMY_INDEX.bearer, this.tx, this.ty, false, hpMul);
     if (i < 0) return -1;
@@ -813,7 +819,10 @@ export class World {
 
   /** The bosses a stage draws its three from: the Royal Guard, Silbern's captains, or the six bankai. */
   private rosterIds(): readonly string[] {
-    return this.stage.roster === 'royal' ? ROYAL_IDS : this.stage.roster === 'gotei' ? GOTEI_IDS : BANKAI_IDS;
+    if (this.stage.roster === 'royal') return ROYAL_IDS;
+    if (this.stage.roster === 'gotei') return GOTEI_IDS;
+    if (this.stage.roster === 'heroes') return HERO_IDS;
+    return BANKAI_IDS;
   }
 
   /** One of Silbern's captains comes out to meet you. */
@@ -828,14 +837,43 @@ export class World {
     return i;
   }
 
-  /** A little memory for bosses whose variant byte is taken (it says who they are): their move counter and phase. */
-  private readonly memos = new Map<number, { move: number; phase: number }>();
+  /** One of the Wahrwelt's defenders climbs up to meet you. */
+  private spawnDefender(id: string, hpMul: number): number {
+    const i = this.spawnEnemy(ENEMY_INDEX.defender, this.tx, this.ty, false, hpMul);
+    if (i < 0) return -1;
+    this.en.variant[i] = Math.max(0, HERO_IDS.indexOf(id));
+    this.bossCount++;
+    const info = HERO_BY_ID.get(id);
+    this.banners.push({ kind: 'boss', title: info?.name ?? 'Defender', sub: info?.title ?? '', quote: BOSS_LINES[`heroes:${id}`] });
+    this.shake = Math.max(this.shake, 8);
+    return i;
+  }
 
-  bossMemo(i: number): { move: number; phase: number } {
+  /** Kyōka Suigetsu ends: every copy of Aizen is simply gone. */
+  clearMirages(): void {
+    const E = this.en;
+    for (let k = 0; k < E.n; k++) {
+      if (E.dead[k] || E.type[k] !== ENEMY_INDEX.mirage) continue;
+      E.dead[k] = 1;
+      this.spawnFx(FX_GLOW, E.x[k], E.y[k], 0, 0, 0.4, E.r[k], E.r[k] * 2.4, 0.6, 0, 0, 0xb89aff, LAYER_ADD);
+    }
+  }
+
+  /** The silver arrow: The Almighty falls silent for `secs`. */
+  silver(secs: number): void {
+    if (!this.power('almighty')) return;
+    if (this.silverT <= 0) this.messages.push({ text: 'The silver arrow: The Almighty falls silent', kind: 'boss' });
+    this.silverT = Math.max(this.silverT, secs);
+  }
+
+  /** A little memory for bosses whose variant byte is taken (it says who they are): move counter, phase, a timer. */
+  private readonly memos = new Map<number, { move: number; phase: number; t: number }>();
+
+  bossMemo(i: number): { move: number; phase: number; t: number } {
     const uid = this.en.uid[i];
     let m = this.memos.get(uid);
     if (!m) {
-      m = { move: 0, phase: 0 };
+      m = { move: 0, phase: 0, t: 0 };
       this.memos.set(uid, m);
     }
     return m;
@@ -1356,6 +1394,12 @@ export class World {
     const y = E.y[i];
     const flags = E.flags[i];
     const def = ENEMY_LIST[E.type[i]];
+    if (def.id === 'mirage') {
+      // A copy from Kyōka Suigetsu: it shatters like glass, and was never there.
+      this.spawnFx(FX_GLOW, x, y, 0, 0, 0.35, E.r[i], E.r[i] * 2.4, 0.7, 0, 0, 0xb89aff, LAYER_ADD);
+      this.spawnFx(FX_RING, x, y, 0, 0, 0.3, 6, E.r[i] * 2, 0.8, 0, 0, 0xe8dcff, LAYER_ADD);
+      return;
+    }
     if (flags & FLAG_ZOMBIE) {
       // The risen crumble: no mana, no drops, not a kill.
       this.zombieN = Math.max(0, this.zombieN - 1);
@@ -1399,8 +1443,9 @@ export class World {
         this.addPickup('chestBlack', x + 36, y + 12);
       }
       // The Royal Guard each leave a Fragment of the Soul King you do not have yet (gold once you hold all three).
-      // Silbern's captains carry no bankai to take: two black chests instead.
-      if (def.id === 'gotei') {
+      // Silbern's captains and the Wahrwelt's defenders carry no bankai to take: two black chests instead.
+      if (def.id === 'defender' && HERO_IDS[E.variant[i]] === 'aizen') this.clearMirages();
+      if (def.id === 'gotei' || def.id === 'defender') {
         this.addPickup('chestBlack', x - 36, y - 12);
         this.addPickup('chestBlack', x + 36, y + 12);
       }
@@ -2262,6 +2307,10 @@ export class World {
               B.sub = info?.title ?? '';
             } else if (def.id === 'gotei') {
               const info = GOTEI_BY_ID.get(GOTEI_IDS[E.variant[i]]);
+              B.name = info?.name ?? def.name;
+              B.sub = info?.title ?? '';
+            } else if (def.id === 'defender') {
+              const info = HERO_BY_ID.get(HERO_IDS[E.variant[i]]);
               B.name = info?.name ?? def.name;
               B.sub = info?.title ?? '';
             } else {

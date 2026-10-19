@@ -53,6 +53,7 @@ const ENEMY_SECTIONS: readonly [CodexSection, string][] = [
   ['seireitei', 'Seireitei'],
   ['silbern', 'Silbern'],
   ['palace', 'Soul King Palace'],
+  ['wahrwelt', 'Wahrwelt'],
   ['events', 'Events'],
 ];
 

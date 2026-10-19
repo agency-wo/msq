@@ -1,6 +1,7 @@
 import { BANKAI_BY_ID, BANKAI_IDS } from './bankai';
 import { ENEMY_INDEX, ENEMY_LIST, type EnemyId } from './enemies';
 import { GOTEI_BY_ID, GOTEI_IDS } from './gotei';
+import { HERO_BY_ID, HERO_IDS } from './heroes';
 import { POWER_BY_ID } from './powers';
 import { ROYAL_BY_ID, ROYAL_IDS } from './royal';
 
@@ -10,7 +11,7 @@ import { ROYAL_BY_ID, ROYAL_IDS } from './royal';
  * An entry opens once you have defeated it.
  */
 
-export type CodexSection = 'hueco' | 'seireitei' | 'silbern' | 'palace' | 'events';
+export type CodexSection = 'hueco' | 'seireitei' | 'silbern' | 'palace' | 'wahrwelt' | 'events';
 
 export interface CodexEnemy {
   /** Kill-count key: an enemy id, or `bearer:zanka`, `captain:tengen`, `royal:kirio`. */
@@ -29,6 +30,7 @@ export function enemyKey(type: number, variant: number): string {
   if (id === 'bearer' || id === 'captain') return `${id}:${BANKAI_IDS[variant] ?? ''}`;
   if (id === 'royal') return `royal:${ROYAL_IDS[variant] ?? ''}`;
   if (id === 'gotei') return `gotei:${GOTEI_IDS[variant] ?? ''}`;
+  if (id === 'defender') return `defender:${HERO_IDS[variant] ?? ''}`;
   return id;
 }
 
@@ -81,6 +83,15 @@ export const CODEX_ENEMIES: readonly CodexEnemy[] = [
     boss: true,
   })),
   plain('ichibe', 'palace'),
+  ...HERO_IDS.map((d, v) => ({
+    key: `defender:${d}`,
+    name: HERO_BY_ID.get(d)?.name ?? d,
+    section: 'wahrwelt' as const,
+    type: ENEMY_INDEX.defender,
+    variant: v,
+    boss: true,
+  })),
+  plain('ichigo', 'wahrwelt'),
   plain('rift', 'events'),
   plain('golden', 'events'),
 ];

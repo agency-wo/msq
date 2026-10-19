@@ -29,7 +29,10 @@ export type EnemyId =
   | 'specimen'
   | 'gotei'
   | 'kyoraku'
-  | 'jizo';
+  | 'jizo'
+  | 'defender'
+  | 'ichigo'
+  | 'mirage';
 
 /**
  * chase: walks at you · blink: walks, and every few seconds flash-steps closer ·
@@ -132,6 +135,11 @@ export const ENEMY_LIST: readonly EnemyDef[] = [
   { id: 'kyoraku', name: 'Shunsui Kyōraku', hp: 2600, speed: 42, radius: 32, damage: 36, xp: 180, behavior: 'chase', boss: true, shinigami: true, color: 0xff9ac8 },
   // Mayuri's bankai, Konjiki Ashisogi Jizō: a giant that keeps its distance and breathes poison.
   { id: 'jizo', name: 'Konjiki Ashisogi Jizō', hp: 420, speed: 26, radius: 34, damage: 20, xp: 20, behavior: 'ranged', color: 0xe8c840 },
+  // The Wahrwelt's defenders (variant = which of them, see data/heroes.ts) and Ichigo Kurosaki, who ends the stage.
+  { id: 'defender', name: 'Defender', hp: 2600, speed: 48, radius: 30, damage: 28, xp: 80, behavior: 'chase', boss: true, shinigami: true, color: 0xf4f6fb },
+  { id: 'ichigo', name: 'Ichigo Kurosaki', hp: 2600, speed: 52, radius: 31, damage: 40, xp: 200, behavior: 'chase', boss: true, shinigami: true, color: 0xff6a3c },
+  // Kyōka Suigetsu's copies of Aizen: gone at a touch, and worth nothing.
+  { id: 'mirage', name: 'Kyōka Suigetsu', hp: 1, speed: 48, radius: 28, damage: 8, xp: 0, behavior: 'chase', shinigami: true, color: 0xb89aff },
 ];
 
 export const ENEMY_INDEX: Readonly<Record<EnemyId, number>> = {
@@ -166,4 +174,7 @@ export const ENEMY_INDEX: Readonly<Record<EnemyId, number>> = {
   gotei: 28,
   kyoraku: 29,
   jizo: 30,
+  defender: 31,
+  ichigo: 32,
+  mirage: 33,
 };

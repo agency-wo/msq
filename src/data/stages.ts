@@ -7,7 +7,7 @@ import { FIRST_SHRINE_AT } from './shrines';
  * boss at 20:00 to clear it. Swarm rings, elites, chests and runes in between.
  */
 
-export type StageId = 'hueco' | 'seireitei' | 'silbern' | 'palace';
+export type StageId = 'hueco' | 'seireitei' | 'silbern' | 'palace' | 'wahrwelt';
 
 export interface SpawnPhase {
   from: number;
@@ -49,10 +49,10 @@ export interface StageDef {
   bearerPool?: readonly string[];
   /**
    * Who the 5:00, 10:00 and 15:00 bosses are when they are not medallion
-   * bearers: the Royal Guard (who leave Fragments of the Soul King), or
-   * Silbern's captains (who leave black chests).
+   * bearers: the Royal Guard (who leave Fragments of the Soul King),
+   * Silbern's captains or the Wahrwelt's defenders (who leave black chests).
    */
-  roster?: 'royal' | 'gotei';
+  roster?: 'royal' | 'gotei' | 'heroes';
   /** Clearing this stage unlocks this one. */
   unlockedBy?: StageId;
 }
@@ -261,7 +261,51 @@ const SILBERN: StageDef = {
   unlockedBy: 'seireitei',
 };
 
-export const STAGES: readonly StageDef[] = [HUECO, SEIREITEI, SILBERN, PALACE];
+/**
+ * The Wahrwelt: the world the Emperor raised from the Soul King's palace once
+ * he had taken the Soul King into himself. Every world comes up after him at
+ * once, Soul Reapers and Hollows together; three of Renji, Rukia, Uryū and
+ * Aizen stand in his way, and Ichigo Kurosaki waits at 20:00. The hardest
+ * stage, opened by clearing the Soul King Palace.
+ */
+const WAHRWELT: StageDef = {
+  id: 'wahrwelt',
+  name: 'Wahrwelt',
+  blurb: 'The true world he raised from the Soul King’s palace. Everyone comes for him.',
+  length: LENGTH,
+  phases: [
+    { from: 0, mix: [['officer', 2], ['hollow', 2]] },
+    { from: 45, mix: [['officer', 2], ['hollow', 2], ['hound', 1], ['flash', 1]] },
+    { from: 150, mix: [['officer', 2], ['hound', 2], ['flash', 2], ['brute', 1], ['caster', 1]] },
+    { from: 300, mix: [['flash', 2], ['hound', 2], ['brute', 2], ['caster', 1], ['guard', 1], ['brawler', 1]] },
+    { from: 600, mix: [['flash', 3], ['hound', 2], ['brute', 2], ['caster', 2], ['guard', 2], ['brawler', 2]] },
+    { from: 900, mix: [['flash', 3], ['hound', 3], ['brute', 3], ['caster', 2], ['guard', 3], ['brawler', 2]] },
+  ],
+  events: sorted([
+    ...skeleton(
+      (t) => (t < 400 ? 'hollow' : 'flash'),
+      (t) => (t < 300 ? 'brute' : 'guard'),
+      [1.4, 5, 20],
+    ),
+    {
+      at: LENGTH,
+      kind: 'boss',
+      enemy: 'ichigo',
+      hpMul: 44,
+      final: true,
+      warn: 'Ichigo Kurosaki draws both his blades',
+      sub: 'Substitute Soul Reaper',
+    },
+  ]),
+  hp: 1.35,
+  spawn: 1.1,
+  xp: 1.3,
+  gold: 1.8,
+  roster: 'heroes',
+  unlockedBy: 'palace',
+};
+
+export const STAGES: readonly StageDef[] = [HUECO, SEIREITEI, SILBERN, PALACE, WAHRWELT];
 
 /**
  * Trials: harder runs of a stage, unlocked one at a time by clearing the one

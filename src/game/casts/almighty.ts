@@ -14,6 +14,12 @@ export function castAlmighty(w: World, ps: PowerState): void {
   const st = ps.stats;
   w.foresight = 0.12;
   if (w.almightyT > 0) return;
+  // The silver arrow: for a while it sees nothing, and rewrites nothing.
+  if (w.silverT > 0) {
+    w.silverT -= DT;
+    w.foresight = 0;
+    return;
+  }
   ps.timer -= DT;
   if (ps.timer > 0) return;
   if (w.nearestEnemy(Math.max(w.viewHalfW, w.viewHalfH)) < 0) {

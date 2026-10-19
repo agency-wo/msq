@@ -6,7 +6,7 @@
 /** When a chapter is shown: before a run (on a given stage) or after one, once its condition holds. */
 export type ChapterTrigger =
   | { when: 'before'; stage?: string }
-  | { when: 'after'; condition: 'bankai' | 'hueco' | 'seireitei' | 'almighty' | 'palace' | 'heir' | 'silbern' };
+  | { when: 'after'; condition: 'bankai' | 'hueco' | 'seireitei' | 'almighty' | 'palace' | 'heir' | 'silbern' | 'wahrwelt' };
 
 export interface Chapter {
   id: string;
@@ -154,6 +154,30 @@ export const CHAPTERS: readonly Chapter[] = [
       'The Emperor holds the fragments he took on the way up. Everything ever given away, he has taken back. Now he takes the rest.',
     ],
   },
+  {
+    id: 'wahrwelt',
+    kicker: 'Chapter X',
+    title: 'Wahrwelt',
+    hint: 'Set foot in the Wahrwelt.',
+    trigger: { when: 'before', stage: 'wahrwelt' },
+    text: [
+      'He cut the Soul King in two and took him in, and the palace above the clouds became his: the Wahrwelt, the true world.',
+      'They come up after him anyway. Soul Reapers and Hollows side by side, a Quincy he once named his heir, the prisoner who wanted the same throne long before him, and a boy with orange hair and two blades.',
+      'The Emperor once called that boy his son. Every Quincy is his, in the end.',
+    ],
+  },
+  {
+    id: 'oneworld',
+    kicker: 'Chapter XI',
+    title: 'One World',
+    hint: 'Clear the Wahrwelt.',
+    trigger: { when: 'after', condition: 'wahrwelt' },
+    text: [
+      'The last of them falls, and nothing stands between the Emperor and the world he wants: Soul Society, Hueco Mundo and the world of the living made one, with no death in any of them.',
+      'In another telling, a silver arrow found his heart, and a boy’s blade did the rest.',
+      'Not in this one.',
+    ],
+  },
 ];
 
 export const CHAPTER_BY_ID: ReadonlyMap<string, Chapter> = new Map(CHAPTERS.map((c) => [c.id, c]));
@@ -182,6 +206,11 @@ export const BOSS_LINES: Readonly<Record<string, string>> = {
   'gotei:shinji': '“Careful where you step. Up might not be up for long.”',
   'gotei:kensei': '“You stole the Seireitei out from under us. Time to take it back.”',
   'boss:kyoraku': '“I’d rather not do this. But the old man left me his haori, so here we are.”',
+  'heroes:renji': '“I trained up in that palace for exactly this. Let’s see you dodge it.”',
+  'heroes:rukia': '“Everything my sword touches freezes. You will not be different.”',
+  'heroes:uryu': '“You named me your heir. I came all this way to give it back.”',
+  'heroes:aizen': '“I never meant this throne for you. Look closely: am I even here?”',
+  'boss:ichigo': '“I don’t care whose blood is in me. You’re not taking anyone else.”',
   'boss:grandmaster': '“Every seal in this city answers to me.”',
   'boss:commander': '“I have burned for a thousand years. Tonight, so will you.”',
   'royal:tenjiro': '“Nobody leaves my springs the way they came in.”',

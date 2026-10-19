@@ -5,7 +5,7 @@
  * check every bar without an AudioContext.
  */
 
-export type TrackId = 'title' | 'hueco' | 'seireitei' | 'silbern' | 'palace' | 'boss' | 'bossSei' | 'bossPalace' | 'final' | 'victory' | 'defeat';
+export type TrackId = 'title' | 'hueco' | 'seireitei' | 'silbern' | 'palace' | 'wahrwelt' | 'boss' | 'bossSei' | 'bossPalace' | 'final' | 'victory' | 'defeat';
 
 export type Inst = 'pad' | 'choir' | 'bass' | 'lead' | 'flute' | 'bell' | 'stab' | 'kick' | 'snare' | 'hat' | 'taiko';
 
@@ -485,6 +485,79 @@ const palace: Track = {
   },
 };
 
+// ------------------------------------------------------------- wahrwelt
+
+/**
+ * "Wahrwelt": the world the Emperor made from the Soul King's palace. B minor,
+ * slow and heavy: a choir that never stops, taiko like a heartbeat, deep bells,
+ * and a lead that climbs and falls back.
+ */
+const WAHR_CHORDS: readonly (readonly string[])[] = [
+  ['B2', 'D3', 'F#3'],
+  ['G2', 'B2', 'D3'],
+  ['E2', 'G2', 'B2'],
+  ['F#2', 'A2', 'C#3'],
+  ['B2', 'D3', 'F#3'],
+  ['D3', 'F#3', 'A3'],
+  ['G2', 'B2', 'D3'],
+  ['F#2', 'A2', 'C#3'],
+];
+const WAHR_LEAD: readonly Line[] = [
+  [
+    [0, 'B4', 6],
+    [6, 'C#5', 2],
+    [8, 'D5', 8],
+  ],
+  [
+    [0, 'F#5', 6],
+    [6, 'E5', 2],
+    [8, 'D5', 8],
+  ],
+  [
+    [0, 'E5', 4],
+    [4, 'G5', 4],
+    [8, 'F#5', 4],
+    [12, 'E5', 4],
+  ],
+  [[0, 'C#5', 16]],
+  [
+    [0, 'B4', 4],
+    [4, 'D5', 4],
+    [8, 'F#5', 4],
+    [12, 'B5', 4],
+  ],
+  [
+    [0, 'A5', 8],
+    [8, 'F#5', 8],
+  ],
+  [
+    [0, 'G5', 4],
+    [4, 'F#5', 4],
+    [8, 'E5', 4],
+    [12, 'D5', 4],
+  ],
+  [[0, 'C#5', 16]],
+];
+
+const wahrwelt: Track = {
+  id: 'wahrwelt',
+  bpm: 76,
+  bars: 8,
+  loop: true,
+  scale: [11, 1, 2, 4, 6, 7, 9],
+  bar(i) {
+    const c = WAHR_CHORDS[i % 8];
+    return [
+      ...chord('pad', c, 0, 16, 0.36),
+      ...chord('choir', c, 0, 16, 0.3),
+      { inst: 'bass', step: 0, midi: midi(c[0]) - 12, len: 16, vel: 0.5 },
+      ...hits('taiko', i % 2 === 1 ? [0, 3, 8, 11] : [0, 8], 0.55, [0]),
+      { inst: 'bell', step: 0, midi: midi(c[0]) + 12, len: 8, vel: 0.3 },
+      ...line('lead', WAHR_LEAD[i % 8], 0.4),
+    ];
+  },
+};
+
 // ------------------------------------------------------------------ bosses
 
 /** "Medallion": the boss theme. A minor, driving: an eighth-note bass, brass stabs, choir and a fast lead. */
@@ -620,6 +693,7 @@ export const TRACKS: Readonly<Record<TrackId, Track>> = {
   seireitei,
   silbern,
   palace,
+  wahrwelt,
   boss,
   bossSei,
   bossPalace,
