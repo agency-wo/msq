@@ -2,6 +2,7 @@ import { DT } from '../../config';
 import { TAU } from '../../core/math';
 import {
   FLAG_BOSS,
+  FX_BEAMH,
   FX_CRESCENT,
   FX_FIST,
   FX_GLOW,
@@ -20,7 +21,7 @@ import {
 } from '../constants';
 import type { PowerState } from '../powers';
 import type { World } from '../world';
-import { cooldown, enemiesInArc } from './common';
+import { cooldown, enemiesInArc, enemiesInCircle } from './common';
 
 /**
  * The second wave of Schrift: G, J, L, P, Y and Z. The Love and The Zombie
@@ -383,4 +384,99 @@ export function castZombie(w: World, ps: PowerState, slot: number): void {
   }
   ps.timer = cooldown(w, st.cooldown);
   w.sound('thorn');
+}
+
+// ------------------------------------------------------- The Antithesis
+
+/** A boss takes this much of a reversed wound: a share of its health, but a smaller one. */
+export const BOSS_REVERSAL = 0.25;
+/** The most of your health one reversal turns back. */
+const MAX_WOUND = 0.5;
+
+/**
+ * Turn a wound around onto enemy j: it loses the same share of its health
+ * that you lost (`share` of your maximum), bosses a quarter of that.
+ */
+export function reverseWound(w: World, j: number, share: number): void {
+  const E = w.en;
+  if (E.dead[j]) return;
+  const boss = (E.flags[j] & FLAG_BOSS) !== 0;
+  w.spawnFx(FX_GLOW, E.x[j], E.y[j], 0, 0, 0.4, E.r[j], E.r[j] * 3, 0.9, 0, 0, 0x9fd8ff, LAYER_ADD);
+  w.damageEnemy(j, E.maxHp[j] * share * (boss ? BOSS_REVERSAL : 1), 0, w.player.x, w.player.y, true);
+}
+
+/**
+ * The Antithesis (Uryū Ishida's A): it reverses what has happened. Every
+ * cooldown, the wounds you took since the last reversal turn back: you heal
+ * part of them, and the sturdiest enemies near you lose the same share of
+ * their health that you lost, `damage` times over. Unhurt, it releases a
+ * small pulse instead.
+ */
+export function castAntithesis(w: World, ps: PowerState, slot: number): void {
+  // Only wounds taken while it is yours count.
+  if (ps.counter === 0) {
+    ps.counter = 1;
+    w.takenSince = 0;
+  }
+  ps.timer -= DT;
+  if (ps.timer > 0) return;
+  const st = ps.stats;
+  ps.timer = cooldown(w, ps.attr === 'undo' ? st.cooldown / 1.4 : st.cooldown);
+  const p = w.player;
+  const E = w.en;
+  const wound = Math.min(p.maxHp * MAX_WOUND, w.takenSince);
+  w.takenSince = 0;
+  if (ps.attr === 'undo') {
+    p.slowT = 0;
+    p.rootT = 0;
+  }
+  if (ps.attr === 'turnabout') turnabout(w, ps, slot);
+  const R = st.radius * st.size * w.stats.size;
+  if (wound <= 0) {
+    const n = enemiesInCircle(w, p.x, p.y, R * 0.5);
+    for (let k = 0; k < n; k++) w.damageEnemy(w.qout[k], st.amount + 4 * w.level, 60, p.x, p.y);
+    w.spawnFx(FX_RING, 0, 0, 0, 0, 0.35, 20, R * 0.5, 0.7, 0, 0, 0xcfe8ff, LAYER_ADD, 0, 1);
+    return;
+  }
+  p.hp = Math.min(p.maxHp, p.hp + wound * st.duration);
+  const share = (wound / p.maxHp) * st.damage;
+  const n = enemiesInCircle(w, p.x, p.y, R);
+  const picks = Array.from(w.qout.subarray(0, n))
+    .sort((a, b) => E.hp[b] - E.hp[a])
+    .slice(0, st.count + w.stats.count);
+  for (const j of picks) {
+    const dx = E.x[j] - p.x;
+    const dy = E.y[j] - p.y;
+    const d = Math.hypot(dx, dy);
+    w.spawnFx(FX_BEAMH, p.x + dx / 2, p.y + dy / 2, 0, 0, 0.35, d, d, 0.9, Math.atan2(dy, dx), 0, 0xcfe8ff, LAYER_ADD, 0, 0, 6);
+    reverseWound(w, j, share);
+  }
+  // Mirror of Wounds: every other boss in sight takes it as well.
+  if (ps.attr === 'wounds') {
+    const hw = w.viewHalfW + 30;
+    const hh = w.viewHalfH + 30;
+    for (let i = 0; i < E.n; i++) {
+      if (E.dead[i] || !(E.flags[i] & FLAG_BOSS) || picks.includes(i)) continue;
+      if (Math.abs(E.x[i] - p.x) > hw || Math.abs(E.y[i] - p.y) > hh) continue;
+      reverseWound(w, i, share);
+    }
+  }
+  w.spawnFx(FX_GLOW, 0, 0, 0, 0, 0.5, 30, 160, 0.8, 0, 0, 0xcfe8ff, LAYER_ADD, 0, 1);
+  w.sound('shield');
+}
+
+/** Turnabout: enemy fire close to you is turned around and becomes your own. */
+function turnabout(w: World, ps: PowerState, slot: number): void {
+  const B = w.eb;
+  const p = w.player;
+  for (let i = B.n - 1; i >= 0; i--) {
+    const dx = B.x[i] - p.x;
+    const dy = B.y[i] - p.y;
+    if (dx * dx + dy * dy > 220 * 220) continue;
+    // Back the way it came, and faster: never slower than an arrow worth dodging.
+    const k = Math.max(1.6, 380 / (Math.hypot(B.vx[i], B.vy[i]) || 1));
+    w.spawnProjectile(PK_ARROW, slot, B.x[i], B.y[i], -B.vx[i] * k, -B.vy[i] * k, 1.2, ps.stats.amount + 4 * w.level, 6, 1, 0);
+    w.spawnFx(FX_RING, B.x[i], B.y[i], 0, 0, 0.25, 6, 30, 0.8, 0, 0, 0xcfe8ff, LAYER_ADD);
+    B.remove(i);
+  }
 }

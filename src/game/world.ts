@@ -29,6 +29,7 @@ import { updateMarks, updateZones } from './areas';
 import { rewrite } from './casts/almighty';
 import { burstAt, enemiesInCircle } from './casts/common';
 import { explodeBomb, steerMissile, strikeAt } from './casts/schrift';
+import { reverseWound } from './casts/schrift2';
 import {
   BH_BLINK,
   BH_CHARGE,
@@ -371,6 +372,8 @@ export class World {
   surgeT = 0;
   /** Fragments that already dropped this run. */
   private readonly dropped = new Set<string>();
+  /** The Antithesis: health lost since its last reversal. */
+  takenSince = 0;
   /** Overkill Storm: kills toward the next strike, and a guard against kills inside it starting another. */
   private stormKills = 0;
   private inStorm = false;
@@ -1420,7 +1423,12 @@ export class World {
       if (this.resonances.has('ironice')) this.credit('hyorinmaru', () => this.frostBurst());
       return;
     }
+    const hpBefore = p.hp;
     p.hp -= amount * this.stats.dmgTaken * (1 - this.balanceCut) * this.tm.damageTaken * this.modTaken;
+    const lost = Math.max(0, hpBefore - Math.max(0, p.hp));
+    this.takenSince += lost;
+    // The Scales Turned: part of every wound turns straight back.
+    if (this.resonances.has('scales') && lost > 0) this.credit('antithesis', () => this.scalesTurned(lost));
     p.iframes = PLAYER.iframes;
     this.breakChain();
     this.shake = Math.max(this.shake, 5);
@@ -2451,6 +2459,19 @@ export class World {
     this.sealT = seconds;
     this.buildVersion++;
     return pick.ps.def.name;
+  }
+
+  /**
+   * The Scales Turned: a quarter of every wound is undone at once, and the
+   * nearest enemy loses three times the share of health you lost. What is
+   * undone here no longer waits for The Antithesis to turn it back.
+   */
+  private scalesTurned(lost: number): void {
+    const p = this.player;
+    p.hp = Math.min(p.maxHp, p.hp + lost * 0.25);
+    this.takenSince = Math.max(0, this.takenSince - lost * 0.25);
+    const j = this.nearestEnemy(300);
+    if (j >= 0) reverseWound(this, j, (lost / p.maxHp) * 3);
   }
 
   /** Frozen Steel: everything close freezes, and takes more damage while it is frozen. */

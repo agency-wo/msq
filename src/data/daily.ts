@@ -1,5 +1,4 @@
 import { Rng } from '../core/rng';
-import { STARTABLE_IDS, STARTING_POWER } from './powers';
 import type { StageId } from './stages';
 
 /**
@@ -71,7 +70,29 @@ function hash(s: string): number {
   return h >>> 0;
 }
 
-const DAILY_SCHRIFT = STARTABLE_IDS.filter((id) => id !== STARTING_POWER);
+/**
+ * The attacks a Daily Trial can hand you, fixed so that a day's trial never
+ * changes when a new Schrift joins the game.
+ */
+const DAILY_SCHRIFT: readonly string[] = [
+  'seele',
+  'roar',
+  'thunder',
+  'xaxis',
+  'explode',
+  'heat',
+  'visionary',
+  'fear',
+  'wind',
+  'death',
+  'knowledge',
+  'glutton',
+  'jail',
+  'love',
+  'power',
+  'yourself',
+  'zombie',
+];
 
 /** Today's (or any date's) trial. Players who have not reached a stage yet are sent to one they have. */
 export function dailyFor(date: string, seireiteiOpen: boolean, palaceOpen = false): DailySpec {

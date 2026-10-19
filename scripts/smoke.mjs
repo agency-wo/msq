@@ -230,6 +230,24 @@ try {
   });
   await shot('04c-resonances');
 
+  // 5c2. The Antithesis: a wound turned back, half healed and the rest dealt to the sturdiest enemies.
+  await page.goto(`${BASE}?debug&seed=7&play&god&t=420&give=antithesis7,balance5&res=scales`);
+  await wait(800);
+  const woundAt = await page.evaluate(() => {
+    const w = window.__msq.world;
+    w.player.hp = w.player.maxHp * 0.5;
+    w.takenSince = w.player.maxHp * 0.4;
+    return w.player.hp;
+  });
+  await steer(7500, { radius: 20 });
+  log('antithesis', {
+    ...(await stats()),
+    healed: Math.round((await page.evaluate(() => window.__msq.world.player.hp)) - woundAt),
+    pending: await page.evaluate(() => window.__msq.world.takenSince),
+    dealt: Math.round(await page.evaluate(() => window.__msq.world.damageReport().find((r) => r.id === 'antithesis')?.total ?? 0)),
+  });
+  await shot('04c2-antithesis');
+
   // 5d. Run events: a rift, a golden runner, a Reishi Storm, an ambush.
   for (const kind of ['rift', 'golden', 'storm', 'ambush']) {
     await page.goto(`${BASE}?debug&seed=7&play&god&t=200&give=xaxis5`);

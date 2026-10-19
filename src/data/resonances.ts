@@ -157,6 +157,15 @@ export const RESONANCES: readonly ResonanceDef[] = [
     color: '#fff3a0',
     needB: 3,
   },
+  {
+    id: 'scales',
+    name: 'The Scales Turned',
+    a: 'antithesis',
+    b: 'balance',
+    letters: 'AB',
+    desc: 'Uryū and Haschwalth fought letter against letter, A against B. Whenever you are hurt, a quarter of the wound is undone at once, and the nearest enemy loses three times the share of health you lost.',
+    color: '#d8ecff',
+  },
   // The Emperor's own.
   {
     id: 'otherhalf',

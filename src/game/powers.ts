@@ -18,7 +18,7 @@ import {
   respawnDrones,
 } from './casts/schrift';
 import { castAlmighty } from './casts/almighty';
-import { castDouble, castJail, castLove, castMaw, castPunch, castZombie } from './casts/schrift2';
+import { castAntithesis, castDouble, castJail, castLove, castMaw, castPunch, castZombie } from './casts/schrift2';
 import { castBalance, castIron, castMiracle, castOverkill, castSuperstar, castVollstandig } from './casts/utility';
 import type { World } from './world';
 
@@ -130,6 +130,9 @@ export function updatePowers(w: World): void {
         break;
       case 'zombie':
         castZombie(w, ps, slot);
+        break;
+      case 'antithesis':
+        castAntithesis(w, ps, slot);
         break;
       case 'iron':
         castIron(w, ps);

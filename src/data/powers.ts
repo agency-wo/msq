@@ -479,6 +479,35 @@ const LEVELED: readonly PowerDef[] = [
     ],
   },
   {
+    // The letter A the Emperor gave Uryū Ishida. Every cooldown it reverses what was done to you:
+    // you heal `duration` of the wounds taken since the last reversal (at most half your health), and
+    // the `count` sturdiest enemies within `radius` lose that share of their own health, `damage` times
+    // over (bosses a quarter of it). Unhurt, a pulse of `amount` (+4 per level) close around you.
+    id: 'antithesis',
+    kind: 'antithesis',
+    group: 'schrift',
+    name: 'The Antithesis',
+    letter: 'A',
+    credit: 'Uryū Ishida',
+    desc: 'It reverses what happened: you heal half of the wounds you took, and the sturdiest enemies near you lose the same share of their health.',
+    icon: 'twin',
+    color: '#cfe8ff',
+    maxLevel: 7,
+    base: stats({ damage: 1.5, cooldown: 8, count: 2, radius: 240, duration: 0.5, amount: 40 }),
+    levels: [
+      { desc: '+1 target', add: { count: 1 } },
+      { desc: 'Heals 65% of the wound', add: { duration: 0.15 } },
+      { desc: 'Reverses 1.5 s sooner', add: { cooldown: -1.5 } },
+      { desc: 'The wound returns twice over', add: { damage: 0.5 } },
+      { desc: '+1 target, and a wider reach', add: { count: 1, radius: 40 } },
+    ],
+    attributes: [
+      { id: 'wounds', name: 'Mirror of Wounds', desc: 'Every boss in sight takes the reversed wound as well.' },
+      { id: 'turnabout', name: 'Turnabout', desc: 'Enemy fire close to you turns around and flies back as your own shots.' },
+      { id: 'undo', name: 'Undo', desc: 'Reverses 40% more often, and each reversal undoes the slows and binds on you.' },
+    ],
+  },
+  {
     // count = charges, cooldown = recharge, damage = burst when a hit is blocked
     id: 'iron',
     kind: 'iron',

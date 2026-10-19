@@ -21,6 +21,7 @@ export type PowerKind =
   | 'punch'
   | 'double'
   | 'zombie'
+  | 'antithesis'
   // Utilities
   | 'iron'
   | 'superstar'

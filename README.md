@@ -5,9 +5,11 @@ installable web app so it plays full-screen and offline on iPhone with no App
 Store. Live at **https://play.minarankstudio.com**.
 
 You are the Emperor. Level-ups let you take back the Schrift you gave your
-knights (Auswählen): 18 offensive powers with a Lv 7 attribute pick, plus 6
+knights (Auswählen): 19 offensive powers with a Lv 7 attribute pick, plus 6
 utilities. Some fight for you: The Love charms enemies onto your side, The
-Zombie raises the infected dead, The Yourself sends out doubles. Every run,
+Zombie raises the infected dead, The Yourself sends out doubles, and Uryū
+Ishida's Antithesis reverses your wounds: you heal half, and the sturdiest
+enemies near you lose the same share of their health. Every run,
 three random medallion bearers carry stolen bankai; beat one and its bankai is
 yours. Every bankai, Fragment of the Soul King and awakened Schrift you take
 back in a run counts toward **A · The Almighty** (the HUD shows how many): at
@@ -53,7 +55,8 @@ Sternritter's Schrift with the bankai that knight stole (The Fear with
 Senbonzakura, The Iron with Hyōrinmaru, The Knowledge with Raikōben, The
 Explode with Tengen, The Overkill with Gonryō Rikyū) and the Emperor's own with
 The Almighty (Haschwalth's Balance, Royd Lloyd's Yourself, the stolen Zanka no
-Tachi). Seventeen in all.
+Tachi). Uryū's Antithesis resonates with Haschwalth's Balance, A against B.
+Eighteen in all.
 
 The story is told in short chapters that unlock as you play (the prologue
 before your first run, the invasion before your first Seireitei run, others
