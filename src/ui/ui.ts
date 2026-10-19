@@ -6,6 +6,7 @@ import { PASSIVE_BY_ID } from '../data/passives';
 import { POWER_BY_ID, STARTING_POWER, type PowerDef } from '../data/powers';
 import type { Rarity, RelicDef } from '../data/relics';
 import { RESONANCE_BY_ID, RESONANCES } from '../data/resonances';
+import { PACT_BY_ID, type PactDef } from '../data/shrines';
 import { MAX_TRIAL, STAGES, stageById, TRIAL_NAMES, trialBlurb, type StageId } from '../data/stages';
 import { CHAPTERS, type Chapter } from '../data/story';
 import type { ChestKind, Offer } from '../game/offers';
@@ -51,7 +52,9 @@ interface CardSpec {
   credit?: string;
   badge?: string;
   desc: string;
-  tone?: Rarity | 'attr' | 'bankai' | 'resonance';
+  tone?: Rarity | 'attr' | 'bankai' | 'resonance' | 'pact';
+  /** A pact's price, in red under the description. */
+  cost?: string;
   /** Level after picking this card, out of the most it can reach. */
   pips?: readonly [number, number];
   /** One extra line, such as the resonance this power is half of. */
@@ -110,6 +113,8 @@ export interface ResultSummary {
   /** "Daily Trial · October 19 · Frail + Giants", or "" for any other run. */
   dailyLine: string;
   damage: DamageRow[];
+  /** Pacts made at shrines, by id. */
+  pacts: string[];
   victory: boolean;
   quit: boolean;
   time: number;
@@ -545,6 +550,10 @@ export class UI {
     for (const ps of w.powers) build.append(this.chip(ps.def.icon, ps.def.color, `${ps.def.name} ${ps.level}`, ps.def.letter, ps.def.group === 'bankai'));
     for (const id of w.resonances) build.append(this.resonanceChip(id));
     for (const r of w.relics) build.append(this.chip(r.icon, RARITY_COLOR[r.rarity], r.name));
+    for (const id of w.pacts) {
+      const chip = this.pactChip(id);
+      if (chip) build.append(chip);
+    }
     const resume = button('btn primary', 'Resume');
     resume.addEventListener('click', this.guard(h.onResume));
     const quit = button('btn danger', 'Quit run');
@@ -599,6 +608,10 @@ export class UI {
         build.append(this.chip(pw.icon, pw.color, `${pw.name} ${pw.level}${pw.attr ? ` · ${pw.attr}` : ''}`, pw.letter, pw.bankai));
       }
       for (const id of r.resonances) build.append(this.resonanceChip(id));
+      for (const id of r.pacts) {
+        const chip = this.pactChip(id);
+        if (chip) build.append(chip);
+      }
       p.append(build);
     }
     const retry = button('btn primary', 'Play again');
@@ -633,6 +646,27 @@ export class UI {
     });
     if (result === 'saved') this.toast('Result card saved');
     else if (result === 'failed') this.toast('Could not make the card');
+  }
+
+  /** A Quincy shrine: three pacts, each a gain at a price, or walk away. */
+  showShrine(pacts: readonly PactDef[], onPick: (id: string | null) => void): void {
+    const p = this.open('board shrine');
+    p.append(el('div', 'board-kicker', 'Quincy Shrine'), el('h2', 'board-title', 'Make a pact'));
+    const list = el('div', 'cards');
+    for (const d of pacts) {
+      list.append(this.card({ icon: d.icon, color: d.color, title: d.name, desc: d.gain, cost: d.cost, tone: 'pact' }, () => onPick(d.id)));
+    }
+    list.append(this.card({ icon: 'feather', color: '#9a9fae', title: 'Walk away', desc: 'Leave the shrine as it is.' }, () => onPick(null)));
+    p.append(list);
+    this.lock();
+  }
+
+  private pactChip(id: string): HTMLElement | null {
+    const d = PACT_BY_ID.get(id);
+    if (!d) return null;
+    const chip = this.chip(d.icon, d.color, d.name);
+    chip.classList.add('pact');
+    return chip;
   }
 
   /** Damage by power: a bar each, the biggest first, with its share and damage per second. */
@@ -921,6 +955,7 @@ export class UI {
     head.append(titles);
     if (spec.badge) head.append(el('span', 'card-badge', spec.badge));
     body.append(head, el('p', 'card-desc', spec.desc));
+    if (spec.cost) body.append(el('p', 'card-cost', spec.cost));
     if (spec.pips) {
       const [lv, max] = spec.pips;
       const pips = el('div', 'card-pips');

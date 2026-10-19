@@ -45,6 +45,11 @@ finale, and victory and defeat stingers. It can be turned off in Settings.
 Between the bosses, **events** break the rhythm: a Garganta (a Senkaimon in
 Seireitei) pours out enemies until you destroy it, a Golden Hollow (a Treasury
 Runner) flees with treasure, a Reishi Storm rains mana, or an ambush closes in.
+**Quincy shrines** turn up too (always one around 3:40): walk into one for a
+choice of three pacts, each a real gain at a real price (Blood: +30% damage
+for a quarter of your health; Greed: 60% more gold, sturdier enemies;
+Hunter's: the next boss now, for an extra black chest; and seven more), or
+walk away. Each pact can be made once a run.
 Chain kills without being hit for **Blut Rush**: three tiers of extra damage and
 speed, shown by the counter beside your kills.
 

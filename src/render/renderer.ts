@@ -587,6 +587,11 @@ export class Renderer {
         case 'nuke':
           L.pickups.add(f.nuke, q.x, q.y + bob, 0.5, 0.5, now * 1.5);
           break;
+        case 'shrine':
+          L.auras.add(f.glow, q.x, q.y - 6, 1.8, 2.2, 0, 0x59b8ff, 0.4 + Math.sin(now * 3) * 0.12);
+          L.shadows.add(f.shadow, q.x, q.y + 14, 0.6, 0.6, 0, 0xffffff, 0.7);
+          L.pickups.add(f.shrine, q.x, q.y, 0.6, 0.6);
+          break;
       }
     }
   }
@@ -930,16 +935,17 @@ export class Renderer {
   private drawIndicators(w: World, v: View, sw: number, sh: number): void {
     const f = this.atlas.frames;
     for (const q of w.pickups) {
-      if (q.kind !== 'chest' && q.kind !== 'chestBlack' && q.kind !== 'medallion') continue;
+      if (q.kind !== 'chest' && q.kind !== 'chestBlack' && q.kind !== 'medallion' && q.kind !== 'shrine') continue;
       const dx = q.x - v.cx;
       const dy = q.y - v.cy;
       if (Math.abs(dx) < v.halfW - 8 && Math.abs(dy) < v.halfH - 8) continue;
       const ang = Math.atan2(dy, dx);
       const kx = (sw / 2 - 24) / Math.max(1e-6, Math.abs(Math.cos(ang)));
-      const ky = (dy < 0 ? sh / 2 - 84 : sh / 2 - 48) / Math.max(1e-6, Math.abs(Math.sin(ang)));
+      // Arrows at the top stay below the HUD and its power tray.
+      const ky = (dy < 0 ? sh / 2 - 118 : sh / 2 - 48) / Math.max(1e-6, Math.abs(Math.sin(ang)));
       const k = Math.min(kx, ky);
-      const tint = q.kind === 'chest' ? 0xffd27a : q.kind === 'medallion' ? 0xffe2a0 : 0xff5a78;
-      const s = q.kind === 'medallion' ? 0.9 : 0.7;
+      const tint = q.kind === 'chest' ? 0xffd27a : q.kind === 'medallion' ? 0xffe2a0 : q.kind === 'shrine' ? 0x9fdcff : 0xff5a78;
+      const s = q.kind === 'medallion' || q.kind === 'shrine' ? 0.9 : 0.7;
       this.L.hud.add(f.pointer, sw / 2 + Math.cos(ang) * k, sh / 2 + Math.sin(ang) * k, s, s, ang, tint, 0.95);
     }
   }

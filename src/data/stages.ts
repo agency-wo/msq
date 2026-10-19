@@ -1,4 +1,5 @@
 import type { EnemyId } from './enemies';
+import { FIRST_SHRINE_AT } from './shrines';
 
 /**
  * The stages. Each one is 20 minutes: medallion bearers (random bankai, drawn
@@ -24,6 +25,8 @@ export type TimelineEvent =
   /** `warn` shows 4 s before it arrives, `sub` under its name on the title card. */
   | { at: number; kind: 'boss'; enemy: EnemyId; hpMul: number; final: boolean; warn: string; sub: string }
   | { at: number; kind: 'chest' }
+  /** A Quincy shrine appears near you (see data/shrines.ts). */
+  | { at: number; kind: 'shrine' }
   | { at: number; kind: 'rune'; rune: RuneKind };
 
 export interface StageDef {
@@ -61,6 +64,7 @@ function skeleton(ring: (t: number) => EnemyId, elite: (t: number) => EnemyId, b
   events.push({ at: 300, kind: 'bearer', tier: 0, hpMul: bearerHp[0] });
   events.push({ at: 600, kind: 'bearer', tier: 1, hpMul: bearerHp[1] });
   events.push({ at: 900, kind: 'bearer', tier: 2, hpMul: bearerHp[2] });
+  events.push({ at: FIRST_SHRINE_AT, kind: 'shrine' });
   return events;
 }
 

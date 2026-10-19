@@ -29,7 +29,7 @@ import {
 import { chaptersAfter, chaptersBefore, markChapter } from './save/story';
 import { damageRows, type Toggle, UI } from './ui/ui';
 
-type State = 'title' | 'settings' | 'archives' | 'chronicle' | 'daily' | 'story' | 'playing' | 'paused' | 'levelup' | 'chest' | 'over';
+type State = 'title' | 'settings' | 'archives' | 'chronicle' | 'daily' | 'story' | 'playing' | 'paused' | 'levelup' | 'chest' | 'shrine' | 'over';
 
 function numParam(p: URLSearchParams, key: string): number | undefined {
   const v = p.get(key);
@@ -283,6 +283,10 @@ export class App {
       this.openChest();
       return false;
     }
+    if (w.pendingShrine) {
+      this.openShrine();
+      return false;
+    }
     return true;
   }
 
@@ -303,7 +307,7 @@ export class App {
         w.banners.length = 0;
       }
       // During a run (boards and pause included) the music follows the fight; results and story cards keep their own.
-      const inRun = this.state === 'playing' || this.state === 'paused' || this.state === 'levelup' || this.state === 'chest';
+      const inRun = this.state === 'playing' || this.state === 'paused' || this.state === 'levelup' || this.state === 'chest' || this.state === 'shrine';
       if (inRun) this.music.play(this.runTrack(w));
     }
     this.renderer.render(w, alpha, this.input, performance.now() / 1000, frameSeconds);
@@ -390,7 +394,20 @@ export class App {
     if (!w) return;
     if (w.pendingLevelUps > 0) this.openLevelUp();
     else if (w.pendingChests.length > 0) this.openChest();
+    else if (w.pendingShrine) this.openShrine();
     else this.resume();
+  }
+
+  /** A Quincy shrine: three pacts, or walk away. */
+  private openShrine(): void {
+    const w = this.world;
+    if (!w) return;
+    this.halt('shrine');
+    this.ui.showShrine(w.shrineChoices(), (id) => {
+      w.pendingShrine = false;
+      if (id) w.takePact(id);
+      this.continueFlow();
+    });
   }
 
   private resume(): void {
@@ -430,7 +447,7 @@ export class App {
           bossKills: w.bossKills,
           cleared: victory,
           pickupGold: w.gold,
-          goldMul: goldMul(this.save),
+          goldMul: goldMul(this.save) * w.goldBonus,
           trial: w.trial,
         });
     const record = w.god
@@ -463,6 +480,7 @@ export class App {
         dailyBonus: daily?.bonus ?? 0,
         dailyLine: this.daily ? dailyLine(this.daily) : '',
         damage: damageRows(w),
+        pacts: [...w.pacts],
         endless: w.endless,
         unlocked: record.unlocked ? stageById(record.unlocked).name : null,
         almighty: record.almighty,
@@ -508,7 +526,7 @@ export class App {
   /** Freeze the simulation and the joystick while a screen is up. */
   private halt(state: State): void {
     this.state = state;
-    if (state === 'paused' || state === 'levelup' || state === 'chest') this.music.duck(true);
+    if (state === 'paused' || state === 'levelup' || state === 'chest' || state === 'shrine') this.music.duck(true);
     this.loop.simulate = false;
     this.input.release();
     this.input.enabled = false;

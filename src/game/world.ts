@@ -7,6 +7,7 @@ import { ENEMY_INDEX, ENEMY_LIST } from '../data/enemies';
 import { PASSIVE_BY_ID, PASSIVES } from '../data/passives';
 import { POWER_BY_ID, POWERS, STARTABLE_IDS, STARTING_POWER, upgradeCap } from '../data/powers';
 import { RELIC_BY_ID, RELICS, type RelicDef } from '../data/relics';
+import { PACT_BY_ID, PACTS, type PactDef } from '../data/shrines';
 import { RESONANCE_BY_ID, RESONANCES } from '../data/resonances';
 import { BOSS_LINES } from '../data/story';
 import {
@@ -74,7 +75,7 @@ import { newPowerState, refreshPowerStats, syncPower, updatePowers, type PowerSt
 import { computeStats, damageMultiplier, scaleMods, type StatMods, type Stats } from './stats';
 import { xpToNext } from './xp';
 
-export type PickupKind = 'chest' | 'chestBlack' | 'heart' | 'magnet' | 'nuke' | 'medallion';
+export type PickupKind = 'chest' | 'chestBlack' | 'heart' | 'magnet' | 'nuke' | 'medallion' | 'shrine';
 
 export interface Pickup {
   kind: PickupKind;
@@ -163,6 +164,8 @@ export interface WorldOptions {
 interface Warning {
   at: number;
   text: string;
+  /** The timeline event it warns of, so a boss called early by a pact is not announced again. */
+  ev: number;
 }
 
 function orbTier(v: number): number {
@@ -329,6 +332,20 @@ export class World {
   readonly boss = { active: false, hp: 0, max: 1, name: '', sub: '', final: false, type: -1, variant: 0, uid: -1 };
   /** Bumped whenever a power is gained, levelled or awakened, so the HUD redraws its tray only then. */
   buildVersion = 0;
+  /** Shrines: a pact board is waiting, the pacts made this run, and what they add up to. */
+  pendingShrine = false;
+  readonly pacts = new Set<string>();
+  private readonly pactMods: StatMods[] = [];
+  private pactHp = 1;
+  private pactSpeed = 1;
+  /** Multiplies the gold the run pays out (the Pact of Greed). */
+  goldBonus = 1;
+  /** The Wandenreich Pact: chests pay gold instead of relics. */
+  private chestGold = false;
+  /** The boss a Hunter's Pact called, which owes an extra black chest. */
+  private huntUid = -1;
+  /** Timeline events a pact already brought forward. */
+  private readonly calledEarly = new Set<number>();
   /**
    * How far the Emperor has visibly evolved this run: 1 reishi wings, 2 eyes
    * on his cloak, 3 the Almighty's shadow. A new tier is revealed a moment
@@ -402,10 +419,10 @@ export class World {
 
     this.warnings = [];
     const events = this.stage.events;
-    for (const e of events) {
-      if (e.kind === 'bearer') this.warnings.push({ at: e.at - 4, text: this.stage.captains ? 'A captain approaches' : 'A medallion bearer approaches' });
-      else if (e.kind === 'boss') this.warnings.push({ at: e.at - 4, text: e.warn });
-    }
+    events.forEach((e, ev) => {
+      if (e.kind === 'bearer') this.warnings.push({ at: e.at - 4, text: this.stage.captains ? 'A captain approaches' : 'A medallion bearer approaches', ev });
+      else if (e.kind === 'boss') this.warnings.push({ at: e.at - 4, text: e.warn, ev });
+    });
 
     const start = Math.max(0, opts.startTime ?? 0);
     this.startT = start;
@@ -510,12 +527,16 @@ export class World {
   private runTimeline(): void {
     if (this.stress > 0) return;
     while (this.warnCursor < this.warnings.length && this.t >= this.warnings[this.warnCursor].at) {
-      this.messages.push({ text: this.warnings[this.warnCursor].text, kind: 'boss' });
-      this.warnCursor++;
+      const warn = this.warnings[this.warnCursor++];
+      if (this.calledEarly.has(warn.ev)) continue;
+      this.messages.push({ text: warn.text, kind: 'boss' });
       this.sound('boss');
     }
     const events = this.stage.events;
-    while (this.evCursor < events.length && this.t >= events[this.evCursor].at) this.fire(events[this.evCursor++]);
+    while (this.evCursor < events.length && this.t >= events[this.evCursor].at) {
+      const k = this.evCursor++;
+      if (!this.calledEarly.has(k)) this.fire(events[k]);
+    }
     if (this.t >= this.nextEventT) this.runEvent();
     if (this.endless && this.endlessNext > 0 && this.t >= this.endlessNext) this.endlessWaveTick();
     if (this.victoryT > 0) {
@@ -562,6 +583,9 @@ export class World {
         this.addPickup('chest', p.x + Math.cos(a) * d, p.y + Math.sin(a) * d);
         break;
       }
+      case 'shrine':
+        this.startEvent('shrine');
+        break;
       case 'rune': {
         const a = this.rng.next() * TAU;
         const d = this.rng.range(120, 180);
@@ -582,12 +606,12 @@ export class World {
       return;
     }
     this.nextEventT = this.t + this.rng.range(120, 170);
-    const roll = this.rng.next() * 10;
-    this.startEvent(roll < 3 ? 'rift' : roll < 6 ? 'golden' : roll < 8 ? 'storm' : 'ambush');
+    const roll = this.rng.next() * 12;
+    this.startEvent(roll < 3 ? 'rift' : roll < 6 ? 'golden' : roll < 8 ? 'storm' : roll < 10 ? 'ambush' : 'shrine');
   }
 
   /** Start one run event now. */
-  startEvent(kind: 'rift' | 'golden' | 'storm' | 'ambush'): void {
+  startEvent(kind: 'rift' | 'golden' | 'storm' | 'ambush' | 'shrine'): void {
     const sei = this.stage.id === 'seireitei';
     const p = this.player;
     if (kind === 'rift') {
@@ -610,6 +634,11 @@ export class World {
     } else if (kind === 'storm') {
       this.stormT = 15;
       this.banners.push({ kind: 'event', title: 'Reishi Storm', sub: 'Mana falls like rain.' });
+    } else if (kind === 'shrine') {
+      if (this.stress > 0) return;
+      const a = this.rng.next() * TAU;
+      this.addPickup('shrine', p.x + Math.cos(a) * 210, p.y + Math.sin(a) * 210);
+      this.banners.push({ kind: 'event', title: 'Quincy Shrine', sub: 'Walk to it and make a pact, or pass it by.' });
     } else {
       const heavy = ENEMY_INDEX[sei ? 'guard' : 'brute'];
       this.spawnEnemy(heavy, p.x - 230, p.y, true);
@@ -624,11 +653,11 @@ export class World {
   }
 
   /** A bankai boss: in Seireitei the bankai's own captain defends it; elsewhere a medallion bearer carries it. */
-  private spawnBearer(id: string, hpMul: number): void {
+  private spawnBearer(id: string, hpMul: number): number {
     this.edgePoint(80);
     const captain = !!this.stage.captains;
     const i = this.spawnEnemy(captain ? ENEMY_INDEX.captain : ENEMY_INDEX.bearer, this.tx, this.ty, false, hpMul);
-    if (i < 0) return;
+    if (i < 0) return -1;
     this.en.variant[i] = BANKAI_IDS.indexOf(id);
     this.bossCount++;
     const bankaiName = POWER_BY_ID.get(id)?.name ?? id;
@@ -640,6 +669,7 @@ export class World {
         : { kind: 'boss', title: 'Medallion Bearer', sub: `carries ${bankaiName}`, quote },
     );
     this.shake = Math.max(this.shake, 8);
+    return i;
   }
 
   /**
@@ -762,7 +792,7 @@ export class World {
     // Endless pressure: every minute past the stage's end, the swarm gets sturdier (faster and faster) and hits harder.
     const over = this.endless ? Math.max(0, this.t - this.stage.length) / 60 : 0;
     if (over > 0 && !def.boss) hp *= 1 + 0.15 * over + 0.02 * over * over;
-    if (!def.boss) hp *= this.modHp;
+    if (!def.boss) hp *= this.modHp * this.pactHp;
     let r = def.radius * (def.boss ? 1 : this.modRadius);
     // Boss hits scale with the boss's tier: the first bearer is an introduction, the last boss hits hard.
     let dmg = def.damage * (def.boss ? Math.min(1.6, 0.65 + 0.06 * hpMul) * this.tm.bossDamage : this.tm.damage) * (1 + 0.1 * over);
@@ -781,7 +811,7 @@ export class World {
     E.kx[i] = E.ky[i] = 0;
     E.hp[i] = E.maxHp[i] = hp;
     E.r[i] = r;
-    E.spd[i] = def.speed * (def.boss ? 1 : speedScale(this.t) * this.tm.speed) * this.modSpeed * this.rng.range(0.9, 1.1);
+    E.spd[i] = def.speed * (def.boss ? 1 : speedScale(this.t) * this.tm.speed) * this.modSpeed * this.pactSpeed * this.rng.range(0.9, 1.1);
     E.dmg[i] = dmg;
     E.xp[i] = xp;
     E.flash[i] = 0;
@@ -1153,6 +1183,11 @@ export class World {
       if (carrier) {
         this.addPickup('medallion', x, y, BANKAI_IDS[E.variant[i]]);
         this.addPickup('chestBlack', x + 36, y + 12);
+      }
+      // The Hunter's Pact: the boss it called pays an extra black chest.
+      if (E.uid[i] === this.huntUid) {
+        this.huntUid = -1;
+        this.addPickup('chestBlack', x - 36, y + 12);
       } else if (def.id === 'menos' || def.id === 'grandmaster') {
         this.addPickup('chest', x, y);
       }
@@ -1641,7 +1676,7 @@ export class World {
 
   addPickup(kind: PickupKind, x: number, y: number, bankai?: string): void {
     if (this.pickups.length >= CAP.pickups) {
-      const idx = this.pickups.findIndex((q) => q.kind !== 'chest' && q.kind !== 'chestBlack' && q.kind !== 'medallion');
+      const idx = this.pickups.findIndex((q) => q.kind !== 'chest' && q.kind !== 'chestBlack' && q.kind !== 'medallion' && q.kind !== 'shrine');
       if (idx < 0) return;
       this.pickups.splice(idx, 1);
     }
@@ -1657,7 +1692,7 @@ export class World {
       const dx = p.x - q.x;
       const dy = p.y - q.y;
       const d = Math.hypot(dx, dy);
-      const big = q.kind === 'chest' || q.kind === 'chestBlack' || q.kind === 'medallion';
+      const big = q.kind === 'chest' || q.kind === 'chestBlack' || q.kind === 'medallion' || q.kind === 'shrine';
       if (!big && d < pull && d > 0) {
         const s = Math.min(d, 260 * DT);
         q.x += (dx / d) * s;
@@ -1678,6 +1713,10 @@ export class World {
         break;
       case 'medallion':
         if (q.bankai) this.grantBankai(q.bankai);
+        break;
+      case 'shrine':
+        if (this.stress === 0) this.pendingShrine = true;
+        this.sound('chest');
         break;
       case 'heart':
         this.heal(0.3);
@@ -1702,7 +1741,7 @@ export class World {
   /** A chest queues a relic choice; under Barren (Daily Trial) it pays its gold on the spot instead. */
   private gainChest(kind: ChestKind): void {
     if (this.stress > 0) return;
-    if (this.mods.has('barren')) {
+    if (this.mods.has('barren') || this.chestGold) {
       const amount = kind === 'black' ? 150 : 50;
       this.gold += amount;
       this.messages.push({ text: `Only gold inside: +${amount}`, kind: 'info' });
@@ -2093,6 +2132,114 @@ export class World {
     else if (this.evolution === 2) this.banners.push({ kind: 'evolve', title: 'The Eyes Open', sub: 'Every power returned watches through him.' });
   }
 
+  // -------------------------------------------------------------- shrines
+
+  /** Up to three pacts the shrine offers: ones not made yet this run that would do something now. */
+  shrineChoices(): PactDef[] {
+    const pool = PACTS.filter((d) => !this.pacts.has(d.id) && this.pactPossible(d.id));
+    const picks: PactDef[] = [];
+    while (picks.length < 3 && pool.length > 0) picks.push(pool.splice(this.rng.int(pool.length), 1)[0]);
+    return picks;
+  }
+
+  private pactPossible(id: string): boolean {
+    if (id === 'offering') return this.offering() !== null;
+    if (id === 'hunter') return this.nextBearer() >= 0;
+    if (id === 'wandenreich') return !this.chestGold && !this.mods.has('barren');
+    return true;
+  }
+
+  /** The Offering's two attacks: the strongest that can still grow, and the weakest other one that can lose two levels. */
+  private offering(): { strong: PowerState; weak: PowerState } | null {
+    const attacks = this.powers.filter((ps) => ps.def.group === 'schrift' || ps.def.group === 'art');
+    const strong = attacks.filter((ps) => ps.level < upgradeCap(ps.def)).sort((a, b) => b.level - a.level)[0];
+    const weak = attacks.filter((ps) => ps !== strong && ps.attr === null && ps.level >= 3).sort((a, b) => a.level - b.level)[0];
+    return strong && weak ? { strong, weak } : null;
+  }
+
+  /** The next medallion bearer (or captain) still to come, as an index into the timeline; -1 if none or a boss is out. */
+  private nextBearer(): number {
+    if (this.bossCount > 0) return -1;
+    const events = this.stage.events;
+    for (let k = this.evCursor; k < events.length; k++) {
+      const e = events[k];
+      if (e.kind === 'bearer' && !this.calledEarly.has(k) && this.bearers[e.tier] && e.at - this.t > 20) return k;
+    }
+    return -1;
+  }
+
+  /** Make a pact (each once a run). */
+  takePact(id: string): void {
+    if (this.pacts.has(id) || !this.pactPossible(id)) return;
+    const def = PACT_BY_ID.get(id);
+    if (!def) return;
+    this.pacts.add(id);
+    const p = this.player;
+    switch (id) {
+      case 'blood':
+        this.pactMods.push({ dmg: 0.3, maxHp: -0.25 });
+        break;
+      case 'iron':
+        this.pactMods.push({ maxHp: 0.4, regen: 2, dmg: -0.15 });
+        break;
+      case 'haste':
+        this.pactMods.push({ moveSpeed: 0.2, cdr: 0.1 });
+        this.pactSpeed *= 1.12;
+        break;
+      case 'greed':
+        this.goldBonus *= 1.6;
+        this.pactHp *= 1.2;
+        break;
+      case 'echoes':
+        this.pactMods.push({ count: 1, dmg: -0.2 });
+        break;
+      case 'wandenreich':
+        this.pactMods.push({ xpGain: 0.3 });
+        this.chestGold = true;
+        break;
+      case 'offering': {
+        const o = this.offering();
+        if (!o) break;
+        o.weak.level -= 2;
+        refreshPowerStats(o.weak);
+        syncPower(this, this.powers.indexOf(o.weak));
+        this.addPower(o.strong.def.id);
+        this.addPower(o.strong.def.id);
+        break;
+      }
+      case 'hunter': {
+        const k = this.nextBearer();
+        const e = this.stage.events[k];
+        if (!e || e.kind !== 'bearer') break;
+        this.calledEarly.add(k);
+        const i = this.spawnBearer(this.bearers[e.tier], e.hpMul);
+        if (i >= 0) this.huntUid = this.en.uid[i];
+        break;
+      }
+      case 'gamble':
+        if (this.rng.next() < 0.5) {
+          const pool = RELICS.filter((r) => r.rarity === 'legendary' && !this.relics.some((o) => o.id === r.id));
+          const won = pool.length > 0 ? pool[this.rng.int(pool.length)] : null;
+          if (won) this.addRelic(won.id);
+          else this.gold += 200;
+          this.messages.push({ text: won ? `The gamble pays: ${won.name}` : 'The gamble pays: 200 gold', kind: 'info' });
+        } else {
+          p.hp = Math.max(1, p.hp * 0.5);
+          this.messages.push({ text: 'The gamble takes its price', kind: 'boss' });
+        }
+        break;
+      case 'renewal':
+        p.hp = p.maxHp;
+        this.rerolls++;
+        this.xp = 0;
+        break;
+    }
+    this.recomputeStats();
+    this.buildVersion++;
+    this.sound('bankai');
+    this.spawnFx(FX_GLOW, 0, 0, 0, 0, 0.7, 30, 360, 0.9, 0, 0, 0x9fdcff, LAYER_ADD, 0, 1);
+  }
+
   /** A power's slot in `powers`, or 255 when you do not hold it. */
   slotOf(id: string): number {
     const k = this.powers.findIndex((ps) => ps.def.id === id);
@@ -2200,6 +2347,7 @@ export class World {
     // Frail (Daily Trial): less health, steady regeneration. Barren: no relics, faster level-ups.
     if (this.mods.has('frail')) mods.push({ maxHp: -0.4, regen: 1.5 });
     if (this.mods.has('barren')) mods.push({ xpGain: 0.3 });
+    mods.push(...this.pactMods);
     const p = this.player;
     const prevMax = p.maxHp;
     const prevCount = this.stats.count;

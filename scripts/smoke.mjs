@@ -76,6 +76,7 @@ async function shotBoard() {
     const s = document.querySelector('.screen');
     if (!s) return null;
     if (s.classList.contains('chest-brown') || s.classList.contains('chest-black')) return 'chest';
+    if (s.classList.contains('shrine')) return 'shrine';
     const kicker = s.querySelector('.board-kicker')?.textContent ?? '';
     return kicker.startsWith('Awaken') ? 'attribute' : 'levelup';
   });
@@ -93,7 +94,7 @@ async function steer(ms, { cx = 195, cy = 620, radius = 45 } = {}) {
   while (Date.now() - start < ms) {
     const s = await state();
     if (s === 'over') break;
-    if (s === 'levelup' || s === 'chest') {
+    if (s === 'levelup' || s === 'chest' || s === 'shrine') {
       if (down) {
         await touch('touchEnd');
         down = false;
@@ -436,6 +437,21 @@ try {
   }
   log('almighty stop', { stopped, ...(await stats()) });
   await shot('15-almighty-stop');
+
+  // A Quincy shrine: walk into it and make a pact.
+  await page.goto(`${BASE}?debug&seed=7&play&god&give=explode4,fear3`);
+  await wait(800);
+  await page.evaluate(() => {
+    const w = window.__msq.world;
+    w.addPickup('shrine', w.player.x, w.player.y);
+  });
+  await page.waitForSelector('.screen.shrine .card');
+  await wait(450);
+  const pacts = await page.$$eval('.screen.shrine .card-title', (t) => t.map((x) => x.textContent));
+  await shot('17-shrine');
+  await page.tap('.screen.shrine .card:nth-child(1)');
+  await wait(300);
+  log('shrine', { pacts, made: await page.evaluate(() => [...window.__msq.world.pacts]), state: await state() });
 
   // The Emperor evolves: three awakened Schrift bring wings and eyes; The Almighty, his shadow.
   await page.goto(`${BASE}?debug&seed=7&play&god&give=heilig7,explode7,fear7`);

@@ -1151,6 +1151,47 @@ const frost: Draw = (g, w) => {
 
 // ------------------------------------------------------------- the hero
 
+/** A Quincy shrine: a stone plinth with the five-pointed cross burning blue above it. */
+const shrine: Draw = (g, w, h) => {
+  const cx = w / 2;
+  const stone = g.createLinearGradient(0, h * 0.55, 0, h);
+  stone.addColorStop(0, '#a3abc0');
+  stone.addColorStop(1, '#4b5266');
+  g.fillStyle = stone;
+  g.beginPath();
+  g.moveTo(cx - 11, h * 0.56);
+  g.lineTo(cx + 11, h * 0.56);
+  g.lineTo(cx + 16, h - 3);
+  g.lineTo(cx - 16, h - 3);
+  g.closePath();
+  g.fill();
+  g.strokeStyle = 'rgba(20,24,36,0.6)';
+  g.lineWidth = 1;
+  g.stroke();
+  g.fillStyle = '#d3d9e6';
+  g.fillRect(cx - 15, h * 0.52, 30, 4);
+  g.fillStyle = 'rgba(20,24,36,0.35)';
+  g.fillRect(cx - 7, h * 0.66, 14, 2);
+  g.save();
+  g.shadowColor = '#59b8ff';
+  g.shadowBlur = 9;
+  g.strokeStyle = '#bfe6ff';
+  g.lineWidth = 2;
+  g.beginPath();
+  g.arc(cx, h * 0.29, 12, 0, TAU);
+  g.stroke();
+  g.fillStyle = '#eaf7ff';
+  g.beginPath();
+  for (let k = 0; k < 10; k++) {
+    const a = (k / 10) * TAU - Math.PI / 2;
+    const r = k % 2 === 0 ? 10.5 : 4.2;
+    g.lineTo(cx + Math.cos(a) * r, h * 0.29 + Math.sin(a) * r);
+  }
+  g.closePath();
+  g.fill();
+  g.restore();
+};
+
 /** A crimson eye with a slit pupil, for the Emperor's evolutions. */
 function crimsonEye(g: Ctx, x: number, y: number, s: number): void {
   g.save();
@@ -2838,6 +2879,7 @@ function specs(): Spec[] {
     { name: 'player', w: 60, h: 72, draw: hero },
     { name: 'player_f', w: 60, h: 72, draw: flash(hero) },
     { name: 'evo_wings', w: 120, h: 60, draw: evoWings },
+    { name: 'shrine', w: 48, h: 64, draw: shrine },
     { name: 'evo_eyes', w: 60, h: 72, draw: evoEyes },
     { name: 'evo_shadow', w: 112, h: 112, draw: evoShadow },
     { name: 'glow', w: 64, h: 64, draw: glow },

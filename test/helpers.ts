@@ -173,6 +173,8 @@ export function resolveChoices(w: World, pick: Strategy): void {
     const [relic] = w.relicChoices(kind);
     if (relic) w.addRelic(relic.id);
   }
+  // The bot walks past shrines, so balance reports measure the game without pacts.
+  w.pendingShrine = false;
 }
 
 /** Advance `seconds` of game time (or until the run ends). */

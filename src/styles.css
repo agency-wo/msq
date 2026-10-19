@@ -1416,6 +1416,34 @@ button:focus-visible {
   box-shadow: 0 0 6px var(--accent);
 }
 
+.card-cost {
+  margin: 3px 0 0;
+  color: #ff8b9b;
+  font-size: 13px;
+  line-height: 1.3;
+}
+
+.card-cost::before {
+  content: 'Price: ';
+  font-weight: 800;
+}
+
+.card.tone-pact {
+  border-color: rgba(159, 220, 255, 0.7);
+  box-shadow:
+    0 0 0 3px var(--ink),
+    0 0 22px rgba(89, 184, 255, 0.22);
+}
+
+.shrine .board-title {
+  color: #e6f6ff;
+  text-shadow: 0 0 16px rgba(89, 184, 255, 0.6);
+}
+
+.chip.pact {
+  border-color: rgba(159, 220, 255, 0.55);
+}
+
 .card-note {
   display: inline-block;
   margin-top: 6px;
