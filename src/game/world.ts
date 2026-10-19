@@ -82,6 +82,7 @@ import {
 } from './constants';
 import { blinkAI, bossAI, casterAI, chargeAI, COMMANDER_HEAT, eliteAI, eventAI, HARRIBEL_RELEASED, ICHIGO_MASKED, updateEnemyBullets } from './hostile';
 import { generateOffers, rollRelics, type ChestKind, type Offer } from './offers';
+import { AYON_RAGE, NEL_RELEASED, OVERKILL_MAX } from './signatures';
 import { EBulletPool, EnemyPool, FxPool, HITS, MarkPool, NumberRing, OrbPool, ProjPool, ZonePool } from './pools';
 import { newPowerState, refreshPowerStats, syncPower, updatePowers, type PowerState } from './powers';
 import { computeStats, damageMultiplier, scaleMods, type StatMods, type Stats } from './stats';
@@ -112,6 +113,17 @@ export interface Banner {
   sub: string;
   /** What a boss says (or does) as it arrives. */
   quote?: string;
+}
+
+/** See World.bossMemo. */
+export interface BossMemo {
+  move: number;
+  phase: number;
+  t: number;
+  u: number;
+  n: number;
+  guard: number;
+  guardMul: number;
 }
 
 export type SoundName =
@@ -885,8 +897,16 @@ export class World {
     this.silverT = Math.max(this.silverT, secs);
   }
 
-  /** A little memory for bosses whose variant byte is taken (it says who they are): move counter, phase, a timer. */
-  private readonly memos = new Map<number, { move: number; phase: number; t: number }>();
+  /**
+   * A little memory for bosses whose variant byte is taken (it says who they
+   * are): move counter, phase, a timer and a second one, a counter, and a
+   * guard (until when, and what share of each blow gets through).
+   */
+  private readonly memos = new Map<number, BossMemo>();
+  /** The Overkill: the slot Driscoll was last seen in, so deaths near him can feed him (checked before use; -1 if none). */
+  overkillAt = -1;
+  /** Suì-Fēng's Hōmonka: while it lasts, her next sting strikes three times as hard. */
+  homonkaT = 0;
 
   /**
    * Which form a boss is in: 1 once it has shown what it was holding back at
@@ -897,18 +917,74 @@ export class World {
     const id = ENEMY_LIST[E.type[i]]?.id;
     if (id === 'ichigo') return E.r[i] >= ICHIGO_MASKED ? 1 : 0;
     if (id === 'harribel') return E.r[i] >= HARRIBEL_RELEASED ? 1 : 0;
+    if (id === 'ayon') return E.r[i] >= AYON_RAGE ? 1 : 0;
+    if (id === 'nel') return E.r[i] >= NEL_RELEASED ? 1 : 0;
     if (id === 'royal' && ROYAL_IDS[E.variant[i]] === 'kirio') return E.r[i] < 26 ? 1 : 0;
     return this.memos.get(E.uid[i])?.phase ?? 0;
   }
 
-  bossMemo(i: number): { move: number; phase: number; t: number } {
+  bossMemo(i: number): BossMemo {
     const uid = this.en.uid[i];
     let m = this.memos.get(uid);
     if (!m) {
-      m = { move: 0, phase: 0, t: 0 };
+      m = { move: 0, phase: 0, t: 0, u: 0, n: 0, guard: 0, guardMul: 1 };
       this.memos.set(uid, m);
     }
     return m;
+  }
+
+  /** A boss whose skin has turned to iron (or the like): your blows barely mark it for now. */
+  guarded(i: number): boolean {
+    const m = this.memos.get(this.en.uid[i]);
+    return !!m && m.guard > this.t;
+  }
+
+  /** The mark heals the enemy in slot i by `share` of its health if it lands on you. */
+  drainMark(m: number, i: number, share: number): void {
+    if (m < 0) return;
+    this.marks.owner[m] = this.en.uid[i];
+    this.marks.drain[m] = share;
+  }
+
+  /** A blow that wounded you heals the enemy that struck it (by uid), if it still stands. */
+  drainTo(uid: number, share: number): void {
+    const E = this.en;
+    for (let i = 0; i < E.n; i++) {
+      if (E.uid[i] !== uid || E.dead[i]) continue;
+      E.hp[i] = Math.min(E.maxHp[i], E.hp[i] + E.maxHp[i] * share);
+      this.spawnFx(FX_GLOW, E.x[i], E.y[i], 0, 0, 0.4, E.r[i], E.r[i] * 2.6, 0.7, 0, 0, 0xd8203a, LAYER_ADD);
+      return;
+    }
+  }
+
+  /** Suì-Fēng's sting landed. Returns how hard it hits: three times on the Hōmonka, which it then uses up. */
+  sting(): number {
+    if (this.homonkaT > 0) {
+      this.homonkaT = 0;
+      this.messages.push({ text: 'Nigeki Kessatsu: the second sting', kind: 'boss' });
+      return 3;
+    }
+    this.homonkaT = 6;
+    this.messages.push({ text: 'The Hōmonka: a butterfly crest marks you', kind: 'boss' });
+    return 1;
+  }
+
+  /** The Overkill: a death near Driscoll makes him bigger and harder hitting (up to OVERKILL_MAX deaths). */
+  private feedOverkill(x: number, y: number): void {
+    const j = this.overkillAt;
+    const E = this.en;
+    if (j < 0) return;
+    if (j >= E.n || E.dead[j] || ENEMY_LIST[E.type[j]].id !== 'bearer' || BANKAI_IDS[E.variant[j]] !== 'gonryo') {
+      this.overkillAt = -1;
+      return;
+    }
+    if ((E.x[j] - x) ** 2 + (E.y[j] - y) ** 2 > 320 * 320) return;
+    const m = this.bossMemo(j);
+    if (m.n >= OVERKILL_MAX) return;
+    m.n++;
+    E.dmg[j] *= 1.012;
+    E.r[j] = Math.min(E.r[j] + 0.12, 38);
+    if (m.n % 15 === 0) this.messages.push({ text: `The Overkill: Driscoll grows (${m.n} deaths)`, kind: 'boss' });
   }
 
   /** Sakanade's mist: up is down and left is right for a while. */
@@ -1336,6 +1412,11 @@ export class World {
     const crit = !noCrit && this.rng.next() < this.stats.critChance;
     const vul = E.vulnT[i] > 0 ? 1 + E.vulnK[i] : 1;
     let dmg = base * this.dmgMul * vul * (crit ? this.stats.critMult : 1);
+    // A boss on guard (Cang Du's iron skin) lets only part of each blow through.
+    if (E.flags[i] & FLAG_BOSS) {
+      const m = this.memos.get(E.uid[i]);
+      if (m && m.guard > this.t) dmg *= m.guardMul;
+    }
     // Schutzstaffel: up to twice as hard the closer you are to falling.
     if (this.schutzBits !== 0 && this.dmgSlot < 31 && (this.schutzBits >>> this.dmgSlot) & 1) dmg *= 2 - Math.max(0, this.player.hp) / this.player.maxHp;
     this.dmgBy[this.dmgSlot] += Math.min(dmg, Math.max(0, E.hp[i]));
@@ -1476,6 +1557,7 @@ export class World {
       this.spawnMark(MK_GAS, MS_CIRCLE, x, y, 46, 0, 0, 0.7, E.dmg[i] * 1.1, MF_ENEMY);
     }
     this.spawnOrb(x, y, E.xp[i]);
+    if (!(flags & FLAG_BOSS)) this.feedOverkill(x, y);
     if (E.volT[i] > 0) this.queueBurst(x, y, 44 * this.stats.size, E.volDmg[i]);
     if (flags & FLAG_BOSS) {
       this.bossCount = Math.max(0, this.bossCount - 1);
@@ -1504,7 +1586,7 @@ export class World {
       if (E.uid[i] === this.huntUid) {
         this.huntUid = -1;
         this.addPickup('chestBlack', x - 36, y + 12);
-      } else if (def.id === 'menos' || def.id === 'grandmaster' || def.id === 'vasto') {
+      } else if (def.id === 'ayon' || def.id === 'unohana' || def.id === 'nel') {
         this.addPickup('chest', x, y);
       }
       for (let k = 0; k < 10; k++) {
@@ -1918,6 +2000,8 @@ export class World {
     M.shape[i] = shape;
     M.flags[i] = flags;
     M.src[i] = this.dmgSlot;
+    M.owner[i] = -1;
+    M.drain[i] = 0;
     return i;
   }
 
@@ -2247,6 +2331,7 @@ export class World {
       if (this.almightyDue <= 0) this.grantAlmighty();
     }
     if (this.surgeT > 0) this.surgeT -= DT;
+    if (this.homonkaT > 0) this.homonkaT -= DT;
     if (this.sealT > 0) {
       this.sealT -= DT;
       if (this.sealT <= 0) {

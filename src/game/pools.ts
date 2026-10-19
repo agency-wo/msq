@@ -213,6 +213,9 @@ export class MarkPool extends Pool {
   readonly shape = this.u8();
   readonly flags = this.u8();
   readonly src = this.u8();
+  /** The enemy (uid) that cast it, when it matters, else -1; and the share of its health it heals if it lands on you. */
+  readonly owner = this.i32();
+  readonly drain = this.f32();
 }
 
 export class EBulletPool extends Pool {

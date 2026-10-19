@@ -51,7 +51,7 @@ describe('Boss Rush', () => {
       for (const i of bosses(w)) w.killEnemy(i);
       steps(w, 2);
     }
-    expect(kinds[2]).toContain(ENEMY_INDEX.grandmaster);
+    expect(kinds[2]).toContain(ENEMY_INDEX.unohana);
     expect(kinds[3]).toEqual([ENEMY_INDEX.commander]);
     steps(w, Math.round(3 / DT));
     expect(w.over).toBe('victory');

@@ -109,6 +109,7 @@ export const MK_WATER = 15; // a lane or a falling torrent of water (Harribel)
 export const MK_GAS = 16; // a cloud of poison gas (Mayuri, his specimens, Konjiki Ashisogi Jizō)
 export const MK_MIST = 17; // Sakanade's sweet mist: it does no harm, it turns you around (Shinji)
 export const MK_SILVER = 18; // the silver arrow: struck, The Almighty falls silent for a while (Uryū)
+export const MK_STING = 19; // Suì-Fēng's sting: the first marks you with the Hōmonka, a second on the mark strikes three times as hard
 
 /** Mark shapes. */
 export const MS_CIRCLE = 0;

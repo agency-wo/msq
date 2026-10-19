@@ -50,8 +50,8 @@ export const CODEX_ENEMIES: readonly CodexEnemy[] = [
     variant: BANKAI_IDS.indexOf(b),
     boss: true,
   })),
-  plain('menos', 'hueco'),
-  plain('vasto', 'hueco'),
+  plain('ayon', 'hueco'),
+  plain('nel', 'hueco'),
   plain('harribel', 'hueco'),
   ...(['officer', 'flash', 'caster', 'guard', 'ashen'] as const).map((id) => plain(id, 'seireitei')),
   ...BANKAI_IDS.filter((b) => b !== 'zanka').map((b) => ({
@@ -62,7 +62,7 @@ export const CODEX_ENEMIES: readonly CodexEnemy[] = [
     variant: BANKAI_IDS.indexOf(b),
     boss: true,
   })),
-  plain('grandmaster', 'seireitei'),
+  plain('unohana', 'seireitei'),
   plain('commander', 'seireitei'),
   ...(['brawler', 'specimen', 'jizo'] as const).map((id) => plain(id, 'silbern')),
   ...GOTEI_IDS.map((g, v) => ({

@@ -86,9 +86,11 @@ function sorted(events: TimelineEvent[]): readonly TimelineEvent[] {
 /**
  * Hueco Mundo: the Hollow desert, where the Wandenreich made its camp. Its
  * 5:00, 10:00 and 15:00 bosses are three of the five Sternritter who stole a
- * bankai with a medallion (each takes a careful player about 35-50 s). A
- * Vasto Lorde rises at 18:00, and at 20:00 Tier Harribel, the queen of Las
- * Noches, ends the stage (about 45 s against a full build with three bankai).
+ * bankai with a medallion (each takes a careful player about 35-50 s). Ayon,
+ * the beast Harribel's Fracción make from their own left arms, comes with the
+ * third; Neliel, once the Tercera Espada, stands in the way at 18:00, and at
+ * 20:00 Tier Harribel, the queen of Las Noches, ends the stage (about 45 s
+ * against a full build with three bankai).
  */
 const HUECO: StageDef = {
   id: 'hueco',
@@ -109,8 +111,8 @@ const HUECO: StageDef = {
       (t) => (t < 300 ? 'hollow' : 'brute'),
       [1, 3.4, 14],
     ),
-    { at: 905, kind: 'boss', enemy: 'menos', hpMul: 3, final: false, warn: 'A Menos Grande rises', sub: 'Its Cero burns in a straight line' },
-    { at: 1080, kind: 'boss', enemy: 'vasto', hpMul: 14, final: false, warn: 'A Vasto Lorde rises from the sand', sub: 'The last form a Hollow can take' },
+    { at: 905, kind: 'boss', enemy: 'ayon', hpMul: 3.4, final: false, warn: 'Harribel’s Fracción give their left arms: Ayon rises', sub: 'The beast of three left arms' },
+    { at: 1080, kind: 'boss', enemy: 'nel', hpMul: 14, final: false, warn: 'Neliel stands between you and Las Noches', sub: 'Once the Tercera Espada' },
     {
       at: LENGTH,
       kind: 'boss',
@@ -133,8 +135,8 @@ const HUECO: StageDef = {
  * Seireitei: the Soul Reapers' walled city, at night. Unlocked by clearing
  * Hueco Mundo, and harder: tougher soldiers, flash-steps that close the gap,
  * Kidō casters that shoot from a distance. The bankai bosses here are the
- * captains themselves, defending their own bankai; the Kidō Grandmaster
- * escorts the third, and Captain-Commander Yamamoto waits at 20:00.
+ * captains themselves, defending their own bankai; Retsu Unohana comes with
+ * the third, and Captain-Commander Yamamoto waits at 20:00.
  */
 const SEIREITEI: StageDef = {
   id: 'seireitei',
@@ -155,8 +157,8 @@ const SEIREITEI: StageDef = {
       (t) => (t < 300 ? 'officer' : 'guard'),
       [1.15, 4, 16],
     ),
-    // The third captain comes with the Kidō Corps instead of a Menos.
-    { at: 905, kind: 'boss', enemy: 'grandmaster', hpMul: 4, final: false, warn: 'The Kidō Corps arrives', sub: 'Its seal binds you where you stand' },
+    // The third captain comes with Unohana, who closes her soldiers' wounds as fast as you open them.
+    { at: 905, kind: 'boss', enemy: 'unohana', hpMul: 5, final: false, warn: 'Retsu Unohana comes to tend her soldiers', sub: 'Captain of the 4th Division' },
     { at: 908, kind: 'elite', enemy: 'guard' },
     {
       at: LENGTH,

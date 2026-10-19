@@ -302,7 +302,7 @@ try {
       powers: ['heilig', 'xaxis', 'explode', 'fear', 'heat', 'wind', 'iron', 'senbonzakura', 'hyorinmaru', 'zanka', 'tengen'],
       relics: ['crown', 'tube', 'sandals'],
       resonances: ['firestorm'],
-      kills: { hollow: 420, hound: 80, brute: 30, volatile: 12, 'bearer:zanka': 2, 'bearer:tengen': 1, menos: 1, vasto: 1, rift: 2 },
+      kills: { hollow: 420, hound: 80, brute: 30, volatile: 12, 'bearer:zanka': 2, 'bearer:tengen': 1, ayon: 1, nel: 1, rift: 2 },
     };
     localStorage.setItem('msq.save', JSON.stringify(save));
   });
@@ -566,6 +566,27 @@ try {
     }),
   });
   await shot('12b-tiburon');
+
+  // Every boss its own: Ayon (made by Harribel's Fracción) and Neliel in Hueco Mundo, Unohana in the
+  // Seireitei, each in its second form too.
+  for (const [stage, t, type, name] of [
+    ['hueco', 903, 5, 'ayon'],
+    ['hueco', 1078, 6, 'nel'],
+    ['seireitei', 903, 11, 'unohana'],
+  ]) {
+    await page.goto(`${BASE}?debug&seed=3&play&god&stage=${stage}&t=${t}`);
+    await wait(400);
+    await steer(6000, { radius: 20 });
+    log(`boss ${name}`, { ...(await stats()), boss: (await page.isVisible('.bossbar')) ? await page.textContent('.boss-name') : null });
+    await shot(`12j-${name}`);
+    await page.evaluate((ty) => {
+      const w = window.__msq.world;
+      for (let i = 0; i < w.en.n; i++) if (w.en.type[i] === ty && !w.en.dead[i]) w.en.hp[i] = w.en.maxHp[i] * 0.45;
+    }, type);
+    await steer(3000, { radius: 20 });
+    log(`boss ${name} late`, { ...(await stats()), phase: await page.evaluate(() => window.__msq.world.boss.phase) });
+    await shot(`12j-${name}-late`);
+  }
 
   // Silbern: the second invasion's captains, then the Captain-Commander and his bankai.
   for (const id of ['kenpachi', 'mayuri', 'shinji', 'kensei']) {

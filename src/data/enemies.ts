@@ -4,13 +4,13 @@ export type EnemyId =
   | 'brute'
   | 'volatile'
   | 'bearer'
-  | 'menos'
-  | 'vasto'
+  | 'ayon'
+  | 'nel'
   | 'officer'
   | 'flash'
   | 'caster'
   | 'guard'
-  | 'grandmaster'
+  | 'unohana'
   | 'captain'
   | 'commander'
   | 'ashen'
@@ -78,25 +78,15 @@ export const ENEMY_LIST: readonly EnemyDef[] = [
   { id: 'volatile', name: 'Shrieker’s Leech', hp: 18, speed: 80, radius: 12, damage: 22, xp: 2, behavior: 'chase', bomber: true, color: 0xff6a3c },
   // The Sternritter who stole a bankai (variant = which bankai, so which knight; see data/bankai.ts).
   { id: 'bearer', name: 'Sternritter', hp: 2600, speed: 44, radius: 30, damage: 25, xp: 60, behavior: 'chase', boss: true, color: 0xffcb5c },
-  { id: 'menos', name: 'Menos Grande', hp: 2600, speed: 30, radius: 44, damage: 30, xp: 80, behavior: 'chase', boss: true, color: 0xff2d4a },
-  { id: 'vasto', name: 'Vasto Lorde', hp: 2600, speed: 52, radius: 34, damage: 35, xp: 120, behavior: 'chase', boss: true, color: 0xff2d4a },
+  // Hueco Mundo's own: Ayon, the beast Harribel's Fracción make from their left arms, and Neliel, once the Tercera Espada.
+  { id: 'ayon', name: 'Ayon', hp: 2600, speed: 34, radius: 42, damage: 32, xp: 80, behavior: 'chase', boss: true, color: 0xc8863a },
+  { id: 'nel', name: 'Neliel Tu Oderschvank', hp: 2600, speed: 50, radius: 30, damage: 34, xp: 120, behavior: 'chase', boss: true, color: 0x5ad8b0 },
   { id: 'officer', name: 'Unseated Officer', hp: 12, speed: 50, radius: 11, damage: 9, xp: 1, behavior: 'chase', shinigami: true, color: 0xd8dce8 },
   { id: 'flash', name: 'Onmitsukidō Agent', hp: 10, speed: 72, radius: 9, damage: 7, xp: 1, behavior: 'blink', shinigami: true, color: 0xc9b8ff },
   { id: 'caster', name: 'Kidō Corps Officer', hp: 16, speed: 42, radius: 11, damage: 8, xp: 2, behavior: 'ranged', shinigami: true, color: 0xff8a4a },
   { id: 'guard', name: 'Heavy Guard', hp: 90, speed: 32, radius: 19, damage: 16, xp: 5, behavior: 'chase', shinigami: true, color: 0xd8dce8 },
-  {
-    id: 'grandmaster',
-    name: 'Kidō Corps Commander',
-    hp: 2600,
-    speed: 40,
-    radius: 32,
-    damage: 32,
-    xp: 150,
-    behavior: 'chase',
-    boss: true,
-    shinigami: true,
-    color: 0xffb37a,
-  },
+  // Retsu Unohana, Captain of the 4th Division: the healer, and before that the first Kenpachi.
+  { id: 'unohana', name: 'Retsu Unohana', hp: 2600, speed: 44, radius: 30, damage: 32, xp: 150, behavior: 'chase', boss: true, shinigami: true, color: 0x9fe6c0 },
   // Seireitei's bankai bosses: the captains themselves, fighting with their own bankai (variant = which one).
   { id: 'captain', name: 'Captain', hp: 2600, speed: 46, radius: 30, damage: 25, xp: 60, behavior: 'chase', boss: true, shinigami: true, color: 0xf4f6fb },
   // Seireitei's final boss: the Captain-Commander and the flames of Ryūjin Jakka.
@@ -152,13 +142,13 @@ export const ENEMY_INDEX: Readonly<Record<EnemyId, number>> = {
   brute: 2,
   volatile: 3,
   bearer: 4,
-  menos: 5,
-  vasto: 6,
+  ayon: 5,
+  nel: 6,
   officer: 7,
   flash: 8,
   caster: 9,
   guard: 10,
-  grandmaster: 11,
+  unohana: 11,
   captain: 12,
   commander: 13,
   ashen: 14,

@@ -116,7 +116,14 @@ opens with.
 Stages, 20 minutes each:
 
 - **Hueco Mundo**: Hollows, Shriekers' leeches that burst, and three of the
-  bankai thieves. A Vasto Lorde rises at 18:00, and Tier Harribel,
+  bankai thieves, each fighting with the bankai and with their own Schrift
+  too: Äs Nödt's thorns of fear close in and hold you, Cang Du's skin turns to
+  iron, BG9's missiles fall where you are going, Bambietta's bombs land all
+  around you, and Driscoll grows with every death near him. Ayon, the beast
+  Harribel's Fracción make from their own left arms, comes with the third
+  (fists, a charge, a roar of Bala; at half health its face splits open), and
+  Neliel Tu Oderschvank stands in the way at 18:00 (Cero Doble spits back what
+  she swallowed, Lanzador Verde, then Gamuza, her centaur form). Tier Harribel,
   the Third Espada who has ruled Las Noches since Aizen fell, ends the stage:
   Ola Azul waves, a Sonído rush down a warned lane, and below half health
   Tiburón released and Cascada falling where you stand (in the story, the
@@ -125,8 +132,13 @@ Stages, 20 minutes each:
   Onmitsukidō agents that flash-step, Kidō Corps officers that cast, and
   lieutenants that throw sword waves. The bankai
   bosses here are the captains themselves (Byakuya, Hitsugaya, Suì-Fēng,
-  Komamura, Lieutenant Sasakibe), each fighting with their own bankai; a Kidō
-  Corps Commander escorts the third, and Captain-Commander Yamamoto ends the stage
+  Komamura, Lieutenant Sasakibe), each fighting with their own bankai and an
+  art of their own (Senkei's ring of blades, Hyōten Hyakkasō's ice flowers,
+  Nigeki Kessatsu: a second sting on the butterfly crest strikes three times
+  as hard, Tengen's blade from the sky, a fencer's thrust). Retsu Unohana
+  comes with the third, closing her soldiers' wounds, and at half health lets
+  her braid down: she was the first Kenpachi, and her cuts heal her.
+  Captain-Commander Yamamoto ends the stage
   with Zanka no Tachi's fire and the ashen dead. Bring him below half health
   and the Emperor takes his bankai, as he did in the story: Yamamoto fights on
   with Ennetsu Jigoku's pillars of flame and his fists (Ikkotsu, Sōkotsu).

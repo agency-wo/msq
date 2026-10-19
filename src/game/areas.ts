@@ -63,6 +63,7 @@ import {
   FX_SMOKE,
   LAYER_NORMAL,
   MK_SILVER,
+  MK_STING,
 } from './constants';
 import type { World } from './world';
 
@@ -223,7 +224,10 @@ function resolveMark(w: World, i: number): void {
     else if (shape === MS_LINE) hit = segmentDist(p.x, p.y, x, y, ang, len) < r / 2 + PLAYER.radius;
     else hit = inArc(p.x, p.y, x, y, ang, r, len, PLAYER.radius);
     if (hit) {
-      if (dmg > 0) w.hurtPlayer(dmg);
+      const before = p.hp;
+      if (dmg > 0) w.hurtPlayer(kind === MK_STING ? dmg * w.sting() : dmg);
+      // Unohana's cuts heal her when they wound you.
+      if (M.drain[i] > 0 && p.hp < before) w.drainTo(M.owner[i], M.drain[i]);
       if (flags & (MF_SLOW | MF_FREEZE)) p.slowT = Math.max(p.slowT, 1.5);
       if (flags & MF_ROOT && w.vollT <= 0) p.rootT = Math.max(p.rootT, 1);
       if (flags & MF_INVERT) w.invert(3);
@@ -323,6 +327,7 @@ function markFx(w: World, kind: number, x: number, y: number, r: number, len: nu
       w.sound('freeze');
       break;
     case MK_SLASH:
+    case MK_STING:
       w.spawnFx(FX_CRESCENT, x + Math.cos(ang) * r * 0.5, y + Math.sin(ang) * r * 0.5, 0, 0, 0.35, r * 1.15, r * 1.25, 1, ang, 0, enemy ? 0xff6a5a : 0xffe2a0, LAYER_ADD);
       w.shake = Math.max(w.shake, 6);
       break;

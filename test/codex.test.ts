@@ -24,7 +24,7 @@ describe('the Codex', () => {
   it('has an entry for every enemy and every named boss, each once', () => {
     const keys = CODEX_ENEMIES.map((e) => e.key);
     expect(new Set(keys).size).toBe(keys.length);
-    for (const id of ['hollow', 'menos', 'vasto', 'grandmaster', 'commander', 'ichibe', 'sentinel', 'rift']) expect(keys).toContain(id);
+    for (const id of ['hollow', 'ayon', 'nel', 'unohana', 'commander', 'ichibe', 'sentinel', 'rift']) expect(keys).toContain(id);
     // The five knights who stole a bankai; Zanka no Tachi is the Captain-Commander's.
     expect(keys.filter((k) => k.startsWith('bearer:'))).toHaveLength(5);
     expect(keys).not.toContain('bearer:zanka');

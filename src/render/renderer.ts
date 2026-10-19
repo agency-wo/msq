@@ -12,6 +12,7 @@ import { HERO_IDS, HERO_INFO } from '../data/heroes';
 import { ROYAL_IDS, ROYAL_INFO } from '../data/royal';
 import { DOUBLE_RING, doubleCount } from '../game/casts/schrift2';
 import { COMMANDER_HEAT, HARRIBEL_RELEASED, ICHIGO_MASKED } from '../game/hostile';
+import { AYON_RAGE, NEL_RELEASED } from '../game/signatures';
 import { enemySpriteName } from './names';
 import {
   EB_FIRE,
@@ -240,6 +241,10 @@ export class Renderer {
   private heroBankai: (EnemySprite | null)[] = [];
   /** Ichigo once his Hollow mask forms. */
   private ichigoMasked: EnemySprite | null = null;
+  /** Ayon enraged, Neliel released, Unohana as the first Kenpachi. */
+  private ayonRage: EnemySprite | null = null;
+  private nelGamuza: EnemySprite | null = null;
+  private unohanaKenpachi: EnemySprite | null = null;
   private kirioSlim: EnemySprite | null = null;
   /** Tier Harribel once Tiburón is released. */
   private harribelReleased: EnemySprite | null = null;
@@ -315,13 +320,13 @@ export class Renderer {
       brute: 18,
       volatile: 12,
       bearer: 30,
-      menos: 44,
-      vasto: 34,
+      ayon: 44,
+      nel: 30,
       officer: 11,
       flash: 9,
       caster: 11,
       guard: 19,
-      grandmaster: 28,
+      unohana: 28,
       commander: 30,
       ashen: 11,
       rift: 22,
@@ -355,6 +360,9 @@ export class Renderer {
     this.heroSprites = HERO_IDS.map((id, v) => sprite(enemySpriteName(ENEMY_INDEX.defender, v), heroRef[id] ?? 28));
     this.heroBankai = HERO_IDS.map((id, v) => (id === 'renji' || id === 'rukia' ? sprite(`${enemySpriteName(ENEMY_INDEX.defender, v)}_bankai`, heroRef[id] ?? 28) : null));
     this.ichigoMasked = sprite('ichigo_mask', 30);
+    this.ayonRage = sprite('ayon_rage', 48.4);
+    this.nelGamuza = sprite('nel_gamuza', 36);
+    this.unohanaKenpachi = sprite('unohana_kenpachi', 28);
     this.kirioSlim = sprite('royal_kirio_slim', 26);
     this.harribelReleased = sprite('harribel_tiburon', 31);
     const adjuchas = sprite('adjuchas', 24);
@@ -737,6 +745,12 @@ export class Renderer {
               ? ((w.phaseOf(i) > 0 && this.heroBankai[E.variant[i]]) || (this.heroSprites[E.variant[i]] ?? this.enemySprites[type]))
             : type === ENEMY_INDEX.ichigo && E.r[i] >= ICHIGO_MASKED && this.ichigoMasked
               ? this.ichigoMasked
+            : type === ENEMY_INDEX.ayon && E.r[i] >= AYON_RAGE && this.ayonRage
+              ? this.ayonRage
+            : type === ENEMY_INDEX.nel && E.r[i] >= NEL_RELEASED && this.nelGamuza
+              ? this.nelGamuza
+            : type === ENEMY_INDEX.unohana && w.phaseOf(i) > 0 && this.unohanaKenpachi
+              ? this.unohanaKenpachi
             : type === ENEMY_INDEX.harribel && E.r[i] >= HARRIBEL_RELEASED && this.harribelReleased
               ? this.harribelReleased
               : this.enemySprites[type];
@@ -775,6 +789,7 @@ export class Renderer {
       }
       let tint = type === ENEMY_INDEX.golden && w.stage.id === 'hueco' ? 0xffd27a : type === ENEMY_INDEX.rift && w.stage.id !== 'hueco' ? 0xfff0d0 : 0xffffff;
       if (E.charmT[i] > 0) tint = flags & FLAG_ZOMBIE ? 0x9fd88a : 0xff9cc8;
+      else if (boss && w.guarded(i)) tint = 0x9aa6b8;
       else if (E.freezeT[i] > 0) tint = HOLD_TINT[E.holdKind[i]] ?? 0x8fd0ff;
       else if (frozenAll && !boss) tint = 0x8fd0ff;
       else if (E.slowT[i] > 0) tint = 0xbfe2ff;
@@ -810,6 +825,12 @@ export class Renderer {
       L.auras.add(f.ring, x, y + 4, 0.48, 0.48, -now * 3, 0xffb8e0, 0.6);
     }
     if (w.shieldCharges > 0) L.auras.add(f.ring, x, y - 2, 0.42, 0.42, 0, 0xdfe7f2, 0.35 + 0.1 * w.shieldCharges);
+    // Suì-Fēng's Hōmonka: a dark crest on you, with a gold edge, until her second sting uses it.
+    if (w.homonkaT > 0) {
+      const pulse = 0.6 + Math.sin(now * 9) * 0.25;
+      L.auras.add(f.glow, x, y - 6, 0.9, 0.9, 0, 0x1a1020, 0.55);
+      L.auras.add(f.ring, x, y - 6, 0.3, 0.3, now * 1.5, 0xffd27a, pulse);
+    }
     // The Yourself: translucent doubles standing around you.
     for (const ps of w.powers) {
       if (ps.def.kind !== 'double' || ps.active <= 0) continue;

@@ -52,6 +52,7 @@ import {
   EB_GETSUGA,
   EB_ARROW,
 } from './constants';
+import { ayonAI, captainSignature, nelAI, thiefSchrift, unohanaAI } from './signatures';
 import type { World } from './world';
 
 /**
@@ -245,26 +246,21 @@ export function bossAI(w: World, i: number, dist: number): void {
   E.atk2T[i] -= DT;
   const def = ENEMY_LIST[E.type[i]];
   if (def.id === 'bearer' || def.id === 'captain') {
-    bearerAI(w, i, BANKAI_IDS[E.variant[i]] ?? '', dist);
+    const bankai = BANKAI_IDS[E.variant[i]] ?? '';
+    bearerAI(w, i, bankai, dist);
+    // The knight's own Schrift, or the captain's own art.
+    if (def.id === 'bearer') thiefSchrift(w, i, bankai);
+    else captainSignature(w, i, bankai);
   } else if (def.id === 'royal') {
     royalAI(w, i, ROYAL_IDS[E.variant[i]] ?? '', dist);
   } else if (def.id === 'ichibe') {
     ichibeAI(w, i);
-  } else if (def.id === 'menos') {
-    if (E.atkT[i] <= 0) {
-      E.atkT[i] = 5;
-      cero(w, i, 1.25, 48, 1.2);
-    }
-  } else if (def.id === 'vasto') {
-    if (E.atkT[i] <= 0) {
-      E.atkT[i] = 2.6;
-      // Alternate a Cero and a ring of Bala.
-      E.atk2T[i] = E.atk2T[i] > 0 ? -1 : 1;
-      if (E.atk2T[i] > 0) cero(w, i, 1, 54, 1.1);
-      else ring(w, i, 14, 170, 0.4);
-    }
-  } else if (def.id === 'grandmaster') {
-    grandmasterAI(w, i);
+  } else if (def.id === 'ayon') {
+    ayonAI(w, i);
+  } else if (def.id === 'nel') {
+    nelAI(w, i);
+  } else if (def.id === 'unohana') {
+    unohanaAI(w, i);
   } else if (def.id === 'commander') {
     commanderAI(w, i, dist);
   } else if (def.id === 'harribel') {
@@ -839,58 +835,6 @@ function ennetsuJigoku(w: World, dmg: number, n: number): void {
 
 /** How far the Captain-Commander's heat reaches (the renderer draws the same ring). */
 export const COMMANDER_HEAT = 120;
-
-/**
- * The Kidō Grandmaster cycles three spells, each warned on the ground first:
- * a binding seal at your feet (roots you if it lands), a fan of fireballs,
- * and a lightning lance down a straight line.
- */
-function grandmasterAI(w: World, i: number): void {
-  const E = w.en;
-  const p = w.player;
-  // Left far behind, it flash-steps back into range instead of plodding after you.
-  if (E.atk2T[i] <= 0) {
-    const d = Math.hypot(p.x - E.x[i], p.y - E.y[i]);
-    if (d > 420) {
-      E.atk2T[i] = 3;
-      const a = Math.atan2(E.y[i] - p.y, E.x[i] - p.x);
-      w.spawnFx(FX_GLOW, E.x[i], E.y[i], 0, 0, 0.35, E.r[i] * 2, E.r[i] * 3.5, 0.6, 0, 0, 0xffb37a, LAYER_ADD);
-      E.x[i] = E.ox[i] = p.x + Math.cos(a) * 260;
-      E.y[i] = E.oy[i] = p.y + Math.sin(a) * 260;
-      w.spawnFx(FX_RING, E.x[i], E.y[i], 0, 0, 0.3, E.r[i], E.r[i] * 4, 0.7, 0, 0, 0xffcb5c, LAYER_ADD);
-    }
-  }
-  if (E.atkT[i] > 0) return;
-  E.atkT[i] = 2.4;
-  const x = E.x[i];
-  const y = E.y[i];
-  const dmg = E.dmg[i];
-  const toP = Math.atan2(p.y - y, p.x - x);
-  // The variant byte is free on this boss: use it as the spell counter.
-  const spell = E.variant[i] % 3;
-  E.variant[i] = (spell + 1) % 3;
-  if (spell === 0) {
-    w.spawnMark(MK_SEAL, MS_CIRCLE, p.x, p.y, 62, 0, 0, 1.3, dmg * 0.5, MF_ENEMY | MF_ROOT);
-    w.sound('warn');
-  } else if (spell === 1) {
-    for (let k = 0; k < 5; k++) {
-      const a = toP + (k - 2) * 0.17;
-      w.spawnEnemyBullet(EB_FIRE, x, y, Math.cos(a) * 175, Math.sin(a) * 175, 8, 4, dmg * 0.45);
-    }
-    w.sound('fire');
-  } else {
-    w.spawnMark(MK_LANCE, MS_LINE, x, y, 40, 900, toP, 1, dmg * 1.05, MF_ENEMY);
-    w.sound('warn');
-  }
-}
-
-function cero(w: World, i: number, delay: number, width: number, dmgMul: number): void {
-  const E = w.en;
-  const p = w.player;
-  const a = Math.atan2(p.y - E.y[i], p.x - E.x[i]);
-  w.spawnMark(MK_CERO, MS_LINE, E.x[i], E.y[i], width, 900, a, delay, E.dmg[i] * dmgMul, MF_ENEMY);
-  w.sound('warn');
-}
 
 function ring(w: World, i: number, n: number, speed: number, dmgMul: number): void {
   const E = w.en;

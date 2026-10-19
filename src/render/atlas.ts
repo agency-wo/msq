@@ -1880,70 +1880,517 @@ const bearer: Draw = (g, w, h) => {
   g.stroke();
 };
 
-/** Menos Grande: a towering shadow with a broad, cracked three-eyed mask. Original design. */
-const menos: Draw = (g, w, h) => {
+/**
+ * Ayon (a chibi homage): the beast Harribel's three Fracción make out of
+ * their own left arms. A hulking dark body, Apache's antlers, Mila Rose's
+ * mane, Sung-Sun's serpent for a tail, and a face that is almost nothing at
+ * all. Enraged, it swells, its veins burn red and its face splits open.
+ */
+function ayonDraw(g: Ctx, w: number, h: number, rage: boolean): void {
+  const k = rage ? 1.1 : 1;
   const cx = w / 2;
-  const cy = h / 2 + 10;
-  aura(g, cx, cy, 88, 'rgba(255,30,60,0.2)');
-  shadowBody(g, cx, cy + 12, 70, 12, 41, '#2c2238');
-  chestHole(g, cx, cy + 34, 11);
-  mask(g, cx, cy - 26, 74, 56, 3, true);
-  g.strokeStyle = 'rgba(0,0,0,0.6)';
-  g.lineWidth = 2;
+  const cy = h / 2 + 8 * k;
+  aura(g, cx, cy, 86 * k, rage ? 'rgba(255,40,40,0.3)' : 'rgba(210,140,70,0.18)');
+  // Sung-Sun's serpent: the tail, curling out behind and rearing its head
+  g.strokeStyle = '#4e6e4a';
+  g.lineWidth = 9 * k;
+  g.lineCap = 'round';
   g.beginPath();
-  g.moveTo(cx + 18, cy - 52);
-  g.lineTo(cx + 8, cy - 36);
-  g.lineTo(cx + 14, cy - 24);
+  g.moveTo(cx + 18 * k, cy + 40 * k);
+  g.bezierCurveTo(cx + 70 * k, cy + 56 * k, cx + 84 * k, cy + 6 * k, cx + 64 * k, cy - 18 * k);
   g.stroke();
+  g.strokeStyle = '#7a9a72';
+  g.lineWidth = 3 * k;
+  g.stroke();
+  g.fillStyle = '#4e6e4a';
+  g.beginPath();
+  g.ellipse(cx + 60 * k, cy - 24 * k, 9 * k, 6.5 * k, -0.6, 0, TAU);
+  g.fill();
+  glowDot(g, cx + 63 * k, cy - 27 * k, 1.6 * k, 1.6 * k, '#ffe28a', 'rgba(255,200,80,0.9)', 4);
+  // Legs
+  const skin = g.createLinearGradient(0, cy - 40 * k, 0, cy + 72 * k);
+  skin.addColorStop(0, rage ? '#5a2a20' : '#4a3428');
+  skin.addColorStop(1, rage ? '#200a08' : '#1c120c');
+  g.fillStyle = skin;
+  for (const dir of [-1, 1]) {
+    g.beginPath();
+    g.ellipse(cx + dir * 19 * k, cy + 54 * k, 13 * k, 20 * k, dir * 0.1, 0, TAU);
+    g.fill();
+  }
+  // The torso: broad shoulders, a narrower waist
+  g.beginPath();
+  g.moveTo(cx - 42 * k, cy - 18 * k);
+  g.quadraticCurveTo(cx, cy - 34 * k, cx + 42 * k, cy - 18 * k);
+  g.quadraticCurveTo(cx + 34 * k, cy + 24 * k, cx + 26 * k, cy + 42 * k);
+  g.lineTo(cx - 26 * k, cy + 42 * k);
+  g.quadraticCurveTo(cx - 34 * k, cy + 24 * k, cx - 42 * k, cy - 18 * k);
+  g.closePath();
+  g.fill();
+  // Long arms hanging to great fists
+  for (const dir of [-1, 1]) {
+    g.beginPath();
+    g.ellipse(cx + dir * 47 * k, cy + 4 * k, 12 * k, 30 * k, -dir * 0.15, 0, TAU);
+    g.fill();
+    g.beginPath();
+    g.arc(cx + dir * 51 * k, cy + 36 * k, 13 * k, 0, TAU);
+    g.fill();
+  }
+  // Muscle lines, or burning veins
+  g.strokeStyle = rage ? 'rgba(255,60,50,0.85)' : 'rgba(255,220,180,0.18)';
+  g.lineWidth = (rage ? 2.2 : 1.6) * k;
+  g.beginPath();
+  g.moveTo(cx - 24 * k, cy - 8 * k);
+  g.quadraticCurveTo(cx - 10 * k, cy + 2 * k, cx - 2 * k, cy - 6 * k);
+  g.moveTo(cx + 24 * k, cy - 8 * k);
+  g.quadraticCurveTo(cx + 10 * k, cy + 2 * k, cx + 2 * k, cy - 6 * k);
+  g.moveTo(cx, cy + 4 * k);
+  g.lineTo(cx, cy + 34 * k);
+  for (const dir of [-1, 1]) {
+    g.moveTo(cx + dir * 44 * k, cy - 14 * k);
+    g.quadraticCurveTo(cx + dir * 52 * k, cy + 6 * k, cx + dir * 48 * k, cy + 22 * k);
+  }
+  g.stroke();
+  if (rage) {
+    // Spikes have burst from its shoulders
+    g.fillStyle = '#e8dcc0';
+    for (const dir of [-1, 1]) {
+      for (let s = 0; s < 3; s++) {
+        const bx = cx + dir * (30 + s * 7) * k;
+        const by = cy - (26 - s * 3) * k;
+        poly(g, [
+          [bx - 3 * k, by],
+          [bx + dir * 4 * k, by - 14 * k],
+          [bx + 3 * k, by],
+        ]);
+        g.fill();
+      }
+    }
+  }
+  // Mila Rose's mane, all around the head and over the shoulders
+  g.fillStyle = rage ? '#a0602a' : '#b8863a';
+  g.beginPath();
+  const n = 20;
+  for (let q = 0; q <= n; q++) {
+    const a = (q / n) * TAU;
+    const r = (q % 2 ? 30 : 40) * k;
+    const x = cx + Math.cos(a) * r;
+    const y = cy - 36 * k + Math.sin(a) * r * 0.85;
+    if (q === 0) g.moveTo(x, y);
+    else g.lineTo(x, y);
+  }
+  g.closePath();
+  g.fill();
+  g.fillStyle = rage ? '#6a3a14' : '#7a5420';
+  g.beginPath();
+  g.ellipse(cx, cy - 34 * k, 24 * k, 22 * k, 0, 0, TAU);
+  g.fill();
+  // Apache's antlers
+  g.strokeStyle = '#e8dcc0';
+  g.lineWidth = 4 * k;
+  g.lineCap = 'round';
+  g.beginPath();
+  for (const dir of [-1, 1]) {
+    const bx = cx + dir * 10 * k;
+    const by = cy - 52 * k;
+    g.moveTo(bx, by);
+    g.quadraticCurveTo(bx + dir * 14 * k, by - 18 * k, bx + dir * 30 * k, by - 30 * k);
+    g.moveTo(bx + dir * 9 * k, by - 12 * k);
+    g.lineTo(bx + dir * 4 * k, by - 28 * k);
+    g.moveTo(bx + dir * 19 * k, by - 21 * k);
+    g.lineTo(bx + dir * 17 * k, by - 38 * k);
+    g.moveTo(bx + dir * 24 * k, by - 25 * k);
+    g.lineTo(bx + dir * 36 * k, by - 22 * k);
+  }
+  g.stroke();
+  // The face: a dark, almost blank plate with two small eyes
+  g.fillStyle = '#20140e';
+  g.beginPath();
+  g.ellipse(cx, cy - 36 * k, 16 * k, 18 * k, 0, 0, TAU);
+  g.fill();
+  if (rage) {
+    // Split open: a fanged maw down the middle, burning inside
+    g.save();
+    g.shadowColor = 'rgba(255,40,30,0.9)';
+    g.shadowBlur = 10;
+    g.fillStyle = '#ff3a2a';
+    g.beginPath();
+    g.ellipse(cx, cy - 32 * k, 7 * k, 13 * k, 0, 0, TAU);
+    g.fill();
+    g.restore();
+    g.fillStyle = '#3a0806';
+    g.beginPath();
+    g.ellipse(cx, cy - 32 * k, 4.6 * k, 10 * k, 0, 0, TAU);
+    g.fill();
+    g.fillStyle = '#fbf3e0';
+    for (let q = -3; q <= 3; q++) {
+      for (const dir of [-1, 1]) {
+        const y = cy - 32 * k + q * 2.8 * k;
+        poly(g, [
+          [cx + dir * 5.6 * k, y - 1.2 * k],
+          [cx + dir * 2 * k, y],
+          [cx + dir * 5.6 * k, y + 1.2 * k],
+        ]);
+        g.fill();
+      }
+    }
+    glowDot(g, cx - 9 * k, cy - 44 * k, 2.4 * k, 1.8 * k, '#ffd0c0', 'rgba(255,40,30,1)', 8);
+    glowDot(g, cx + 9 * k, cy - 44 * k, 2.4 * k, 1.8 * k, '#ffd0c0', 'rgba(255,40,30,1)', 8);
+  } else {
+    glowDot(g, cx - 6 * k, cy - 38 * k, 2.2 * k, 1.6 * k, '#ffe8a0', 'rgba(255,190,70,0.95)', 7);
+    glowDot(g, cx + 6 * k, cy - 38 * k, 2.2 * k, 1.6 * k, '#ffe8a0', 'rgba(255,190,70,0.95)', 7);
+  }
+}
+
+const ayon: Draw = (g, w, h) => ayonDraw(g, w, h, false);
+const ayonRage: Draw = (g, w, h) => ayonDraw(g, w, h, true);
+
+/** Neliel's skull mask on top of her head: a cracked bone cap with a ram's horn curling down each side. */
+function nelMask(g: Ctx, cx: number, hy: number, s: number, big: boolean): void {
+  const r = big ? 1.25 : 1;
   g.fillStyle = BONE;
-  for (let k = -3; k <= 3; k++) {
-    if (k === 0) continue;
-    const x = cx + k * 16;
+  g.beginPath();
+  g.ellipse(cx, hy - 4.6 * s, 6.6 * s * r, 3.6 * s * r, 0, Math.PI, TAU);
+  g.lineTo(cx + 5.4 * s * r, hy - 3.6 * s);
+  for (let q = 4; q >= -4; q--) g.lineTo(cx + q * 1.3 * s * r, hy - (q % 2 ? 3.6 : 2.4) * s);
+  g.closePath();
+  g.fill();
+  g.strokeStyle = 'rgba(80,70,60,0.55)';
+  g.lineWidth = 0.4 * s;
+  g.stroke();
+  g.beginPath();
+  g.moveTo(cx + 1.6 * s, hy - 7.6 * s * r);
+  g.lineTo(cx + 0.4 * s, hy - 5.6 * s);
+  g.lineTo(cx + 1.4 * s, hy - 4.4 * s);
+  g.stroke();
+  // The horns: thick spirals curling back and down
+  g.strokeStyle = '#efe6d2';
+  g.lineCap = 'round';
+  for (const dir of [-1, 1]) {
+    g.lineWidth = 2.2 * s * r;
+    g.beginPath();
+    const ox = cx + dir * 6.4 * s * r;
+    const oy = hy - 3.4 * s;
+    g.moveTo(ox, oy);
+    g.bezierCurveTo(ox + dir * 5 * s * r, oy - 4 * s * r, ox + dir * 7 * s * r, oy + 3 * s * r, ox + dir * 3 * s * r, oy + 4.2 * s * r);
+    g.stroke();
+    g.lineWidth = 1.2 * s * r;
+    g.beginPath();
+    g.moveTo(ox + dir * 3 * s * r, oy + 4.2 * s * r);
+    g.quadraticCurveTo(ox + dir * 0.6 * s * r, oy + 3.4 * s * r, ox + dir * 1.6 * s * r, oy + 1.4 * s * r);
+    g.stroke();
+  }
+}
+
+/** Neliel's face: big hazel eyes and the crimson mark across her nose and cheeks. */
+function nelFace(g: Ctx, cx: number, hy: number, s: number): void {
+  faceAt(g, cx, hy + 0.8 * s, s, 5.4, 6.2);
+  g.strokeStyle = '#d0283a';
+  g.lineWidth = 0.9 * s;
+  g.lineCap = 'round';
+  g.beginPath();
+  g.moveTo(cx - 5 * s, hy + 3.2 * s);
+  g.lineTo(cx + 5 * s, hy + 3.2 * s);
+  g.stroke();
+  eyesAt(g, cx, hy + 1.5 * s, s, '#f6dcae', '#a86a2a', 2.6);
+  g.strokeStyle = '#14161f';
+  g.lineWidth = 0.4 * s;
+  g.beginPath();
+  for (const dir of [-1, 1]) {
+    g.moveTo(cx + dir * 1.4 * s, hy + 0.5 * s);
+    g.quadraticCurveTo(cx + dir * 2.6 * s, hy - 0.2 * s, cx + dir * 3.8 * s, hy + 0.5 * s);
+  }
+  g.stroke();
+}
+
+/** Neliel's long sea-green hair: down her back to the knees, with a fringe over the brow. */
+function nelHair(g: Ctx, cx: number, hy: number, cy: number, s: number, front: boolean): void {
+  const hair = g.createLinearGradient(0, hy - 6 * s, 0, cy + 16 * s);
+  hair.addColorStop(0, '#5ad8b0');
+  hair.addColorStop(1, '#22856c');
+  g.fillStyle = hair;
+  if (!front) {
+    g.beginPath();
+    g.moveTo(cx - 7 * s, hy - 3 * s);
+    g.quadraticCurveTo(cx - 12 * s, cy, cx - 11 * s, cy + 16 * s);
+    for (let q = -3; q <= 3; q++) g.lineTo(cx + q * 3.4 * s, cy + (q % 2 ? 13.4 : 16) * s);
+    g.quadraticCurveTo(cx + 12 * s, cy, cx + 7 * s, hy - 3 * s);
+    g.closePath();
+    g.fill();
+    return;
+  }
+  g.beginPath();
+  g.ellipse(cx, hy - 2 * s, 6.6 * s, 4.6 * s, 0, Math.PI * 0.95, Math.PI * 2.05);
+  g.fill();
+  for (const dir of [-1, 1]) {
     poly(g, [
-      [x - 5, cy - 4],
-      [x, cy - 22 - Math.abs(k) * 3],
-      [x + 5, cy - 4],
+      [cx + dir * 4.8 * s, hy - 2.6 * s],
+      [cx + dir * 6.9 * s, hy],
+      [cx + dir * 6.6 * s, hy + 6.4 * s],
+      [cx + dir * 4.8 * s, hy + 2 * s],
     ]);
     g.fill();
   }
-};
-
-/** Vasto Lorde: lean, horned skull-mask, the lord of the stage. Original design. */
-const vasto: Draw = (g, w, h) => {
-  const cx = w / 2;
-  const cy = h / 2 + 8;
-  aura(g, cx, cy, 60, 'rgba(255,30,60,0.28)');
-  // Slender body
-  const body = g.createLinearGradient(0, cy - 20, 0, cy + 54);
-  body.addColorStop(0, '#2b2236');
-  body.addColorStop(1, '#040306');
-  g.fillStyle = body;
   poly(g, [
-    [cx - 22, cy - 6],
-    [cx + 22, cy - 6],
-    [cx + 12, cy + 54],
-    [cx - 12, cy + 54],
+    [cx - 3.4 * s, hy - 3 * s],
+    [cx + 1.6 * s, hy - 3.2 * s],
+    [cx - 1.4 * s, hy + 0.6 * s],
   ]);
   g.fill();
-  chestHole(g, cx, cy + 12, 6);
-  // Long horns sweeping up
-  g.fillStyle = BONE;
+}
+
+/** Neliel's white Arrancar clothes: a fitted jacket, long sleeves with green cuffs, a white skirt over hakama. */
+function nelBody(g: Ctx, cx: number, cy: number, s: number): void {
+  const robe = g.createLinearGradient(0, cy - 6 * s, 0, cy + 20 * s);
+  robe.addColorStop(0, '#ffffff');
+  robe.addColorStop(1, '#cfd8e2');
+  g.fillStyle = robe;
   g.beginPath();
-  g.moveTo(cx - 10, cy - 30);
-  g.quadraticCurveTo(cx - 44, cy - 40, cx - 40, cy - 70);
-  g.quadraticCurveTo(cx - 30, cy - 46, cx - 6, cy - 38);
+  g.moveTo(cx - 7.6 * s, cy - 6 * s);
+  g.lineTo(cx + 7.6 * s, cy - 6 * s);
+  g.lineTo(cx + 11 * s, cy + 20 * s);
+  g.lineTo(cx - 11 * s, cy + 20 * s);
+  g.closePath();
   g.fill();
+  g.strokeStyle = 'rgba(30,50,60,0.4)';
+  g.lineWidth = 1;
+  g.stroke();
+  g.fillStyle = '#2a9a7a';
+  g.fillRect(cx - 9 * s, cy + 4 * s, 18 * s, 2 * s);
+  g.strokeStyle = 'rgba(30,50,60,0.3)';
   g.beginPath();
-  g.moveTo(cx + 10, cy - 30);
-  g.quadraticCurveTo(cx + 44, cy - 40, cx + 40, cy - 70);
-  g.quadraticCurveTo(cx + 30, cy - 46, cx + 6, cy - 38);
+  g.moveTo(cx, cy - 4 * s);
+  g.lineTo(cx, cy + 4 * s);
+  g.stroke();
+  for (const dir of [-1, 1]) {
+    g.fillStyle = '#f6f8fb';
+    g.beginPath();
+    g.ellipse(cx + dir * 10 * s, cy + 1.5 * s, 3.6 * s, 7.4 * s, -dir * 0.25, 0, TAU);
+    g.fill();
+    g.strokeStyle = 'rgba(30,50,60,0.4)';
+    g.lineWidth = 0.8;
+    g.stroke();
+    g.strokeStyle = '#2a9a7a';
+    g.lineWidth = 1 * s;
+    g.beginPath();
+    g.moveTo(cx + dir * 9 * s, cy + 7.8 * s);
+    g.lineTo(cx + dir * 12.8 * s, cy + 6.8 * s);
+    g.stroke();
+    g.fillStyle = SKIN;
+    g.beginPath();
+    g.arc(cx + dir * 11.2 * s, cy + 9.6 * s, 1.5 * s, 0, TAU);
+    g.fill();
+    g.fillStyle = '#f4f2ec';
+    g.beginPath();
+    g.ellipse(cx + dir * 4 * s, cy + 20.6 * s, 2.6 * s, 1.4 * s, 0, 0, TAU);
+    g.fill();
+  }
+}
+
+/**
+ * Neliel Tu Oderschvank (a chibi homage): the former Tercera Espada, grown
+ * up again. Long sea-green hair, the ram's skull of her mask on her head, a
+ * crimson mark across her face, white clothes and her sword at her side.
+ */
+const nel: Draw = (g, w, h) => {
+  const s = 2;
+  const cx = w / 2;
+  const cy = h / 2 + 7;
+  const hy = cy - 13 * s;
+  aura(g, cx, cy, 54, 'rgba(90,216,176,0.2)');
+  nelHair(g, cx, hy, cy, s, false);
+  nelBody(g, cx, cy, s);
+  heldSword(g, cx + 11.6 * s, cy + 9.6 * s, s, 14, -0.25);
+  nelFace(g, cx, hy, s);
+  nelHair(g, cx, hy, cy, s, true);
+  nelMask(g, cx, hy, s, false);
+};
+
+/**
+ * Neliel released, Gamuza (a chibi homage): the centaur form, a white ram's
+ * body below the waist, her mask grown into a horned helmet, and the
+ * double-bladed lance she throws as Lanzador Verde.
+ */
+const nelGamuza: Draw = (g, w, h) => {
+  const s = 2;
+  const cx = w / 2 - 6;
+  const cy = h / 2 - 4;
+  const hy = cy - 13 * s;
+  aura(g, cx + 8, cy + 18, 66, 'rgba(90,216,176,0.26)');
+  // The ram's body: four legs and cloven hooves
+  const flank = g.createLinearGradient(0, cy + 8 * s, 0, cy + 30 * s);
+  flank.addColorStop(0, '#ffffff');
+  flank.addColorStop(1, '#c8d2dc');
+  for (const [dx, back] of [
+    [-6, false],
+    [-1, true],
+    [16, true],
+    [21, false],
+  ] as const) {
+    g.fillStyle = back ? '#b8c2cc' : '#e8eef4';
+    g.fillRect(cx + dx * s - 1.6 * s, cy + 18 * s, 3.2 * s, 11 * s);
+    g.fillStyle = '#3a4048';
+    g.fillRect(cx + dx * s - 1.8 * s, cy + 28 * s, 3.6 * s, 2.2 * s);
+  }
+  g.fillStyle = flank;
+  g.beginPath();
+  g.ellipse(cx + 8 * s, cy + 15 * s, 18 * s, 7.4 * s, 0, 0, TAU);
   g.fill();
-  mask(g, cx, cy - 26, 30, 26, 2, true);
-  g.strokeStyle = '#ff2d4a';
-  g.lineWidth = 2;
+  g.strokeStyle = 'rgba(30,50,60,0.4)';
+  g.lineWidth = 1;
+  g.stroke();
+  // A green tail of hair behind
+  g.fillStyle = '#2fae8a';
   g.beginPath();
-  g.moveTo(cx, cy - 40);
-  g.lineTo(cx, cy - 14);
+  g.moveTo(cx + 25 * s, cy + 12 * s);
+  g.quadraticCurveTo(cx + 33 * s, cy + 14 * s, cx + 31 * s, cy + 26 * s);
+  g.quadraticCurveTo(cx + 27 * s, cy + 19 * s, cx + 24 * s, cy + 16 * s);
+  g.closePath();
+  g.fill();
+  nelHair(g, cx, hy, cy, s, false);
+  nelBody(g, cx, cy, s);
+  // The lance, held across her: a long shaft with a crescent blade at each end
+  g.save();
+  g.translate(cx + 2 * s, cy + 4 * s);
+  g.rotate(-0.55);
+  g.fillStyle = '#d8b04a';
+  g.fillRect(-26 * s, -0.8 * s, 52 * s, 1.6 * s);
+  g.fillStyle = '#f2f6ff';
+  for (const dir of [-1, 1]) {
+    g.beginPath();
+    g.moveTo(dir * 26 * s, -0.8 * s);
+    g.quadraticCurveTo(dir * 33 * s, -6 * s, dir * 36 * s, 0);
+    g.quadraticCurveTo(dir * 33 * s, 6 * s, dir * 26 * s, 0.8 * s);
+    g.closePath();
+    g.fill();
+    g.strokeStyle = 'rgba(60,70,90,0.6)';
+    g.lineWidth = 0.4 * s;
+    g.stroke();
+  }
+  g.restore();
+  nelFace(g, cx, hy, s);
+  nelHair(g, cx, hy, cy, s, true);
+  nelMask(g, cx, hy, s, true);
+};
+
+/** Unohana's long black hair, down her back. */
+function unohanaHairBack(g: Ctx, cx: number, hy: number, cy: number, s: number, loose: boolean): void {
+  g.fillStyle = '#0d0e14';
+  g.beginPath();
+  g.moveTo(cx - 6.8 * s, hy - 2 * s);
+  g.quadraticCurveTo(cx - (loose ? 14 : 9) * s, cy + 2 * s, cx - (loose ? 12 : 8) * s, cy + (loose ? 15 : 6) * s);
+  g.lineTo(cx + (loose ? 12 : 8) * s, cy + (loose ? 15 : 6) * s);
+  g.quadraticCurveTo(cx + (loose ? 14 : 9) * s, cy + 2 * s, cx + 6.8 * s, hy - 2 * s);
+  g.closePath();
+  g.fill();
+}
+
+/** The top of Unohana's head: black hair parted at the middle and falling past her cheeks. */
+function unohanaHairFront(g: Ctx, cx: number, hy: number, s: number): void {
+  g.fillStyle = '#0d0e14';
+  g.beginPath();
+  g.ellipse(cx, hy - 2 * s, 6.8 * s, 5 * s, 0, Math.PI * 0.95, Math.PI * 2.05);
+  g.fill();
+  for (const dir of [-1, 1]) {
+    poly(g, [
+      [cx + dir * 0.4 * s, hy - 4.8 * s],
+      [cx + dir * 6.8 * s, hy - 1.4 * s],
+      [cx + dir * 6.6 * s, hy + 6 * s],
+      [cx + dir * 4.8 * s, hy + 1.4 * s],
+      [cx + dir * 1.6 * s, hy - 2.2 * s],
+    ]);
+    g.fill();
+  }
+}
+
+/**
+ * Retsu Unohana (a chibi homage): Captain of the 4th Division, the healer.
+ * Her long black hair in one thick braid down her front, a calm smile, the
+ * captain's haori, Minazuki at her side.
+ */
+const unohana: Draw = (g, w, h) => {
+  const s = 2;
+  const cx = w / 2;
+  const cy = h / 2 + 7;
+  const hy = cy - 13 * s;
+  aura(g, cx, cy, 54, 'rgba(150,230,190,0.2)');
+  unohanaHairBack(g, cx, hy, cy, s, false);
+  captainBody(g, cx, cy, s, { haori: 'sleeved' });
+  heldSword(g, cx + 12 * s, cy + 9.6 * s, s, 14, -0.12);
+  faceAt(g, cx, hy + 0.8 * s, s, 5.6, 6.4);
+  unohanaHairFront(g, cx, hy, s);
+  // The braid, from under her chin down over her chest, tied at the end
+  for (let q = 0; q < 7; q++) {
+    const y = hy + 6.4 * s + q * 2.5 * s;
+    const x = cx + Math.sin(q * 0.9) * 0.6 * s;
+    g.fillStyle = q % 2 ? '#1a1c26' : '#0d0e14';
+    g.beginPath();
+    g.ellipse(x, y, 2.4 * s, 1.7 * s, (q % 2 ? 0.5 : -0.5), 0, TAU);
+    g.fill();
+  }
+  g.fillStyle = '#d8dee8';
+  g.fillRect(cx - 1.4 * s, hy + 23.6 * s, 2.8 * s, 1.2 * s);
+  g.fillStyle = '#0d0e14';
+  poly(g, [
+    [cx - 1.8 * s, hy + 24.8 * s],
+    [cx + 1.8 * s, hy + 24.8 * s],
+    [cx, hy + 28 * s],
+  ]);
+  g.fill();
+  // Calm, closed eyes and a faint smile
+  g.strokeStyle = '#2a2430';
+  g.lineWidth = 0.6 * s;
+  g.beginPath();
+  for (const dir of [-1, 1]) {
+    g.moveTo(cx + dir * 1.4 * s, hy + 1.8 * s);
+    g.quadraticCurveTo(cx + dir * 2.7 * s, hy + 2.6 * s, cx + dir * 4 * s, hy + 1.8 * s);
+  }
+  g.moveTo(cx - 1.4 * s, hy + 4.6 * s);
+  g.quadraticCurveTo(cx, hy + 5.4 * s, cx + 1.4 * s, hy + 4.6 * s);
+  g.stroke();
+};
+
+/**
+ * Unohana as the first Kenpachi (a chibi homage): the braid let down and
+ * her hair loose, the old scar across her chest showing at last, her eyes
+ * open, and Minazuki's blade running red.
+ */
+const unohanaKenpachi: Draw = (g, w, h) => {
+  const s = 2;
+  const cx = w / 2;
+  const cy = h / 2 + 7;
+  const hy = cy - 13 * s;
+  aura(g, cx, cy, 58, 'rgba(210,20,40,0.3)');
+  unohanaHairBack(g, cx, hy, cy, s, true);
+  captainBody(g, cx, cy, s, { haori: 'sleeved' });
+  // The scar the braid always hid
+  g.strokeStyle = '#c8303c';
+  g.lineWidth = 0.8 * s;
+  g.lineCap = 'round';
+  g.beginPath();
+  g.moveTo(cx - 4 * s, cy - 5.6 * s);
+  g.lineTo(cx + 3.6 * s, cy - 1.2 * s);
+  g.stroke();
+  // Minazuki raised, its blade dark red and dripping
+  heldSword(g, cx + 12 * s, cy + 9.6 * s, s, 15, Math.PI + 0.5, '#a01828');
+  g.fillStyle = '#c8202e';
+  for (const [dx, dy] of [
+    [15.6, -1],
+    [18.4, -6],
+    [20.8, -11],
+  ] as const) {
+    g.beginPath();
+    g.ellipse(cx + dx * s, cy + dy * s, 0.7 * s, 1.2 * s, 0, 0, TAU);
+    g.fill();
+  }
+  faceAt(g, cx, hy + 0.8 * s, s, 5.6, 6.4);
+  unohanaHairFront(g, cx, hy, s);
+  browsAt(g, cx, hy + 0.4 * s, s, '#0d0e14', 1.4);
+  eyesAt(g, cx, hy + 1.9 * s, s, '#dfe6ff', '#3a5ac8', 2.6);
+  g.strokeStyle = '#5a2a30';
+  g.lineWidth = 0.55 * s;
+  g.beginPath();
+  g.moveTo(cx - 1.6 * s, hy + 4.8 * s);
+  g.quadraticCurveTo(cx, hy + 4.2 * s, cx + 1.6 * s, hy + 4.8 * s);
   g.stroke();
 };
 
@@ -2135,105 +2582,6 @@ const seated: Draw = (g, w, h) => {
   g.fillStyle = '#20232e';
   g.fillRect(-1.1 * s, -1 * s, 2.2 * s, 2 * s);
   g.restore();
-};
-
-/**
- * The Kidō Grandmaster: an indigo-robed spell master under a wide straw hat,
- * hands joined over a glowing spell, a golden seal turning behind. Original design.
- */
-const grandmaster: Draw = (g, w, h) => {
-  const cx = w / 2;
-  const cy = h / 2 + 6;
-  aura(g, cx, cy, 62, 'rgba(255,170,90,0.22)');
-  // The seal behind
-  g.save();
-  g.strokeStyle = 'rgba(255,205,110,0.85)';
-  g.shadowColor = '#ffb347';
-  g.shadowBlur = 8;
-  g.lineWidth = 2;
-  g.beginPath();
-  g.arc(cx, cy - 6, 52, 0, TAU);
-  g.stroke();
-  g.lineWidth = 1.2;
-  g.beginPath();
-  g.arc(cx, cy - 6, 44, 0, TAU);
-  g.stroke();
-  g.fillStyle = 'rgba(255,215,130,0.9)';
-  for (let k = 0; k < 8; k++) {
-    const a = (k / 8) * TAU;
-    const x = cx + Math.cos(a) * 48;
-    const y = cy - 6 + Math.sin(a) * 48;
-    poly(g, [
-      [x, y - 3.5],
-      [x + 3.5, y],
-      [x, y + 3.5],
-      [x - 3.5, y],
-    ]);
-    g.fill();
-  }
-  g.restore();
-  // Robe
-  const robe = g.createLinearGradient(0, cy - 16, 0, cy + 46);
-  robe.addColorStop(0, '#2a2c58');
-  robe.addColorStop(1, '#07080f');
-  g.fillStyle = robe;
-  poly(g, [
-    [cx - 18, cy - 16],
-    [cx + 18, cy - 16],
-    [cx + 32, cy + 46],
-    [cx - 32, cy + 46],
-  ]);
-  g.fill();
-  g.strokeStyle = 'rgba(214,222,240,0.5)';
-  g.lineWidth = 1;
-  g.stroke();
-  g.fillStyle = '#d9a54a';
-  g.fillRect(cx - 31, cy + 41, 62, 3);
-  g.fillStyle = '#eceff6';
-  poly(g, [
-    [cx - 8, cy - 16],
-    [cx, cy - 2],
-    [cx + 8, cy - 16],
-    [cx + 5, cy - 16],
-    [cx, cy - 8],
-    [cx - 5, cy - 16],
-  ]);
-  g.fill();
-  // Wide sleeves meeting at the chest, a spell glowing between the hands
-  g.fillStyle = '#1b1d3d';
-  g.beginPath();
-  g.ellipse(cx - 14, cy + 6, 9, 14, 0.5, 0, TAU);
-  g.fill();
-  g.beginPath();
-  g.ellipse(cx + 14, cy + 6, 9, 14, -0.5, 0, TAU);
-  g.fill();
-  glowDot(g, cx, cy + 10, 5, 5, '#fff4d8', '#ff9a3c', 14);
-  // Straw hat over a shadowed face, two gold eyes under the brim
-  g.fillStyle = INK;
-  g.beginPath();
-  g.ellipse(cx, cy - 24, 10, 9, 0, 0, TAU);
-  g.fill();
-  glowDot(g, cx - 4, cy - 23, 1.5, 1.1, '#fff0b8', '#ffb347', 6);
-  glowDot(g, cx + 4, cy - 23, 1.5, 1.1, '#fff0b8', '#ffb347', 6);
-  const hat = g.createLinearGradient(0, cy - 46, 0, cy - 26);
-  hat.addColorStop(0, '#e2cf9f');
-  hat.addColorStop(1, '#9c8655');
-  g.fillStyle = hat;
-  g.beginPath();
-  g.moveTo(cx - 30, cy - 28);
-  g.lineTo(cx, cy - 46);
-  g.lineTo(cx + 30, cy - 28);
-  g.quadraticCurveTo(cx, cy - 23, cx - 30, cy - 28);
-  g.closePath();
-  g.fill();
-  g.strokeStyle = 'rgba(70,52,20,0.55)';
-  g.lineWidth = 1;
-  for (let k = -2; k <= 2; k++) {
-    g.beginPath();
-    g.moveTo(cx, cy - 46);
-    g.lineTo(cx + k * 12, cy - 26.5);
-    g.stroke();
-  }
 };
 
 // --------------------------------------------------------------- captains
@@ -5900,15 +6248,18 @@ const kon: Draw = (g, w, h) => {
 // ------------------------------------------------------------ packing
 
 const ENEMY_DRAW: readonly [string, number, Draw][] = [
-  ['menos', 184, menos],
-  ['vasto', 128, vasto],
+  ['ayon', 184, ayon],
+  ['ayon_rage', 200, ayonRage],
+  ['nel', 112, nel],
+  ['nel_gamuza', 140, nelGamuza],
   ['bearer', 104, bearer],
   ['brute', 76, brute],
   ['adjuchas', 72, adjuchas],
   ['hollow', 52, hollow],
   ['volatile', 52, volatile],
   ['hound', 48, hound],
-  ['grandmaster', 136, grandmaster],
+  ['unohana', 112, unohana],
+  ['unohana_kenpachi', 112, unohanaKenpachi],
   ['guard', 84, guard],
   ['seated', 72, seated],
   ['officer', 52, officer],

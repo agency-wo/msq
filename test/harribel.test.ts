@@ -46,16 +46,16 @@ function marks(w: World, shape: number): number[] {
 }
 
 describe('Tier Harribel', () => {
-  it('ends Hueco Mundo; a Vasto Lorde rises before her', () => {
+  it('ends Hueco Mundo; Neliel stands before her', () => {
     const hueco = STAGES.find((s) => s.id === 'hueco');
     const bosses = hueco?.events.filter((e) => e.kind === 'boss') ?? [];
     const last = bosses[bosses.length - 1];
     expect(last?.kind === 'boss' && last.enemy).toBe('harribel');
     expect(last?.kind === 'boss' && last.final).toBe(true);
     expect(last?.at).toBe(hueco?.length);
-    const vasto = bosses.find((e) => e.kind === 'boss' && e.enemy === 'vasto');
-    expect(vasto?.kind === 'boss' && vasto.final).toBe(false);
-    expect(vasto?.at).toBe(18 * 60);
+    const nel = bosses.find((e) => e.kind === 'boss' && e.enemy === 'nel');
+    expect(nel?.kind === 'boss' && nel.final).toBe(false);
+    expect(nel?.at).toBe(18 * 60);
   });
 
   it('Ola Azul: a fan of three waves, five once Tiburón is released', () => {

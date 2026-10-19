@@ -40,6 +40,9 @@ export function bossSpriteName(type: number, variant: number, phase: number): st
     if (hero === 'renji' || hero === 'rukia') return `${base}_bankai`;
   }
   if (id === 'ichigo') return 'ichigo_mask';
+  if (id === 'ayon') return 'ayon_rage';
+  if (id === 'nel') return 'nel_gamuza';
+  if (id === 'unohana') return 'unohana_kenpachi';
   if (id === 'harribel') return 'harribel_tiburon';
   if (id === 'royal' && base === 'royal_kirio') return 'royal_kirio_slim';
   return base;
