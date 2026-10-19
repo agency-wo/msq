@@ -27,6 +27,7 @@ import {
   setStart,
   setStartRelic,
 } from './save/archives';
+import { buyLook, buyTrail, wardrobeAffordable, wearLook, wearTrail } from './save/wardrobe';
 import {
   almightyUnlocked,
   endlessOpen,
@@ -53,6 +54,7 @@ type State =
   | 'chronicle'
   | 'codex'
   | 'feats'
+  | 'wardrobe'
   | 'daily'
   | 'story'
   | 'playing'
@@ -140,6 +142,7 @@ export class App {
     if (!stageUnlocked(this.save, this.save.stage)) this.save.stage = 'hueco';
     this.renderer.setStage(this.save.stage);
     this.renderer.setLook(this.save.look);
+    this.renderer.setTrail(this.save.trail);
     this.music.play('title');
     this.music.duck(false);
     this.ui.showTitle(this.save, {
@@ -159,7 +162,33 @@ export class App {
       daily: this.todaysDaily(),
       installHint: isIOS() && !isStandalone(),
       archivesDot: affordable(this.save) !== null,
+      onWardrobe: () => this.showWardrobe(),
+      wardrobeDot: wardrobeAffordable(this.save),
     });
+  }
+
+  /** The Emperor's Wardrobe: buy and wear looks and trails. Every change is saved at once. */
+  private showWardrobe(relock = true, back: () => void = () => this.showTitle()): void {
+    this.state = 'wardrobe';
+    const done = (ok: boolean, sound: Parameters<Sfx['play']>[0]): void => {
+      if (!ok) return;
+      writeSave(this.save);
+      this.renderer.setLook(this.save.look);
+      this.renderer.setTrail(this.save.trail);
+      this.sfx.play(sound);
+      this.showWardrobe(false, back);
+    };
+    this.ui.showWardrobe(
+      this.save,
+      {
+        onLook: (id) => done(wearLook(this.save, id), 'blade'),
+        onBuyLook: (id) => done(buyLook(this.save, id), 'chest'),
+        onTrail: (id) => done(wearTrail(this.save, id), 'blade'),
+        onBuyTrail: (id) => done(buyTrail(this.save, id), 'chest'),
+        onBack: back,
+      },
+      relock,
+    );
   }
 
   /** The Wandenreich Archives: training, the Armory and the Kaiser Gesang. Every change is saved at once. */
@@ -193,12 +222,7 @@ export class App {
     this.ui.showFeats(
       this.save,
       {
-        onLook: (id) => {
-          if (!this.save.looks.includes(id)) return;
-          this.save.look = id;
-          writeSave(this.save);
-          this.showFeats(false);
-        },
+        onWardrobe: () => this.showWardrobe(true, () => this.showFeats()),
         onBack: () => this.showTitle(),
       },
       relock,
@@ -354,6 +378,8 @@ export class App {
       return;
     }
     this.renderer.setStage(stage);
+    this.renderer.setLook(this.save.look);
+    this.renderer.setTrail(this.save.trail);
     this.sawEvent = false;
     this.world = new World({
       stage,

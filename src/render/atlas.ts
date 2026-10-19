@@ -1298,13 +1298,7 @@ const evoShadow: Draw = (g, w, h) => {
   }
 };
 
-/**
- * The Emperor, drawn after Yhwach in the game's own chibi style: long wavy
- * black hair falling over his shoulders, a heavy mustache under stern brows,
- * red eyes, a black coat whose tall collar shows crimson beside the hair, and
- * a long cape. Pale rim lines keep the black silhouette readable at night.
- */
-/** The colours of one of the Emperor's looks (opened by feats). */
+/** The colours of one of the Emperor's looks. */
 interface HeroLook {
   cape: string;
   coatTop: string;
@@ -1318,6 +1312,7 @@ interface HeroLook {
   lining: string;
 }
 
+/** Every look the Emperor can wear (see data/looks.ts): three from feats, five bought in the Wardrobe. */
 const HERO_LOOKS: Readonly<Record<string, HeroLook>> = {
   default: {
     cape: '#0a0b10',
@@ -1368,27 +1363,145 @@ const HERO_LOOKS: Readonly<Record<string, HeroLook>> = {
     collar: '#101117',
     lining: '#c9a040',
   },
+  // Schatten: the shadow realm the Wandenreich hid in. Violet-black, a violet star.
+  schatten: {
+    cape: '#120a1e',
+    coatTop: '#2c1e44',
+    coatBottom: '#0a0612',
+    trim: 'rgba(196,160,255,0.55)',
+    star: '#ece2ff',
+    starGlow: 'rgba(154,122,255,0.95)',
+    sleeve: '#1c1230',
+    cuff: '#c9b8ff',
+    collar: '#140c22',
+    lining: '#5a2a9a',
+  },
+  // Blut: black, the trim running red like the veins of Blut Arterie.
+  blut: {
+    cape: '#0b0709',
+    coatTop: '#2c1418',
+    coatBottom: '#080406',
+    trim: 'rgba(255,61,94,0.75)',
+    star: '#ffd0d8',
+    starGlow: 'rgba(255,45,74,0.95)',
+    sleeve: '#1a0c10',
+    cuff: '#ff5a70',
+    collar: '#120a0c',
+    lining: '#b0142e',
+  },
+  // Silbern: the silver of the Wandenreich's capital, trimmed in ice blue.
+  silbern: {
+    cape: '#c4ccd8',
+    coatTop: '#eef2f8',
+    coatBottom: '#a4aec0',
+    trim: 'rgba(60,120,200,0.65)',
+    star: '#bfe6ff',
+    starGlow: 'rgba(120,200,255,0.95)',
+    sleeve: '#d8dee8',
+    cuff: '#4a7ab8',
+    collar: '#e4e9f1',
+    lining: '#3a6ab0',
+  },
+  // Heilig: holy white and gold.
+  heilig: {
+    cape: '#f2eee2',
+    coatTop: '#fffdf6',
+    coatBottom: '#e0d6bc',
+    trim: 'rgba(201,160,64,0.85)',
+    star: '#ffd25a',
+    starGlow: 'rgba(255,210,90,0.95)',
+    sleeve: '#f2ecdc',
+    cuff: '#c9a040',
+    collar: '#faf6ea',
+    lining: '#c9a040',
+  },
+  // Kaiser: a black coat under a royal purple cape, gold at every edge.
+  kaiser: {
+    cape: '#2c1040',
+    coatTop: '#22222c',
+    coatBottom: '#07080c',
+    trim: 'rgba(255,210,120,0.85)',
+    star: '#ffd25a',
+    starGlow: 'rgba(255,200,90,0.95)',
+    sleeve: '#14151c',
+    cuff: '#e8c870',
+    collar: '#101117',
+    lining: '#7a3aaa',
+  },
 };
 
-function heroDraw(look: HeroLook): Draw {
+/** The look ids the atlas draws. */
+export const HERO_LOOK_IDS: readonly string[] = Object.keys(HERO_LOOKS);
+
+/** The cape hangs from his shoulders here: the renderer turns it about this point. */
+export const CAPE_PIVOT = { x: 0.5, y: 27 / 72 } as const;
+
+/**
+ * The Emperor's cape, on its own so it can trail behind him as he moves: the
+ * lining shows along the hem, folds run down it, and a pale rim keeps the
+ * black silhouette readable at night.
+ */
+function heroCape(look: HeroLook): Draw {
+  return (g, w) => {
+    const cx = w / 2;
+    const outline = (): void => {
+      g.beginPath();
+      g.moveTo(cx - 10, 27);
+      g.quadraticCurveTo(cx - 27.5, 50, cx - 24.5, 71);
+      g.quadraticCurveTo(cx, 67.5, cx + 24.5, 71);
+      g.quadraticCurveTo(cx + 27.5, 50, cx + 10, 27);
+      g.closePath();
+    };
+    g.fillStyle = look.lining;
+    outline();
+    g.fill();
+    // The cape itself, a little shorter, so the lining frames its hem.
+    g.beginPath();
+    g.moveTo(cx - 10, 27);
+    g.quadraticCurveTo(cx - 26.2, 50, cx - 23, 68.6);
+    g.quadraticCurveTo(cx, 65.4, cx + 23, 68.6);
+    g.quadraticCurveTo(cx + 26.2, 50, cx + 10, 27);
+    g.closePath();
+    g.fillStyle = look.cape;
+    g.fill();
+    const shade = g.createLinearGradient(0, 30, 0, 69);
+    shade.addColorStop(0, 'rgba(0,0,0,0)');
+    shade.addColorStop(1, 'rgba(0,0,0,0.32)');
+    g.fillStyle = shade;
+    g.fill();
+    // Folds falling from the shoulders.
+    g.strokeStyle = 'rgba(214,222,242,0.16)';
+    g.lineWidth = 0.8;
+    g.beginPath();
+    g.moveTo(cx - 14, 38);
+    g.quadraticCurveTo(cx - 18.5, 53, cx - 16.5, 66.5);
+    g.moveTo(cx + 14, 38);
+    g.quadraticCurveTo(cx + 18.5, 53, cx + 16.5, 66.5);
+    g.moveTo(cx - 20, 46);
+    g.quadraticCurveTo(cx - 22.5, 57, cx - 21, 67.6);
+    g.moveTo(cx + 20, 46);
+    g.quadraticCurveTo(cx + 22.5, 57, cx + 21, 67.6);
+    g.stroke();
+    g.strokeStyle = 'rgba(214,222,242,0.6)';
+    g.lineWidth = 1.3;
+    outline();
+    g.stroke();
+  };
+}
+
+/**
+ * The Emperor, drawn after Yhwach in the game's own chibi style: long wavy
+ * black hair falling over his shoulders, a heavy mustache under stern brows,
+ * red eyes, and a black coat whose tall collar shows crimson beside the hair.
+ * Everything but the cape, which is its own layer.
+ */
+function heroBody(look: HeroLook): Draw {
   return (g, w) => {
   const cx = w / 2;
   const RIM = 'rgba(214,222,242,0.6)';
   const HAIR = '#0b0b11';
   const HAIR_RIM = 'rgba(214,222,242,0.42)';
-  // Cape, flaring from the shoulders
-  g.fillStyle = look.cape;
-  g.beginPath();
-  g.moveTo(cx - 10, 27);
-  g.quadraticCurveTo(cx - 27, 50, cx - 24, 70);
-  g.quadraticCurveTo(cx, 66, cx + 24, 70);
-  g.quadraticCurveTo(cx + 27, 50, cx + 10, 27);
-  g.closePath();
-  g.fill();
-  g.strokeStyle = RIM;
-  g.lineWidth = 1.3;
-  g.stroke();
-  // Coat
+  // Coat, with a soft light down its front
   const coat = g.createLinearGradient(0, 28, 0, 66);
   coat.addColorStop(0, look.coatTop);
   coat.addColorStop(1, look.coatBottom);
@@ -1400,6 +1513,16 @@ function heroDraw(look: HeroLook): Draw {
   g.lineTo(cx - 13, 66);
   g.closePath();
   g.fill();
+  const sheen = g.createLinearGradient(cx - 9, 0, cx + 9, 0);
+  sheen.addColorStop(0, 'rgba(255,255,255,0)');
+  sheen.addColorStop(0.42, 'rgba(255,255,255,0.07)');
+  sheen.addColorStop(0.58, 'rgba(255,255,255,0.07)');
+  sheen.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = sheen;
+  g.fill();
+  g.strokeStyle = 'rgba(214,222,242,0.35)';
+  g.lineWidth = 0.9;
+  g.stroke();
   // Front opening, hem trim and a silver star at the chest
   g.strokeStyle = look.trim;
   g.lineWidth = 1;
@@ -1408,15 +1531,17 @@ function heroDraw(look: HeroLook): Draw {
   g.lineTo(cx, 66);
   g.moveTo(cx - 12.6, 63);
   g.lineTo(cx + 12.6, 63);
+  g.moveTo(cx - 12.1, 60.4);
+  g.lineTo(cx + 12.1, 60.4);
   g.stroke();
   g.save();
   g.fillStyle = look.star;
   g.shadowColor = look.starGlow;
-  g.shadowBlur = 4;
+  g.shadowBlur = 6;
   g.beginPath();
   for (let k = 0; k < 10; k++) {
     const a = (k / 10) * TAU - Math.PI / 2;
-    const r = k % 2 === 0 ? 3.2 : 1.3;
+    const r = k % 2 === 0 ? 3.4 : 1.35;
     g.lineTo(cx + Math.cos(a) * r, 36 + Math.sin(a) * r);
   }
   g.closePath();
@@ -1430,6 +1555,14 @@ function heroDraw(look: HeroLook): Draw {
   g.beginPath();
   g.ellipse(cx + 12, 44, 4, 9, -0.3, 0, TAU);
   g.fill();
+  g.strokeStyle = 'rgba(214,222,242,0.3)';
+  g.lineWidth = 0.7;
+  g.beginPath();
+  g.ellipse(cx - 12, 44, 4, 9, 0.3, 0, TAU);
+  g.stroke();
+  g.beginPath();
+  g.ellipse(cx + 12, 44, 4, 9, -0.3, 0, TAU);
+  g.stroke();
   g.fillStyle = look.cuff;
   g.fillRect(cx - 16, 50, 6, 1.6);
   g.fillRect(cx + 10, 50, 6, 1.6);
@@ -1462,7 +1595,7 @@ function heroDraw(look: HeroLook): Draw {
     g.lineTo(cx + dir * 13.5, 31);
     g.stroke();
   }
-  // Face
+  // Face, shaded under the brows and the jaw
   g.fillStyle = '#efdfcb';
   g.beginPath();
   g.ellipse(cx, 19.5, 6, 7.2, 0, 0, TAU);
@@ -1470,6 +1603,10 @@ function heroDraw(look: HeroLook): Draw {
   g.fillStyle = 'rgba(80,50,40,0.25)';
   g.beginPath();
   g.ellipse(cx, 24.5, 4.5, 2.2, 0, 0, TAU);
+  g.fill();
+  g.fillStyle = 'rgba(80,50,40,0.18)';
+  g.beginPath();
+  g.ellipse(cx, 17.6, 4.8, 1.3, 0, 0, TAU);
   g.fill();
   // Hair: a full crown with a centre part, and long wavy locks down over the shoulders
   g.fillStyle = HAIR;
@@ -1492,6 +1629,17 @@ function heroDraw(look: HeroLook): Draw {
     g.closePath();
     g.fill();
     g.stroke();
+    // Light catching the waves of each lock
+    g.save();
+    g.strokeStyle = 'rgba(214,222,242,0.22)';
+    g.lineWidth = 0.6;
+    g.beginPath();
+    g.moveTo(cx + dir * 3.5, 10.2);
+    g.quadraticCurveTo(cx + dir * 8.6, 11.5, cx + dir * 8.6, 18.5);
+    g.moveTo(cx + dir * 9.4, 27);
+    g.quadraticCurveTo(cx + dir * 11.6, 31.5, cx + dir * 11.2, 37);
+    g.stroke();
+    g.restore();
   }
   // Stern brows and red eyes
   g.strokeStyle = HAIR;
@@ -1518,7 +1666,39 @@ function heroDraw(look: HeroLook): Draw {
   };
 }
 
-const hero = heroDraw(HERO_LOOKS.default);
+/** Cape and body together, for the DOM portraits. */
+function heroDraw(look: HeroLook): Draw {
+  const cape = heroCape(look);
+  const body = heroBody(look);
+  return (g, w, h) => {
+    cape(g, w, h);
+    body(g, w, h);
+  };
+}
+
+/**
+ * The Almighty's eyes: once A · The Almighty is his, each eye shows several
+ * pupils, as it does in the story. Laid over the body's own eyes.
+ */
+const evoPupils: Draw = (g, w) => {
+  const cx = w / 2;
+  for (const dir of [-1, 1]) {
+    const x = cx + dir * 2.9;
+    glowDot(g, x, 19.7, 1.6, 1.15, '#ff4a64', '#ff2d4a', 7);
+    g.fillStyle = '#2a0008';
+    for (const [dx, dy] of [
+      [-0.62, 0.12],
+      [0.62, 0.12],
+      [0, -0.42],
+    ] as const) {
+      g.beginPath();
+      g.arc(x + dx, 19.7 + dy, 0.3, 0, TAU);
+      g.fill();
+    }
+  }
+};
+
+const hero = heroBody(HERO_LOOKS.default);
 
 // -------------------------------------------------------------- enemies
 
@@ -4021,12 +4201,16 @@ function specs(): Spec[] {
     { name: 'flame', w: 192, h: 48, draw: flame },
     { name: 'dragon', w: 120, h: 48, draw: dragon },
     { name: 'meteor', w: 72, h: 72, draw: meteor },
+    // The Emperor in every look: his body, its hit flash, and his cape on its own.
     { name: 'player', w: 60, h: 72, draw: hero },
     { name: 'player_f', w: 60, h: 72, draw: flash(hero) },
-    ...(['white', 'crimson', 'gilded'] as const).flatMap((look) => [
-      { name: `player_${look}`, w: 60, h: 72, draw: heroDraw(HERO_LOOKS[look]) },
-      { name: `player_${look}_f`, w: 60, h: 72, draw: flash(heroDraw(HERO_LOOKS[look])) },
+    { name: 'cape', w: 60, h: 72, draw: heroCape(HERO_LOOKS.default) },
+    ...HERO_LOOK_IDS.filter((look) => look !== 'default').flatMap((look) => [
+      { name: `player_${look}`, w: 60, h: 72, draw: heroBody(HERO_LOOKS[look]) },
+      { name: `player_${look}_f`, w: 60, h: 72, draw: flash(heroBody(HERO_LOOKS[look])) },
+      { name: `cape_${look}`, w: 60, h: 72, draw: heroCape(HERO_LOOKS[look]) },
     ]),
+    { name: 'evo_pupils', w: 60, h: 72, draw: evoPupils },
     { name: 'evo_wings', w: 120, h: 60, draw: evoWings },
     { name: 'shrine', w: 48, h: 64, draw: shrine },
     { name: 'fragment', w: 40, h: 40, draw: fragment },
@@ -4171,6 +4355,7 @@ export function drawEmperor(
   if (tier >= 1) layer(evoWings, hx + 30 - 60, hy + 30 - 30, 120, 60);
   layer(heroDraw(HERO_LOOKS[look] ?? HERO_LOOKS.default), hx, hy, 60, 72);
   if (tier >= 2) layer(evoEyes, hx, hy, 60, 72);
+  if (tier >= 3) layer(evoPupils, hx, hy, 60, 72);
 }
 
 /** A 1024 px tile covering 512 world units, one per stage. */

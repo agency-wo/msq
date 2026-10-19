@@ -565,3 +565,56 @@ export function drawEmblem(canvas: HTMLCanvasElement, size: number): void {
   starPath(g, c, c * 1.04, c * 0.62, c * 0.24, 5);
   g.fill();
 }
+
+/**
+ * A cloak trail's swatch for the Wardrobe: its motes drifting along a short
+ * path, brightest where he stands. 'none' is a faint dashed line.
+ */
+export function drawTrailSwatch(canvas: HTMLCanvasElement, id: string, color: string, cssW = 64, cssH = 34): void {
+  const ratio = Math.min(window.devicePixelRatio || 1, 3);
+  canvas.width = Math.round(cssW * ratio);
+  canvas.height = Math.round(cssH * ratio);
+  const g = canvas.getContext('2d');
+  if (!g) return;
+  g.scale(ratio, ratio);
+  if (id === 'none') {
+    g.strokeStyle = 'rgba(239,234,224,0.28)';
+    g.lineWidth = 2;
+    g.setLineDash([3, 4]);
+    g.beginPath();
+    g.moveTo(8, cssH / 2);
+    g.lineTo(cssW - 8, cssH / 2);
+    g.stroke();
+    return;
+  }
+  let seed = 11;
+  const rnd = (): number => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  for (let k = 0; k < 10; k++) {
+    const t = k / 9;
+    const x = 8 + t * (cssW - 16);
+    const y = cssH * 0.6 - Math.sin(t * Math.PI) * 5 + (rnd() - 0.5) * 7;
+    const r = 1.3 + t * 2.6;
+    g.save();
+    g.globalAlpha = 0.25 + 0.75 * t;
+    if (id === 'schatten') {
+      g.fillStyle = '#2a1840';
+      g.strokeStyle = color;
+      g.lineWidth = 0.8;
+      g.beginPath();
+      g.arc(x, y, r * 1.5, 0, TAU);
+      g.fill();
+      g.stroke();
+    } else {
+      g.fillStyle = color;
+      g.shadowColor = color;
+      g.shadowBlur = 6;
+      if (id === 'gold') starPath(g, x, y, r + 1.2, (r + 1.2) * 0.42, 4);
+      else {
+        g.beginPath();
+        g.arc(x, y, r, 0, TAU);
+      }
+      g.fill();
+    }
+    g.restore();
+  }
+}

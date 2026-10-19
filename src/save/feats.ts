@@ -12,14 +12,9 @@ import type { SaveData } from './save';
  * look or a relic that can then turn up in chests.
  */
 
-export type LookId = 'default' | 'white' | 'crimson' | 'gilded';
-
-export const LOOKS: readonly { id: LookId; name: string }[] = [
-  { id: 'default', name: 'Black' },
-  { id: 'white', name: 'Wandenreich White' },
-  { id: 'crimson', name: 'Crimson' },
-  { id: 'gilded', name: 'Gilded' },
-];
+// The looks live with the Wardrobe; feats still open three of them.
+export { type LookId, LOOKS } from '../data/looks';
+import type { LookId } from '../data/looks';
 
 export type FeatGroup = 'Journey' | 'Stages' | 'One run' | 'Modes';
 

@@ -410,17 +410,44 @@ try {
   await page.waitForSelector('.screen.title .btn.primary');
   await wait(300);
 
-  // Feats: progress, rewards, and the looks they open (the white one is worn).
+  // Feats: progress and rewards; the looks they open are worn from the Wardrobe.
   await page.tap('.feats-btn');
   await page.waitForSelector('.screen.feats .feat');
   await wait(250);
   log('feats', {
     earned: await page.textContent('.screen.feats .archives-hint'),
-    looks: await page.$$eval('.look-chip', (c) => c.map((x) => x.textContent)),
     bars: await page.$$eval('.feat-bar', (b) => b.length),
   });
   await shot('09i-feats');
   await page.tap('.screen.feats .btn.primary');
+  await page.waitForSelector('.screen.title .btn.primary');
+  await wait(300);
+
+  // The Wardrobe, from the Emperor's portrait: buy a look and a trail (each goes on at once).
+  await page.tap('.hero-btn');
+  await page.waitForSelector('.screen.wardrobe .look-chip');
+  await wait(300);
+  await shot('09j-wardrobe');
+  const sale = await page.$('.look-chip.for-sale:not([disabled])');
+  if (sale) {
+    await sale.tap();
+    await wait(300);
+  }
+  const trail = await page.$('.trail-chip.locked:not([disabled])');
+  if (trail) {
+    await trail.tap();
+    await wait(300);
+  }
+  const dressed = await readSave();
+  log('wardrobe', {
+    looks: await page.$$eval('.look-chip', (c) => c.map((x) => x.textContent)),
+    trails: await page.$$eval('.trail-chip', (c) => c.map((x) => x.textContent)),
+    look: dressed.look,
+    trail: dressed.trail,
+    gold: dressed.gold,
+  });
+  await shot('09k-wardrobe-dressed');
+  await page.tap('.screen.wardrobe .btn.primary');
   await page.waitForSelector('.screen.title .btn.primary');
   await wait(300);
 

@@ -2,10 +2,11 @@
 // eval-free versions, so the game runs under a strict Content-Security-Policy.
 import 'pixi.js/unsafe-eval';
 import { Application, Container, Particle, ParticleContainer, TilingSprite, type Texture } from 'pixi.js';
-import { PLAYER, VIEW_H_LANDSCAPE, VIEW_W } from '../config';
+import { DT, PLAYER, VIEW_H_LANDSCAPE, VIEW_W } from '../config';
 import type { Input } from '../core/input';
 import { BANKAI_BY_ID, BANKAI_IDS } from '../data/bankai';
 import { ENEMY_INDEX, ENEMY_LIST } from '../data/enemies';
+import { TRAIL_BY_ID } from '../data/looks';
 import { ROYAL_IDS, ROYAL_INFO } from '../data/royal';
 import { DOUBLE_RING, doubleCount } from '../game/casts/schrift2';
 import { COMMANDER_HEAT, HARRIBEL_RELEASED } from '../game/hostile';
@@ -75,7 +76,7 @@ import {
   ZF_FOLLOW,
 } from '../game/constants';
 import type { World } from '../game/world';
-import { ATLAS_SCALE, buildAtlas, buildGroundTile, type Atlas } from './atlas';
+import { ATLAS_SCALE, buildAtlas, buildGroundTile, CAPE_PIVOT, type Atlas } from './atlas';
 
 /** Particle colour is tint in BGR order plus alpha in the top byte, written straight to a Uint32 buffer. */
 function packColor(rgb: number, alpha: number): number {
@@ -189,6 +190,8 @@ type LayerName =
   | 'hud';
 
 const ORB_SCALE = [0.42, 0.5, 0.62];
+/** The Emperor is drawn a little larger than his hitbox, so he reads first in a crowd. */
+const HERO_SIZE = 1.12;
 const ZONE_TINT: Record<number, number> = {
   [ZK_FIRE]: 0xff7a3c,
   [ZK_POISON]: 0x9dff8a,
@@ -362,11 +365,25 @@ export class Renderer {
   }
 
   /** Show a stage's ground (the title screen previews the selected stage too). */
-  /** The Emperor's look for the run (opened by feats). */
+  /** The Emperor's look for the run (earned with feats or bought in the Wardrobe). */
   private look = 'default';
+  /** His cloak trail, and where he has just been for its motes (drawn only; nothing in the world sees it). */
+  private trailId = 'none';
+  private readonly trailPts: { x: number; y: number; t: number }[] = [];
+  /** His walk: distance covered, the last step read, how fast he moved, and how far his cape has swung. */
+  private walk = 0;
+  private heroStep = -1;
+  private heroVx = 0;
+  private heroSpeed = 0;
+  private capeRot = 0;
 
   setLook(id: string): void {
     this.look = this.atlas.frames[`player_${id}`] ? id : 'default';
+  }
+
+  setTrail(id: string): void {
+    this.trailId = TRAIL_BY_ID.has(id) ? id : 'none';
+    this.trailPts.length = 0;
   }
 
   setStage(id: string): void {
@@ -731,7 +748,7 @@ export class Renderer {
     const L = this.L;
     const x = p.ox + (p.x - p.ox) * alpha;
     const y = p.oy + (p.y - p.oy) * alpha;
-    L.shadows.add(f.shadow, x, y + 15, 0.55, 0.55, 0, 0xffffff, 0.7);
+    L.shadows.add(f.shadow, x, y + 16, 0.55 * HERO_SIZE, 0.55 * HERO_SIZE, 0, 0xffffff, 0.7);
     // A faint reishi glow behind you, so a figure in black still stands out on the night ground.
     L.auras.add(f.glow, x, y - 4, 0.95, 1.1, 0, 0x6fa8ff, 0.2);
     if (p.rootT > 0) {
@@ -753,39 +770,106 @@ export class Renderer {
         const dy = y + Math.sin(a) * DOUBLE_RING;
         L.shadows.add(f.shadow, dx, dy + 15, 0.5, 0.5, 0, 0xffffff, 0.4);
         // A ghost of light in your shape: a blue glow with your features showing through.
-        L.allies.add(f.player_f, dx, dy - 4, 0.48 * p.face, 0.48, 0, 0x6fa8ff, 0.3);
-        L.allies.add(f.player, dx, dy - 4, 0.46 * p.face, 0.46, 0, 0xcfe6ff, 0.55);
+        L.allies.add(f.player_f, dx, dy - 4, 0.48 * HERO_SIZE * p.face, 0.48 * HERO_SIZE, 0, 0x6fa8ff, 0.3);
+        L.allies.add(f.player, dx, dy - 4, 0.46 * HERO_SIZE * p.face, 0.46 * HERO_SIZE, 0, 0xcfe6ff, 0.55);
       }
     }
     const justHit = p.iframes > PLAYER.iframes - 0.08;
     const blink = p.iframes > 0 && w.vollT <= 0 && Math.floor(now * 18) % 2 === 0;
+    // His walk, read once per simulation step: the distance covered drives his steps, the speed his cape.
+    if (w.steps !== this.heroStep) {
+      this.heroStep = w.steps;
+      const moved = Math.hypot(p.x - p.ox, p.y - p.oy);
+      this.walk += moved;
+      this.heroVx = (p.x - p.ox) / DT;
+      this.heroSpeed = moved / DT;
+    }
+    const moving = this.heroSpeed > 15;
     const float = Math.sin(now * 3.2) * 1.2;
-    const hy = y - 4 + float;
-    // The Emperor's evolutions: the Almighty's shadow and reishi wings behind him, eyes over his cloak.
+    const step = moving ? Math.abs(Math.sin(this.walk * 0.2)) * 1.6 : 0;
+    // Standing still he breathes; struck, he flinches for a moment.
+    const breath = moving ? 0 : Math.sin(now * 2.2) * 0.014;
+    const flinch = justHit ? 0.93 : 1;
+    const hy = y - 4 * HERO_SIZE + float - step;
+    const s = 0.5 * HERO_SIZE;
+    // The cape trails against his movement and settles when he stops; a little flutter keeps it alive.
+    const swing = Math.max(-0.32, Math.min(0.32, this.heroVx * 0.0024));
+    this.capeRot += (swing - this.capeRot) * 0.12;
+    const capeRot = this.capeRot + Math.sin(now * (moving ? 7 : 1.7)) * (moving ? 0.03 : 0.018);
+    const capeStretch = 1 + Math.min(0.1, this.heroSpeed * 0.0007);
+    const capeY = hy + (CAPE_PIVOT.y - 0.5) * 72 * s;
+    this.drawTrail(x, y, now);
+    // The Emperor's evolutions: the Almighty's shadow and reishi wings behind him, eyes across his cloak.
     const tier = w.evolution;
     // The shadow goes on the lowest layer so the wings still show over it.
-    if (tier >= 3) L.zonesN.add(f.evo_shadow, x, hy + 2, 0.5 * (1 + Math.sin(now * 3) * 0.04), 0.5, 0, 0xffffff, 0.9);
+    if (tier >= 3) L.zonesN.add(f.evo_shadow, x, hy + 2, 0.5 * HERO_SIZE * (1 + Math.sin(now * 3) * 0.04), 0.5 * HERO_SIZE, 0, 0xffffff, 0.9);
     if (tier >= 1) {
       const flap = Math.sin(now * 2.4);
-      L.auras.add(f.evo_wings, x, hy - 4, 0.62 * (1 + flap * 0.07), 0.62 * (1 - flap * 0.04), 0, 0xffffff, 0.85 + flap * 0.1);
+      L.auras.add(f.evo_wings, x, hy - 4 * HERO_SIZE, 0.62 * HERO_SIZE * (1 + flap * 0.07), 0.62 * HERO_SIZE * (1 - flap * 0.04), 0, 0xffffff, 0.85 + flap * 0.1);
     }
-    const body = this.look === 'default' ? f.player : f[`player_${this.look}`];
-    const bodyHit = this.look === 'default' ? f.player_f : f[`player_${this.look}_f`];
-    L.player.add(justHit ? bodyHit : body, x, hy, 0.5 * p.face, 0.5, 0, 0xffffff, blink ? 0.45 : 1);
+    const suffix = this.look === 'default' ? '' : `_${this.look}`;
+    const body = f[`player${suffix}`];
+    const bodyHit = f[`player${suffix}_f`];
+    const cape = f[`cape${suffix}`];
+    const fade = blink ? 0.45 : 1;
+    L.player.add(cape, x, capeY, s * p.face, s * capeStretch * (1 + breath), capeRot, justHit ? 0xffb0b8 : 0xffffff, fade, CAPE_PIVOT.x, CAPE_PIVOT.y);
     if (tier >= 2) {
-      // Every few seconds the eyes blink together.
+      // Every few seconds the eyes on his cloak blink together.
       const shut = now % 4.3 < 0.13;
-      L.player.add(f.evo_eyes, x, hy, 0.5 * p.face, 0.5, 0, 0xffffff, shut ? 0.12 : blink ? 0.45 : 1);
+      L.player.add(f.evo_eyes, x, capeY, s * p.face, s * capeStretch * (1 + breath), capeRot, 0xffffff, shut ? 0.12 : fade, CAPE_PIVOT.x, CAPE_PIVOT.y);
     }
+    L.player.add(justHit ? bodyHit : body, x, hy, s * p.face, s * (1 + breath) * flinch, 0, 0xffffff, fade);
+    // The Almighty's eyes: several pupils in each.
+    if (tier >= 3) L.player.add(f.evo_pupils, x, hy, s * p.face, s * (1 + breath) * flinch, 0, 0xffffff, fade);
     // Health under the hero: a framed bar that flares red when it runs low.
     const sq = this.atlas.px.square.w;
     const bw = 34;
     const bh = 4;
+    const by = y + 23;
     const frac = Math.max(0, p.hp / p.maxHp);
-    L.player.add(f.square, x - bw / 2 - 1, y + 21, (bw + 2) / sq, (bh + 2) / sq, 0, 0xd6dcea, 0.32, 0, 0.5);
-    L.player.add(f.square, x - bw / 2, y + 21, bw / sq, bh / sq, 0, 0x10131c, 0.95, 0, 0.5);
-    if (frac > 0) L.player.add(f.square, x - bw / 2, y + 21, (bw * frac) / sq, bh / sq, 0, 0xff3d5e, 1, 0, 0.5);
-    if (frac > 0 && frac < 0.3) L.auras.add(f.glow, x, y + 21, 0.75, 0.22, 0, 0xff2d4a, 0.25 + 0.25 * Math.sin(now * 9));
+    L.player.add(f.square, x - bw / 2 - 1, by, (bw + 2) / sq, (bh + 2) / sq, 0, 0xd6dcea, 0.32, 0, 0.5);
+    L.player.add(f.square, x - bw / 2, by, bw / sq, bh / sq, 0, 0x10131c, 0.95, 0, 0.5);
+    if (frac > 0) L.player.add(f.square, x - bw / 2, by, (bw * frac) / sq, bh / sq, 0, 0xff3d5e, 1, 0, 0.5);
+    if (frac > 0 && frac < 0.3) L.auras.add(f.glow, x, by, 0.75, 0.22, 0, 0xff2d4a, 0.25 + 0.25 * Math.sin(now * 9));
+  }
+
+  /**
+   * The cloak trail: motes left where he has just been, fading as they rise
+   * or drift. Purely drawn, from positions the renderer remembers itself.
+   */
+  private drawTrail(x: number, y: number, now: number): void {
+    if (this.trailId === 'none') return;
+    const pts = this.trailPts;
+    const last = pts[pts.length - 1];
+    if (!last || Math.hypot(x - last.x, y - last.y) > 6 || now - last.t > 0.5) {
+      pts.push({ x, y, t: now });
+      if (pts.length > 18) pts.shift();
+    }
+    const f = this.atlas.frames;
+    const L = this.L;
+    const LIFE = 0.75;
+    for (const q of pts) {
+      const age = now - q.t;
+      if (age > LIFE || age < 0) continue;
+      const k = 1 - age / LIFE;
+      // A steady little scatter per mote, from when it was left.
+      const jx = Math.sin(q.t * 37.1) * 4;
+      const jy = Math.cos(q.t * 23.7) * 3;
+      switch (this.trailId) {
+        case 'reishi':
+          L.auras.add(f.glow, q.x + jx, q.y + 8 + jy - age * 12, 0.12 + 0.12 * k, 0.12 + 0.12 * k, 0, 0x8fd0ff, 0.6 * k);
+          break;
+        case 'blut':
+          L.auras.add(f.spark, q.x + jx, q.y + 8 + jy, 0.25 + 0.45 * k, 0.25 + 0.45 * k, q.t * 5, 0xff3d5e, 0.85 * k);
+          break;
+        case 'schatten':
+          L.zonesN.add(f.smoke, q.x + jx, q.y + 10 + jy - age * 8, 0.3 + 0.3 * (1 - k), 0.3 + 0.3 * (1 - k), q.t * 3, 0x2a1840, 0.7 * k);
+          break;
+        case 'gold':
+          L.auras.add(f.star, q.x + jx, q.y + 6 + jy - age * 16, 0.16 + 0.28 * k, 0.16 + 0.28 * k, q.t * 4, 0xffd27a, 0.9 * k);
+          break;
+      }
+    }
   }
 
   /** A motion streak behind a moving projectile, as long as it is fast. */

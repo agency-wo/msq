@@ -2281,3 +2281,143 @@ button:focus-visible {
 .afford-hint {
   color: var(--gold);
 }
+
+/* The title's Emperor opens the Wardrobe. */
+.hero-btn {
+  appearance: none;
+  position: relative;
+  display: block;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  pointer-events: auto;
+  touch-action: manipulation;
+  cursor: pointer;
+}
+
+.wardrobe-pill {
+  position: absolute;
+  left: 50%;
+  bottom: 2px;
+  transform: translateX(-50%);
+  padding: 3px 10px;
+  border: 1px solid rgba(255, 203, 92, 0.45);
+  background: rgba(8, 9, 14, 0.78);
+  color: var(--gold);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.wardrobe-pill.has-dot::after {
+  content: '';
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--gold);
+  box-shadow: 0 0 8px rgba(255, 203, 92, 0.9);
+}
+
+/* The Wardrobe: the Emperor large, then his looks and trails. */
+.wardrobe-stage {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 6px;
+}
+
+.wardrobe-stage .emblem {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 150px;
+  height: 150px;
+  margin-left: -75px;
+  opacity: 0.4;
+}
+
+.wardrobe-portrait {
+  width: 230px;
+  height: 178px;
+}
+
+.wardrobe-trail {
+  width: 150px;
+  height: 30px;
+  margin-top: -6px;
+}
+
+.wardrobe-looks {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.wardrobe-looks .look-portrait {
+  width: 64px;
+  height: 50px;
+}
+
+.look-chip.locked.for-sale .look-portrait {
+  filter: none;
+  opacity: 0.9;
+}
+
+.look-chip.for-sale .look-sub {
+  color: var(--gold);
+}
+
+.look-chip:disabled .look-sub {
+  color: var(--muted);
+}
+
+.trail-row {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.trail-chip {
+  appearance: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 2px 7px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+  pointer-events: auto;
+  touch-action: manipulation;
+  cursor: pointer;
+}
+
+.trail-chip.on {
+  border-color: var(--gold);
+  box-shadow: inset 0 0 0 1px var(--gold), 0 0 14px rgba(255, 203, 92, 0.25);
+}
+
+.trail-chip.locked .look-sub {
+  color: var(--gold);
+}
+
+.trail-chip:disabled .look-sub {
+  color: var(--muted);
+}
+
+.trail-swatch {
+  width: 64px;
+  height: 34px;
+  max-width: 100%;
+}
+
+.btn.feats-wardrobe {
+  align-self: center;
+}

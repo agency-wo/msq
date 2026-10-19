@@ -1,6 +1,7 @@
 import { GESANG_VERSES, UPGRADES } from '../data/archives';
 import { BANKAI_IDS } from '../data/bankai';
 import { RESONANCE_BY_ID } from '../data/resonances';
+import { TRAIL_BY_ID, type TrailId } from '../data/looks';
 import { RELIC_BY_ID } from '../data/relics';
 import { CODEX_ENEMY_KEYS } from '../data/codex';
 import { DAILY_CLEAR_GOLD, DAILY_SURVIVE_GOLD, DAILY_SURVIVE_TIME } from '../data/daily';
@@ -89,6 +90,9 @@ export interface SaveData {
   startRelic: string | null;
   /** Verses of the Kaiser Gesang sung, 0 to GESANG_VERSES. */
   gesang: number;
+  /** Cloak trails bought in the Wardrobe ('none' is always there), and the one he wears. */
+  trails: TrailId[];
+  trail: TrailId;
 }
 
 export interface Codex {
@@ -162,6 +166,8 @@ export function defaultSave(): SaveData {
     armory: [],
     startRelic: null,
     gesang: 0,
+    trails: ['none'],
+    trail: 'none',
   };
 }
 
@@ -296,7 +302,16 @@ export function migrate(raw: unknown): SaveData {
     ...feats,
     tips: Array.isArray(r.tips) ? [...new Set(r.tips.filter((id): id is string => typeof id === 'string' && (TIP_IDS as string[]).includes(id)))] : [],
     ...migrateArmory(r, feats.relicsOpen),
+    ...migrateTrails(r),
   };
+}
+
+/** Trails that exist, 'none' always among them; the one worn must be owned. */
+function migrateTrails(r: Record<string, unknown>): Pick<SaveData, 'trails' | 'trail'> {
+  const owned = Array.isArray(r.trails) ? r.trails.filter((id): id is TrailId => typeof id === 'string' && TRAIL_BY_ID.has(id)) : [];
+  const trails = [...new Set<TrailId>(['none', ...owned])];
+  const trail = trails.find((id) => id === r.trail) ?? 'none';
+  return { trails, trail };
 }
 
 /** The Armory and the Kaiser Gesang: only relics that exist (and are open), a start relic that is in the Armory, a whole number of verses. */

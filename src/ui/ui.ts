@@ -17,8 +17,9 @@ import { enemySpriteName } from '../render/names';
 import { armoryRelics, nextCost, nextVerseCost, startOptions, upgradeLevel } from '../save/archives';
 import { almightyUnlocked, endlessOpen, rushOpen, stageUnlocked, trialsOpen, type DailyRecord, type SaveData, type Settings } from '../save/save';
 import { chapterUnlocked } from '../save/story';
-import { codexFound, codexTotal, featProgress, FEATS, type LookId, LOOKS } from '../save/feats';
-import { drawEmblem, drawIcon } from './icons';
+import { LOOKS, TRAILS, type LookId, type TrailId } from '../data/looks';
+import { codexFound, codexTotal, featProgress, FEATS } from '../save/feats';
+import { drawEmblem, drawIcon, drawTrailSwatch } from './icons';
 import { shareRun } from './share';
 import { drawVista } from './vistas';
 
@@ -447,6 +448,9 @@ export class UI {
       installHint: boolean;
       /** Something in the Archives is affordable: the button carries a gold dot. */
       archivesDot: boolean;
+      /** The Emperor's portrait opens the Wardrobe; a dot when something there is affordable. */
+      onWardrobe: () => void;
+      wardrobeDot: boolean;
     },
   ): void {
     const p = this.open('title');
@@ -467,7 +471,11 @@ export class UI {
     drawEmblem(emblem, 140);
     const portrait = el('canvas', 'hero-portrait');
     drawEmperor(portrait, save.evolution, 208, undefined, save.look);
-    hero.append(emblem, portrait);
+    const wardrobe = button('hero-btn', '');
+    wardrobe.setAttribute('aria-label', h.wardrobeDot ? 'The Emperor’s Wardrobe: something to buy' : 'The Emperor’s Wardrobe');
+    wardrobe.append(portrait, el('span', `wardrobe-pill${h.wardrobeDot ? ' has-dot' : ''}`, 'Wardrobe'));
+    wardrobe.addEventListener('click', this.guard(h.onWardrobe));
+    hero.append(emblem, wardrobe);
     const logo = el('div', 'logo');
     logo.append(el('div', 'logo-top', 'QUINCY'), el('div', 'logo-bottom', 'SURVIVAL'));
     const play = button('btn primary', 'Play');
@@ -1051,32 +1059,93 @@ export class UI {
   }
 
   /**
-   * Feats: each with what it pays and how close you are (lifetime counts, or
-   * the best single run), grouped; above them, the Emperor's looks, the ones
-   * feats have opened ready to wear.
+   * The Emperor's Wardrobe: a large portrait in what he wears, then every look
+   * (feat looks once earned, the rest for gold) and every cloak trail. Buying
+   * puts it on; tapping an owned one wears it.
    */
-  showFeats(save: SaveData, h: { onLook: (id: LookId) => void; onBack: () => void }, relock = true): void {
+  showWardrobe(
+    save: SaveData,
+    h: {
+      onLook: (id: LookId) => void;
+      onBuyLook: (id: LookId) => void;
+      onTrail: (id: TrailId) => void;
+      onBuyTrail: (id: TrailId) => void;
+      onBack: () => void;
+    },
+    relock = true,
+  ): void {
+    const p = this.open('wardrobe');
+    p.append(el('div', 'board-kicker', 'The Emperor’s'), el('h2', 'board-title', 'Wardrobe'));
+    const balance = el('p', 'gold-line');
+    const coin = el('canvas', 'gold-icon');
+    drawIcon(coin, 'coin', '#ffd27a');
+    balance.append(coin, el('span', '', `${gold(save.gold)} gold`));
+    const stage = el('div', 'wardrobe-stage');
+    const emblem = el('canvas', 'emblem');
+    drawEmblem(emblem, 150);
+    const portrait = el('canvas', 'hero-portrait wardrobe-portrait');
+    drawEmperor(portrait, save.evolution, 230, undefined, save.look);
+    const worn = TRAILS.find((t) => t.id === save.trail) ?? TRAILS[0];
+    const motes = el('canvas', 'wardrobe-trail');
+    drawTrailSwatch(motes, worn.id, worn.css, 150, 30);
+    stage.append(emblem, portrait, motes);
+    p.append(balance, stage, el('h3', 'section-title', 'Looks'));
+    const looks = el('div', 'look-row wardrobe-looks');
+    for (const l of LOOKS) {
+      const owned = save.looks.includes(l.id);
+      const wearing = save.look === l.id;
+      const forSale = !owned && l.price !== undefined;
+      const b = button(`look-chip${wearing ? ' on' : ''}${owned ? '' : ' locked'}${forSale ? ' for-sale' : ''}`, '');
+      const c = el('canvas', 'look-portrait');
+      drawEmperor(c, 0, 64, undefined, l.id);
+      const feat = FEATS.find((f) => f.look === l.id);
+      const sub = owned ? (wearing ? 'Wearing' : 'Wear') : forSale ? `${gold(l.price ?? 0)} gold` : (feat?.name ?? '');
+      b.append(c, el('span', 'look-name', owned || forSale ? l.name : '? ? ?'), el('span', 'look-sub', sub));
+      b.setAttribute('aria-pressed', String(wearing));
+      if (owned) b.addEventListener('click', this.guard(() => h.onLook(l.id)));
+      else if (forSale && save.gold >= (l.price ?? Infinity)) {
+        b.setAttribute('aria-label', `Buy the ${l.name} look for ${l.price} gold`);
+        b.addEventListener('click', this.guard(() => h.onBuyLook(l.id)));
+      } else b.disabled = true;
+      looks.append(b);
+    }
+    p.append(looks, el('h3', 'section-title', 'Trails'), el('p', 'archives-hint', 'Motes the Emperor leaves behind as he moves. They change nothing in a fight.'));
+    const trails = el('div', 'trail-row');
+    for (const t of TRAILS) {
+      const owned = save.trails.includes(t.id);
+      const wearing = save.trail === t.id;
+      const b = button(`trail-chip${wearing ? ' on' : ''}${owned ? '' : ' locked'}`, '');
+      const c = el('canvas', 'trail-swatch');
+      drawTrailSwatch(c, t.id, t.css);
+      b.append(c, el('span', 'look-name', t.name), el('span', 'look-sub', owned ? (wearing ? 'Wearing' : 'Wear') : `${gold(t.price)} gold`));
+      b.setAttribute('aria-pressed', String(wearing));
+      if (owned) b.addEventListener('click', this.guard(() => h.onTrail(t.id)));
+      else if (save.gold >= t.price) {
+        b.setAttribute('aria-label', `Buy the ${t.name} trail for ${t.price} gold`);
+        b.addEventListener('click', this.guard(() => h.onBuyTrail(t.id)));
+      } else b.disabled = true;
+      trails.append(b);
+    }
+    const back = button('btn primary', 'Back');
+    back.addEventListener('click', this.guard(h.onBack));
+    p.append(trails, back);
+    if (relock) this.lock(150);
+  }
+
+  /**
+   * Feats: each with what it pays and how close you are (lifetime counts, or
+   * the best single run), grouped. The looks they open are worn from the Wardrobe.
+   */
+  showFeats(save: SaveData, h: { onWardrobe: () => void; onBack: () => void }, relock = true): void {
     const p = this.open('feats');
+    const toWardrobe = button('btn small feats-wardrobe', 'Looks: open the Wardrobe');
+    toWardrobe.addEventListener('click', this.guard(h.onWardrobe));
     p.append(
       el('div', 'board-kicker', 'The Emperor’s'),
       el('h2', 'board-title', 'Feats'),
       el('p', 'archives-hint', `Earned ${save.feats.length} of ${FEATS.length}. Each pays once.`),
-      el('h3', 'section-title', 'Looks'),
+      toWardrobe,
     );
-    const looks = el('div', 'look-row');
-    for (const l of LOOKS) {
-      const open = save.looks.includes(l.id);
-      const b = button(`look-chip${save.look === l.id ? ' on' : ''}${open ? '' : ' locked'}`, '');
-      const c = el('canvas', 'look-portrait');
-      drawEmperor(c, 0, 56, undefined, l.id);
-      const unlock = FEATS.find((f) => f.look === l.id);
-      b.append(c, el('span', 'look-name', open ? l.name : '? ? ?'), el('span', 'look-sub', open ? (save.look === l.id ? 'Wearing' : 'Wear') : (unlock?.name ?? '')));
-      b.setAttribute('aria-pressed', String(save.look === l.id));
-      if (open) b.addEventListener('click', this.guard(() => h.onLook(l.id)));
-      else b.disabled = true;
-      looks.append(b);
-    }
-    p.append(looks);
     for (const group of ['Journey', 'Stages', 'One run', 'Modes'] as const) {
       p.append(el('h3', 'section-title', group));
       const list = el('div', 'feat-list');
