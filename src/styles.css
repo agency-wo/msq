@@ -605,7 +605,8 @@ body {
   color: var(--muted);
 }
 
-.archives-btn {
+.archives-btn,
+.daily-btn {
   display: flex;
   align-items: baseline;
   justify-content: center;
@@ -616,6 +617,27 @@ body {
   font-size: 12px;
   letter-spacing: 0.06em;
   color: var(--gold);
+}
+
+.btn.daily-btn {
+  border-color: rgba(255, 45, 74, 0.55);
+}
+
+.daily-btn .btn-note {
+  color: #ff8b9b;
+}
+
+.start-chip.daily-chip {
+  cursor: default;
+}
+
+.chapter.daily-mod {
+  border-left-color: var(--hollow);
+  cursor: default;
+}
+
+.daily-mod .chapter-kicker {
+  color: #ff8b9b;
 }
 
 .gold-line {

@@ -1,5 +1,6 @@
 import { UPGRADES } from '../data/archives';
 import { BANKAI_IDS } from '../data/bankai';
+import { DAILY_CLEAR_GOLD, DAILY_SURVIVE_GOLD, DAILY_SURVIVE_TIME } from '../data/daily';
 import { STARTABLE_IDS, STARTING_POWER } from '../data/powers';
 import { MAX_TRIAL, STAGE_IDS, STAGES, type StageId } from '../data/stages';
 import { CHAPTER_BY_ID } from '../data/story';
@@ -56,6 +57,15 @@ export interface SaveData {
   /** The trial and Endless picked on the title screen (checked against what each stage has opened). */
   trial: number;
   endless: boolean;
+  /** Today's Daily Trial: its date, best time, and whether its survival and clear bonuses were paid. */
+  daily: DailyRecord;
+}
+
+export interface DailyRecord {
+  date: string;
+  best: number;
+  survived: boolean;
+  cleared: boolean;
 }
 
 export interface RunResult {
@@ -66,6 +76,8 @@ export interface RunResult {
   awakened?: readonly string[];
   trial?: number;
   endless?: boolean;
+  /** A Daily Trial: counts for gold, bankai, awakenings and totals, not for stage records or unlocks. */
+  daily?: boolean;
   time: number;
   level: number;
   kills: number;
@@ -93,7 +105,27 @@ export function defaultSave(): SaveData {
     chapters: [],
     trial: 0,
     endless: false,
+    daily: { date: '', best: 0, survived: false, cleared: false },
   };
+}
+
+/** Fold a Daily Trial into today's record: the bonus gold it earned (each bonus paid once a day) and whether it set today's best. */
+export function recordDaily(save: SaveData, date: string, time: number, cleared: boolean): { bonus: number; newBest: boolean } {
+  if (save.daily.date !== date) save.daily = { date, best: 0, survived: false, cleared: false };
+  let bonus = 0;
+  if (time >= DAILY_SURVIVE_TIME && !save.daily.survived) {
+    save.daily.survived = true;
+    bonus += DAILY_SURVIVE_GOLD;
+  }
+  if (cleared && !save.daily.cleared) {
+    save.daily.cleared = true;
+    bonus += DAILY_CLEAR_GOLD;
+  }
+  const newBest = time > save.daily.best;
+  save.daily.best = Math.max(save.daily.best, time);
+  save.gold += bonus;
+  save.totals.gold += bonus;
+  return { bonus, newBest };
 }
 
 /** The highest trial a stage offers: one past the highest cleared, once it has been cleared at all. */
@@ -189,6 +221,12 @@ export function migrate(raw: unknown): SaveData {
     chapters: [...new Set(chapters)],
     trial: Math.min(MAX_TRIAL, Math.floor(num(r.trial, 0))),
     endless: bool(r.endless, false),
+    daily: {
+      date: typeof obj(r.daily).date === 'string' ? (obj(r.daily).date as string) : '',
+      best: num(obj(r.daily).best, 0),
+      survived: bool(obj(r.daily).survived, false),
+      cleared: bool(obj(r.daily).cleared, false),
+    },
   };
 }
 
@@ -278,7 +316,8 @@ export function recordRun(save: SaveData, r: RunResult): RecordOutcome {
   save.totals.gold += r.gold;
   save.gold += r.gold;
   if (r.cleared) save.totals.clears++;
-  if (r.time > save.best.time) save.best = { time: r.time, level: r.level, kills: r.kills };
+  if (r.time > save.best.time && !r.daily) save.best = { time: r.time, level: r.level, kills: r.kills };
+  if (r.daily) return { newBest: false, unlocked: null, almighty: !hadAlmighty && almightyUnlocked(save), starts };
   const rec = save.stages[r.stage];
   // Endless runs keep their own record; newBest is about the record this run competes with.
   const newBest = r.endless ? r.time > rec.endless : r.time > rec.best;

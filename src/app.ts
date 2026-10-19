@@ -3,9 +3,10 @@ import { Music } from './audio/music';
 import { Sfx } from './audio/sfx';
 import { Input } from './core/input';
 import { FixedLoop } from './core/loop';
-import { POWER_BY_ID } from './data/powers';
+import { POWER_BY_ID, STARTING_POWER } from './data/powers';
 import { STAGE_BY_ID, stageById, TRIAL_NAMES, type StageId } from './data/stages';
 import { CHAPTER_BY_ID, type Chapter } from './data/story';
+import { dailyFor, dateKey, type DailySpec } from './data/daily';
 import type { Offer } from './game/offers';
 import { runGold } from './game/rewards';
 import { World } from './game/world';
@@ -18,6 +19,7 @@ import {
   exportCode,
   importCode,
   loadSave,
+  recordDaily,
   recordRun,
   stageUnlocked,
   trialsOpen,
@@ -27,7 +29,7 @@ import {
 import { chaptersAfter, chaptersBefore, markChapter } from './save/story';
 import { UI, type Toggle } from './ui/ui';
 
-type State = 'title' | 'settings' | 'archives' | 'chronicle' | 'story' | 'playing' | 'paused' | 'levelup' | 'chest' | 'over';
+type State = 'title' | 'settings' | 'archives' | 'chronicle' | 'daily' | 'story' | 'playing' | 'paused' | 'levelup' | 'chest' | 'over';
 
 function numParam(p: URLSearchParams, key: string): number | undefined {
   const v = p.get(key);
@@ -64,6 +66,8 @@ export class App {
   private loop!: FixedLoop;
   private world: World | null = null;
   private state: State = 'title';
+  /** The Daily Trial being played, if the current run is one (Play again replays it). */
+  private daily: DailySpec | null = null;
   /** Chapters a finished run unlocked, told when the player moves on from the results. */
   private pendingChapters: Chapter[] = [];
   private fps = 0;
@@ -97,6 +101,7 @@ export class App {
   private showTitle(): void {
     this.halt('title');
     this.world = null;
+    this.daily = null;
     this.ui.showHud(false);
     if (!stageUnlocked(this.save, this.save.stage)) this.save.stage = 'hueco';
     this.renderer.setStage(this.save.stage);
@@ -113,6 +118,8 @@ export class App {
         this.renderer.setStage(id);
       },
       onMode: () => writeSave(this.save),
+      onDaily: () => this.showDaily(),
+      daily: this.todaysDaily(),
       installHint: isIOS() && !isStandalone(),
     });
   }
@@ -139,6 +146,22 @@ export class App {
       },
       relock,
     );
+  }
+
+  private todaysDaily(): DailySpec {
+    return dailyFor(dateKey(), stageUnlocked(this.save, 'seireitei'));
+  }
+
+  private showDaily(): void {
+    this.state = 'daily';
+    const spec = this.todaysDaily();
+    this.ui.showDaily(spec, this.save.daily, {
+      onBegin: () => {
+        this.daily = spec;
+        this.startRun();
+      },
+      onBack: () => this.showTitle(),
+    });
   }
 
   private showChronicle(): void {
@@ -200,7 +223,8 @@ export class App {
   private startRun(storyTold = false): void {
     this.sfx.unlock();
     const p = this.params;
-    const stage = this.runStage();
+    const daily = this.daily;
+    const stage = daily ? daily.stage : this.runStage();
     // Story chapters that belong before this run (the prologue, the invasion); testing switches skip them.
     const testing = p.has('play') || p.has('stress') || p.has('god');
     const before = storyTold || testing ? [] : chaptersBefore(this.save, stage);
@@ -212,9 +236,10 @@ export class App {
     this.renderer.setStage(stage);
     this.world = new World({
       stage,
-      trial: this.runTrial(stage),
-      endless: this.runEndless(stage),
-      seed: numParam(p, 'seed'),
+      trial: daily ? 0 : this.runTrial(stage),
+      endless: daily ? false : this.runEndless(stage),
+      mods: daily?.mods,
+      seed: daily ? daily.seed : numParam(p, 'seed'),
       stress: numParam(p, 'stress'),
       god: p.has('god'),
       startTime: numParam(p, 't'),
@@ -224,8 +249,9 @@ export class App {
       meta: metaMods(this.save),
       revives: metaRevives(this.save),
       rerolls: metaRerolls(this.save),
-      // ?start= tries any attack (testing); otherwise the Schrift picked in the Archives.
-      start: p.get('start') ?? this.save.start,
+      // The Daily Trial opens with Heilig Pfeil and today's Schrift; ?start= tries any attack (testing); otherwise the Archives' pick.
+      start: daily ? STARTING_POWER : (p.get('start') ?? this.save.start),
+      extra: daily?.schrift,
     });
     if (p.has('almighty')) this.world.grantAlmighty();
     // Testing: ?give=explode7,xaxis5 owns powers at those levels; ?bankai=senbonzakura,zanka grants bankai.
@@ -419,14 +445,18 @@ export class App {
           awakened: w.powers.filter((ps) => ps.attr !== null).map((ps) => ps.def.id),
           trial: w.trial,
           endless: w.endless,
+          daily: !!this.daily,
         });
+    const daily = w.god || !this.daily ? null : recordDaily(this.save, this.daily.date, w.t, victory);
     if (!w.god) writeSave(this.save);
     this.pendingChapters = w.god ? [] : chaptersAfter(this.save);
     this.ui.showHud(false);
     this.ui.showResults(
       {
         stageName: w.stage.name,
-        mode: [w.trial > 0 ? TRIAL_NAMES[w.trial] : '', w.endless ? 'Endless' : ''].filter(Boolean).join(' · '),
+        mode: this.daily ? 'Daily Trial' : [w.trial > 0 ? TRIAL_NAMES[w.trial] : '', w.endless ? 'Endless' : ''].filter(Boolean).join(' · '),
+        daily: !!this.daily,
+        dailyBonus: daily?.bonus ?? 0,
         endless: w.endless,
         unlocked: record.unlocked ? stageById(record.unlocked).name : null,
         almighty: record.almighty,
@@ -439,8 +469,8 @@ export class App {
         time: w.t,
         level: w.level,
         kills: w.kills,
-        bestTime: w.endless ? this.save.stages[w.stage.id].endless : this.save.stages[w.stage.id].best,
-        newBest: record.newBest,
+        bestTime: this.daily ? this.save.daily.best : w.endless ? this.save.stages[w.stage.id].endless : this.save.stages[w.stage.id].best,
+        newBest: daily ? daily.newBest : record.newBest,
         resonances: [...w.resonances],
         powers: w.powers.map((ps) => ({
           name: ps.def.name,

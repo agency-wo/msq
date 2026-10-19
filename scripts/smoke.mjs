@@ -357,6 +357,46 @@ try {
   log('results gold', { line: await page.textContent('.screen.results .gold-line').catch(() => null), saved: (await readSave()).gold });
   await shot('10b-results-gold');
 
+  // The Daily Trial: today's stage, Schrift and rules; the run keeps its own record for the day.
+  await wait(500); // the results ignore taps for a moment
+  await page.tap('.screen.results .btn:not(.primary)');
+  await wait(300);
+  await passStory();
+  await page.waitForSelector('.screen.title .daily-btn');
+  await wait(300);
+  const dailyNote = await page.textContent('.daily-btn .btn-note');
+  await page.tap('.daily-btn');
+  await page.waitForSelector('.screen.daily .btn.primary');
+  await wait(300);
+  log('daily', {
+    note: dailyNote,
+    day: await page.textContent('.screen.daily .board-title'),
+    schrift: await page.$$eval('.screen.daily .daily-chip', (c) => c.map((x) => x.textContent)),
+    rules: await page.$$eval('.daily-mod .chapter-title', (r) => r.map((x) => x.textContent)),
+    status: await page.$$eval('.screen.daily .archives-hint', (h) => h.map((x) => x.textContent)),
+  });
+  await shot('09f-daily');
+  await page.tap('.screen.daily .btn.primary');
+  await wait(300);
+  await passStory();
+  log('daily run', await page.evaluate(() => {
+    const w = window.__msq.world;
+    return { stage: w.stage.id, powers: w.powers.map((p) => p.def.id), mods: [...w.mods], trial: w.trial, endless: w.endless };
+  }));
+  await steer(6000);
+  await shot('10c-daily-run');
+  await page.tap('.icon-btn');
+  await wait(300);
+  await page.tap('.screen.pause .btn.danger');
+  await page.waitForSelector('.screen.results');
+  await wait(800);
+  log('daily results', {
+    kicker: await page.textContent('.screen.results .board-kicker'),
+    best: await page.$$eval('.screen.results .stat-label', (s) => s.map((x) => x.textContent)),
+    record: (await readSave()).daily,
+  });
+  await shot('10d-results-daily');
+
   // Mid-run: flash-steps, Kidō fire, a seated officer (elite at 7:30).
   await page.goto(`${BASE}?debug&seed=7&play&god&stage=seireitei&t=445&give=xaxis5,explode5,wind5`);
   await wait(400);

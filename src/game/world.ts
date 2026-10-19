@@ -150,10 +150,14 @@ export interface WorldOptions {
   rerolls?: number;
   /** The Schrift the run opens with (an attack; anything else falls back to Heilig Pfeil). */
   start?: string;
+  /** A second attack held from the start (the Daily Trial's Schrift). */
+  extra?: string;
   /** Trial tier, 0 (normal) to 5. */
   trial?: number;
   /** Endless: the final boss does not end the run; the night goes on until you fall. */
   endless?: boolean;
+  /** Daily Trial modifiers (see data/daily.ts). */
+  mods?: string[];
 }
 
 interface Warning {
@@ -184,6 +188,15 @@ export class World {
   readonly trial: number;
   readonly endless: boolean;
   private readonly tm: TrialMods;
+  /** Daily Trial modifiers, and what they add up to. */
+  readonly mods: ReadonlySet<string>;
+  private readonly modHp: number;
+  private readonly modSpawn: number;
+  private readonly modSpeed: number;
+  private readonly modRadius: number;
+  private readonly modDealt: number;
+  private readonly modTaken: number;
+  private readonly modMove: number;
   /** Endless: when the next wave of bosses comes, and how many have come. */
   private endlessNext = 0;
   private endlessWave = 0;
@@ -345,6 +358,15 @@ export class World {
     this.trial = Math.max(0, Math.min(5, Math.floor(opts.trial ?? 0)));
     this.tm = trialMods(this.trial);
     this.endless = !!opts.endless;
+    const mods = new Set(opts.mods ?? []);
+    this.mods = mods;
+    this.modHp = (mods.has('swarm') ? 0.85 : 1) * (mods.has('giants') ? 1.5 : 1);
+    this.modSpawn = mods.has('swarm') ? 1.35 : 1;
+    this.modSpeed = (mods.has('giants') ? 0.85 : 1) * (mods.has('haste') ? 1.15 : 1);
+    this.modRadius = mods.has('giants') ? 1.15 : 1;
+    this.modDealt = mods.has('glass') ? 1.4 : 1;
+    this.modTaken = mods.has('glass') ? 1.4 : 1;
+    this.modMove = mods.has('haste') ? 1.15 : 1;
     this.almightyUnlocked = !!opts.almighty;
     this.stress = Math.max(0, Math.floor(opts.stress ?? 0));
     this.god = !!opts.god || this.stress > 0;
@@ -376,6 +398,7 @@ export class World {
     }
     this.nextEventT = this.t + this.rng.range(100, 140);
     this.addPower(opts.start && STARTABLE_IDS.includes(opts.start) ? opts.start : STARTING_POWER);
+    if (opts.extra && STARTABLE_IDS.includes(opts.extra) && !this.powers.some((ps) => ps.def.id === opts.extra)) this.addPower(opts.extra);
     this.player.revives += Math.max(0, Math.floor(opts.revives ?? 0));
     this.rerolls = Math.max(0, Math.floor(opts.rerolls ?? 0));
     if (this.stress > 0) {
@@ -400,7 +423,7 @@ export class World {
     const p = this.player;
     p.ox = p.x;
     p.oy = p.y;
-    let speed = PLAYER.speed * this.stats.moveSpeed;
+    let speed = PLAYER.speed * this.stats.moveSpeed * this.modMove;
     if (this.vollT > 0) speed *= 1.3;
     if (this.rushTier > 0) speed *= 1 + RUSH_SPEED * this.rushTier;
     if (p.slowT > 0) {
@@ -445,7 +468,7 @@ export class World {
   private updateBuffs(): void {
     if (this.superT > 0) this.superT -= DT;
     if (this.vollT > 0) this.vollT -= DT;
-    let mul = 1;
+    let mul = this.modDealt;
     if (this.superT > 0) mul *= 1 + this.superAmt;
     if (this.overkillEvery > 0) {
       const stacks = Math.floor((this.kills - this.overkillStart) / this.overkillEvery);
@@ -647,7 +670,7 @@ export class World {
     // Endless: past the stage's end the flood keeps rising.
     const beyond = this.endless ? Math.max(0, this.t - this.stage.length) : 0;
     const rate = Math.min(70, spawnRate(Math.min(this.t, this.stage.length)) + (beyond / 60) * 1.5);
-    this.spawnAcc += rate * this.stage.spawn * this.tm.spawn * DT;
+    this.spawnAcc += rate * this.stage.spawn * this.tm.spawn * this.modSpawn * DT;
     while (this.spawnAcc >= 1) {
       this.spawnAcc -= 1;
       if (E.n >= MAX_ENEMIES_ALIVE) {
@@ -720,7 +743,8 @@ export class World {
     // Endless pressure: every minute past the stage's end, the swarm gets sturdier (faster and faster) and hits harder.
     const over = this.endless ? Math.max(0, this.t - this.stage.length) / 60 : 0;
     if (over > 0 && !def.boss) hp *= 1 + 0.15 * over + 0.02 * over * over;
-    let r = def.radius;
+    if (!def.boss) hp *= this.modHp;
+    let r = def.radius * (def.boss ? 1 : this.modRadius);
     // Boss hits scale with the boss's tier: the first bearer is an introduction, the last boss hits hard.
     let dmg = def.damage * (def.boss ? Math.min(1.6, 0.65 + 0.06 * hpMul) * this.tm.bossDamage : this.tm.damage) * (1 + 0.1 * over);
     let xp = def.xp * xpScale(this.t) * this.stage.xp;
@@ -738,7 +762,7 @@ export class World {
     E.kx[i] = E.ky[i] = 0;
     E.hp[i] = E.maxHp[i] = hp;
     E.r[i] = r;
-    E.spd[i] = def.speed * (def.boss ? 1 : speedScale(this.t) * this.tm.speed) * this.rng.range(0.9, 1.1);
+    E.spd[i] = def.speed * (def.boss ? 1 : speedScale(this.t) * this.tm.speed) * this.modSpeed * this.rng.range(0.9, 1.1);
     E.dmg[i] = dmg;
     E.xp[i] = xp;
     E.flash[i] = 0;
@@ -1195,7 +1219,7 @@ export class World {
       if (this.ironBurst > 0) this.shockwave(140, this.ironBurst, 300);
       return;
     }
-    p.hp -= amount * this.stats.dmgTaken * (1 - this.balanceCut) * this.tm.damageTaken;
+    p.hp -= amount * this.stats.dmgTaken * (1 - this.balanceCut) * this.tm.damageTaken * this.modTaken;
     p.iframes = PLAYER.iframes;
     this.breakChain();
     this.shake = Math.max(this.shake, 5);
@@ -1616,11 +1640,8 @@ export class World {
   private collect(q: Pickup): void {
     switch (q.kind) {
       case 'chest':
-        if (this.stress === 0) this.pendingChests.push('brown');
-        this.sound('chest');
-        break;
       case 'chestBlack':
-        if (this.stress === 0) this.pendingChests.push('black');
+        this.gainChest(q.kind === 'chest' ? 'brown' : 'black');
         this.sound('chest');
         break;
       case 'medallion':
@@ -1644,6 +1665,18 @@ export class World {
         this.nuke();
         break;
     }
+  }
+
+  /** A chest queues a relic choice; under Barren (Daily Trial) it pays its gold on the spot instead. */
+  private gainChest(kind: ChestKind): void {
+    if (this.stress > 0) return;
+    if (this.mods.has('barren')) {
+      const amount = kind === 'black' ? 150 : 50;
+      this.gold += amount;
+      this.messages.push({ text: `Only gold inside: +${amount}`, kind: 'info' });
+      return;
+    }
+    this.pendingChests.push(kind);
   }
 
   /** Annihilation rune: clears the screen, chips the bosses. */
@@ -2058,6 +2091,9 @@ export class World {
     }
     for (const r of this.relics) if (r.mods) mods.push(r.mods);
     if (this.metaMods) mods.push(this.metaMods);
+    // Frail (Daily Trial): less health, steady regeneration. Barren: no relics, faster level-ups.
+    if (this.mods.has('frail')) mods.push({ maxHp: -0.4, regen: 1.5 });
+    if (this.mods.has('barren')) mods.push({ xpGain: 0.3 });
     const p = this.player;
     const prevMax = p.maxHp;
     const prevCount = this.stats.count;

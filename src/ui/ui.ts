@@ -1,8 +1,9 @@
 import { formatTime } from '../core/math';
 import { UPGRADES } from '../data/archives';
 import { BANKAI_BY_ID, BANKAI_IDS } from '../data/bankai';
+import { DAILY_CLEAR_GOLD, DAILY_MOD_BY_ID, DAILY_SURVIVE_GOLD, DAILY_SURVIVE_TIME, type DailySpec } from '../data/daily';
 import { PASSIVE_BY_ID } from '../data/passives';
-import { POWER_BY_ID, type PowerDef } from '../data/powers';
+import { POWER_BY_ID, STARTING_POWER, type PowerDef } from '../data/powers';
 import type { Rarity, RelicDef } from '../data/relics';
 import { RESONANCE_BY_ID } from '../data/resonances';
 import { MAX_TRIAL, STAGES, stageById, TRIAL_NAMES, trialBlurb, type StageId } from '../data/stages';
@@ -10,7 +11,7 @@ import { CHAPTERS, type Chapter } from '../data/story';
 import type { ChestKind, Offer } from '../game/offers';
 import type { Banner, World } from '../game/world';
 import { nextCost, startOptions, upgradeLevel } from '../save/archives';
-import { almightyUnlocked, endlessOpen, stageUnlocked, trialsOpen, type SaveData, type Settings } from '../save/save';
+import { almightyUnlocked, endlessOpen, stageUnlocked, trialsOpen, type DailyRecord, type SaveData, type Settings } from '../save/save';
 import { chapterUnlocked } from '../save/story';
 import { drawEmblem, drawIcon } from './icons';
 
@@ -65,6 +66,9 @@ export interface ResultSummary {
   starts: string[];
   /** Story chapters this run unlocked (titles), told next. */
   chapters: string[];
+  /** A Daily Trial: the best shown is today's, plus any bonus gold the run earned. */
+  daily: boolean;
+  dailyBonus: number;
   victory: boolean;
   quit: boolean;
   time: number;
@@ -256,6 +260,8 @@ export class UI {
       onSettings: () => void;
       onStage: (id: StageId) => void;
       onMode: () => void;
+      onDaily: () => void;
+      daily: DailySpec;
       installHint: boolean;
     },
   ): void {
@@ -266,6 +272,9 @@ export class UI {
     logo.append(el('div', 'logo-top', 'QUINCY'), el('div', 'logo-bottom', 'SURVIVAL'));
     const play = button('btn primary', 'Play');
     play.addEventListener('click', this.guard(h.onPlay));
+    const daily = button('btn daily-btn', '');
+    daily.append(el('span', '', 'Daily Trial'), el('span', 'btn-note', h.daily.mods.map((m) => DAILY_MOD_BY_ID.get(m)?.name ?? m).join(' + ')));
+    daily.addEventListener('click', this.guard(h.onDaily));
     const archives = button('btn archives-btn', '');
     archives.append(el('span', '', 'Archives'), el('span', 'btn-note', `${gold(save.gold)} gold`));
     archives.addEventListener('click', this.guard(h.onArchives));
@@ -281,6 +290,7 @@ export class UI {
       el('p', 'tagline', 'The Emperor takes back what he gave.'),
       this.stagePicker(save, h.onStage, h.onMode),
       play,
+      daily,
       archives,
       row,
       this.collection(save),
@@ -442,6 +452,8 @@ export class UI {
     if (r.almighty) p.append(el('p', 'unlock-note', 'Every bankai taken back. A · The Almighty is unlocked: it awakens once three Schrift reach Lv 7.'));
     if (r.starts.length > 0) p.append(el('p', 'unlock-note', `New starting Schrift in the Archives: ${r.starts.join(', ')}`));
     if (r.chapters.length > 0) p.append(el('p', 'unlock-note', `New in the Chronicle: ${r.chapters.join(', ')}`));
+    if (r.dailyBonus > 0) p.append(el('p', 'unlock-note', `Daily Trial bonus: +${r.dailyBonus} gold`));
+    const [best, beaten] = r.daily ? ["Today's best", 'New daily best'] : r.endless ? ['Endless best', 'New Endless best'] : ['Best', 'New best'];
     const stats = el('div', 'stats');
     const stat = (label: string, value: string): HTMLElement => {
       const s = el('div', 'stat');
@@ -452,7 +464,7 @@ export class UI {
       stat('Survived', formatTime(r.time)),
       stat('Level', String(r.level)),
       stat('Kills', String(r.kills)),
-      stat(r.newBest ? (r.endless ? 'New Endless best' : 'New best') : r.endless ? 'Endless best' : 'Best', formatTime(r.bestTime)),
+      stat(r.newBest ? beaten : best, formatTime(r.bestTime)),
     );
     p.append(stats);
     if (r.goldEarned > 0) {
@@ -479,6 +491,48 @@ export class UI {
   }
 
   // --------------------------------------------------------- helpers
+
+  /** Today's Daily Trial: where, with what, under which rules, and what it has paid so far. */
+  showDaily(spec: DailySpec, record: DailyRecord, h: { onBegin: () => void; onBack: () => void }): void {
+    const p = this.open('daily');
+    const [y, m, d] = spec.date.split('-').map(Number);
+    const day = new Date(y, m - 1, d).toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
+    p.append(el('div', 'board-kicker', 'Daily Trial'), el('h2', 'board-title', day));
+    const where = el('p', 'archives-hint', `${stageById(spec.stage).name}. Today's seed, opening Schrift and rules are the same for every player.`);
+    // You open with Heilig Pfeil and today's Schrift, which is lit.
+    const opener = el('div', 'start-chips');
+    for (const id of [STARTING_POWER, spec.schrift]) {
+      const def = POWER_BY_ID.get(id);
+      if (!def) continue;
+      const chip = el('div', id === spec.schrift ? 'start-chip daily-chip on' : 'start-chip daily-chip');
+      const c = el('canvas', 'chip-icon');
+      drawIcon(c, def.icon, def.color, def.letter);
+      chip.append(c, el('span', 'chip-text', def.name));
+      opener.append(chip);
+    }
+    const mods = el('div', 'chapters');
+    for (const id of spec.mods) {
+      const mod = DAILY_MOD_BY_ID.get(id);
+      if (!mod) continue;
+      const row = el('div', 'chapter daily-mod');
+      row.append(el('span', 'chapter-kicker', 'Rule'), el('span', 'chapter-title', mod.name), el('span', 'chapter-hint', mod.desc));
+      mods.append(row);
+    }
+    const today = record.date === spec.date ? record : { best: 0, survived: false, cleared: false };
+    const status = [
+      today.best > 0 ? `Today's best ${formatTime(today.best)}.` : 'Not played yet today.',
+      today.survived ? '' : `Survive ${formatTime(DAILY_SURVIVE_TIME)}: +${DAILY_SURVIVE_GOLD} gold.`,
+      today.cleared ? 'Cleared today.' : `Clear it: +${DAILY_CLEAR_GOLD} gold.`,
+    ]
+      .filter(Boolean)
+      .join(' ');
+    const begin = button('btn primary', 'Begin');
+    begin.addEventListener('click', this.guard(h.onBegin));
+    const back = button('btn', 'Back');
+    back.addEventListener('click', this.guard(h.onBack));
+    p.append(where, opener, mods, el('p', 'archives-hint', status), begin, back);
+    this.lock(150);
+  }
 
   /** A story chapter as a card: kicker, title, a few short paragraphs, Continue. */
   showStory(c: Chapter, onDone: () => void, label = 'Continue'): void {

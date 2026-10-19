@@ -43,6 +43,12 @@ and bosses, harder hits, 50% more gold per tier), along with **Endless**: the
 final boss no longer ends the run, boss waves keep coming and the swarm keeps
 growing until you fall. Each stage keeps its best Endless time.
 
+The **Daily Trial** is one run a day, the same for every player: the date picks
+the stage, a Schrift held from the start beside Heilig Pfeil (any attack, even
+one you have not awakened yet) and two rules that bend the run (Glass Cannon,
+The Swarm, Giants, Haste, Frail, Barren). Surviving five minutes pays 100 bonus
+gold once a day and clearing it pays 300; the day keeps its own best time.
+
 Every run pays gold. Spend it in the **Wandenreich Archives** on permanent
 upgrades (attack, health, speed, pickup range, cooldowns, faster level-ups,
 more gold, a revive, level-up rerolls), and pick which awakened Schrift a run
