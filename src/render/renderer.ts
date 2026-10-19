@@ -720,8 +720,8 @@ export class Renderer {
             ? (ROYAL_INFO[E.variant[i]]?.aura ?? 0xfff6dc)
             : this.bossAura[type];
         L.auras.add(f.glow, x, y, (r * 3.6) / 64, (r * 3.6) / 64, 0, aura, 0.5 + Math.sin(now * 3) * 0.12);
-        if (type === ENEMY_INDEX.commander) {
-          // Ryūjin Jakka's heat: anything inside this ring burns.
+        if (type === ENEMY_INDEX.commander && !w.zankaStolen) {
+          // Zanka no Tachi's heat: anything inside this ring burns (until the bankai is taken from him).
           const s = (COMMANDER_HEAT * 2) / 110;
           L.auras.add(f.ring, x, y, s, s, 0, 0xff7a3c, 0.45 + Math.sin(now * 6) * 0.12);
         }

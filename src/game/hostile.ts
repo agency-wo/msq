@@ -323,10 +323,15 @@ function harribelAI(w: World, i: number): void {
 }
 
 /**
- * The Captain-Commander: Ryūjin Jakka's heat burns anyone who comes close,
- * and he cycles four fire techniques, each warned on the ground first: a
- * blade of fire down a line, pillars of flame around you, a flare of his whole
- * body, and the charred dead raised in a ring to close in on you.
+ * The Captain-Commander. With his bankai, Zanka no Tachi, the heat burns
+ * anyone who comes close, and he cycles four techniques, each warned on the
+ * ground first: a blade of fire down a line, pillars of flame around you, a
+ * flare of his whole body, and the charred dead raised in a ring around you.
+ *
+ * Below half health the Emperor takes Zanka no Tachi from him, as he did in
+ * the story. The heat and the dead go with it; the old man fights on with
+ * his shikai's pillars of flame and his own fists: Ikkotsu, a rush and one
+ * blow at its end, and Sōkotsu, two blows where you stand.
  */
 function commanderAI(w: World, i: number, dist: number): void {
   const E = w.en;
@@ -334,10 +339,39 @@ function commanderAI(w: World, i: number, dist: number): void {
   const x = E.x[i];
   const y = E.y[i];
   const dmg = E.dmg[i];
-  if (dist < COMMANDER_HEAT + PLAYER.radius) w.hurtPlayer(dmg * 0.35);
+  if (!w.zankaStolen && E.hp[i] < E.maxHp[i] * 0.5) w.stealZanka(i);
+  if (!w.zankaStolen && dist < COMMANDER_HEAT + PLAYER.radius) w.hurtPlayer(dmg * 0.35);
   if (E.atkT[i] > 0) return;
-  E.atkT[i] = 2.3;
   const toP = Math.atan2(p.y - y, p.x - x);
+  if (w.zankaStolen) {
+    E.atkT[i] = 2.1;
+    // The variant byte is free on this boss: use it as the technique counter.
+    const move = E.variant[i] % 3;
+    E.variant[i] = (move + 1) % 3;
+    switch (move) {
+      case 0:
+        ennetsuJigoku(w, dmg, 5);
+        break;
+      case 1: {
+        // Ikkotsu: he crosses the lane in a stride, and the blow lands at its end.
+        const len = Math.min(380, Math.max(120, dist));
+        w.spawnMark(MK_LANCE, MS_LINE, x, y, 30, len, toP, 0.8, dmg * 0.8, MF_ENEMY);
+        w.spawnMark(MK_SEAL, MS_CIRCLE, x + Math.cos(toP) * len, y + Math.sin(toP) * len, 64, 0, 0, 1, dmg * 1.1, MF_ENEMY);
+        E.kx[i] = Math.cos(toP) * 1100;
+        E.ky[i] = Math.sin(toP) * 1100;
+        w.sound('warn');
+        break;
+      }
+      case 2:
+        // Sōkotsu: two blows, one after the other, where you stand.
+        w.spawnMark(MK_SEAL, MS_CIRCLE, p.x, p.y, 56, 0, 0, 0.9, dmg * 0.8, MF_ENEMY);
+        w.spawnMark(MK_SEAL, MS_CIRCLE, p.x, p.y, 76, 0, 0, 1.5, dmg * 0.8, MF_ENEMY);
+        w.sound('warn');
+        break;
+    }
+    return;
+  }
+  E.atkT[i] = 2.3;
   // The variant byte is free on this boss: use it as the technique counter.
   const move = E.variant[i] % 4;
   E.variant[i] = (move + 1) % 4;
@@ -348,13 +382,7 @@ function commanderAI(w: World, i: number, dist: number): void {
       w.sound('warn');
       break;
     case 1:
-      // Pillars of flame erupt around you, one right where you stand.
-      for (let k = 0; k < 7; k++) {
-        const a = (k / 7) * TAU + w.rng.next() * 0.4;
-        const d = k === 0 ? 0 : 70 + w.rng.next() * 70;
-        w.spawnMark(MK_INFERNO, MS_CIRCLE, p.x + Math.cos(a) * d, p.y + Math.sin(a) * d, 36, 0, 0, 1 + k * 0.08, dmg * 0.6, MF_ENEMY);
-      }
-      w.sound('warn');
+      ennetsuJigoku(w, dmg, 7);
       break;
     case 2:
       // His whole body flares: everything near him burns.
@@ -370,6 +398,17 @@ function commanderAI(w: World, i: number, dist: number): void {
       w.sound('rise');
       break;
   }
+}
+
+/** Ennetsu Jigoku: pillars of flame erupt around you, one right where you stand. */
+function ennetsuJigoku(w: World, dmg: number, n: number): void {
+  const p = w.player;
+  for (let k = 0; k < n; k++) {
+    const a = (k / n) * TAU + w.rng.next() * 0.4;
+    const d = k === 0 ? 0 : 70 + w.rng.next() * 70;
+    w.spawnMark(MK_INFERNO, MS_CIRCLE, p.x + Math.cos(a) * d, p.y + Math.sin(a) * d, 36, 0, 0, 1 + k * 0.08, dmg * 0.6, MF_ENEMY);
+  }
+  w.sound('warn');
 }
 
 /** How far the Captain-Commander's heat reaches (the renderer draws the same ring). */

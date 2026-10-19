@@ -114,7 +114,9 @@ Stages, 20 minutes each:
   bosses here are the captains themselves (Byakuya, Hitsugaya, Suì-Fēng,
   Komamura, Lieutenant Sasakibe), each fighting with their own bankai; the Kidō
   Grandmaster escorts the third, and Captain-Commander Yamamoto ends the stage
-  with Ryūjin Jakka's fire and the ashen dead.
+  with Zanka no Tachi's fire and the ashen dead. Bring him below half health
+  and the Emperor takes his bankai, as he did in the story: Yamamoto fights on
+  with Ennetsu Jigoku's pillars of flame and his fists (Ikkotsu, Sōkotsu).
 - **Soul King Palace** (unlocked by clearing Seireitei): sentinels that wind up
   and lunge, ink wisps that split as they die, weavers whose threads hold you,
   flying asauchi and attendants that heal what stands near them. Three of the

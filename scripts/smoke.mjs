@@ -582,6 +582,17 @@ try {
   await steer(12000, { radius: 15 });
   log('captain-commander', { ...(await stats()), bossBar: await page.isVisible('.bossbar'), boss: await page.textContent('.boss-name') });
   await shot('12-commander');
+  // Below half health the Emperor takes Zanka no Tachi from him.
+  await page.evaluate(() => {
+    const w = window.__msq.world;
+    for (let i = 0; i < w.en.n; i++) if (w.en.type[i] === 13 && !w.en.dead[i]) w.en.hp[i] = w.en.maxHp[i] * 0.45;
+  });
+  await steer(3000, { radius: 15 });
+  log('zanka taken', {
+    stolen: await page.evaluate(() => window.__msq.world.zankaStolen),
+    zanka: await page.evaluate(() => window.__msq.world.powers.some((ps) => ps.def.id === 'zanka')),
+  });
+  await shot('12c-zanka-taken');
 
   // A · The Almighty: time stops, an eye opens, then everything on screen is struck down.
   await page.goto(`${BASE}?debug&seed=7&play&god&t=500&almighty&give=xaxis5,explode5`);

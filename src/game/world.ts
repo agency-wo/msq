@@ -45,6 +45,7 @@ import {
   FLAG_PLAGUE,
   FLAG_ZOMBIE,
   FX_ASH,
+  FX_BEAMH,
   FX_DOT,
   FX_GLOW,
   FX_SHOCK,
@@ -74,7 +75,7 @@ import {
   PK_SHARD,
   ZK_POISON,
 } from './constants';
-import { blinkAI, bossAI, casterAI, chargeAI, eliteAI, eventAI, updateEnemyBullets } from './hostile';
+import { blinkAI, bossAI, casterAI, chargeAI, COMMANDER_HEAT, eliteAI, eventAI, updateEnemyBullets } from './hostile';
 import { generateOffers, rollRelics, type ChestKind, type Offer } from './offers';
 import { EBulletPool, EnemyPool, FxPool, HITS, MarkPool, NumberRing, OrbPool, ProjPool, ZonePool } from './pools';
 import { newPowerState, refreshPowerStats, syncPower, updatePowers, type PowerState } from './powers';
@@ -330,6 +331,8 @@ export class World {
   /** A · The Almighty: while almightyT > 0 time stands still; then the strike in rewrite(). */
   readonly almightyUnlocked: boolean;
   almightyGranted = false;
+  /** Zanka no Tachi has been taken from the Captain-Commander this run: he fights on without it. */
+  zankaStolen = false;
   /** The Almighty is on its way: earned, arriving a moment later under its own title card. */
   private almightyDue = 0;
   almightyT = 0;
@@ -2617,6 +2620,24 @@ export class World {
     this.spawnFx(FX_GLOW, 0, 0, 0, 0, 0.8, 40, 600, 1, 0, 0, info?.aura ?? 0xffcb5c, LAYER_ADD, 0, 1);
     this.spawnFx(FX_RING, 0, 0, 0, 0, 0.7, 30, 520, 1, 0, 0, 0xffe6a0, LAYER_ADD, 0, 1);
     return true;
+  }
+
+  /**
+   * The Captain-Commander below half health: the Emperor takes Zanka no Tachi
+   * from him in the middle of the fight, as he did in the story.
+   */
+  stealZanka(i: number): void {
+    const E = this.en;
+    const p = this.player;
+    this.zankaStolen = true;
+    const dx = p.x - E.x[i];
+    const dy = p.y - E.y[i];
+    const d = Math.hypot(dx, dy) || 1;
+    this.spawnFx(FX_BEAMH, E.x[i] + dx / 2, E.y[i] + dy / 2, 0, 0, 0.7, d, d, 1, Math.atan2(dy, dx), 0, 0xff7a3c, LAYER_ADD, 0, 0, 12);
+    this.spawnFx(FX_RING, E.x[i], E.y[i], 0, 0, 0.6, COMMANDER_HEAT, 20, 1, 0, 0, 0xff7a3c, LAYER_ADD);
+    this.grantBankai('zanka');
+    this.messages.push({ text: 'Zanka no Tachi is yours. The Captain-Commander fights on without it.', kind: 'boss' });
+    E.atkT[i] = 1.6;
   }
 
   /** Testing: own a power at a given level (taking the first attribute when it reaches its last level). */
