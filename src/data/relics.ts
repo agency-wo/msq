@@ -11,6 +11,8 @@ export interface RelicDef {
   icon: string;
   mods?: StatMods;
   special?: RelicSpecial;
+  /** Opened by a feat: never in a chest until then. */
+  locked?: boolean;
 }
 
 /** Quincy gear: global stats, trade-offs and rule-changers, as in the analysis. */
@@ -80,6 +82,10 @@ export const RELICS: readonly RelicDef[] = [
     desc: '-20% damage until 8:00, then the glove comes off: +60%',
     special: 'sanrei',
   },
+  // Opened by feats.
+  { id: 'founder', name: "Founder's Medallion", rarity: 'legendary', icon: 'circles', desc: 'Bankai you take back arrive at Lv 2', locked: true },
+  { id: 'key', name: 'Silbern Key', rarity: 'rare', icon: 'key', desc: 'Shrines offer four pacts instead of three', locked: true },
+  { id: 'seal', name: "Soul King's Seal", rarity: 'legendary', icon: 'star', desc: 'Fragments of the Soul King arrive a level higher', locked: true },
 ];
 
 export const RELIC_BY_ID: ReadonlyMap<string, RelicDef> = new Map(RELICS.map((r) => [r.id, r]));

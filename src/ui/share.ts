@@ -8,8 +8,9 @@ import { drawVista } from './vistas';
 export interface ShareRun {
   stage: StageId;
   stageName: string;
-  /** How far the Emperor evolved, so he is drawn that way. */
+  /** How far the Emperor evolved, so he is drawn that way, and the look he wears. */
   evolution: number;
+  look: string;
   mode: string;
   victory: boolean;
   quit: boolean;
@@ -68,7 +69,7 @@ export function drawShareCard(r: ShareRun): HTMLCanvasElement {
   g.fillRect(0, 270, W, 330);
   // The Emperor as far as he evolved, standing on the right.
   const hero = document.createElement('canvas');
-  drawEmperor(hero, r.evolution, 560, 1);
+  drawEmperor(hero, r.evolution, 560, 1, r.look);
   g.save();
   g.shadowColor = r.victory ? 'rgba(255,203,92,0.6)' : 'rgba(89,184,255,0.45)';
   g.shadowBlur = 40;

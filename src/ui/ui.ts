@@ -5,7 +5,7 @@ import { CODEX_ENEMIES, type CodexSection } from '../data/codex';
 import { DAILY_CLEAR_GOLD, DAILY_MOD_BY_ID, DAILY_SURVIVE_GOLD, DAILY_SURVIVE_TIME, dayLabel, type DailySpec } from '../data/daily';
 import { PASSIVE_BY_ID } from '../data/passives';
 import { POWER_BY_ID, POWERS, STARTING_POWER, type PowerDef } from '../data/powers';
-import { RELICS, type Rarity, type RelicDef } from '../data/relics';
+import { type Rarity, RELIC_BY_ID, type RelicDef, RELICS } from '../data/relics';
 import { RESONANCE_BY_ID, RESONANCES } from '../data/resonances';
 import { PACT_BY_ID, type PactDef } from '../data/shrines';
 import { MAX_TRIAL, STAGES, stageById, TRIAL_NAMES, trialBlurb, type StageId } from '../data/stages';
@@ -17,6 +17,7 @@ import { enemySpriteName } from '../render/names';
 import { nextCost, startOptions, upgradeLevel } from '../save/archives';
 import { almightyUnlocked, endlessOpen, rushOpen, stageUnlocked, trialsOpen, type DailyRecord, type SaveData, type Settings } from '../save/save';
 import { chapterUnlocked } from '../save/story';
+import { codexFound, codexTotal, featProgress, FEATS, type LookId, LOOKS } from '../save/feats';
 import { drawEmblem, drawIcon } from './icons';
 import { shareRun } from './share';
 import { drawVista } from './vistas';
@@ -142,6 +143,10 @@ export interface ResultSummary {
   damage: DamageRow[];
   /** Pacts made at shrines, by id. */
   pacts: string[];
+  /** Feats this run earned, with what each paid. */
+  feats: { name: string; gold: number; look: string | null; relic: string | null }[];
+  /** The Emperor's look, for his portrait and the card. */
+  look: string;
   victory: boolean;
   quit: boolean;
   time: number;
@@ -389,6 +394,7 @@ export class UI {
       onArchives: () => void;
       onChronicle: () => void;
       onCodex: () => void;
+      onFeats: () => void;
       onSettings: () => void;
       onStage: (id: StageId) => void;
       onMode: () => void;
@@ -404,13 +410,17 @@ export class UI {
     const coin = el('canvas', 'topbar-icon');
     drawIcon(coin, 'coin', '#ffd27a');
     purse.append(coin, el('span', '', gold(save.gold)));
-    top.append(purse);
+    const feats = el('span', 'topbar-feats');
+    const crown = el('canvas', 'topbar-icon');
+    drawIcon(crown, 'crown', '#ffcb5c');
+    feats.append(crown, el('span', '', `${save.feats.length}/${FEATS.length}`));
+    top.append(purse, feats);
     // The Emperor, painted from his own sprite in front of the reishi star.
     const hero = el('div', 'title-hero');
     const emblem = el('canvas', 'emblem');
     drawEmblem(emblem, 140);
     const portrait = el('canvas', 'hero-portrait');
-    drawEmperor(portrait, save.evolution, 208);
+    drawEmperor(portrait, save.evolution, 208, undefined, save.look);
     hero.append(emblem, portrait);
     const logo = el('div', 'logo');
     logo.append(el('div', 'logo-top', 'QUINCY'), el('div', 'logo-bottom', 'SURVIVAL'));
@@ -421,6 +431,7 @@ export class UI {
     nav.append(
       this.navButton('archives-btn', 'vault', 'Archives', '#ffd27a', h.onArchives),
       this.navButton('codex-btn', 'book', 'Codex', '#d8c8ff', h.onCodex),
+      this.navButton('feats-btn', 'crown', 'Feats', '#ffcb5c', h.onFeats),
       this.navButton('chronicle-btn', 'feather', 'Chronicle', '#9fdcff', h.onChronicle),
       this.navButton('settings-btn', 'gear', 'Settings', '#c9cbd4', h.onSettings),
     );
@@ -604,7 +615,7 @@ export class UI {
     // The Emperor above the verdict: lit gold in victory, grey in defeat.
     const head = el('div', 'results-head');
     const portrait = el('canvas', 'results-portrait');
-    drawEmperor(portrait, r.evolution, 132);
+    drawEmperor(portrait, r.evolution, 132, undefined, r.look);
     head.append(portrait);
     p.append(head, el('div', 'board-kicker', kicker), el('h2', 'board-title', r.victory ? 'Victory' : 'Fallen'));
     if (r.unlocked) p.append(el('p', 'unlock-note', `New stage unlocked: ${r.unlocked}`));
@@ -612,6 +623,12 @@ export class UI {
     if (r.starts.length > 0) p.append(el('p', 'unlock-note', `New starting Schrift in the Archives: ${r.starts.join(', ')}`));
     if (r.chapters.length > 0) p.append(el('p', 'unlock-note', `New in the Chronicle: ${r.chapters.join(', ')}`));
     if (r.dailyBonus > 0) p.append(el('p', 'unlock-note', `Daily Trial bonus: +${r.dailyBonus} gold`));
+    for (const f of r.feats) {
+      const extra = [f.look ? `the ${LOOKS.find((l) => l.id === f.look)?.name ?? f.look} look` : '', f.relic ? (RELIC_BY_ID.get(f.relic)?.name ?? f.relic) : '']
+        .filter(Boolean)
+        .join(' and ');
+      p.append(el('p', 'unlock-note feat-note', `Feat: ${f.name} · +${gold(f.gold)} gold${extra ? ` · opens ${extra}` : ''}`));
+    }
     const [best, beaten] = r.rush
       ? ['Fastest clear', 'New fastest clear']
       : r.daily
@@ -672,6 +689,7 @@ export class UI {
       stage: r.stage,
       stageName: r.stageName,
       evolution: r.evolution,
+      look: r.look,
       mode: r.mode,
       victory: r.victory,
       quit: r.quit,
@@ -795,13 +813,7 @@ export class UI {
     const p = this.open('codex');
     const c = save.codex;
     const powers = POWERS.filter((d) => POWER_SECTIONS.some(([, test]) => test(d)));
-    const found =
-      powers.filter((d) => c.powers.includes(d.id)).length +
-      RESONANCES.filter((r) => c.resonances.includes(r.id)).length +
-      RELICS.filter((r) => c.relics.includes(r.id)).length +
-      CODEX_ENEMIES.filter((e) => (c.kills[e.key] ?? 0) > 0).length;
-    const total = powers.length + RESONANCES.length + RELICS.length + CODEX_ENEMIES.length;
-    p.append(el('div', 'board-kicker', 'The Emperor’s'), el('h2', 'board-title', 'Codex'), el('p', 'archives-hint', `Discovered ${found} of ${total}.`));
+    p.append(el('div', 'board-kicker', 'The Emperor’s'), el('h2', 'board-title', 'Codex'), el('p', 'archives-hint', `Discovered ${codexFound(save)} of ${codexTotal()}.`));
     const tabs = el('div', 'codex-tabs');
     tabs.setAttribute('role', 'tablist');
     for (const [id, label] of CODEX_TABS) {
@@ -844,7 +856,14 @@ export class UI {
         list.append(
           c.relics.includes(r.id)
             ? this.codexEntry(r.icon, RARITY_COLOR[r.rarity], r.name, r.desc, undefined, RARITY_LABEL[r.rarity])
-            : this.codexEntry(r.icon, RARITY_COLOR[r.rarity], null, `A ${RARITY_LABEL[r.rarity].toLowerCase()} relic, found in chests.`),
+            : this.codexEntry(
+                r.icon,
+                RARITY_COLOR[r.rarity],
+                null,
+                r.locked && !save.relicsOpen.includes(r.id)
+                  ? 'Opened by a feat, then found in chests.'
+                  : `A ${RARITY_LABEL[r.rarity].toLowerCase()} relic, found in chests.`,
+              ),
         );
       }
     } else {
@@ -879,6 +898,69 @@ export class UI {
     body.append(el('p', 'codex-text', text));
     row.append(c, body);
     return row;
+  }
+
+  /**
+   * Feats: each with what it pays and how close you are (lifetime counts, or
+   * the best single run), grouped; above them, the Emperor's looks, the ones
+   * feats have opened ready to wear.
+   */
+  showFeats(save: SaveData, h: { onLook: (id: LookId) => void; onBack: () => void }, relock = true): void {
+    const p = this.open('feats');
+    p.append(
+      el('div', 'board-kicker', 'The Emperor’s'),
+      el('h2', 'board-title', 'Feats'),
+      el('p', 'archives-hint', `Earned ${save.feats.length} of ${FEATS.length}. Each pays once.`),
+      el('h3', 'section-title', 'Looks'),
+    );
+    const looks = el('div', 'look-row');
+    for (const l of LOOKS) {
+      const open = save.looks.includes(l.id);
+      const b = button(`look-chip${save.look === l.id ? ' on' : ''}${open ? '' : ' locked'}`, '');
+      const c = el('canvas', 'look-portrait');
+      drawEmperor(c, 0, 56, undefined, l.id);
+      const unlock = FEATS.find((f) => f.look === l.id);
+      b.append(c, el('span', 'look-name', open ? l.name : '? ? ?'), el('span', 'look-sub', open ? (save.look === l.id ? 'Wearing' : 'Wear') : (unlock?.name ?? '')));
+      b.setAttribute('aria-pressed', String(save.look === l.id));
+      if (open) b.addEventListener('click', this.guard(() => h.onLook(l.id)));
+      else b.disabled = true;
+      looks.append(b);
+    }
+    p.append(looks);
+    for (const group of ['Journey', 'Stages', 'One run', 'Modes'] as const) {
+      p.append(el('h3', 'section-title', group));
+      const list = el('div', 'feat-list');
+      for (const f of FEATS.filter((x) => x.group === group)) {
+        const done = save.feats.includes(f.id);
+        const row = el('div', `feat${done ? ' done' : ''}`);
+        const icon = el('canvas', 'feat-icon');
+        drawIcon(icon, 'crown', done ? '#ffcb5c' : '#5a5e6c');
+        const body = el('div', 'feat-body');
+        const reward = [
+          `+${gold(f.gold)} gold`,
+          f.look ? `${LOOKS.find((l) => l.id === f.look)?.name ?? f.look} look` : '',
+          f.relic ? (RELIC_BY_ID.get(f.relic)?.name ?? f.relic) : '',
+        ]
+          .filter(Boolean)
+          .join(' · ');
+        body.append(el('div', 'feat-name', f.name), el('div', 'feat-desc', f.desc), el('div', 'feat-reward', reward));
+        if (!done && f.goal > 1) {
+          const v = Math.min(f.goal, featProgress(save, f));
+          const bar = el('div', 'feat-bar');
+          const fill = el('div', 'feat-fill');
+          fill.style.transform = `scaleX(${v / f.goal})`;
+          bar.append(fill);
+          body.append(bar, el('div', 'feat-count', `${gold(v)} / ${gold(f.goal)}`));
+        }
+        row.append(icon, body);
+        list.append(row);
+      }
+      p.append(list);
+    }
+    const back = button('btn primary', 'Back');
+    back.addEventListener('click', this.guard(h.onBack));
+    p.append(back);
+    if (relock) this.lock(150);
   }
 
   /** Every chapter: the told ones to reread, the rest as a hint of what unlocks them. */

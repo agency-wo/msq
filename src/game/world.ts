@@ -165,6 +165,8 @@ export interface WorldOptions {
   endless?: boolean;
   /** Boss Rush: the stage's bosses one after another, and nothing else on the timeline. */
   bossRush?: boolean;
+  /** Relics opened by feats, which may now turn up in chests. */
+  relicsOpen?: string[];
   /** Daily Trial modifiers (see data/daily.ts). */
   mods?: string[];
 }
@@ -207,6 +209,8 @@ export class World {
   readonly trial: number;
   readonly endless: boolean;
   readonly bossRush: boolean;
+  /** Relics a feat has opened; the other locked ones never come out of a chest. */
+  private readonly relicsOpen: ReadonlySet<string>;
   /** Boss Rush: the waves still to come (a boss and its escort each), and when the next one arrives. */
   private rushQueue: TimelineEvent[][] = [];
   private rushNext = 0;
@@ -424,6 +428,7 @@ export class World {
     this.tm = trialMods(this.trial);
     this.endless = !!opts.endless;
     this.bossRush = !!opts.bossRush && !this.endless;
+    this.relicsOpen = new Set(opts.relicsOpen ?? []);
     const mods = new Set(opts.mods ?? []);
     this.mods = mods;
     this.modHp = (mods.has('swarm') ? 0.85 : 1) * (mods.has('giants') ? 1.5 : 1);
@@ -2161,7 +2166,12 @@ export class World {
   }
 
   relicChoices(kind: ChestKind): RelicDef[] {
-    return rollRelics(RELICS, new Set(this.relics.map((r) => r.id)), kind, this.rng);
+    const pool = RELICS.filter((r) => !r.locked || this.relicsOpen.has(r.id));
+    return rollRelics(pool, new Set(this.relics.map((r) => r.id)), kind, this.rng);
+  }
+
+  private hasRelic(id: string): boolean {
+    return this.relics.some((r) => r.id === id);
   }
 
   applyOffer(o: Offer): void {
@@ -2267,7 +2277,9 @@ export class World {
   shrineChoices(): PactDef[] {
     const pool = PACTS.filter((d) => !this.pacts.has(d.id) && this.pactPossible(d.id));
     const picks: PactDef[] = [];
-    while (picks.length < 3 && pool.length > 0) picks.push(pool.splice(this.rng.int(pool.length), 1)[0]);
+    // The Silbern Key opens a fourth.
+    const n = this.hasRelic('key') ? 4 : 3;
+    while (picks.length < n && pool.length > 0) picks.push(pool.splice(this.rng.int(pool.length), 1)[0]);
     return picks;
   }
 
@@ -2384,6 +2396,8 @@ export class World {
     const def = POWER_BY_ID.get(id);
     if (!def || def.group !== 'fragment') return false;
     this.addPower(id);
+    // The Soul King's Seal: it arrives a level up.
+    if (this.hasRelic('seal')) this.addPower(id);
     this.banners.push({ kind: 'fragment', title: def.name, sub: 'A piece of the Soul King, taken back' });
     this.sound('bankai');
     this.shake = Math.max(this.shake, 10);
@@ -2468,6 +2482,8 @@ export class World {
     const def = POWER_BY_ID.get(id);
     if (!def || def.group !== 'bankai') return false;
     this.addPower(id);
+    // Founder's Medallion: it arrives a level up.
+    if (this.hasRelic('founder')) this.addPower(id);
     const info = BANKAI_BY_ID.get(id);
     this.banners.push({ kind: 'bankai', title: def.name, sub: info ? `${info.owner}'s bankai, stolen by ${info.thief}` : '' });
     this.sound('bankai');

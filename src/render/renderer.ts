@@ -357,6 +357,13 @@ export class Renderer {
   }
 
   /** Show a stage's ground (the title screen previews the selected stage too). */
+  /** The Emperor's look for the run (opened by feats). */
+  private look = 'default';
+
+  setLook(id: string): void {
+    this.look = this.atlas.frames[`player_${id}`] ? id : 'default';
+  }
+
   setStage(id: string): void {
     if (id === this.groundId) return;
     this.groundId = id;
@@ -755,7 +762,9 @@ export class Renderer {
       const flap = Math.sin(now * 2.4);
       L.auras.add(f.evo_wings, x, hy - 4, 0.62 * (1 + flap * 0.07), 0.62 * (1 - flap * 0.04), 0, 0xffffff, 0.85 + flap * 0.1);
     }
-    L.player.add(justHit ? f.player_f : f.player, x, hy, 0.5 * p.face, 0.5, 0, 0xffffff, blink ? 0.45 : 1);
+    const body = this.look === 'default' ? f.player : f[`player_${this.look}`];
+    const bodyHit = this.look === 'default' ? f.player_f : f[`player_${this.look}_f`];
+    L.player.add(justHit ? bodyHit : body, x, hy, 0.5 * p.face, 0.5, 0, 0xffffff, blink ? 0.45 : 1);
     if (tier >= 2) {
       // Every few seconds the eyes blink together.
       const shut = now % 4.3 < 0.13;

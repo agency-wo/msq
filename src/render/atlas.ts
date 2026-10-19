@@ -1304,13 +1304,80 @@ const evoShadow: Draw = (g, w, h) => {
  * red eyes, a black coat whose tall collar shows crimson beside the hair, and
  * a long cape. Pale rim lines keep the black silhouette readable at night.
  */
-const hero: Draw = (g, w) => {
+/** The colours of one of the Emperor's looks (opened by feats). */
+interface HeroLook {
+  cape: string;
+  coatTop: string;
+  coatBottom: string;
+  trim: string;
+  star: string;
+  starGlow: string;
+  sleeve: string;
+  cuff: string;
+  collar: string;
+  lining: string;
+}
+
+const HERO_LOOKS: Readonly<Record<string, HeroLook>> = {
+  default: {
+    cape: '#0a0b10',
+    coatTop: '#262833',
+    coatBottom: '#07080c',
+    trim: 'rgba(232,236,246,0.5)',
+    star: '#eef2fa',
+    starGlow: 'rgba(160,210,255,0.9)',
+    sleeve: '#14151c',
+    cuff: '#d9d2c4',
+    collar: '#101117',
+    lining: '#7a1e2c',
+  },
+  // Wandenreich White: the knights' white uniform, lined in black, a blue star.
+  white: {
+    cape: '#e9ecf3',
+    coatTop: '#ffffff',
+    coatBottom: '#c7cddb',
+    trim: 'rgba(20,24,36,0.55)',
+    star: '#59b8ff',
+    starGlow: 'rgba(89,184,255,0.9)',
+    sleeve: '#e3e7ef',
+    cuff: '#1a1c26',
+    collar: '#f4f6fa',
+    lining: '#1a1c26',
+  },
+  crimson: {
+    cape: '#3a0a12',
+    coatTop: '#5e1622',
+    coatBottom: '#1c0508',
+    trim: 'rgba(255,200,200,0.45)',
+    star: '#ffd6d6',
+    starGlow: 'rgba(255,45,74,0.9)',
+    sleeve: '#3c0c15',
+    cuff: '#d9c4c4',
+    collar: '#2a0810',
+    lining: '#0b0b11',
+  },
+  gilded: {
+    cape: '#0a0b10',
+    coatTop: '#262833',
+    coatBottom: '#07080c',
+    trim: 'rgba(255,210,120,0.85)',
+    star: '#ffd25a',
+    starGlow: 'rgba(255,200,90,0.95)',
+    sleeve: '#14151c',
+    cuff: '#e8c870',
+    collar: '#101117',
+    lining: '#c9a040',
+  },
+};
+
+function heroDraw(look: HeroLook): Draw {
+  return (g, w) => {
   const cx = w / 2;
   const RIM = 'rgba(214,222,242,0.6)';
   const HAIR = '#0b0b11';
   const HAIR_RIM = 'rgba(214,222,242,0.42)';
   // Cape, flaring from the shoulders
-  g.fillStyle = '#0a0b10';
+  g.fillStyle = look.cape;
   g.beginPath();
   g.moveTo(cx - 10, 27);
   g.quadraticCurveTo(cx - 27, 50, cx - 24, 70);
@@ -1323,8 +1390,8 @@ const hero: Draw = (g, w) => {
   g.stroke();
   // Coat
   const coat = g.createLinearGradient(0, 28, 0, 66);
-  coat.addColorStop(0, '#262833');
-  coat.addColorStop(1, '#07080c');
+  coat.addColorStop(0, look.coatTop);
+  coat.addColorStop(1, look.coatBottom);
   g.fillStyle = coat;
   g.beginPath();
   g.moveTo(cx - 9, 29);
@@ -1334,7 +1401,7 @@ const hero: Draw = (g, w) => {
   g.closePath();
   g.fill();
   // Front opening, hem trim and a silver star at the chest
-  g.strokeStyle = 'rgba(232,236,246,0.5)';
+  g.strokeStyle = look.trim;
   g.lineWidth = 1;
   g.beginPath();
   g.moveTo(cx, 40);
@@ -1343,8 +1410,8 @@ const hero: Draw = (g, w) => {
   g.lineTo(cx + 12.6, 63);
   g.stroke();
   g.save();
-  g.fillStyle = '#eef2fa';
-  g.shadowColor = 'rgba(160,210,255,0.9)';
+  g.fillStyle = look.star;
+  g.shadowColor = look.starGlow;
   g.shadowBlur = 4;
   g.beginPath();
   for (let k = 0; k < 10; k++) {
@@ -1356,14 +1423,14 @@ const hero: Draw = (g, w) => {
   g.fill();
   g.restore();
   // Sleeves with pale cuffs and hands
-  g.fillStyle = '#14151c';
+  g.fillStyle = look.sleeve;
   g.beginPath();
   g.ellipse(cx - 12, 44, 4, 9, 0.3, 0, TAU);
   g.fill();
   g.beginPath();
   g.ellipse(cx + 12, 44, 4, 9, -0.3, 0, TAU);
   g.fill();
-  g.fillStyle = '#d9d2c4';
+  g.fillStyle = look.cuff;
   g.fillRect(cx - 16, 50, 6, 1.6);
   g.fillRect(cx + 10, 50, 6, 1.6);
   g.fillStyle = '#efe0cc';
@@ -1373,14 +1440,14 @@ const hero: Draw = (g, w) => {
   g.fill();
   // Tall collar: pointed flaps standing up beside the head, crimson facing out
   for (const dir of [-1, 1]) {
-    g.fillStyle = '#101117';
+    g.fillStyle = look.collar;
     poly(g, [
       [cx + dir * 5, 29],
       [cx + dir * 16.5, 13],
       [cx + dir * 13.5, 31],
     ]);
     g.fill();
-    g.fillStyle = '#7a1e2c';
+    g.fillStyle = look.lining;
     poly(g, [
       [cx + dir * 9, 27],
       [cx + dir * 15.6, 15],
@@ -1448,7 +1515,10 @@ const hero: Draw = (g, w) => {
     g.closePath();
     g.fill();
   }
-};
+  };
+}
+
+const hero = heroDraw(HERO_LOOKS.default);
 
 // -------------------------------------------------------------- enemies
 
@@ -3573,6 +3643,10 @@ function specs(): Spec[] {
     { name: 'meteor', w: 72, h: 72, draw: meteor },
     { name: 'player', w: 60, h: 72, draw: hero },
     { name: 'player_f', w: 60, h: 72, draw: flash(hero) },
+    ...(['white', 'crimson', 'gilded'] as const).flatMap((look) => [
+      { name: `player_${look}`, w: 60, h: 72, draw: heroDraw(HERO_LOOKS[look]) },
+      { name: `player_${look}_f`, w: 60, h: 72, draw: flash(heroDraw(HERO_LOOKS[look])) },
+    ]),
     { name: 'evo_wings', w: 120, h: 60, draw: evoWings },
     { name: 'shrine', w: 48, h: 64, draw: shrine },
     { name: 'fragment', w: 40, h: 40, draw: fragment },
@@ -3691,7 +3765,13 @@ export const EMPEROR_BOX = { w: 124, h: 96 } as const;
  * from tier 2 and the Almighty's shadow at tier 3, laid out as they are in a
  * run. For the title, the results and the share card.
  */
-export function drawEmperor(canvas: HTMLCanvasElement, tier: number, cssWidth: number, ratio = Math.min(window.devicePixelRatio || 1, 3)): void {
+export function drawEmperor(
+  canvas: HTMLCanvasElement,
+  tier: number,
+  cssWidth: number,
+  ratio = Math.min(window.devicePixelRatio || 1, 3),
+  look = 'default',
+): void {
   const g = canvas.getContext('2d');
   if (!g) return;
   const { w: W, h: H } = EMPEROR_BOX;
@@ -3709,7 +3789,7 @@ export function drawEmperor(canvas: HTMLCanvasElement, tier: number, cssWidth: n
   };
   if (tier >= 3) layer(evoShadow, hx + 30 - 56, hy + 40 - 56, 112, 112);
   if (tier >= 1) layer(evoWings, hx + 30 - 60, hy + 30 - 30, 120, 60);
-  layer(hero, hx, hy, 60, 72);
+  layer(heroDraw(HERO_LOOKS[look] ?? HERO_LOOKS.default), hx, hy, 60, 72);
   if (tier >= 2) layer(evoEyes, hx, hy, 60, 72);
 }
 

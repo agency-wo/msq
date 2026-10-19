@@ -27,6 +27,13 @@ a portrait and a title. The pause and results screens break down the **damage**
 each power dealt (total, share and damage per second), and **Share** on the
 results turns the run into a picture for the phone's share sheet.
 
+Thirty **Feats** give long goals (a hundred thousand kills, every letter
+awakened, Trial V, a Boss Rush under 4:00, all three fragments in one run...),
+each paying gold once; some open one of three new looks for the Emperor
+(Wandenreich White, Crimson, Gilded) or a relic that can then turn up in chests
+(Founder's Medallion: bankai arrive at Lv 2; Silbern Key: shrines offer four
+pacts; Soul King's Seal: fragments arrive a level up).
+
 The **Codex** fills in as you play: every Schrift with its three awakenings,
 the resonances (with a hint for the ones still hidden), the relics, and every
 enemy and named boss with how many times you have beaten it.

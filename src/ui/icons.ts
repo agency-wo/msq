@@ -491,6 +491,14 @@ const GLYPHS: Record<string, Glyph> = {
     g.fillRect(30, 8, 3, 8);
     g.fillRect(26, 27, 7, 7);
   },
+  key: (g) => {
+    g.beginPath();
+    g.arc(15, 24, 7, 0, TAU);
+    g.stroke();
+    g.fillRect(21, 22.5, 19, 3);
+    g.fillRect(33, 25, 3, 7);
+    g.fillRect(38, 25, 2.5, 5);
+  },
   lock: (g) => {
     g.beginPath();
     g.arc(24, 21, 8, Math.PI, 0);

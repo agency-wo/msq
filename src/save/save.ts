@@ -7,6 +7,7 @@ import { DAILY_CLEAR_GOLD, DAILY_SURVIVE_GOLD, DAILY_SURVIVE_TIME } from '../dat
 import { POWER_BY_ID, STARTABLE_IDS, STARTING_POWER } from '../data/powers';
 import { MAX_TRIAL, STAGE_IDS, STAGES, type StageId } from '../data/stages';
 import { CHAPTER_BY_ID } from '../data/story';
+import { FEAT_BY_ID, LOOKS, type LookId } from './feats';
 
 /**
  * Versioned save in localStorage. On iPhone a Home Screen web app keeps its
@@ -70,6 +71,14 @@ export interface SaveData {
   evolution: number;
   /** What the Codex has opened: powers held, relics found, resonances made, enemies defeated (by Codex key). */
   codex: Codex;
+  /** Feats earned, and the best single run toward each feat that is about one run. */
+  feats: string[];
+  featBest: Record<string, number>;
+  /** Emperor looks opened by feats, and the one he wears. */
+  looks: LookId[];
+  look: LookId;
+  /** Relics opened by feats, which can now turn up in chests. */
+  relicsOpen: string[];
 }
 
 export interface Codex {
@@ -134,6 +143,11 @@ export function defaultSave(): SaveData {
     evolution: 0,
     // You always begin with Heilig Pfeil, so the Codex always knows it.
     codex: { powers: [STARTING_POWER], relics: [], resonances: [], kills: {} },
+    feats: [],
+    featBest: {},
+    looks: ['default'],
+    look: 'default',
+    relicsOpen: [],
   };
 }
 
@@ -263,7 +277,23 @@ export function migrate(raw: unknown): SaveData {
     },
     evolution: Math.max(0, Math.min(3, Math.floor(num(r.evolution, 0)))),
     codex: migrateCodex(r.codex, awakened, taken),
+    ...migrateFeats(r),
   };
+}
+
+/** Feats, looks and feat-opened relics, each checked against what exists. */
+function migrateFeats(r: Record<string, unknown>): Pick<SaveData, 'feats' | 'featBest' | 'looks' | 'look' | 'relicsOpen'> {
+  const strings = (v: unknown): string[] => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : []);
+  const feats = [...new Set(strings(r.feats).filter((id) => FEAT_BY_ID.has(id)))];
+  const featBest: Record<string, number> = {};
+  for (const [id, n] of Object.entries(obj(r.featBest))) {
+    if (FEAT_BY_ID.has(id) && typeof n === 'number' && Number.isFinite(n) && n > 0) featBest[id] = n;
+  }
+  const lookIds = LOOKS.map((l) => l.id);
+  const looks = [...new Set<LookId>(['default', ...strings(r.looks).filter((id): id is LookId => (lookIds as string[]).includes(id))])];
+  const look = looks.find((id) => id === r.look) ?? 'default';
+  const relicsOpen = [...new Set(strings(r.relicsOpen).filter((id) => RELIC_BY_ID.get(id)?.locked))];
+  return { feats, featBest, looks, look, relicsOpen };
 }
 
 /** The Codex, checked entry by entry. Saves from before it existed open what they already awakened and took back. */

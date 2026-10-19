@@ -272,6 +272,10 @@ try {
     save.meta = { arterie: 2, reroll: 1 };
     save.awakened = ['xaxis', 'explode', 'fear'];
     save.evolution = 2;
+    save.feats = ['kills-1k', 'clear-hueco', 'clear-palace'];
+    save.featBest = { 'level-100': 64, 'bankai-run': 2 };
+    save.looks = ['default', 'white'];
+    save.look = 'white';
     save.codex = {
       powers: ['heilig', 'xaxis', 'explode', 'fear', 'heat', 'wind', 'iron', 'senbonzakura', 'hyorinmaru', 'zanka', 'tengen'],
       relics: ['crown', 'tube', 'sandals'],
@@ -349,6 +353,20 @@ try {
   await shot('09h-codex-enemies');
   log('codex', codex);
   await page.tap('.screen.codex .btn.primary');
+  await page.waitForSelector('.screen.title .btn.primary');
+  await wait(300);
+
+  // Feats: progress, rewards, and the looks they open (the white one is worn).
+  await page.tap('.feats-btn');
+  await page.waitForSelector('.screen.feats .feat');
+  await wait(250);
+  log('feats', {
+    earned: await page.textContent('.screen.feats .archives-hint'),
+    looks: await page.$$eval('.look-chip', (c) => c.map((x) => x.textContent)),
+    bars: await page.$$eval('.feat-bar', (b) => b.length),
+  });
+  await shot('09i-feats');
+  await page.tap('.screen.feats .btn.primary');
   await page.waitForSelector('.screen.title .btn.primary');
   await wait(300);
 

@@ -9,7 +9,7 @@ import { CHAPTER_BY_ID, type Chapter } from './data/story';
 import { dailyFor, dailyLine, dateKey, type DailySpec } from './data/daily';
 import type { Offer } from './game/offers';
 import { runGold } from './game/rewards';
-import { World } from './game/world';
+import { RUSH_TIERS, World } from './game/world';
 import { installGestureGuards, isIOS, isPhoneLandscape, isStandalone } from './platform/pwa';
 import { Renderer } from './render/renderer';
 import { buyUpgrade, goldMul, metaMods, metaRerolls, metaRevives, setStart } from './save/archives';
@@ -28,9 +28,24 @@ import {
   writeSave,
 } from './save/save';
 import { chaptersAfter, chaptersBefore, markChapter } from './save/story';
+import { evaluateFeats, type RunFacts } from './save/feats';
 import { type CodexTab, damageRows, type Toggle, UI } from './ui/ui';
 
-type State = 'title' | 'settings' | 'archives' | 'chronicle' | 'codex' | 'daily' | 'story' | 'playing' | 'paused' | 'levelup' | 'chest' | 'shrine' | 'over';
+type State =
+  | 'title'
+  | 'settings'
+  | 'archives'
+  | 'chronicle'
+  | 'codex'
+  | 'feats'
+  | 'daily'
+  | 'story'
+  | 'playing'
+  | 'paused'
+  | 'levelup'
+  | 'chest'
+  | 'shrine'
+  | 'over';
 
 function numParam(p: URLSearchParams, key: string): number | undefined {
   const v = p.get(key);
@@ -106,6 +121,7 @@ export class App {
     this.ui.showHud(false);
     if (!stageUnlocked(this.save, this.save.stage)) this.save.stage = 'hueco';
     this.renderer.setStage(this.save.stage);
+    this.renderer.setLook(this.save.look);
     this.music.play('title');
     this.music.duck(false);
     this.ui.showTitle(this.save, {
@@ -113,6 +129,7 @@ export class App {
       onArchives: () => this.showArchives(),
       onChronicle: () => this.showChronicle(),
       onCodex: () => this.showCodex('schrift'),
+      onFeats: () => this.showFeats(),
       onSettings: () => this.showSettings(),
       onStage: (id: StageId) => {
         this.save.stage = id;
@@ -143,6 +160,24 @@ export class App {
           writeSave(this.save);
           this.sfx.play('blade');
           this.showArchives(false);
+        },
+        onBack: () => this.showTitle(),
+      },
+      relock,
+    );
+  }
+
+  /** Feats: what each pays, how close you are, and the looks they open. */
+  private showFeats(relock = true): void {
+    this.state = 'feats';
+    this.ui.showFeats(
+      this.save,
+      {
+        onLook: (id) => {
+          if (!this.save.looks.includes(id)) return;
+          this.save.look = id;
+          writeSave(this.save);
+          this.showFeats(false);
         },
         onBack: () => this.showTitle(),
       },
@@ -253,6 +288,7 @@ export class App {
       endless: daily ? false : !this.runRush(stage) && this.runEndless(stage),
       bossRush: daily ? false : this.runRush(stage),
       mods: daily?.mods,
+      relicsOpen: this.save.relicsOpen,
       seed: daily ? daily.seed : numParam(p, 'seed'),
       stress: numParam(p, 'stress'),
       god: p.has('god'),
@@ -488,6 +524,7 @@ export class App {
           },
         });
     const daily = w.god || !this.daily ? null : recordDaily(this.save, this.daily.date, w.t, victory);
+    const feats = w.god ? [] : evaluateFeats(this.save, runFacts(w, victory, !!this.daily));
     if (!w.god) writeSave(this.save);
     this.pendingChapters = w.god ? [] : chaptersAfter(this.save);
     this.ui.showHud(false);
@@ -505,6 +542,8 @@ export class App {
         dailyLine: this.daily ? dailyLine(this.daily) : '',
         damage: damageRows(w),
         pacts: [...w.pacts],
+        feats: feats.map((f) => ({ name: f.name, gold: f.gold, look: f.look ?? null, relic: f.relic ?? null })),
+        look: this.save.look,
         endless: w.endless,
         unlocked: record.unlocked ? stageById(record.unlocked).name : null,
         almighty: record.almighty,
@@ -683,4 +722,30 @@ export class App {
       },
     });
   }
+}
+
+/** What a finished run did, for the feats. */
+function runFacts(w: World, cleared: boolean, daily: boolean): RunFacts {
+  const groups = w.powers.map((ps) => ps.def.group);
+  let damage = 0;
+  for (const d of w.dmgBy) damage += d;
+  return {
+    stage: w.stage.id,
+    cleared,
+    endless: w.endless,
+    bossRush: w.bossRush,
+    daily,
+    time: w.t,
+    level: w.level,
+    kills: w.kills,
+    bankai: groups.filter((g) => g === 'bankai').length,
+    awakened: w.powers.filter((ps) => ps.attr !== null).length,
+    resonances: w.resonances.size,
+    rushTier: RUSH_TIERS.filter((n) => w.bestStreak >= n).length,
+    almighty: groups.includes('ultimate'),
+    fragments: groups.filter((g) => g === 'fragment').length,
+    pacts: w.pacts.size,
+    damage,
+    evolution: w.evolution,
+  };
 }
