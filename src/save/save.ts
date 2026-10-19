@@ -59,6 +59,8 @@ export interface SaveData {
   endless: boolean;
   /** Today's Daily Trial: its date, best time, and whether its survival and clear bonuses were paid. */
   daily: DailyRecord;
+  /** The furthest the Emperor has evolved in any run (0 to 3), shown on the title. */
+  evolution: number;
 }
 
 export interface DailyRecord {
@@ -78,6 +80,8 @@ export interface RunResult {
   endless?: boolean;
   /** A Daily Trial: counts for gold, bankai, awakenings and totals, not for stage records or unlocks. */
   daily?: boolean;
+  /** How far the Emperor evolved in the run. */
+  evolution?: number;
   time: number;
   level: number;
   kills: number;
@@ -106,6 +110,7 @@ export function defaultSave(): SaveData {
     trial: 0,
     endless: false,
     daily: { date: '', best: 0, survived: false, cleared: false },
+    evolution: 0,
   };
 }
 
@@ -227,6 +232,7 @@ export function migrate(raw: unknown): SaveData {
       survived: bool(obj(r.daily).survived, false),
       cleared: bool(obj(r.daily).cleared, false),
     },
+    evolution: Math.max(0, Math.min(3, Math.floor(num(r.evolution, 0)))),
   };
 }
 
@@ -315,6 +321,7 @@ export function recordRun(save: SaveData, r: RunResult): RecordOutcome {
   save.totals.kills += r.kills;
   save.totals.gold += r.gold;
   save.gold += r.gold;
+  save.evolution = Math.max(save.evolution, Math.min(3, r.evolution ?? 0));
   if (r.cleared) save.totals.clears++;
   if (r.time > save.best.time && !r.daily) save.best = { time: r.time, level: r.level, kills: r.kills };
   if (r.daily) return { newBest: false, unlocked: null, almighty: !hadAlmighty && almightyUnlocked(save), starts };

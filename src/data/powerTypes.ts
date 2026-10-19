@@ -40,9 +40,10 @@ export type PowerKind =
 
 /**
  * art: a Quincy technique · schrift: a knight's letter · utility: support ·
- * bankai: won from a boss only · ultimate: The Almighty, never on the level-up board.
+ * bankai: won from a boss only · fragment: a piece of the Soul King, won in his palace ·
+ * ultimate: The Almighty, never on the level-up board.
  */
-export type PowerGroup = 'art' | 'schrift' | 'utility' | 'bankai' | 'ultimate';
+export type PowerGroup = 'art' | 'schrift' | 'utility' | 'bankai' | 'fragment' | 'ultimate';
 
 /** Generic numbers each cast pattern reads in its own way (see the comment on each power). */
 export interface PowerStats {

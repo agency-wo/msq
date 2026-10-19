@@ -702,7 +702,21 @@ export class Renderer {
     const justHit = p.iframes > PLAYER.iframes - 0.08;
     const blink = p.iframes > 0 && w.vollT <= 0 && Math.floor(now * 18) % 2 === 0;
     const float = Math.sin(now * 3.2) * 1.2;
-    L.player.add(justHit ? f.player_f : f.player, x, y - 4 + float, 0.5 * p.face, 0.5, 0, 0xffffff, blink ? 0.45 : 1);
+    const hy = y - 4 + float;
+    // The Emperor's evolutions: the Almighty's shadow and reishi wings behind him, eyes over his cloak.
+    const tier = w.evolution;
+    // The shadow goes on the lowest layer so the wings still show over it.
+    if (tier >= 3) L.zonesN.add(f.evo_shadow, x, hy + 2, 0.5 * (1 + Math.sin(now * 3) * 0.04), 0.5, 0, 0xffffff, 0.9);
+    if (tier >= 1) {
+      const flap = Math.sin(now * 2.4);
+      L.auras.add(f.evo_wings, x, hy - 4, 0.62 * (1 + flap * 0.07), 0.62 * (1 - flap * 0.04), 0, 0xffffff, 0.85 + flap * 0.1);
+    }
+    L.player.add(justHit ? f.player_f : f.player, x, hy, 0.5 * p.face, 0.5, 0, 0xffffff, blink ? 0.45 : 1);
+    if (tier >= 2) {
+      // Every few seconds the eyes blink together.
+      const shut = now % 4.3 < 0.13;
+      L.player.add(f.evo_eyes, x, hy, 0.5 * p.face, 0.5, 0, 0xffffff, shut ? 0.12 : blink ? 0.45 : 1);
+    }
     // Health under the hero: a framed bar that flares red when it runs low.
     const sq = this.atlas.px.square.w;
     const bw = 34;

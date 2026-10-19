@@ -1151,6 +1151,112 @@ const frost: Draw = (g, w) => {
 
 // ------------------------------------------------------------- the hero
 
+/** A crimson eye with a slit pupil, for the Emperor's evolutions. */
+function crimsonEye(g: Ctx, x: number, y: number, s: number): void {
+  g.save();
+  g.translate(x, y);
+  g.scale(s, s);
+  g.shadowColor = '#ff2d4a';
+  g.shadowBlur = 4;
+  g.fillStyle = '#ff3b55';
+  g.beginPath();
+  g.moveTo(-4, 0);
+  g.quadraticCurveTo(0, -3.2, 4, 0);
+  g.quadraticCurveTo(0, 3.2, -4, 0);
+  g.fill();
+  g.shadowBlur = 0;
+  g.fillStyle = '#12020a';
+  g.fillRect(-0.6, -1.9, 1.2, 3.8);
+  g.restore();
+}
+
+/**
+ * The first sign of the Emperor's power: two fans of reishi feathers behind
+ * his shoulders. Centred on the hero's shoulders (his (30, 30)).
+ */
+const evoWings: Draw = (g, w, h) => {
+  const cx = w / 2;
+  const cy = h / 2;
+  g.save();
+  g.shadowColor = 'rgba(120,200,255,0.9)';
+  g.shadowBlur = 6;
+  for (const dir of [-1, 1]) {
+    for (let k = 0; k < 6; k++) {
+      // From up and out to out and down; the upper feathers are the longest.
+      const a = -0.7 + k * 0.26;
+      const len = 46 - k * 4;
+      const x0 = cx + dir * 6;
+      const y0 = cy - 3 + k * 1.4;
+      const tx = x0 + dir * Math.cos(a) * len;
+      const ty = y0 + Math.sin(a) * len;
+      const dx = tx - x0;
+      const dy = ty - y0;
+      const d = Math.hypot(dx, dy) || 1;
+      const nx = (-dy / d) * 3.4;
+      const ny = (dx / d) * 3.4;
+      const grad = g.createLinearGradient(x0, y0, tx, ty);
+      grad.addColorStop(0, 'rgba(205,238,255,0.95)');
+      grad.addColorStop(1, 'rgba(80,160,255,0.08)');
+      g.fillStyle = grad;
+      g.beginPath();
+      g.moveTo(x0, y0);
+      g.lineTo(x0 + dx * 0.45 + nx, y0 + dy * 0.45 + ny);
+      g.lineTo(tx, ty);
+      g.lineTo(x0 + dx * 0.45 - nx, y0 + dy * 0.45 - ny);
+      g.closePath();
+      g.fill();
+    }
+  }
+  g.restore();
+};
+
+/** The second sign: crimson eyes opening across his cape and coat. Drawn over the hero, in his coordinates. */
+const evoEyes: Draw = (g) => {
+  for (const [x, y, s] of [
+    [12, 51, 1],
+    [48, 51, 1],
+    [9, 62, 0.9],
+    [51, 62, 0.9],
+    [19, 66, 0.75],
+    [41, 66, 0.75],
+    [12, 42, 0.7],
+    [48, 42, 0.7],
+  ] as const) {
+    crimsonEye(g, x, y, s);
+  }
+};
+
+/** The Almighty: a shadow of black flame around him, full of eyes. Centred on his (30, 40). */
+const evoShadow: Draw = (g, w, h) => {
+  const cx = w / 2;
+  const cy = h / 2;
+  const rnd = seeded(77);
+  const grad = g.createRadialGradient(cx, cy + 6, 6, cx, cy, w * 0.5);
+  grad.addColorStop(0, 'rgba(4,2,8,0.95)');
+  grad.addColorStop(0.65, 'rgba(10,4,16,0.72)');
+  grad.addColorStop(1, 'rgba(10,4,16,0)');
+  g.fillStyle = grad;
+  g.beginPath();
+  const n = 22;
+  for (let k = 0; k <= n; k++) {
+    const a = (k / n) * TAU - Math.PI / 2;
+    // Flames climb higher above him than below.
+    const up = Math.max(0, -Math.sin(a));
+    const r = w * (0.3 + rnd() * 0.08 + up * (0.12 + rnd() * 0.08)) * (k % 2 ? 0.86 : 1);
+    const x = cx + Math.cos(a) * r;
+    const y = cy + Math.sin(a) * r * 0.95;
+    if (k === 0) g.moveTo(x, y);
+    else g.lineTo(x, y);
+  }
+  g.closePath();
+  g.fill();
+  for (let k = 0; k < 9; k++) {
+    const a = rnd() * TAU;
+    const d = w * (0.18 + rnd() * 0.17);
+    crimsonEye(g, cx + Math.cos(a) * d, cy + Math.sin(a) * d * 0.9, 0.75 + rnd() * 0.6);
+  }
+};
+
 /**
  * The Emperor, drawn after Yhwach in the game's own chibi style: long wavy
  * black hair falling over his shoulders, a heavy mustache under stern brows,
@@ -2731,6 +2837,9 @@ function specs(): Spec[] {
     { name: 'meteor', w: 72, h: 72, draw: meteor },
     { name: 'player', w: 60, h: 72, draw: hero },
     { name: 'player_f', w: 60, h: 72, draw: flash(hero) },
+    { name: 'evo_wings', w: 120, h: 60, draw: evoWings },
+    { name: 'evo_eyes', w: 60, h: 72, draw: evoEyes },
+    { name: 'evo_shadow', w: 112, h: 112, draw: evoShadow },
     { name: 'glow', w: 64, h: 64, draw: glow },
     { name: 'disc', w: 64, h: 64, draw: disc },
     { name: 'ash', w: 64, h: 64, draw: ash },
@@ -2834,6 +2943,36 @@ export function drawSprite(canvas: HTMLCanvasElement, name: string, cssWidth: nu
   g.scale(k, k);
   spec.draw(g, spec.w, spec.h);
   return true;
+}
+
+/** The composite's size in atlas pixels: room for the wings either side of the hero. */
+export const EMPEROR_BOX = { w: 124, h: 96 } as const;
+
+/**
+ * The Emperor as far as he has come: the hero, with wings from tier 1, eyes
+ * from tier 2 and the Almighty's shadow at tier 3, laid out as they are in a
+ * run. For the title, the results and the share card.
+ */
+export function drawEmperor(canvas: HTMLCanvasElement, tier: number, cssWidth: number, ratio = Math.min(window.devicePixelRatio || 1, 3)): void {
+  const g = canvas.getContext('2d');
+  if (!g) return;
+  const { w: W, h: H } = EMPEROR_BOX;
+  const k = (cssWidth / W) * ratio;
+  canvas.width = Math.round(W * k);
+  canvas.height = Math.round(H * k);
+  g.scale(k, k);
+  const hx = (W - 60) / 2;
+  const hy = H - 72 - 2;
+  const layer = (draw: Draw, x: number, y: number, w: number, h: number): void => {
+    g.save();
+    g.translate(x, y);
+    draw(g, w, h);
+    g.restore();
+  };
+  if (tier >= 3) layer(evoShadow, hx + 30 - 56, hy + 40 - 56, 112, 112);
+  if (tier >= 1) layer(evoWings, hx + 30 - 60, hy + 30 - 30, 120, 60);
+  layer(hero, hx, hy, 60, 72);
+  if (tier >= 2) layer(evoEyes, hx, hy, 60, 72);
 }
 
 /** A 1024 px tile covering 512 world units, one per stage. */

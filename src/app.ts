@@ -447,6 +447,7 @@ export class App {
           trial: w.trial,
           endless: w.endless,
           daily: !!this.daily,
+          evolution: w.evolution,
         });
     const daily = w.god || !this.daily ? null : recordDaily(this.save, this.daily.date, w.t, victory);
     if (!w.god) writeSave(this.save);
@@ -456,6 +457,7 @@ export class App {
       {
         stage: w.stage.id,
         stageName: w.stage.name,
+        evolution: w.evolution,
         mode: this.daily ? 'Daily Trial' : [w.trial > 0 ? TRIAL_NAMES[w.trial] : '', w.endless ? 'Endless' : ''].filter(Boolean).join(' · '),
         daily: !!this.daily,
         dailyBonus: daily?.bonus ?? 0,

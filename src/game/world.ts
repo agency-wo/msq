@@ -92,7 +92,7 @@ export interface Message {
 
 /** A title card: a boss arriving, a bankai taken back, a resonance, an event, or The Almighty awakening. */
 export interface Banner {
-  kind: 'bankai' | 'boss' | 'almighty' | 'resonance' | 'event';
+  kind: 'bankai' | 'boss' | 'almighty' | 'resonance' | 'event' | 'evolve';
   title: string;
   sub: string;
   /** What a boss says (or does) as it arrives. */
@@ -329,6 +329,14 @@ export class World {
   readonly boss = { active: false, hp: 0, max: 1, name: '', sub: '', final: false, type: -1, variant: 0, uid: -1 };
   /** Bumped whenever a power is gained, levelled or awakened, so the HUD redraws its tray only then. */
   buildVersion = 0;
+  /**
+   * How far the Emperor has visibly evolved this run: 1 reishi wings, 2 eyes
+   * on his cloak, 3 the Almighty's shadow. A new tier is revealed a moment
+   * after it is earned, so its title card follows the one that earned it.
+   */
+  evolution = 0;
+  private evolveNext = 0;
+  private evolveT = 0;
   /** The power slot that the damage being dealt right now belongs to; 255 is everything else (runes, revives). */
   dmgSlot = 255;
   /** Damage dealt this run by power slot (255: everything else), counting only health actually removed. */
@@ -1862,6 +1870,10 @@ export class World {
   // ------------------------------------------------------------- timers
 
   private updateTimers(): void {
+    if (this.evolveT > 0) {
+      this.evolveT -= DT;
+      if (this.evolveT <= 0) this.evolve();
+    }
     const p = this.player;
     if (p.iframes > 0) p.iframes -= DT;
     if (this.streak > 0) {
@@ -2045,12 +2057,40 @@ export class World {
       }
       return;
     }
+    this.checkEvolution(id);
     const def = POWER_BY_ID.get(id);
     if (!def) return;
     const ps = newPowerState(def);
     ps.since = this.t;
     this.powers.push(ps);
     syncPower(this, this.powers.length - 1);
+  }
+
+  /**
+   * Every bankai and fragment taken back and every Schrift awakened counts
+   * toward the Emperor's evolution: the first one brings wings, the third
+   * the eyes, The Almighty his shadow. `adding` is a power about to join.
+   */
+  private checkEvolution(adding?: string): void {
+    const ids = adding ? [...this.powers.map((ps) => ps.def.id), adding] : this.powers.map((ps) => ps.def.id);
+    const groups = ids.map((id) => POWER_BY_ID.get(id)?.group);
+    const taken = groups.filter((g) => g === 'bankai' || g === 'fragment').length + this.powers.filter((ps) => ps.attr !== null).length;
+    const tier = groups.includes('ultimate') ? 3 : taken >= 3 ? 2 : taken >= 1 ? 1 : 0;
+    if (tier <= Math.max(this.evolution, this.evolveNext)) return;
+    this.evolveNext = tier;
+    this.evolveT = 2.8;
+  }
+
+  /** Reveal the tier that was earned: the new look, a burst of light and its title card. */
+  private evolve(): void {
+    this.evolution = this.evolveNext;
+    this.shake = Math.max(this.shake, 9);
+    this.sound('bankai');
+    this.spawnFx(FX_GLOW, 0, 0, 0, 0, 0.9, 40, 520, 1, 0, 0, this.evolution >= 3 ? 0xff2d4a : 0x9fdcff, LAYER_ADD, 0, 1);
+    this.spawnFx(FX_RING, 0, 0, 0, 0, 0.7, 30, 460, 1, 0, 0, 0xffffff, LAYER_ADD, 0, 1);
+    // The Almighty brings its own title card; the first two signs get theirs here.
+    if (this.evolution === 1) this.banners.push({ kind: 'evolve', title: 'Reishi Wings', sub: 'What he takes back begins to show.' });
+    else if (this.evolution === 2) this.banners.push({ kind: 'evolve', title: 'The Eyes Open', sub: 'Every power returned watches through him.' });
   }
 
   /** A power's slot in `powers`, or 255 when you do not hold it. */
@@ -2085,6 +2125,7 @@ export class World {
     ps.level = ps.def.maxLevel;
     ps.attr = attr;
     this.buildVersion++;
+    this.checkEvolution();
     refreshPowerStats(ps);
     syncPower(this, this.powers.indexOf(ps));
     // The third awakened Schrift wakes The Almighty, once it is unlocked.

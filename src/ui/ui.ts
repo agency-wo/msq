@@ -10,7 +10,7 @@ import { MAX_TRIAL, STAGES, stageById, TRIAL_NAMES, trialBlurb, type StageId } f
 import { CHAPTERS, type Chapter } from '../data/story';
 import type { ChestKind, Offer } from '../game/offers';
 import type { Banner, World } from '../game/world';
-import { drawSprite } from '../render/atlas';
+import { drawEmperor, drawSprite } from '../render/atlas';
 import { enemySpriteName } from '../render/names';
 import { nextCost, startOptions, upgradeLevel } from '../save/archives';
 import { almightyUnlocked, endlessOpen, stageUnlocked, trialsOpen, type DailyRecord, type SaveData, type Settings } from '../save/save';
@@ -88,6 +88,8 @@ function short(n: number): string {
 export interface ResultSummary {
   stage: StageId;
   stageName: string;
+  /** How far the Emperor evolved: he is drawn that way on the results and the card. */
+  evolution: number;
   /** "Trial II", "Endless", or "" for a normal run. */
   mode: string;
   endless: boolean;
@@ -304,8 +306,15 @@ export class UI {
 
   /** A title card that slides across the middle of the screen; the game keeps running. */
   banner(b: Banner): void {
-    const kicker =
-      b.kind === 'bankai' ? 'Bankai' : b.kind === 'almighty' ? 'A · Awakened' : b.kind === 'resonance' ? 'Resonance' : b.kind === 'event' ? 'Event' : 'Boss';
+    const KICKER: Record<Banner['kind'], string> = {
+      bankai: 'Bankai',
+      almighty: 'A · Awakened',
+      resonance: 'Resonance',
+      event: 'Event',
+      evolve: 'The Emperor',
+      boss: 'Boss',
+    };
+    const kicker = KICKER[b.kind];
     this.bannerEl.replaceChildren(
       el('div', 'banner-kicker', kicker),
       el('div', 'banner-title', b.title),
@@ -365,7 +374,7 @@ export class UI {
     const emblem = el('canvas', 'emblem');
     drawEmblem(emblem, 140);
     const portrait = el('canvas', 'hero-portrait');
-    drawSprite(portrait, 'player', 104);
+    drawEmperor(portrait, save.evolution, 208);
     hero.append(emblem, portrait);
     const logo = el('div', 'logo');
     logo.append(el('div', 'logo-top', 'QUINCY'), el('div', 'logo-bottom', 'SURVIVAL'));
@@ -554,7 +563,7 @@ export class UI {
     // The Emperor above the verdict: lit gold in victory, grey in defeat.
     const head = el('div', 'results-head');
     const portrait = el('canvas', 'results-portrait');
-    drawSprite(portrait, 'player', 64);
+    drawEmperor(portrait, r.evolution, 132);
     head.append(portrait);
     p.append(head, el('div', 'board-kicker', kicker), el('h2', 'board-title', r.victory ? 'Victory' : 'Fallen'));
     if (r.unlocked) p.append(el('p', 'unlock-note', `New stage unlocked: ${r.unlocked}`));
@@ -611,6 +620,7 @@ export class UI {
     const result = await shareRun({
       stage: r.stage,
       stageName: r.stageName,
+      evolution: r.evolution,
       mode: r.mode,
       victory: r.victory,
       quit: r.quit,

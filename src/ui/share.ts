@@ -1,6 +1,6 @@
 import { formatTime } from '../core/math';
 import type { StageId } from '../data/stages';
-import { drawSprite } from '../render/atlas';
+import { drawEmperor } from '../render/atlas';
 import { drawIcon } from './icons';
 import { drawVista } from './vistas';
 
@@ -8,6 +8,8 @@ import { drawVista } from './vistas';
 export interface ShareRun {
   stage: StageId;
   stageName: string;
+  /** How far the Emperor evolved, so he is drawn that way. */
+  evolution: number;
   mode: string;
   victory: boolean;
   quit: boolean;
@@ -64,14 +66,14 @@ export function drawShareCard(r: ShareRun): HTMLCanvasElement {
   fade.addColorStop(1, 'rgba(7,8,12,1)');
   g.fillStyle = fade;
   g.fillRect(0, 270, W, 330);
+  // The Emperor as far as he evolved, standing on the right.
   const hero = document.createElement('canvas');
-  if (drawSprite(hero, 'player', 300, 1)) {
-    g.save();
-    g.shadowColor = r.victory ? 'rgba(255,203,92,0.6)' : 'rgba(89,184,255,0.45)';
-    g.shadowBlur = 40;
-    g.drawImage(hero, W - 360, 170);
-    g.restore();
-  }
+  drawEmperor(hero, r.evolution, 560, 1);
+  g.save();
+  g.shadowColor = r.victory ? 'rgba(255,203,92,0.6)' : 'rgba(89,184,255,0.45)';
+  g.shadowBlur = 40;
+  g.drawImage(hero, W - 560, 96);
+  g.restore();
   g.fillStyle = BONE;
   g.font = `700 54px ${SERIF}`;
   spaced(g, 'QUINCY', 60, 104, 14);

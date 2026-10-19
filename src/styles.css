@@ -577,7 +577,7 @@ body {
 /* The Emperor in front of the reishi star, swaying a little in the wind. */
 .title-hero {
   position: relative;
-  height: 132px;
+  height: 150px;
   display: flex;
   justify-content: center;
   align-items: flex-end;
@@ -586,7 +586,7 @@ body {
 
 .title-hero .emblem {
   position: absolute;
-  top: -6px;
+  top: 4px;
   left: 50%;
   width: 140px;
   height: 140px;
@@ -596,8 +596,8 @@ body {
 
 .hero-portrait {
   position: relative;
-  width: 104px;
-  height: 125px;
+  width: 208px;
+  height: 161px;
   filter: drop-shadow(0 0 14px rgba(89, 184, 255, 0.4));
   transform-origin: 50% 92%;
   animation: sway 5.5s ease-in-out infinite;
@@ -1474,6 +1474,22 @@ button:focus-visible {
   text-shadow: 0 0 16px rgba(159, 220, 255, 0.7);
 }
 
+.banner.evolve .banner-kicker {
+  color: #ff8b9b;
+}
+
+.banner.evolve .banner-title {
+  color: #e6f6ff;
+  text-shadow:
+    0 0 14px rgba(89, 184, 255, 0.85),
+    0 0 4px rgba(255, 45, 74, 0.6);
+}
+
+.banner.evolve {
+  border-top: 1px solid rgba(159, 220, 255, 0.5);
+  border-bottom: 1px solid rgba(255, 45, 74, 0.45);
+}
+
 .banner.resonance {
   border-top: 1px solid rgba(159, 220, 255, 0.6);
   border-bottom: 1px solid rgba(255, 230, 160, 0.6);
@@ -1607,8 +1623,8 @@ button:focus-visible {
 }
 
 .results-portrait {
-  width: 64px;
-  height: 77px;
+  width: 132px;
+  height: 102px;
   filter: drop-shadow(0 0 16px rgba(255, 203, 92, 0.55));
 }
 

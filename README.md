@@ -16,6 +16,16 @@ All art is drawn in code: the Emperor and the Gotei 13 captains are chibi
 homages to their Bleach designs; everything else (Hollows, Soul Reaper
 soldiers, medallion bearers, the other bosses, effects) is an original design.
 
+As he takes power back, the Emperor **evolves** in front of you: reishi wings
+with the first bankai or awakened Schrift, crimson eyes opening across his
+cloak at three, and a shadow of black flame full of eyes with The Almighty.
+The title shows him as far as he has ever come.
+
+The HUD shows your build as a tray of icons with their levels, and bosses get
+a portrait and a title. The pause and results screens break down the **damage**
+each power dealt (total, share and damage per second), and **Share** on the
+results turns the run into a picture for the phone's share sheet.
+
 Two awakened Schrift can **resonate**: every attack has one partner, and once
 both are at Lv 7 a Resonance card joins the level-up board. Both powers keep
 working as before; the resonance ties them together (Firestorm: gusts carry

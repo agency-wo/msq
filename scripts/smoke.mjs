@@ -270,6 +270,7 @@ try {
     save.gold = 5000;
     save.meta = { arterie: 2, reroll: 1 };
     save.awakened = ['xaxis', 'explode', 'fear'];
+    save.evolution = 2;
     localStorage.setItem('msq.save', JSON.stringify(save));
   });
   await page.reload();
@@ -435,6 +436,17 @@ try {
   }
   log('almighty stop', { stopped, ...(await stats()) });
   await shot('15-almighty-stop');
+
+  // The Emperor evolves: three awakened Schrift bring wings and eyes; The Almighty, his shadow.
+  await page.goto(`${BASE}?debug&seed=7&play&god&give=heilig7,explode7,fear7`);
+  await steer(4500, { radius: 20 });
+  log('evolve eyes', { tier: await page.evaluate(() => window.__msq.world.evolution) });
+  await shot('16-evolve-eyes');
+  await page.goto(`${BASE}?debug&seed=7&play&god&almighty`);
+  await steer(4500, { radius: 20 });
+  for (let k = 0; k < 40 && (await page.evaluate(() => window.__msq.world.almightyT > 0)); k++) await wait(100);
+  log('evolve shadow', { tier: await page.evaluate(() => window.__msq.world.evolution) });
+  await shot('16b-evolve-shadow');
 
   // 10. Stress: 1500 enemies, every Schrift maxed, two bankai. Software WebGL here, so FPS is only a floor.
   await page.goto(`${BASE}?debug&stress=1500&bankai=senbonzakura,gonryo`);
