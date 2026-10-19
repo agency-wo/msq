@@ -17,6 +17,8 @@ function conditionMet(save: SaveData, c: Chapter): boolean {
       return save.stages.seireitei.cleared;
     case 'almighty':
       return almightyUnlocked(save);
+    case 'palace':
+      return save.stages.palace.cleared;
   }
 }
 

@@ -73,13 +73,13 @@ function hash(s: string): number {
 
 const DAILY_SCHRIFT = STARTABLE_IDS.filter((id) => id !== STARTING_POWER);
 
-/** Today's (or any date's) trial. Players who have not reached Seireitei yet get Hueco Mundo. */
-export function dailyFor(date: string, seireiteiOpen: boolean): DailySpec {
+/** Today's (or any date's) trial. Players who have not reached a stage yet are sent to one they have. */
+export function dailyFor(date: string, seireiteiOpen: boolean, palaceOpen = false): DailySpec {
   const seed = hash(`quincy-daily-${date}`);
   const rng = new Rng(seed);
   // Always roll for the stage, so the Schrift and modifiers are the same for everyone that day.
   const roll = rng.next();
-  const stage: StageId = seireiteiOpen && roll < 0.5 ? 'seireitei' : 'hueco';
+  let stage: StageId = seireiteiOpen && roll < 0.5 ? 'seireitei' : 'hueco';
   const schrift = DAILY_SCHRIFT[rng.int(DAILY_SCHRIFT.length)];
   const pool = DAILY_MODS.map((m) => m.id);
   const mods: string[] = [];
@@ -87,5 +87,7 @@ export function dailyFor(date: string, seireiteiOpen: boolean): DailySpec {
     const id = pool.splice(rng.int(pool.length), 1)[0];
     mods.push(id);
   }
+  // Drawn last, so the palace changes nothing about the day for players who have not reached it.
+  if (palaceOpen && rng.next() < 1 / 3) stage = 'palace';
   return { date, seed, stage, schrift, mods };
 }

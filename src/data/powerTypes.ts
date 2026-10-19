@@ -36,7 +36,11 @@ export type PowerKind =
   | 'raikoben'
   | 'tengen'
   | 'gonryo'
-  | 'zanka';
+  | 'zanka'
+  // Fragments of the Soul King
+  | 'stillness'
+  | 'nerves'
+  | 'heartsurge';
 
 /**
  * art: a Quincy technique · schrift: a knight's letter · utility: support ·

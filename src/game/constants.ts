@@ -101,6 +101,10 @@ export const MK_RAIN = 7;
 export const MK_SEAL = 8;
 export const MK_LANCE = 9;
 export const MK_INFERNO = 10; // a circle of fire erupting (the Captain-Commander)
+export const MK_STEAM = 11; // a boiling geyser (Tenjirō)
+export const MK_INK = 12; // a stroke or pool of ink (Ichibē)
+export const MK_THREAD = 13; // a binding thread or closing cloth (Senjumaru)
+export const MK_SWORD = 14; // a falling blade (Ōetsu)
 
 /** Mark shapes. */
 export const MS_CIRCLE = 0;
@@ -122,13 +126,17 @@ export const EB_PETAL = 1;
 export const EB_ICE = 2;
 export const EB_FIRE = 3; // Kidō fireball
 export const EB_WAVE = 4; // sword wave
+export const EB_SWORD = 5; // a flying asauchi (Ōetsu)
+export const EB_THREAD = 6; // a weaver's thread
 export const EBF_SLOW = 1;
+export const EBF_ROOT = 2; // roots you briefly
 
 /** Enemy movement behaviours (EnemyDef.behavior as a byte). */
 export const BH_CHASE = 0;
 export const BH_BLINK = 1;
 export const BH_RANGED = 2;
 export const BH_FLEE = 3;
+export const BH_CHARGE = 4;
 
 /** Why an enemy cannot move (drives its tint). */
 export const HOLD_FREEZE = 0;

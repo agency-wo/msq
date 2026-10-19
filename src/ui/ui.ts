@@ -281,10 +281,12 @@ export class UI {
   /** The powers you hold, as small icons with their level; awakened ones ringed in gold. */
   private drawTray(w: World): void {
     const items: HTMLElement[] = [];
-    for (const ps of w.powers) {
+    w.powers.forEach((ps, slot) => {
       const d = ps.def;
-      const kind = d.group === 'bankai' ? ' bankai' : d.group === 'ultimate' ? ' ultimate' : '';
-      const item = el('span', `tray-item${kind}${ps.attr ? ' awake' : ''}`);
+      const kind = d.group === 'bankai' ? ' bankai' : d.group === 'fragment' ? ' fragment' : d.group === 'ultimate' ? ' ultimate' : '';
+      // Ichimonji: the sealed power shows greyed out and struck through until its name comes back.
+      const sealed = slot === w.sealSlot && w.sealT > 0 ? ' sealed' : '';
+      const item = el('span', `tray-item${kind}${ps.attr ? ' awake' : ''}${sealed}`);
       let icon = this.trayIcons.get(d.id);
       if (!icon) {
         icon = el('canvas', 'tray-icon');
@@ -293,7 +295,7 @@ export class UI {
       }
       item.append(icon, el('span', 'tray-lv', d.group === 'ultimate' ? 'A' : String(ps.level)));
       items.push(item);
-    }
+    });
     this.tray.replaceChildren(...items);
   }
 
@@ -317,6 +319,7 @@ export class UI {
       resonance: 'Resonance',
       event: 'Event',
       evolve: 'The Emperor',
+      fragment: 'Fragment of the Soul King',
       boss: 'Boss',
     };
     const kicker = KICKER[b.kind];

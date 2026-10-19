@@ -12,9 +12,10 @@ three random medallion bearers carry stolen bankai; beat one and its bankai is
 yours. Take back all six across your runs and **A · The Almighty** unlocks: from
 then on it awakens once three Schrift reach Lv 7, stops time every 24 s and
 rewrites the future (enemy fire vanishes, everything on screen is struck down).
-All art is drawn in code: the Emperor and the Gotei 13 captains are chibi
-homages to their Bleach designs; everything else (Hollows, Soul Reaper
-soldiers, medallion bearers, the other bosses, effects) is an original design.
+All art is drawn in code: the Emperor, the Gotei 13 captains and the Royal
+Guard are chibi homages to their Bleach designs; everything else (Hollows, Soul
+Reaper soldiers, the palace's servants, medallion bearers, the other bosses,
+effects) is an original design.
 
 As he takes power back, the Emperor **evolves** in front of you: reishi wings
 with the first bankai or awakened Schrift, crimson eyes opening across his
@@ -78,6 +79,15 @@ Stages, 20 minutes each:
   Komamura, Lieutenant Sasakibe), each fighting with their own bankai; the Kidō
   Grandmaster escorts the third, and Captain-Commander Yamamoto ends the stage
   with Ryūjin Jakka's fire and the ashen dead.
+- **Soul King Palace** (unlocked by clearing Seireitei): sentinels that wind up
+  and lunge, ink wisps that split as they die, weavers whose threads hold you,
+  flying asauchi and attendants that heal what stands near them. Three of the
+  four Royal Guard bar the way (Tenjirō's boiling springs and spear, Kirio who
+  sheds her bulk at half health, Ōetsu's rings of swords, Senjumaru's threads
+  and closing cloth), each leaving a **Fragment of the Soul King**: the Right
+  Arm stills everything around you, the Left Arm binds the sturdiest enemies,
+  the Heart surges you back from the brink. Ichibē ends the stage with ink, and
+  with Ichimonji, which silences one of your attacks for a while.
 
 ## Play on iPhone
 

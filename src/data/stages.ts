@@ -7,7 +7,7 @@ import { FIRST_SHRINE_AT } from './shrines';
  * boss at 20:00 to clear it. Swarm rings, elites, chests and runes in between.
  */
 
-export type StageId = 'hueco' | 'seireitei';
+export type StageId = 'hueco' | 'seireitei' | 'palace';
 
 export interface SpawnPhase {
   from: number;
@@ -47,6 +47,8 @@ export interface StageDef {
   captains?: boolean;
   /** Which bankai the bosses can carry (all six when missing). */
   bearerPool?: readonly string[];
+  /** The bosses are the Royal Guard, who leave Fragments of the Soul King instead of medallions. */
+  royals?: boolean;
   /** Clearing this stage unlocks this one. */
   unlockedBy?: StageId;
 }
@@ -154,7 +156,53 @@ const SEIREITEI: StageDef = {
   unlockedBy: 'hueco',
 };
 
-export const STAGES: readonly StageDef[] = [HUECO, SEIREITEI];
+/**
+ * The Soul King Palace: the Royal Guard's districts in the sky. Sentinels that
+ * lunge, ink that splits, weavers whose threads hold you, flying blades, and
+ * attendants that heal everything near them. Three of the four guardians
+ * stand in your way; Ichibē waits at the end.
+ */
+const PALACE: StageDef = {
+  id: 'palace',
+  name: 'Soul King Palace',
+  blurb: 'The palace above the clouds, and the guard that has never fallen.',
+  length: LENGTH,
+  phases: [
+    { from: 0, mix: [['inkling', 2], ['inkwisp', 1]] },
+    { from: 45, mix: [['inkling', 2], ['inkwisp', 2], ['sentinel', 1]] },
+    { from: 150, mix: [['inkwisp', 3], ['sentinel', 2], ['asauchi', 1]] },
+    { from: 300, mix: [['inkwisp', 3], ['sentinel', 2], ['asauchi', 2], ['weaver', 1]] },
+    { from: 600, mix: [['inkwisp', 3], ['sentinel', 3], ['asauchi', 2], ['weaver', 2]] },
+    { from: 900, mix: [['inkwisp', 3], ['sentinel', 3], ['asauchi', 3], ['weaver', 2]] },
+  ],
+  events: sorted([
+    ...skeleton(
+      (t) => (t < 400 ? 'inkling' : 'asauchi'),
+      (t) => (t < 300 ? 'sentinel' : 'attendant'),
+      [1.3, 4.6, 18],
+    ),
+    // The third guardian keeps two attendants close.
+    { at: 906, kind: 'elite', enemy: 'attendant' },
+    { at: 910, kind: 'elite', enemy: 'attendant' },
+    {
+      at: LENGTH,
+      kind: 'boss',
+      enemy: 'ichibe',
+      hpMul: 46,
+      final: true,
+      warn: 'Ichibē Hyōsube lifts his brush',
+      sub: 'The One Who Names',
+    },
+  ]),
+  hp: 1.2,
+  spawn: 1,
+  xp: 1.3,
+  gold: 1.5,
+  royals: true,
+  unlockedBy: 'seireitei',
+};
+
+export const STAGES: readonly StageDef[] = [HUECO, SEIREITEI, PALACE];
 
 /**
  * Trials: harder runs of a stage, unlocked one at a time by clearing the one

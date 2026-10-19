@@ -1,4 +1,5 @@
 import { BANKAI_POWERS } from './bankai';
+import { FRAGMENT_POWERS } from './fragments';
 import { stats, type PowerDef } from './powerTypes';
 
 export type { PowerAttribute, PowerDef, PowerGroup, PowerKind, PowerStats } from './powerTypes';
@@ -621,8 +622,8 @@ export const ALMIGHTY: PowerDef = {
 
 export const STARTING_POWER = 'heilig';
 
-/** Everything that can be owned. Bankai and The Almighty never show up as new cards. */
-export const POWERS: readonly PowerDef[] = [...LEVELED, ...BANKAI_POWERS, ALMIGHTY];
+/** Everything that can be owned. Bankai, fragments and The Almighty never show up as new cards. */
+export const POWERS: readonly PowerDef[] = [...LEVELED, ...BANKAI_POWERS, ...FRAGMENT_POWERS, ALMIGHTY];
 
 export const POWER_BY_ID: ReadonlyMap<string, PowerDef> = new Map(POWERS.map((p) => [p.id, p]));
 

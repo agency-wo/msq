@@ -6,6 +6,7 @@ import { PLAYER, VIEW_H_LANDSCAPE, VIEW_W } from '../config';
 import type { Input } from '../core/input';
 import { BANKAI_BY_ID, BANKAI_IDS } from '../data/bankai';
 import { ENEMY_INDEX, ENEMY_LIST } from '../data/enemies';
+import { ROYAL_IDS, ROYAL_INFO } from '../data/royal';
 import { DOUBLE_RING, doubleCount } from '../game/casts/schrift2';
 import { COMMANDER_HEAT } from '../game/hostile';
 import { enemySpriteName } from './names';
@@ -14,6 +15,8 @@ import {
   EB_ICE,
   EB_PETAL,
   EB_WAVE,
+  EB_THREAD,
+  EB_SWORD,
   FLAG_BOSS,
   FLAG_ELITE,
   FLAG_ZOMBIE,
@@ -163,6 +166,9 @@ function mod(a: number, n: number): number {
 /** Ambient motes in view at once. */
 const MOTES = 28;
 
+/** Fragments of the Soul King on the ground, by colour. */
+const FRAGMENT_TINT: Readonly<Record<string, number>> = { rightarm: 0xfff2c2, leftarm: 0xe8d8ff, heart: 0xffcf7a };
+
 type LayerName =
   | 'zonesN'
   | 'zonesA'
@@ -213,6 +219,9 @@ export class Renderer {
   private captainSprites: EnemySprite[] = [];
   /** Drawn size against hitbox, by type: Hollows a little larger, so their masks read on a phone. */
   private artScale: number[] = [];
+  /** The Royal Guard by variant, and Kirio once she has shed her bulk. */
+  private royalSprites: EnemySprite[] = [];
+  private kirioSlim: EnemySprite | null = null;
   private bossAura: number[] = [];
   private grounds = new Map<string, Texture>();
   private groundId = '';
@@ -296,14 +305,25 @@ export class Renderer {
       ashen: 11,
       rift: 22,
       golden: 11,
+      inkwisp: 8,
+      inkling: 6.5,
+      weaver: 9,
+      asauchi: 8,
+      attendant: 13,
+      royal: 28,
+      ichibe: 30,
     };
     // Types drawn per variant (or per stage) fall back to one of their sprites here.
     this.enemySprites = ENEMY_LIST.map((d, t) => sprite(enemySpriteName(t), REF[d.id] ?? d.radius));
     this.captainSprites = BANKAI_IDS.map((id, v) => sprite(enemySpriteName(ENEMY_INDEX.captain, v), id === 'zanka' || id === 'tengen' ? 30 : 28));
     this.artScale = ENEMY_LIST.map((d) => (d.boss || d.shinigami || d.behavior === 'flee' || d.id === 'rift' || d.id === 'ashen' ? 1 : 1.1));
+    this.royalSprites = ROYAL_IDS.map((id, v) => sprite(enemySpriteName(ENEMY_INDEX.royal, v), id === 'kirio' ? 30 : 28));
+    this.kirioSlim = sprite('royal_kirio_slim', 26);
     const adjuchas = sprite('adjuchas', 24);
     const seated = sprite('seated', 24);
-    this.eliteSprites = ENEMY_LIST.map((d) => (d.shinigami ? seated : adjuchas));
+    // The palace's servants keep their own look as elites, just bigger.
+    const palace = new Set(['sentinel', 'inkwisp', 'inkling', 'weaver', 'asauchi', 'attendant']);
+    this.eliteSprites = ENEMY_LIST.map((d, t) => (palace.has(d.id) ? this.enemySprites[t] : d.shinigami ? seated : adjuchas));
     this.bossAura = ENEMY_LIST.map((d) => d.color);
     const fx = (name: string): FxSprite => ({ tex: f[name], w: this.atlas.px[name].w, h: this.atlas.px[name].h });
     const byId: FxSprite[] = [];
@@ -419,7 +439,9 @@ export class Renderer {
   private drawAmbient(v: View, now: number): void {
     const f = this.atlas.frames;
     const ember = this.groundId === 'seireitei';
-    const layer = ember ? this.L.auras : this.L.shadows;
+    // In the palace, gold dust rises slowly through the light.
+    const dust = this.groundId === 'palace';
+    const layer = ember || dust ? this.L.auras : this.L.shadows;
     const S = 2 * Math.max(v.halfW, v.halfH) + 80;
     const x0 = v.cx - S / 2;
     const y0 = v.cy - S / 2;
@@ -427,13 +449,13 @@ export class Renderer {
       const a = hash01(k * 3 + 1);
       const b = hash01(k * 3 + 2);
       const c = hash01(k * 3 + 3);
-      const vx = ember ? (c - 0.5) * 10 : 22 + c * 26;
-      const vy = ember ? -(12 + c * 16) : 5 + c * 8;
+      const vx = dust ? (c - 0.5) * 6 : ember ? (c - 0.5) * 10 : 22 + c * 26;
+      const vy = dust ? -(6 + c * 8) : ember ? -(12 + c * 16) : 5 + c * 8;
       const x = x0 + mod(a * 4096 + now * vx - x0, S);
       const y = y0 + mod(b * 4096 + now * vy - y0, S);
       const twinkle = 0.55 + 0.45 * Math.sin(now * (0.8 + a * 1.6) + k);
       const s = (ember ? 2.2 + b * 1.8 : 2.6 + b * 2.6) / 32;
-      layer.add(f.glow, x, y, s, s, 0, ember ? 0xffa860 : 0xdfe6f5, (ember ? 0.85 : 0.45) * twinkle);
+      layer.add(f.glow, x, y, s, s, 0, dust ? 0xffe6b0 : ember ? 0xffa860 : 0xdfe6f5, (dust ? 0.6 : ember ? 0.85 : 0.45) * twinkle);
     }
   }
 
@@ -587,6 +609,13 @@ export class Renderer {
         case 'nuke':
           L.pickups.add(f.nuke, q.x, q.y + bob, 0.5, 0.5, now * 1.5);
           break;
+        case 'fragment': {
+          const tint = FRAGMENT_TINT[q.fragment ?? ''] ?? 0xfff2c2;
+          L.auras.add(f.glow, q.x, q.y, 2.2, 2.2, 0, tint, 0.55 + Math.sin(now * 5) * 0.2);
+          L.auras.add(f.ring, q.x, q.y, 0.5, 0.5, now, 0xffffff, 0.5);
+          L.pickups.add(f.fragment, q.x, q.y + bob, 0.7, 0.7, Math.sin(now * 2) * 0.2, tint);
+          break;
+        }
         case 'shrine':
           L.auras.add(f.glow, q.x, q.y - 6, 1.8, 2.2, 0, 0x59b8ff, 0.4 + Math.sin(now * 3) * 0.12);
           L.shadows.add(f.shadow, q.x, q.y + 14, 0.6, 0.6, 0, 0xffffff, 0.7);
@@ -634,7 +663,11 @@ export class Renderer {
         ? this.eliteSprites[type]
         : type === ENEMY_INDEX.captain
           ? (this.captainSprites[E.variant[i]] ?? this.enemySprites[type])
-          : type === ENEMY_INDEX.golden && w.stage.id === 'seireitei'
+          : type === ENEMY_INDEX.royal
+            ? ROYAL_IDS[E.variant[i]] === 'kirio' && E.r[i] < 26 && this.kirioSlim
+              ? this.kirioSlim
+              : (this.royalSprites[E.variant[i]] ?? this.enemySprites[type])
+            : type === ENEMY_INDEX.golden && w.stage.id === 'seireitei'
             ? this.enemySprites[ENEMY_INDEX.officer]
             : this.enemySprites[type];
       if (type === ENEMY_INDEX.golden) {
@@ -650,7 +683,11 @@ export class Renderer {
       if (elite) L.auras.add(f.ring, x, y, (r * 2.7) / 128, (r * 2.7) / 128, 0, 0xff2d4a, 0.55 + Math.sin(now * 6) * 0.2);
       if (boss) {
         const bearer = type === ENEMY_INDEX.bearer || type === ENEMY_INDEX.captain;
-        const aura = bearer ? (this.bankaiAura[E.variant[i]] ?? 0xffcb5c) : this.bossAura[type];
+        const aura = bearer
+          ? (this.bankaiAura[E.variant[i]] ?? 0xffcb5c)
+          : type === ENEMY_INDEX.royal
+            ? (ROYAL_INFO[E.variant[i]]?.aura ?? 0xfff6dc)
+            : this.bossAura[type];
         L.auras.add(f.glow, x, y, (r * 3.6) / 64, (r * 3.6) / 64, 0, aura, 0.5 + Math.sin(now * 3) * 0.12);
         if (type === ENEMY_INDEX.commander) {
           // Ryūjin Jakka's heat: anything inside this ring burns.
@@ -689,6 +726,8 @@ export class Renderer {
       L.auras.add(f.glow, x, y + 6, 1.1, 1.1, 0, 0xffb347, 0.3);
     }
     if (w.superT > 0) L.auras.add(f.glow, x, y, 1.6, 1.6, 0, 0xffd27a, 0.45 + Math.sin(now * 10) * 0.1);
+    // The Heart of the Soul King's surge: nothing can touch you while it shines.
+    if (w.surgeT > 0) L.auras.add(f.glow, x, y - 4, 2.2, 2.2, 0, 0xffcf7a, 0.5 + Math.sin(now * 12) * 0.15);
     if (w.shieldCharges > 0) L.auras.add(f.ring, x, y - 2, 0.42, 0.42, 0, 0xdfe7f2, 0.35 + 0.1 * w.shieldCharges);
     // The Yourself: translucent doubles standing around you.
     for (const ps of w.powers) {
@@ -843,6 +882,13 @@ export class Renderer {
         case EB_WAVE:
           L.add(f.crescent, x, y, (r * 2.4) / 256, (r * 3.2) / 128, rot, 0xdfe8ff);
           break;
+        case EB_SWORD:
+          // The asauchi art points up and to the left; turn its tip along the flight.
+          L.add(f.asauchi, x, y, (r * 5) / 48, (r * 5) / 48, rot + (3 * Math.PI) / 4, 0xf2f6ff);
+          break;
+        case EB_THREAD:
+          L.add(f.trail, x, y, (r * 5) / 64, (r * 1.4) / 16, rot, 0xe2ccff);
+          break;
         default:
           L.add(f.bala, x, y, (r * 2.8) / 20, (r * 2.8) / 20);
       }
@@ -935,7 +981,7 @@ export class Renderer {
   private drawIndicators(w: World, v: View, sw: number, sh: number): void {
     const f = this.atlas.frames;
     for (const q of w.pickups) {
-      if (q.kind !== 'chest' && q.kind !== 'chestBlack' && q.kind !== 'medallion' && q.kind !== 'shrine') continue;
+      if (q.kind !== 'chest' && q.kind !== 'chestBlack' && q.kind !== 'medallion' && q.kind !== 'shrine' && q.kind !== 'fragment') continue;
       const dx = q.x - v.cx;
       const dy = q.y - v.cy;
       if (Math.abs(dx) < v.halfW - 8 && Math.abs(dy) < v.halfH - 8) continue;
@@ -944,8 +990,8 @@ export class Renderer {
       // Arrows at the top stay below the HUD and its power tray.
       const ky = (dy < 0 ? sh / 2 - 118 : sh / 2 - 48) / Math.max(1e-6, Math.abs(Math.sin(ang)));
       const k = Math.min(kx, ky);
-      const tint = q.kind === 'chest' ? 0xffd27a : q.kind === 'medallion' ? 0xffe2a0 : q.kind === 'shrine' ? 0x9fdcff : 0xff5a78;
-      const s = q.kind === 'medallion' || q.kind === 'shrine' ? 0.9 : 0.7;
+      const tint = q.kind === 'chest' ? 0xffd27a : q.kind === 'medallion' || q.kind === 'fragment' ? 0xffe2a0 : q.kind === 'shrine' ? 0x9fdcff : 0xff5a78;
+      const s = q.kind === 'medallion' || q.kind === 'shrine' || q.kind === 'fragment' ? 0.9 : 0.7;
       this.L.hud.add(f.pointer, sw / 2 + Math.cos(ang) * k, sh / 2 + Math.sin(ang) * k, s, s, ang, tint, 0.95);
     }
   }

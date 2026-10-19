@@ -5,7 +5,7 @@
  * check every bar without an AudioContext.
  */
 
-export type TrackId = 'title' | 'hueco' | 'seireitei' | 'boss' | 'bossSei' | 'final' | 'victory' | 'defeat';
+export type TrackId = 'title' | 'hueco' | 'seireitei' | 'palace' | 'boss' | 'bossSei' | 'bossPalace' | 'final' | 'victory' | 'defeat';
 
 export type Inst = 'pad' | 'choir' | 'bass' | 'lead' | 'flute' | 'bell' | 'stab' | 'kick' | 'snare' | 'hat' | 'taiko';
 
@@ -264,6 +264,131 @@ const seireitei: Track = {
   },
 };
 
+// ------------------------------------------------------------- the palace
+
+/**
+ * "Above the Clouds": the Soul King Palace. D major pentatonic, unhurried:
+ * harp-like bells in broken chords over choir and pads, a soft pulse, a
+ * flute that answers every other bar.
+ */
+const PAL_CHORDS: readonly (readonly string[])[] = [
+  ['D3', 'F#3', 'A3'],
+  ['B2', 'D3', 'F#3'],
+  ['G2', 'B2', 'D3'],
+  ['A2', 'C#3', 'E3'],
+  ['D3', 'F#3', 'A3'],
+  ['B2', 'D3', 'F#3'],
+  ['E3', 'G3', 'B3'],
+  ['A2', 'D3', 'E3'],
+];
+const PAL_BELLS: readonly Line[] = [
+  [
+    [0, 'D5', 2],
+    [2, 'F#5', 2],
+    [4, 'A5', 2],
+    [6, 'B5', 2],
+    [8, 'A5', 2],
+    [10, 'F#5', 2],
+    [12, 'E5', 4],
+  ],
+  [
+    [0, 'B4', 2],
+    [2, 'D5', 2],
+    [4, 'F#5', 2],
+    [6, 'A5', 2],
+    [8, 'B5', 4],
+    [12, 'A5', 4],
+  ],
+  [
+    [0, 'D5', 2],
+    [2, 'E5', 2],
+    [4, 'B4', 2],
+    [6, 'D5', 2],
+    [8, 'E5', 2],
+    [10, 'F#5', 2],
+    [12, 'A5', 4],
+  ],
+  [
+    [0, 'E5', 2],
+    [2, 'A5', 2],
+    [4, 'E6', 4],
+    [8, 'D6', 2],
+    [10, 'B5', 2],
+    [12, 'A5', 4],
+  ],
+  [
+    [0, 'F#5', 2],
+    [2, 'A5', 2],
+    [4, 'D6', 2],
+    [6, 'E6', 2],
+    [8, 'D6', 2],
+    [10, 'A5', 2],
+    [12, 'F#5', 4],
+  ],
+  [
+    [0, 'D5', 2],
+    [2, 'F#5', 2],
+    [4, 'B5', 4],
+    [8, 'A5', 2],
+    [10, 'F#5', 2],
+    [12, 'D5', 4],
+  ],
+  [
+    [0, 'E5', 2],
+    [2, 'B5', 2],
+    [4, 'E6', 2],
+    [6, 'B5', 2],
+    [8, 'A5', 4],
+    [12, 'E5', 4],
+  ],
+  [
+    [0, 'A5', 4],
+    [4, 'E5', 4],
+    [8, 'D6', 8],
+  ],
+];
+const PAL_FLUTE: readonly Line[] = [
+  [
+    [0, 'A5', 6],
+    [6, 'B5', 2],
+    [8, 'D6', 8],
+  ],
+  [
+    [0, 'E6', 4],
+    [4, 'D6', 4],
+    [8, 'A5', 8],
+  ],
+  [
+    [0, 'F#5', 6],
+    [6, 'A5', 2],
+    [8, 'B5', 8],
+  ],
+  [
+    [0, 'A5', 8],
+    [8, 'D6', 8],
+  ],
+];
+
+const palace: Track = {
+  id: 'palace',
+  bpm: 92,
+  bars: 8,
+  loop: true,
+  scale: [2, 4, 6, 9, 11],
+  bar(i) {
+    const c = PAL_CHORDS[i % 8];
+    return [
+      ...chord('pad', c, 0, 16, 0.32),
+      ...chord('choir', c, 0, 16, 0.22),
+      { inst: 'bass', step: 0, midi: midi(c[0]) - 12, len: 14, vel: 0.4 },
+      ...hits('kick', [0, 8], 0.3),
+      ...hits('hat', [4, 12], 0.12),
+      ...line('bell', PAL_BELLS[i % 8], 0.42),
+      ...(i % 2 === 1 ? line('flute', PAL_FLUTE[(i >> 1) % 4], 0.45) : []),
+    ];
+  },
+};
+
 // ------------------------------------------------------------------ bosses
 
 /** "Medallion": the boss theme. A minor, driving: an eighth-note bass, brass stabs, choir and a fast lead. */
@@ -332,6 +457,16 @@ const boss: Track = { id: 'boss', bpm: 136, bars: 8, loop: true, scale: AMINOR, 
 const bossSei: Track = { id: 'bossSei', bpm: 136, bars: 8, loop: true, scale: AMINOR, bar: (i) => bossBar(i, { taiko: true, flute: true, final: false }) };
 const finale: Track = { id: 'final', bpm: 144, bars: 8, loop: true, scale: AMINOR, bar: (i) => bossBar(i, { taiko: true, flute: false, final: true }) };
 
+/** The boss theme a fourth higher, in D minor, with bells ringing the chord high above it: the Royal Guard. */
+const DMINOR = AMINOR.map((p) => (p + 5) % 12);
+function bossPalaceBar(i: number): NoteEvent[] {
+  const bar = bossBar(i, { taiko: false, flute: false, final: false }).map((e) => (e.midi > 0 ? { ...e, midi: e.midi + 5 } : e));
+  const root = midi(BOSS_CHORDS[i % 4][0]) + 5 + 24;
+  for (const [k, step] of [2, 6, 10, 14].entries()) bar.push({ inst: 'bell', step, midi: k % 2 ? root + 7 : root, len: 2, vel: 0.35 });
+  return bar;
+}
+const bossPalace: Track = { id: 'bossPalace', bpm: 140, bars: 8, loop: true, scale: DMINOR, bar: bossPalaceBar };
+
 // ---------------------------------------------------------------- stingers
 
 const victory: Track = {
@@ -383,7 +518,18 @@ const defeat: Track = {
   },
 };
 
-export const TRACKS: Readonly<Record<TrackId, Track>> = { title, hueco, seireitei, boss, bossSei, final: finale, victory, defeat };
+export const TRACKS: Readonly<Record<TrackId, Track>> = {
+  title,
+  hueco,
+  seireitei,
+  palace,
+  boss,
+  bossSei,
+  bossPalace,
+  final: finale,
+  victory,
+  defeat,
+};
 
 /** Melodic instruments, whose notes the tests hold to each track's scale. */
 export const MELODIC: ReadonlySet<Inst> = new Set<Inst>(['lead', 'flute', 'bell']);

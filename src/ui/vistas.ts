@@ -203,7 +203,73 @@ const seireitei: Paint = (g, w, h) => {
   for (let k = 0; k < 4; k++) halo(g, w * (0.12 + k * 0.26), h * 0.86, 6, '255,190,110', 0.7);
 };
 
-const VISTAS: Readonly<Partial<Record<StageId, Paint>>> = { hueco, seireitei };
+/** A floating island: a flat top on a craggy underside. */
+function island(g: Ctx, x: number, y: number, w: number, h: number, top: string, under: string): void {
+  g.fillStyle = under;
+  g.beginPath();
+  g.moveTo(x - w, y);
+  g.lineTo(x + w, y);
+  g.lineTo(x + w * 0.55, y + h * 0.8);
+  g.lineTo(x + w * 0.2, y + h * 1.6);
+  g.lineTo(x - w * 0.15, y + h * 1.1);
+  g.lineTo(x - w * 0.6, y + h * 0.9);
+  g.closePath();
+  g.fill();
+  g.fillStyle = top;
+  g.fillRect(x - w, y - h * 0.15, w * 2, h * 0.3);
+}
+
+/** A white tower under tiers of gold roof. */
+function tower(g: Ctx, x: number, base: number, height: number, width: number): void {
+  g.fillStyle = '#f4f1ea';
+  g.fillRect(x - width / 2, base - height, width, height);
+  for (let k = 0; k < 3; k++) {
+    const y = base - height + k * (height / 3);
+    const half = width * (0.9 + k * 0.18);
+    g.fillStyle = '#e2b54a';
+    g.beginPath();
+    g.moveTo(x - half - 2, y + 2);
+    g.quadraticCurveTo(x - half * 0.8, y, x - half * 0.5, y - 3);
+    g.lineTo(x + half * 0.5, y - 3);
+    g.quadraticCurveTo(x + half * 0.8, y, x + half + 2, y + 2);
+    g.closePath();
+    g.fill();
+  }
+}
+
+/** Puffs of cloud along a line. */
+function clouds(g: Ctx, w: number, y: number, color: string, size: number, rnd: () => number): void {
+  g.fillStyle = color;
+  for (let x = -10; x < w + 20; x += size * (0.8 + rnd() * 0.6)) {
+    g.beginPath();
+    g.arc(x, y + (rnd() - 0.5) * size * 0.4, size * (0.5 + rnd() * 0.4), 0, Math.PI * 2);
+    g.fill();
+  }
+}
+
+const palace: Paint = (g, w, h) => {
+  const rnd = seeded(23);
+  const sky = g.createLinearGradient(0, 0, 0, h);
+  sky.addColorStop(0, '#16224a');
+  sky.addColorStop(0.55, '#5d6fb0');
+  sky.addColorStop(1, '#f0d6a2');
+  g.fillStyle = sky;
+  g.fillRect(0, 0, w, h);
+  stars(g, w, h * 0.28, 12, rnd);
+  halo(g, w * 0.5, h * 0.6, h * 0.75, '255,236,190', 0.5);
+  clouds(g, w, h * 0.7, 'rgba(255,244,228,0.5)', 14, rnd);
+  island(g, w * 0.15, h * 0.48, w * 0.08, h * 0.08, '#e8e2f0', '#7a7896');
+  island(g, w * 0.86, h * 0.44, w * 0.07, h * 0.07, '#e8e2f0', '#7a7896');
+  island(g, w * 0.5, h * 0.58, w * 0.24, h * 0.1, '#f2ecf6', '#8a86a6');
+  tower(g, w * 0.5, h * 0.55, h * 0.36, 10);
+  tower(g, w * 0.36, h * 0.56, h * 0.18, 7);
+  tower(g, w * 0.64, h * 0.56, h * 0.18, 7);
+  tower(g, w * 0.15, h * 0.47, h * 0.12, 5);
+  tower(g, w * 0.86, h * 0.43, h * 0.11, 5);
+  clouds(g, w, h * 0.9, 'rgba(255,255,255,0.75)', 18, rnd);
+};
+
+const VISTAS: Readonly<Partial<Record<StageId, Paint>>> = { hueco, seireitei, palace };
 
 /** Paint a stage's vista into a canvas; `w` and `h` are its CSS size (CSS covers the card with it). */
 export function drawVista(canvas: HTMLCanvasElement, stage: StageId, w = 200, h = 104, ratio = Math.min(window.devicePixelRatio || 1, 3)): void {

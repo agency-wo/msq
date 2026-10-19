@@ -15,10 +15,22 @@ export type EnemyId =
   | 'commander'
   | 'ashen'
   | 'rift'
-  | 'golden';
+  | 'golden'
+  | 'sentinel'
+  | 'inkwisp'
+  | 'inkling'
+  | 'weaver'
+  | 'asauchi'
+  | 'attendant'
+  | 'royal'
+  | 'ichibe';
 
-/** chase: walks at you · blink: walks, and every few seconds flash-steps closer · ranged: keeps its distance and shoots · flee: runs from you. */
-export type EnemyBehavior = 'chase' | 'blink' | 'ranged' | 'flee';
+/**
+ * chase: walks at you · blink: walks, and every few seconds flash-steps closer ·
+ * ranged: keeps its distance and shoots · flee: runs from you · charge: stops,
+ * winds up, and lunges.
+ */
+export type EnemyBehavior = 'chase' | 'blink' | 'ranged' | 'flee' | 'charge';
 
 export interface EnemyDef {
   id: EnemyId;
@@ -92,6 +104,16 @@ export const ENEMY_LIST: readonly EnemyDef[] = [
   // Run events: a rift that pours out enemies until destroyed, and a treasure runner that flees.
   { id: 'rift', name: 'Garganta', hp: 900, speed: 0, radius: 26, damage: 0, xp: 30, behavior: 'chase', color: 0xff2d4a },
   { id: 'golden', name: 'Golden Hollow', hp: 400, speed: 105, radius: 13, damage: 0, xp: 40, behavior: 'flee', color: 0xffd27a },
+  // The Soul King Palace. Its servants are original designs.
+  { id: 'sentinel', name: 'Palace Sentinel', hp: 22, speed: 42, radius: 13, damage: 10, xp: 2, behavior: 'charge', color: 0xf0e2b0 },
+  { id: 'inkwisp', name: 'Ink Wisp', hp: 16, speed: 54, radius: 12, damage: 9, xp: 1, behavior: 'chase', color: 0x3a3050 },
+  { id: 'inkling', name: 'Inkling', hp: 6, speed: 84, radius: 8, damage: 5, xp: 1, behavior: 'chase', color: 0x3a3050 },
+  { id: 'weaver', name: 'Spirit Weaver', hp: 20, speed: 40, radius: 11, damage: 7, xp: 2, behavior: 'ranged', color: 0xd8c8ff },
+  { id: 'asauchi', name: 'Asauchi Blade', hp: 12, speed: 74, radius: 9, damage: 8, xp: 1, behavior: 'blink', color: 0xe8eef8 },
+  { id: 'attendant', name: 'Royal Attendant', hp: 60, speed: 34, radius: 17, damage: 12, xp: 6, behavior: 'chase', color: 0xfff0c8 },
+  // The Royal Guard (variant = which of them, see data/royal.ts) and Ichibē, who ends the stage.
+  { id: 'royal', name: 'Royal Guard', hp: 2600, speed: 46, radius: 30, damage: 26, xp: 70, behavior: 'chase', boss: true, color: 0xfff6dc },
+  { id: 'ichibe', name: 'Ichibē Hyōsube', hp: 2600, speed: 36, radius: 36, damage: 38, xp: 180, behavior: 'chase', boss: true, color: 0x9a7aff },
 ];
 
 export const ENEMY_INDEX: Readonly<Record<EnemyId, number>> = {
@@ -112,4 +134,12 @@ export const ENEMY_INDEX: Readonly<Record<EnemyId, number>> = {
   ashen: 14,
   rift: 15,
   golden: 16,
+  sentinel: 17,
+  inkwisp: 18,
+  inkling: 19,
+  weaver: 20,
+  asauchi: 21,
+  attendant: 22,
+  royal: 23,
+  ichibe: 24,
 };

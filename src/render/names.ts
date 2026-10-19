@@ -1,5 +1,6 @@
 import { BANKAI_IDS } from '../data/bankai';
 import { ENEMY_LIST } from '../data/enemies';
+import { ROYAL_IDS } from '../data/royal';
 
 /** Enemies drawn with another enemy's sprite. */
 const SPRITE_NAME: Readonly<Record<string, string>> = { captain: 'cap_senbonzakura', golden: 'hollow' };
@@ -16,5 +17,6 @@ export function enemySpriteName(type: number, variant = 0): string {
     if (bankai === 'zanka') return 'commander';
     if (bankai) return `cap_${bankai}`;
   }
+  if (id === 'royal') return `royal_${ROYAL_IDS[variant] ?? 'tenjiro'}`;
   return SPRITE_NAME[id] ?? id;
 }

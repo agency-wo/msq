@@ -1,3 +1,4 @@
+import { castHeartSurge, castNerves, castStillness } from './casts/fragments';
 import { upgradeCap, type PowerDef, type PowerStats } from '../data/powers';
 import { castGonryo, castHyorinmaru, castRaikoben, castSenbonzakura, castTengen, castZanka, respawnPetals, syncHeatAura } from './casts/bankai';
 import {
@@ -62,9 +63,20 @@ export function refreshPowerStats(ps: PowerState): void {
 export function updatePowers(w: World): void {
   for (let slot = 0; slot < w.powers.length; slot++) {
     const ps = w.powers[slot];
+    // Ichimonji: a sealed power does nothing until its name comes back.
+    if (slot === w.sealSlot && w.sealT > 0) continue;
     // Whatever this power hits while casting is credited to it.
     w.dmgSlot = slot;
     switch (ps.def.kind) {
+      case 'stillness':
+        castStillness(w, ps);
+        break;
+      case 'nerves':
+        castNerves(w, ps);
+        break;
+      case 'heartsurge':
+        castHeartSurge(w, ps);
+        break;
       case 'bolt':
         castBolt(w, ps, slot);
         break;

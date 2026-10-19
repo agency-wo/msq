@@ -438,6 +438,38 @@ try {
   log('almighty stop', { stopped, ...(await stats()) });
   await shot('15-almighty-stop');
 
+  // The Soul King Palace: its servants, each guardian, Ichibē, and a fragment taken back.
+  await page.goto(`${BASE}?debug&seed=7&play&god&stage=palace&give=xaxis5,explode5`);
+  await steer(7000, { radius: 25 });
+  log('palace early', { ...(await stats()), stage: await page.evaluate(() => window.__msq.world.stage.id), music: await page.evaluate(() => window.__msq.music) });
+  await shot('18-palace-early');
+  for (const id of ['tenjiro', 'kirio', 'oetsu', 'senjumaru']) {
+    await page.goto(`${BASE}?debug&seed=7&play&god&stage=palace&t=296&bearers=${id}&give=xaxis5,explode5`);
+    await steer(8000, { radius: 25 });
+    log(`royal ${id}`, { ...(await stats()), boss: (await page.isVisible('.bossbar')) ? await page.textContent('.boss-name') : null, sub: await page.textContent('.boss-sub').catch(() => null) });
+    await shot(`18b-royal-${id}`);
+  }
+  await page.goto(`${BASE}?debug&seed=7&play&god&stage=palace&t=1196&give=xaxis7,explode7,heat7,knowledge7`);
+  await steer(9000, { radius: 25 });
+  log('ichibe', { ...(await stats()), boss: await page.textContent('.boss-name').catch(() => null), sealed: await page.$$eval('.tray-item.sealed', (s) => s.length) });
+  await shot('18c-ichibe');
+  // Answer any board that is open, then drop a fragment at the Emperor's feet.
+  for (let k = 0; k < 20 && (await state()) !== 'playing'; k++) {
+    await wait(450);
+    await page.evaluate(() => window.__msq.pick(0));
+  }
+  await page.evaluate(() => {
+    const w = window.__msq.world;
+    w.addPickup('fragment', w.player.x, w.player.y, undefined, 'rightarm');
+  });
+  let owned = false;
+  for (let k = 0; k < 20 && !owned; k++) {
+    await wait(100);
+    owned = await page.evaluate(() => window.__msq.world.powers.some((p) => p.def.id === 'rightarm'));
+  }
+  log('fragment', { banner: await page.textContent('.banner .banner-title').catch(() => null), owned });
+  await shot('18d-fragment');
+
   // A Quincy shrine: walk into it and make a pact.
   await page.goto(`${BASE}?debug&seed=7&play&god&give=explode4,fear3`);
   await wait(800);
@@ -485,6 +517,17 @@ try {
   }
   log('stress seireitei', { samples: seiSamples.map((s) => `${s.state} ${s.fps}fps cpu${s.cpu}ms ${s.enemies}e ${s.sprites}spr`) });
   await shot('13-stress-seireitei');
+
+  // And in the palace, where ink splits and threads fly.
+  await page.goto(`${BASE}?debug&stress=1500&stage=palace&bankai=zanka,hyorinmaru`);
+  await wait(6000);
+  const palSamples = [];
+  for (let i = 0; i < 4; i++) {
+    await wait(1000);
+    palSamples.push(await stats());
+  }
+  log('stress palace', { samples: palSamples.map((s) => `${s.state} ${s.fps}fps cpu${s.cpu}ms ${s.enemies}e ${s.sprites}spr`) });
+  await shot('13b-stress-palace');
 
   // 11. Offline: the service worker serves the whole game with the network off.
   await page.goto(`${BASE}?debug`);

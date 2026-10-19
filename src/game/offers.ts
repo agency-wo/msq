@@ -64,7 +64,7 @@ export function generateOffers(input: OfferInput, rng: Rng, count = 3): Offer[] 
   const ownedPowers = new Map(input.powers.map((p) => [p.id, p.level]));
   const defs = new Map(input.powerDefs.map((d) => [d.id, d]));
   // Bankai and The Almighty come from elsewhere: they take no slot and are never offered as new.
-  const offerable = (d: PowerDef | undefined): boolean => !!d && d.group !== 'bankai' && d.group !== 'ultimate';
+  const offerable = (d: PowerDef | undefined): boolean => !!d && d.group !== 'bankai' && d.group !== 'fragment' && d.group !== 'ultimate';
   const slotsUsed = input.powers.filter((p) => offerable(defs.get(p.id))).length;
   // New powers get rarer the more you own, so a build focuses instead of spreading thin. Their
   // combined weight is shared across however many there are, so adding content to the game
@@ -78,7 +78,7 @@ export function generateOffers(input: OfferInput, rng: Rng, count = 3): Offer[] 
     } else if (def.attributes && level === def.maxLevel - 1) {
       pool.push({ item: { kind: 'power-attr', id: def.id }, w: 6 });
     } else if (level < upgradeCap(def)) {
-      pool.push({ item: { kind: 'power-up', id: def.id, to: level + 1 }, w: (def.group === 'bankai' ? 5 : 3) + level });
+      pool.push({ item: { kind: 'power-up', id: def.id, to: level + 1 }, w: (def.group === 'bankai' || def.group === 'fragment' ? 5 : 3) + level });
     }
   }
   // A resonance is offered, weighted high, once both of its powers are awakened (at their last level).

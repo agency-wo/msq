@@ -5,9 +5,11 @@ import { Rng } from '../core/rng';
 import { BANKAI_BY_ID, BANKAI_IDS } from '../data/bankai';
 import { ENEMY_INDEX, ENEMY_LIST } from '../data/enemies';
 import { PASSIVE_BY_ID, PASSIVES } from '../data/passives';
+import { FRAGMENT_IDS } from '../data/fragments';
 import { POWER_BY_ID, POWERS, STARTABLE_IDS, STARTING_POWER, upgradeCap } from '../data/powers';
 import { RELIC_BY_ID, RELICS, type RelicDef } from '../data/relics';
 import { PACT_BY_ID, PACTS, type PactDef } from '../data/shrines';
+import { ROYAL_BY_ID, ROYAL_IDS } from '../data/royal';
 import { RESONANCE_BY_ID, RESONANCES } from '../data/resonances';
 import { BOSS_LINES } from '../data/story';
 import {
@@ -28,6 +30,7 @@ import { burstAt } from './casts/common';
 import { explodeBomb, steerMissile, strikeAt } from './casts/schrift';
 import {
   BH_BLINK,
+  BH_CHARGE,
   BH_CHASE,
   BH_FLEE,
   BH_RANGED,
@@ -68,14 +71,14 @@ import {
   PK_SHARD,
   ZK_POISON,
 } from './constants';
-import { blinkAI, bossAI, casterAI, eliteAI, eventAI, updateEnemyBullets } from './hostile';
+import { blinkAI, bossAI, casterAI, chargeAI, eliteAI, eventAI, updateEnemyBullets } from './hostile';
 import { generateOffers, rollRelics, type ChestKind, type Offer } from './offers';
 import { EBulletPool, EnemyPool, FxPool, HITS, MarkPool, NumberRing, OrbPool, ProjPool, ZonePool } from './pools';
 import { newPowerState, refreshPowerStats, syncPower, updatePowers, type PowerState } from './powers';
 import { computeStats, damageMultiplier, scaleMods, type StatMods, type Stats } from './stats';
 import { xpToNext } from './xp';
 
-export type PickupKind = 'chest' | 'chestBlack' | 'heart' | 'magnet' | 'nuke' | 'medallion' | 'shrine';
+export type PickupKind = 'chest' | 'chestBlack' | 'heart' | 'magnet' | 'nuke' | 'medallion' | 'shrine' | 'fragment';
 
 export interface Pickup {
   kind: PickupKind;
@@ -84,6 +87,8 @@ export interface Pickup {
   born: number;
   /** Medallions: the bankai inside. */
   bankai?: string;
+  /** Fragments of the Soul King: which one. */
+  fragment?: string;
 }
 
 export interface Message {
@@ -93,7 +98,7 @@ export interface Message {
 
 /** A title card: a boss arriving, a bankai taken back, a resonance, an event, or The Almighty awakening. */
 export interface Banner {
-  kind: 'bankai' | 'boss' | 'almighty' | 'resonance' | 'event' | 'evolve';
+  kind: 'bankai' | 'boss' | 'almighty' | 'resonance' | 'event' | 'evolve' | 'fragment';
   title: string;
   sub: string;
   /** What a boss says (or does) as it arrives. */
@@ -174,13 +179,16 @@ function orbTier(v: number): number {
 
 const MAX_BURSTS = 64;
 
+/** Pickups you walk to rather than hoover up: never pulled by the magnet, never dropped for space. */
+const BIG_PICKUPS: ReadonlySet<PickupKind> = new Set<PickupKind>(['chest', 'chestBlack', 'medallion', 'shrine', 'fragment']);
+
 /** Blut Rush: kills chained without being hit, each tier adding damage and speed while the chain holds. */
 export const RUSH_TIERS = [60, 200, 500] as const;
 const RUSH_WINDOW = 2;
 const RUSH_DAMAGE = 0.05;
 const RUSH_SPEED = 0.03;
 
-const BEHAVIOR_CODE = { chase: BH_CHASE, blink: BH_BLINK, ranged: BH_RANGED, flee: BH_FLEE } as const;
+const BEHAVIOR_CODE = { chase: BH_CHASE, blink: BH_BLINK, ranged: BH_RANGED, flee: BH_FLEE, charge: BH_CHARGE } as const;
 /** Per enemy type, for the hot loop. */
 const BEHAVIOR = Uint8Array.from(ENEMY_LIST, (d) => BEHAVIOR_CODE[d.behavior]);
 
@@ -332,6 +340,13 @@ export class World {
   readonly boss = { active: false, hp: 0, max: 1, name: '', sub: '', final: false, type: -1, variant: 0, uid: -1 };
   /** Bumped whenever a power is gained, levelled or awakened, so the HUD redraws its tray only then. */
   buildVersion = 0;
+  /** Ichimonji: the power slot that is silenced, and for how long. */
+  sealSlot = -1;
+  sealT = 0;
+  /** The Heart of the Soul King's surge: you cannot be hurt while it lasts. */
+  surgeT = 0;
+  /** Fragments that already dropped this run. */
+  private readonly dropped = new Set<string>();
   /** Shrines: a pact board is waiting, the pacts made this run, and what they add up to. */
   pendingShrine = false;
   readonly pacts = new Set<string>();
@@ -406,21 +421,26 @@ export class World {
     this.god = !!opts.god || this.stress > 0;
     this.showNumbers = opts.numbers ?? true;
 
-    // Draw this run's bearers: three different bankai from the stage's pool, any forced ones first.
-    const pool = (this.stage.bearerPool ?? BANKAI_IDS).slice();
+    // Draw this run's bearers: three different bankai from the stage's pool (in the palace, three
+    // of the Royal Guard), any forced ones first.
+    const roster = this.stage.royals ? ROYAL_IDS : BANKAI_IDS;
+    const pool = (this.stage.royals ? ROYAL_IDS : (this.stage.bearerPool ?? BANKAI_IDS)).slice();
     for (let i = pool.length - 1; i > 0; i--) {
       const j = this.rng.int(i + 1);
       const tmp = pool[i];
       pool[i] = pool[j];
       pool[j] = tmp;
     }
-    const forced = (opts.bearers ?? []).filter((id) => BANKAI_IDS.includes(id));
+    const forced = (opts.bearers ?? []).filter((id) => roster.includes(id));
     this.bearers = [...forced, ...pool.filter((id) => !forced.includes(id))].slice(0, 3);
 
     this.warnings = [];
     const events = this.stage.events;
     events.forEach((e, ev) => {
-      if (e.kind === 'bearer') this.warnings.push({ at: e.at - 4, text: this.stage.captains ? 'A captain approaches' : 'A medallion bearer approaches', ev });
+      if (e.kind === 'bearer') {
+        const text = this.stage.royals ? 'A guardian of the palace approaches' : this.stage.captains ? 'A captain approaches' : 'A medallion bearer approaches';
+        this.warnings.push({ at: e.at - 4, text, ev });
+      }
       else if (e.kind === 'boss') this.warnings.push({ at: e.at - 4, text: e.warn, ev });
     });
 
@@ -655,6 +675,7 @@ export class World {
   /** A bankai boss: in Seireitei the bankai's own captain defends it; elsewhere a medallion bearer carries it. */
   private spawnBearer(id: string, hpMul: number): number {
     this.edgePoint(80);
+    if (this.stage.royals) return this.spawnRoyal(id, hpMul);
     const captain = !!this.stage.captains;
     const i = this.spawnEnemy(captain ? ENEMY_INDEX.captain : ENEMY_INDEX.bearer, this.tx, this.ty, false, hpMul);
     if (i < 0) return -1;
@@ -668,6 +689,18 @@ export class World {
         ? { kind: 'boss', title: info.owner, sub: `${info.rank} · ${bankaiName}`, quote }
         : { kind: 'boss', title: 'Medallion Bearer', sub: `carries ${bankaiName}`, quote },
     );
+    this.shake = Math.max(this.shake, 8);
+    return i;
+  }
+
+  /** One of the Royal Guard steps out to meet you. */
+  private spawnRoyal(id: string, hpMul: number): number {
+    const i = this.spawnEnemy(ENEMY_INDEX.royal, this.tx, this.ty, false, hpMul);
+    if (i < 0) return -1;
+    this.en.variant[i] = Math.max(0, ROYAL_IDS.indexOf(id));
+    this.bossCount++;
+    const info = ROYAL_BY_ID.get(id);
+    this.banners.push({ kind: 'boss', title: info?.name ?? 'Royal Guard', sub: info?.title ?? '', quote: BOSS_LINES[`royal:${id}`] });
     this.shake = Math.max(this.shake, 8);
     return i;
   }
@@ -692,7 +725,7 @@ export class World {
         }
       }
     } else {
-      const pool = this.stage.bearerPool ?? BANKAI_IDS;
+      const pool = this.stage.royals ? ROYAL_IDS : (this.stage.bearerPool ?? BANKAI_IDS);
       this.spawnBearer(pool[this.rng.int(pool.length)], 14 * Math.pow(1.35, k));
     }
     this.edgePoint();
@@ -827,7 +860,8 @@ export class World {
     E.dotTick[i] = 0;
     E.dotKind[i] = 0;
     E.atkT[i] = def.boss ? 2.5 : 2 + this.rng.next() * 2;
-    E.atk2T[i] = def.boss ? 4 : 1.5 + this.rng.next() * 2.5;
+    // A sentinel's second timer is its wind-up, which only starts when it lunges.
+    E.atk2T[i] = def.boss ? 4 : BEHAVIOR[type] === BH_CHARGE ? 0 : 1.5 + this.rng.next() * 2.5;
     E.volT[i] = 0;
     E.volDmg[i] = 0;
     E.charmT[i] = 0;
@@ -944,6 +978,8 @@ export class World {
       } else if (behavior === BH_FLEE) {
         x -= (dx / dist) * v;
         y -= (dy / dist) * v;
+      } else if (behavior === BH_CHARGE && E.atk2T[i] > 0) {
+        // Winding up for a lunge: it stands its ground.
       } else if (behavior === BH_RANGED && !(flags & FLAG_ELITE)) {
         // Casters hold a ring around you: close in, back off, or circle.
         if (dist > 220) {
@@ -1028,6 +1064,7 @@ export class World {
       else if (flags & FLAG_ELITE) eliteAI(this, i, dist);
       else if (k > 0 && behavior === BH_BLINK) blinkAI(this, i, dist);
       else if (k > 0 && behavior === BH_RANGED) casterAI(this, i, dist);
+      else if (k > 0 && behavior === BH_CHARGE) chargeAI(this, i, dist);
       if (E.dead[i]) continue;
       if (!charmed && E.dmg[i] > 0 && dist < E.r[i] + PLAYER.radius + 2) this.contact(i);
       else if (dist2 > recycle2 && !boss && !(flags & FLAG_EVENT)) this.recycle(i);
@@ -1174,6 +1211,10 @@ export class World {
     this.kills++;
     this.chainKill();
     if (E.charmT[i] > 0 && flags & FLAG_HEARTBREAK) this.queueBurst(x, y, 60 * this.stats.size, E.charmDmg[i] * 3);
+    // An ink wisp splits in two as it dies.
+    if (def.id === 'inkwisp') {
+      for (const dir of [-1, 1]) this.spawnEnemy(ENEMY_INDEX.inkling, x + dir * 10, y + dir * 4);
+    }
     this.spawnOrb(x, y, E.xp[i]);
     if (E.volT[i] > 0) this.queueBurst(x, y, 44 * this.stats.size, E.volDmg[i]);
     if (flags & FLAG_BOSS) {
@@ -1182,6 +1223,13 @@ export class World {
       const carrier = def.id === 'bearer' || def.id === 'captain';
       if (carrier) {
         this.addPickup('medallion', x, y, BANKAI_IDS[E.variant[i]]);
+        this.addPickup('chestBlack', x + 36, y + 12);
+      }
+      // The Royal Guard each leave a Fragment of the Soul King you do not have yet (gold once you hold all three).
+      if (def.id === 'royal') {
+        const fragment = this.fragmentToDrop();
+        if (fragment) this.addPickup('fragment', x, y, undefined, fragment);
+        else this.addPickup('chestBlack', x - 36, y - 12);
         this.addPickup('chestBlack', x + 36, y + 12);
       }
       // The Hunter's Pact: the boss it called pays an extra black chest.
@@ -1267,7 +1315,7 @@ export class World {
 
   hurtPlayer(amount: number): void {
     const p = this.player;
-    if (p.iframes > 0 || this.god || !p.alive || this.vollT > 0) return;
+    if (p.iframes > 0 || this.god || !p.alive || this.vollT > 0 || this.surgeT > 0) return;
     if (this.foresight > 0 && this.rng.next() < this.foresight) {
       // Foresight: you saw this future and stepped out of it.
       p.iframes = 0.25;
@@ -1674,13 +1722,13 @@ export class World {
 
   // ------------------------------------------------------------ pickups
 
-  addPickup(kind: PickupKind, x: number, y: number, bankai?: string): void {
+  addPickup(kind: PickupKind, x: number, y: number, bankai?: string, fragment?: string): void {
     if (this.pickups.length >= CAP.pickups) {
-      const idx = this.pickups.findIndex((q) => q.kind !== 'chest' && q.kind !== 'chestBlack' && q.kind !== 'medallion' && q.kind !== 'shrine');
+      const idx = this.pickups.findIndex((q) => !BIG_PICKUPS.has(q.kind));
       if (idx < 0) return;
       this.pickups.splice(idx, 1);
     }
-    this.pickups.push({ kind, x, y, born: this.t, bankai });
+    this.pickups.push({ kind, x, y, born: this.t, bankai, fragment });
   }
 
   private updatePickups(): void {
@@ -1692,7 +1740,7 @@ export class World {
       const dx = p.x - q.x;
       const dy = p.y - q.y;
       const d = Math.hypot(dx, dy);
-      const big = q.kind === 'chest' || q.kind === 'chestBlack' || q.kind === 'medallion' || q.kind === 'shrine';
+      const big = BIG_PICKUPS.has(q.kind);
       if (!big && d < pull && d > 0) {
         const s = Math.min(d, 260 * DT);
         q.x += (dx / d) * s;
@@ -1717,6 +1765,9 @@ export class World {
       case 'shrine':
         if (this.stress === 0) this.pendingShrine = true;
         this.sound('chest');
+        break;
+      case 'fragment':
+        if (q.fragment) this.grantFragment(q.fragment);
         break;
       case 'heart':
         this.heal(0.3);
@@ -1909,6 +1960,14 @@ export class World {
   // ------------------------------------------------------------- timers
 
   private updateTimers(): void {
+    if (this.surgeT > 0) this.surgeT -= DT;
+    if (this.sealT > 0) {
+      this.sealT -= DT;
+      if (this.sealT <= 0) {
+        this.sealSlot = -1;
+        this.buildVersion++;
+      }
+    }
     if (this.evolveT > 0) {
       this.evolveT -= DT;
       if (this.evolveT <= 0) this.evolve();
@@ -2001,6 +2060,10 @@ export class World {
               const info = BANKAI_BY_ID.get(bankai);
               B.name = info?.owner ?? def.name;
               B.sub = info?.rank ?? '';
+            } else if (def.id === 'royal') {
+              const info = ROYAL_BY_ID.get(ROYAL_IDS[E.variant[i]]);
+              B.name = info?.name ?? def.name;
+              B.sub = info?.title ?? '';
             } else {
               const ev = this.stage.events.find((e): e is Extract<TimelineEvent, { kind: 'boss' }> => e.kind === 'boss' && e.enemy === def.id);
               B.name = def.name;
@@ -2238,6 +2301,46 @@ export class World {
     this.buildVersion++;
     this.sound('bankai');
     this.spawnFx(FX_GLOW, 0, 0, 0, 0, 0.7, 30, 360, 0.9, 0, 0, 0x9fdcff, LAYER_ADD, 0, 1);
+  }
+
+  // -------------------------------------------------------- the palace
+
+  /** A Fragment of the Soul King you do not hold and that has not dropped this run, or null. */
+  private fragmentToDrop(): string | null {
+    const left = FRAGMENT_IDS.filter((id) => !this.dropped.has(id) && !this.powers.some((ps) => ps.def.id === id));
+    const id = left.length > 0 ? left[this.rng.int(left.length)] : null;
+    if (id) this.dropped.add(id);
+    return id;
+  }
+
+  /** A fragment picked up: it joins your powers at Lv 1, with its own title card. */
+  grantFragment(id: string): boolean {
+    const def = POWER_BY_ID.get(id);
+    if (!def || def.group !== 'fragment') return false;
+    this.addPower(id);
+    this.banners.push({ kind: 'fragment', title: def.name, sub: 'A piece of the Soul King, taken back' });
+    this.sound('bankai');
+    this.shake = Math.max(this.shake, 10);
+    this.spawnFx(FX_GLOW, 0, 0, 0, 0, 0.8, 40, 600, 1, 0, 0, 0xffe6a0, LAYER_ADD, 0, 1);
+    this.spawnFx(FX_RING, 0, 0, 0, 0, 0.7, 30, 520, 1, 0, 0, 0xffffff, LAYER_ADD, 0, 1);
+    return true;
+  }
+
+  /**
+   * Ichibē's Ichimonji: one of your stronger attacks loses its name and falls
+   * silent for a while. Returns its name, or null if you have none to lose.
+   */
+  sealPower(seconds: number): string | null {
+    const slots = this.powers
+      .map((ps, k) => ({ ps, k }))
+      .filter(({ ps }) => ps.def.group === 'schrift' || ps.def.group === 'art' || ps.def.group === 'bankai')
+      .sort((a, b) => b.ps.level - a.ps.level);
+    if (slots.length === 0) return null;
+    const pick = slots[this.rng.int(Math.min(2, slots.length))];
+    this.sealSlot = pick.k;
+    this.sealT = seconds;
+    this.buildVersion++;
+    return pick.ps.def.name;
   }
 
   /** A power's slot in `powers`, or 255 when you do not hold it. */

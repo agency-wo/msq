@@ -51,6 +51,12 @@ import {
   ZK_FIRE,
   ZK_HEAT,
   ZK_POISON,
+  MK_STEAM,
+  MK_INK,
+  MK_THREAD,
+  MK_SWORD,
+  FX_SMOKE,
+  LAYER_NORMAL,
 } from './constants';
 import type { World } from './world';
 
@@ -320,6 +326,46 @@ function markFx(w: World, kind: number, x: number, y: number, r: number, len: nu
       w.spawnFx(FX_BEAMH, x + (Math.cos(ang) * len) / 2, y + (Math.sin(ang) * len) / 2, 0, 0, 0.3, len, len, 1, ang, 0, 0xfff0b0, LAYER_ADD, 0, 0, r * 1.6);
       w.spawnFx(FX_GLOW, x, y, 0, 0, 0.3, r, r * 2.6, 1, 0, 0, 0xffe680, LAYER_ADD);
       w.shake = Math.max(w.shake, 5);
+      w.sound('strike');
+      break;
+    case MK_STEAM:
+      // A boiling spring bursts: a column of steam and a hot flash.
+      w.spawnFx(FX_GLOW, x, y, 0, 0, 0.45, r, r * 2.6, 0.8, 0, 0, 0x9fe8ff, LAYER_ADD);
+      for (let k = 0; k < 4; k++) {
+        const a = w.rng.next() * TAU;
+        w.spawnFx(FX_SMOKE, x + Math.cos(a) * r * 0.3, y + Math.sin(a) * r * 0.3, Math.cos(a) * 20, -40 - k * 12, 0.8, r * 0.8, r * 2, 0.55, 0, 0, 0xf2f8ff, LAYER_NORMAL, 1);
+      }
+      w.sound('blast');
+      break;
+    case MK_INK:
+      // Ink: a black stroke along the line, or a splash where a pool was.
+      if (len > 0) {
+        w.spawnFx(FX_BEAMH, x + (Math.cos(ang) * len) / 2, y + (Math.sin(ang) * len) / 2, 0, 0, 0.6, len, len, 0.9, ang, 0, 0x120c1c, LAYER_NORMAL, 0, 0, r * 1.5);
+      }
+      for (let k = 0; k < (len > 0 ? 6 : 4); k++) {
+        const t = len > 0 ? w.rng.next() * len : 0;
+        const sx = x + Math.cos(ang) * t + (w.rng.next() - 0.5) * r;
+        const sy = y + Math.sin(ang) * t + (w.rng.next() - 0.5) * r;
+        w.spawnFx(FX_SMOKE, sx, sy, 0, 0, 0.7, r * 0.8, r * 1.8, 0.85, w.rng.next() * TAU, 0, 0x0e0a16, LAYER_NORMAL);
+      }
+      w.shake = Math.max(w.shake, r > 100 ? 7 : 3);
+      w.sound('blade');
+      break;
+    case MK_THREAD:
+      // Threads snap taut, or the cloth draws shut.
+      if (len > 0) {
+        w.spawnFx(FX_BEAMH, x + (Math.cos(ang) * len) / 2, y + (Math.sin(ang) * len) / 2, 0, 0, 0.35, len, len, 1, ang, 0, 0xe2ccff, LAYER_ADD, 0, 0, r * 0.5);
+      } else {
+        w.spawnFx(FX_RING, x, y, 0, 0, 0.35, r * 2.2, r * 0.4, 1, 0, 0, 0xe2ccff, LAYER_ADD);
+        w.spawnFx(FX_GLOW, x, y, 0, 0, 0.35, r, r * 1.6, 0.7, 0, 0, 0xc9a8ff, LAYER_ADD);
+      }
+      w.sound('shield');
+      break;
+    case MK_SWORD:
+      // A blade falls from the sky and bites into the stone.
+      w.spawnFx(FX_BEAM, x, y, 0, 0, 0.2, r * 0.7, 0, 1, 0, 0, 0xf2f6ff, LAYER_ADD);
+      w.spawnFx(FX_SHOCK, x, y, 0, 0, 0.25, r * 0.4, r * 1.8, 0.7, 0, 0, 0xe8eef8, LAYER_ADD);
+      sparks(w, x, y, 4, 0xffffff);
       w.sound('strike');
       break;
   }

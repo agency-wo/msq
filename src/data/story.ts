@@ -6,7 +6,7 @@
 /** When a chapter is shown: before a run (on a given stage) or after one, once its condition holds. */
 export type ChapterTrigger =
   | { when: 'before'; stage?: string }
-  | { when: 'after'; condition: 'bankai' | 'hueco' | 'seireitei' | 'almighty' };
+  | { when: 'after'; condition: 'bankai' | 'hueco' | 'seireitei' | 'almighty' | 'palace' };
 
 export interface Chapter {
   id: string;
@@ -93,6 +93,30 @@ export const CHAPTERS: readonly Chapter[] = [
       'The Almighty is not a power he was given. It is the one he kept.',
     ],
   },
+  {
+    id: 'palace',
+    kicker: 'Chapter VI',
+    title: 'The Palace in the Sky',
+    hint: 'Set foot in the Soul King Palace.',
+    trigger: { when: 'before', stage: 'palace' },
+    text: [
+      'Above the Seireitei, where no road reaches, the Soul King’s palace hangs among the clouds. Its guardians have never once let anyone pass.',
+      'They were chosen for what they made: the springs that mend, the grain that feeds, the blades every Soul Reaper carries, the robes they wear, and the names that hold the world together.',
+      'The Emperor climbs anyway. Whatever sits on that throne was a man once. He means to remind it.',
+    ],
+  },
+  {
+    id: 'soulking',
+    kicker: 'Chapter VII',
+    title: 'The Soul King',
+    hint: 'Clear the Soul King Palace.',
+    trigger: { when: 'after', condition: 'palace' },
+    text: [
+      'The one who names things lies still in his own spilled ink. Without him, the palace has no word for what is climbing its last stair.',
+      'Behind the final door the Soul King waits, as he has waited for longer than the world has had a name: no arms, no heart, no will of his own.',
+      'The Emperor holds the fragments he took on the way up. Everything ever given away, he has taken back. Now he takes the rest.',
+    ],
+  },
 ];
 
 export const CHAPTER_BY_ID: ReadonlyMap<string, Chapter> = new Map(CHAPTERS.map((c) => [c.id, c]));
@@ -117,4 +141,9 @@ export const BOSS_LINES: Readonly<Record<string, string>> = {
   'boss:vasto': 'The lord of the desert turns its horned mask toward you.',
   'boss:grandmaster': '“Every seal in this city answers to me.”',
   'boss:commander': '“I have burned for a thousand years. Tonight, so will you.”',
+  'royal:tenjiro': '“Nobody leaves my springs the way they came in.”',
+  'royal:kirio': '“You look starved, little emperor. Let me feed you something you won’t forget.”',
+  'royal:oetsu': '“Every blade down there, I made. Yours I’ll just have to break.”',
+  'royal:senjumaru': '“Every thread in this palace is mine, and you are standing on one.”',
+  'boss:ichibe': '“I named the dark itself, once. Let us find out what name you answer to.”',
 };

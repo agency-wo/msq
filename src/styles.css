@@ -219,6 +219,29 @@ body {
   background: rgba(60, 40, 8, 0.6);
 }
 
+.tray-item.fragment {
+  border-color: #fff2c2;
+  background: rgba(70, 58, 24, 0.6);
+  box-shadow: 0 0 6px rgba(255, 236, 180, 0.6);
+}
+
+.tray-item.sealed {
+  filter: grayscale(1);
+  opacity: 0.45;
+}
+
+.tray-item.sealed::after {
+  content: '';
+  position: absolute;
+  left: -2px;
+  right: -2px;
+  top: 50%;
+  height: 3px;
+  background: #0b0812;
+  transform: rotate(-35deg);
+  box-shadow: 0 0 4px rgba(154, 122, 255, 0.9);
+}
+
 .tray-item.ultimate {
   border-color: #ffffff;
   box-shadow: 0 0 8px rgba(159, 220, 255, 0.7);
@@ -1500,6 +1523,20 @@ button:focus-visible {
 .banner.resonance .banner-title {
   color: #fff6dc;
   text-shadow: 0 0 16px rgba(159, 220, 255, 0.7);
+}
+
+.banner.fragment .banner-kicker {
+  color: #fff2c2;
+}
+
+.banner.fragment .banner-title {
+  color: #ffffff;
+  text-shadow: 0 0 16px rgba(255, 220, 140, 0.9);
+}
+
+.banner.fragment {
+  border-top: 1px solid rgba(255, 236, 180, 0.55);
+  border-bottom: 1px solid rgba(255, 236, 180, 0.55);
 }
 
 .banner.evolve .banner-kicker {
