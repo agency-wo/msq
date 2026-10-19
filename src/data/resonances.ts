@@ -1,9 +1,12 @@
 /**
- * Resonances: two awakened Schrift (both at Lv 7) resonate into something
- * new. Each attack has exactly one partner. A resonance never replaces
- * either power: both keep working exactly as before, attributes and all,
- * and the resonance adds an effect that ties them together. It shows up as
- * a card on the level-up board once both are awakened and takes no slot.
+ * Resonances: two powers resonate into something new. Neither is replaced:
+ * both keep working exactly as before, attributes and all, and the resonance
+ * adds an effect that ties them together. It shows up as a card on the
+ * level-up board once both are strong enough, and takes no slot.
+ *
+ * The first nine pair the attacks, each with one partner. The rest follow
+ * the story: each Sternritter's Schrift with the bankai that knight stole
+ * with a medallion, and the Emperor's own powers with The Almighty.
  */
 
 export interface ResonanceDef {
@@ -16,6 +19,9 @@ export interface ResonanceDef {
   letters: string;
   desc: string;
   color: string;
+  /** Levels each power needs (default: its last level). Bankai resonate from Lv 3. */
+  needA?: number;
+  needB?: number;
 }
 
 export const RESONANCES: readonly ResonanceDef[] = [
@@ -99,6 +105,86 @@ export const RESONANCES: readonly ResonanceDef[] = [
     letters: 'RK',
     desc: 'Every ring you roar also bursts out from each of your drones.',
     color: '#d7c3ff',
+  },
+  // Each Sternritter and the bankai that knight stole.
+  {
+    id: 'fearpetals',
+    name: 'Petals of Terror',
+    a: 'fear',
+    b: 'senbonzakura',
+    letters: 'FS',
+    desc: 'Äs Nödt stole Senbonzakura. Its petals carry The Fear: what they cut freezes in terror and takes more damage.',
+    color: '#d8a8ff',
+    needB: 3,
+  },
+  {
+    id: 'ironice',
+    name: 'Frozen Steel',
+    a: 'iron',
+    b: 'hyorinmaru',
+    letters: 'IH',
+    desc: 'Cang Du stole Hyōrinmaru. When your iron skin turns a blow aside, ice bursts out and freezes everything close.',
+    color: '#bfe8ff',
+    needB: 3,
+  },
+  {
+    id: 'barrage',
+    name: 'Raikōben Barrage',
+    a: 'knowledge',
+    b: 'raikoben',
+    letters: 'KR',
+    desc: 'BG9 stole Suì-Fēng’s bankai. Every other volley, each of your drones also calls a Raikōben missile down on the enemy nearest it.',
+    color: '#ffe08a',
+    needB: 3,
+  },
+  {
+    id: 'giantblast',
+    name: 'Exploding Giant',
+    a: 'explode',
+    b: 'tengen',
+    letters: 'ET',
+    desc: 'Bambietta stole Komamura’s bankai. Every sweep of the armoured giant’s blade explodes all along its arc.',
+    color: '#ffb070',
+    needB: 3,
+  },
+  {
+    id: 'overthunder',
+    name: 'Overkill Storm',
+    a: 'overkill',
+    b: 'gonryo',
+    letters: 'OG',
+    desc: 'Driscoll Berci stole Sasakibe’s bankai. Every 40 enemies you defeat, its lightning strikes eight more.',
+    color: '#fff3a0',
+    needB: 3,
+  },
+  // The Emperor's own.
+  {
+    id: 'otherhalf',
+    name: 'The Other Half',
+    a: 'balance',
+    b: 'almighty',
+    letters: 'BA',
+    desc: 'Haschwalth holds The Almighty while the Emperor sleeps. Every rewritten future heals you by a quarter and strikes 30% harder.',
+    color: '#cfe0ff',
+  },
+  {
+    id: 'bodydouble',
+    name: 'Body Double',
+    a: 'yourself',
+    b: 'almighty',
+    letters: 'YA',
+    desc: 'Royd Lloyd once stood in for the Emperor himself. When the future is rewritten, each of your doubles strikes everything around it too.',
+    color: '#ffe6a0',
+  },
+  {
+    id: 'tenchikaijin',
+    name: 'Tenchi Kaijin',
+    a: 'zanka',
+    b: 'almighty',
+    letters: 'ZA',
+    desc: 'The Emperor took Zanka no Tachi from the Captain-Commander. Every rewritten future sets what it strikes burning, heaven and earth turned to ash.',
+    color: '#ff8a4a',
+    needA: 3,
   },
 ];
 

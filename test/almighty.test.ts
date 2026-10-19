@@ -27,20 +27,44 @@ describe('A · The Almighty', () => {
     }
   });
 
-  it('awakens with the third Lv 7 Schrift, but only once unlocked', () => {
-    const locked = new World({ seed: 2 });
-    for (const id of ['heilig', 'xaxis', 'explode']) locked.give(id, 7);
-    expect(locked.powerLevel('almighty')).toBe(0);
-
-    const w = new World({ seed: 2, almighty: true });
-    w.give('heilig', 7);
-    w.give('xaxis', 7);
+  it('awakens in any run once five powers are taken back: bankai, fragments and awakened Schrift all count', () => {
+    const w = new World({ seed: 2, god: true });
+    const wait = (): void => {
+      for (let k = 0; k < Math.round(3.5 / DT); k++) {
+        w.step(0, 0);
+        w.pendingLevelUps = 0;
+        w.pendingChests.length = 0;
+      }
+    };
+    for (const id of ['heilig', 'xaxis', 'explode']) w.give(id, 7);
+    w.grantBankai('zanka');
+    expect(w.almightyProgress()).toEqual({ have: 4, need: 5 });
+    wait();
     expect(w.powerLevel('almighty')).toBe(0);
-    w.give('explode', 7);
+    w.grantBankai('tengen');
+    // It arrives a moment later, under its own title card.
+    expect(w.powerLevel('almighty')).toBe(0);
+    w.banners.length = 0;
+    wait();
     expect(w.powerLevel('almighty')).toBe(1);
     expect(w.banners.some((b) => b.kind === 'almighty')).toBe(true);
+    expect(w.almightyProgress()).toBeNull();
     // Once per run.
     expect(w.grantAlmighty()).toBe(false);
+  });
+
+  it('with all six bankai ever taken back, three are enough', () => {
+    const w = new World({ seed: 2, god: true, almighty: true });
+    w.give('heilig', 7);
+    w.grantBankai('zanka');
+    expect(w.almightyProgress()).toEqual({ have: 2, need: 3 });
+    w.give('xaxis', 7);
+    for (let k = 0; k < Math.round(3.5 / DT); k++) {
+      w.step(0, 0);
+      w.pendingLevelUps = 0;
+      w.pendingChests.length = 0;
+    }
+    expect(w.powerLevel('almighty')).toBe(1);
   });
 
   it('stops time for everything, bosses included, then rewrites the future', () => {

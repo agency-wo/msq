@@ -27,7 +27,7 @@ import {
 } from '../data/stages';
 import { updateMarks, updateZones } from './areas';
 import { rewrite } from './casts/almighty';
-import { burstAt } from './casts/common';
+import { burstAt, enemiesInCircle } from './casts/common';
 import { explodeBomb, steerMissile, strikeAt } from './casts/schrift';
 import {
   BH_BLINK,
@@ -184,6 +184,10 @@ function orbTier(v: number): number {
 
 const MAX_BURSTS = 64;
 
+/** Powers taken back in one run that wake The Almighty, and how many once all six bankai were ever taken back. */
+export const ALMIGHTY_AT = 5;
+export const ALMIGHTY_AT_UNLOCKED = 3;
+
 /** Boss Rush: each wave's health against a full run's, wave by wave (you meet them with far fewer levels). */
 const RUSH_HP = [1, 0.8, 0.55, 0.36];
 /** ...and how hard they hit: the Emperor faces the first wave with a run's first levels and base health. */
@@ -318,6 +322,8 @@ export class World {
   /** A · The Almighty: while almightyT > 0 time stands still; then the strike in rewrite(). */
   readonly almightyUnlocked: boolean;
   almightyGranted = false;
+  /** The Almighty is on its way: earned, arriving a moment later under its own title card. */
+  private almightyDue = 0;
   almightyT = 0;
   almightyMax = 1;
   almightyDmg = 0;
@@ -365,6 +371,9 @@ export class World {
   surgeT = 0;
   /** Fragments that already dropped this run. */
   private readonly dropped = new Set<string>();
+  /** Overkill Storm: kills toward the next strike, and a guard against kills inside it starting another. */
+  private stormKills = 0;
+  private inStorm = false;
   /** Kills this run by Codex key (named bosses each under their own). */
   readonly killsBy = new Map<string, number>();
   /** Shrines: a pact board is waiting, the pacts made this run, and what they add up to. */
@@ -1280,6 +1289,13 @@ export class World {
     this.killsBy.set(key, (this.killsBy.get(key) ?? 0) + 1);
     this.chainKill();
     if (E.charmT[i] > 0 && flags & FLAG_HEARTBREAK) this.queueBurst(x, y, 60 * this.stats.size, E.charmDmg[i] * 3);
+    // Overkill Storm: every 40 kills, Gonryō Rikyū's lightning answers.
+    if (this.resonances.has('overthunder') && !this.inStorm && ++this.stormKills >= 40) {
+      this.stormKills = 0;
+      this.inStorm = true;
+      this.credit('gonryo', () => this.overkillStorm());
+      this.inStorm = false;
+    }
     // An ink wisp splits in two as it dies.
     if (def.id === 'inkwisp') {
       for (const dir of [-1, 1]) this.spawnEnemy(ENEMY_INDEX.inkling, x + dir * 10, y + dir * 4);
@@ -1400,6 +1416,8 @@ export class World {
       this.spawnFx(FX_RING, 0, 0, 0, 0, 0.35, 20, 70, 1, 0, 0, 0xdfe7f2, LAYER_ADD, 0, 1);
       this.sound('shield');
       if (this.ironBurst > 0) this.credit('iron', () => this.shockwave(140, this.ironBurst, 300));
+      // Frozen Steel: the turned blow bursts into ice.
+      if (this.resonances.has('ironice')) this.credit('hyorinmaru', () => this.frostBurst());
       return;
     }
     p.hp -= amount * this.stats.dmgTaken * (1 - this.balanceCut) * this.tm.damageTaken * this.modTaken;
@@ -1576,6 +1594,11 @@ export class World {
           if (this.t - E.ohit[j] < (kind === PK_PETAL ? 0.22 : 0.3)) continue;
           E.ohit[j] = this.t;
           this.damageEnemy(j, P.dmg[i], kind === PK_PETAL ? 20 : 70, x, y);
+          // Petals of Terror: The Fear rides on Senbonzakura's petals.
+          if (kind === PK_PETAL && this.resonances.has('fearpetals') && !E.dead[j]) {
+            this.applyHold(j, 0.5, HOLD_FEAR);
+            this.applyVuln(j, 2, 0.2);
+          }
           if (kind === PK_BLADE && P.flags[i] & PF_SPECIAL && this.rng.next() < 0.3) this.spawnShards(x, y, P.dmg[i] * 0.5);
           continue;
         }
@@ -2031,6 +2054,10 @@ export class World {
   // ------------------------------------------------------------- timers
 
   private updateTimers(): void {
+    if (this.almightyDue > 0) {
+      this.almightyDue -= DT;
+      if (this.almightyDue <= 0) this.grantAlmighty();
+    }
     if (this.surgeT > 0) this.surgeT -= DT;
     if (this.sealT > 0) {
       this.sealT -= DT;
@@ -2056,7 +2083,7 @@ export class World {
     if (this.stormT > 0) this.reishiStorm();
     if (this.almightyT > 0) {
       this.almightyT -= DT;
-      if (this.almightyT <= 0) rewrite(this);
+      if (this.almightyT <= 0) this.credit('almighty', () => rewrite(this));
     }
     if (this.hasClock) {
       this.clockCd -= DT;
@@ -2250,10 +2277,13 @@ export class World {
    * the eyes, The Almighty his shadow. `adding` is a power about to join.
    */
   private checkEvolution(adding?: string): void {
-    const ids = adding ? [...this.powers.map((ps) => ps.def.id), adding] : this.powers.map((ps) => ps.def.id);
-    const groups = ids.map((id) => POWER_BY_ID.get(id)?.group);
-    const taken = groups.filter((g) => g === 'bankai' || g === 'fragment').length + this.powers.filter((ps) => ps.attr !== null).length;
-    const tier = groups.includes('ultimate') ? 3 : taken >= 3 ? 2 : taken >= 1 ? 1 : 0;
+    const taken = this.takenBack(adding);
+    const ultimate = adding === 'almighty' || this.powers.some((ps) => ps.def.group === 'ultimate');
+    // Enough taken back: The Almighty is coming. A moment later, so the card for what earned it shows first.
+    if (!this.almightyGranted && this.almightyDue <= 0 && taken >= (this.almightyUnlocked ? ALMIGHTY_AT_UNLOCKED : ALMIGHTY_AT)) {
+      this.almightyDue = 3.2;
+    }
+    const tier = ultimate ? 3 : taken >= 3 ? 2 : taken >= 1 ? 1 : 0;
     if (tier <= Math.max(this.evolution, this.evolveNext)) return;
     this.evolveNext = tier;
     this.evolveT = 2.8;
@@ -2423,6 +2453,34 @@ export class World {
     return pick.ps.def.name;
   }
 
+  /** Frozen Steel: everything close freezes, and takes more damage while it is frozen. */
+  private frostBurst(): void {
+    const p = this.player;
+    const n = enemiesInCircle(this, p.x, p.y, 160 * this.stats.size);
+    for (let k = 0; k < n; k++) {
+      const j = this.qout[k];
+      this.applyHold(j, 1.6, HOLD_FREEZE);
+      this.applyVuln(j, 1.6, 0.3);
+    }
+    this.spawnFx(FX_RING, 0, 0, 0, 0, 0.45, 30, 330, 1, 0, 0, 0xdff6ff, LAYER_ADD, 0, 1);
+    this.spawnFx(FX_GLOW, 0, 0, 0, 0, 0.5, 40, 340, 0.8, 0, 0, 0x8fd8ff, LAYER_ADD, 0, 1);
+    this.sound('freeze');
+  }
+
+  /** Overkill Storm: Gonryō Rikyū's lightning strikes eight enemies near you. */
+  private overkillStorm(): void {
+    const g = this.power('gonryo');
+    if (!g) return;
+    const dmg = g.stats.damage * 3;
+    const R = g.stats.radius * g.stats.size * this.stats.size;
+    for (let k = 0; k < 8; k++) {
+      const j = this.randomEnemyNear(360);
+      if (j < 0) break;
+      strikeAt(this, this.en.x[j], this.en.y[j], dmg, R, null);
+    }
+    this.sound('strike');
+  }
+
   /** A power's slot in `powers`, or 255 when you do not hold it. */
   slotOf(id: string): number {
     const k = this.powers.findIndex((ps) => ps.def.id === id);
@@ -2458,8 +2516,23 @@ export class World {
     this.checkEvolution();
     refreshPowerStats(ps);
     syncPower(this, this.powers.indexOf(ps));
-    // The third awakened Schrift wakes The Almighty, once it is unlocked.
-    if (this.almightyUnlocked && this.powers.filter((q) => q.attr !== null).length >= 3) this.grantAlmighty();
+  }
+
+  /**
+   * Powers taken back this run toward The Almighty: every bankai, every
+   * Fragment of the Soul King and every awakened Schrift. It awakens at five,
+   * or at three once all six bankai have been taken back across your runs.
+   */
+  almightyProgress(): { have: number; need: number } | null {
+    if (this.almightyGranted || this.almightyDue > 0) return null;
+    return { have: this.takenBack(), need: this.almightyUnlocked ? ALMIGHTY_AT_UNLOCKED : ALMIGHTY_AT };
+  }
+
+  private takenBack(adding?: string): number {
+    const ids = this.powers.map((ps) => ps.def.id);
+    if (adding && !ids.includes(adding)) ids.push(adding);
+    const groups = ids.map((id) => POWER_BY_ID.get(id)?.group);
+    return groups.filter((g) => g === 'bankai' || g === 'fragment').length + this.powers.filter((ps) => ps.attr !== null).length;
   }
 
   /** A · The Almighty joins your powers, with its own title card. Once per run. */

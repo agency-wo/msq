@@ -1,6 +1,6 @@
 import { DT, PLAYER } from '../config';
 import { TAU } from '../core/math';
-import { enemiesInArc, enemiesInCircle, enemiesOnSegment, inArc, segmentDist } from './casts/common';
+import { burstAt, enemiesInArc, enemiesInCircle, enemiesOnSegment, inArc, segmentDist } from './casts/common';
 import {
   DOT_FIRE,
   FLAG_BOSS,
@@ -35,6 +35,7 @@ import {
   MK_RAIN,
   MK_SEAL,
   MK_SLASH,
+  MS_ARC,
   MS_CIRCLE,
   MS_LINE,
   PK_BOMB,
@@ -240,8 +241,24 @@ function resolveMark(w: World, i: number): void {
     }
     if (flags & MF_CRATER) w.spawnZone(ZK_FIRE, x, y, 0, 0, r * 0.7, 3, 0.4, dmg * 0.12, 0);
     if (flags & MF_SHATTER) shatter(w, x, y);
+    // Exploding Giant: Tengen's sweep bursts all along its arc.
+    if (kind === MK_SLASH && shape === MS_ARC && w.resonances.has('giantblast') && w.powers[w.dmgSlot]?.def.id === 'tengen') {
+      giantBlast(w, x, y, r, len, ang);
+    }
   }
   markFx(w, kind, x, y, r, len, ang, (flags & MF_ENEMY) !== 0);
+}
+
+/** Exploding Giant (resonance): five of The Explode's blasts along the giant's arc. */
+function giantBlast(w: World, x: number, y: number, r: number, half: number, ang: number): void {
+  const ex = w.power('explode');
+  if (!ex) return;
+  const R = ex.stats.radius * ex.stats.size * w.stats.size * 0.8;
+  for (let k = 0; k < 5; k++) {
+    const a = ang + ((k - 2) / 2) * half;
+    burstAt(w, x + Math.cos(a) * r * 0.7, y + Math.sin(a) * r * 0.7, R, ex.stats.damage, -1, false, 0xffb070);
+  }
+  w.sound('blast');
 }
 
 /** Armageddon (resonance): a meteor's impact flings four of The Explode's bombs outward. */

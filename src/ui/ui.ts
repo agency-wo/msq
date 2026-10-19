@@ -44,7 +44,7 @@ const POWER_SECTIONS: readonly [string, (d: PowerDef) => boolean, string][] = [
   ['Support', (d) => d.group === 'utility', 'Take it from a level-up board.'],
   ['Bankai', (d) => d.group === 'bankai', 'Take it back from the one who carries it.'],
   ['Fragments of the Soul King', (d) => d.group === 'fragment', 'Left by the Royal Guard in the Soul King Palace.'],
-  ['The Almighty', (d) => d.group === 'ultimate', 'Take back all six bankai, then awaken three Schrift in one run.'],
+  ['The Almighty', (d) => d.group === 'ultimate', 'Take back five powers in one run: bankai, fragments and awakened Schrift all count.'],
 ];
 
 const ENEMY_SECTIONS: readonly [CodexSection, string][] = [
@@ -184,6 +184,8 @@ export class UI {
   private readonly lvl: HTMLElement;
   private readonly kills: HTMLElement;
   private readonly rush: HTMLElement;
+  /** Powers taken back toward The Almighty, until it awakens. */
+  private readonly almighty: HTMLElement;
   private readonly timer: HTMLElement;
   private readonly bossBar: HTMLElement;
   private readonly bossPortrait: HTMLCanvasElement;
@@ -222,7 +224,9 @@ export class UI {
     this.lvl = el('span', 'hud-level', '1');
     this.kills = el('span', 'hud-kills', '0');
     this.rush = el('span', 'hud-rush hidden', '');
-    left.append(this.lvl, this.kills, this.rush);
+    this.almighty = el('span', 'hud-almighty hidden', '');
+    this.almighty.setAttribute('aria-label', 'Powers taken back toward The Almighty');
+    left.append(this.lvl, this.kills, this.almighty, this.rush);
     this.timer = el('div', 'hud-timer', '0:00');
     const pause = button('icon-btn', '');
     pause.setAttribute('aria-label', 'Pause');
@@ -276,6 +280,9 @@ export class UI {
     if (w.buildVersion !== this.last.build) {
       this.last.build = w.buildVersion;
       this.drawTray(w);
+      const a = w.almightyProgress();
+      this.almighty.classList.toggle('hidden', a === null);
+      if (a) this.almighty.textContent = `${Math.min(a.have, a.need)}/${a.need}`;
     }
     // Low health: the edges of the screen pulse red.
     const danger = w.player.hp > 0 && w.player.hp < w.player.maxHp * 0.3;
@@ -642,7 +649,7 @@ export class UI {
     head.append(portrait);
     p.append(head, el('div', 'board-kicker', kicker), el('h2', 'board-title', r.victory ? 'Victory' : 'Fallen'));
     if (r.unlocked) p.append(el('p', 'unlock-note', `New stage unlocked: ${r.unlocked}`));
-    if (r.almighty) p.append(el('p', 'unlock-note', 'Every bankai taken back. A · The Almighty is unlocked: it awakens once three Schrift reach Lv 7.'));
+    if (r.almighty) p.append(el('p', 'unlock-note', 'Every bankai taken back: from now on A · The Almighty awakens at three powers taken back in a run, not five.'));
     if (r.starts.length > 0) p.append(el('p', 'unlock-note', `New starting Schrift in the Archives: ${r.starts.join(', ')}`));
     if (r.chapters.length > 0) p.append(el('p', 'unlock-note', `New in the Chronicle: ${r.chapters.join(', ')}`));
     if (r.dailyBonus > 0) p.append(el('p', 'unlock-note', `Daily Trial bonus: +${r.dailyBonus} gold`));
@@ -872,7 +879,7 @@ export class UI {
         list.append(
           c.resonances.includes(r.id)
             ? this.codexEntry('star', r.color, r.name, r.desc, r.letters, `${a} + ${b}`)
-            : this.codexEntry('star', r.color, null, `${a} resonates with one other Schrift once both reach Lv 7.`, '?'),
+            : this.codexEntry('star', r.color, null, `${a} resonates with one other power once both are strong enough.`, '?'),
         );
       }
     } else if (tab === 'relics') {
@@ -1047,8 +1054,8 @@ export class UI {
     }
     const n = BANKAI_IDS.filter((id) => save.taken.includes(id)).length;
     const text = almightyUnlocked(save)
-      ? 'A · The Almighty is yours: it awakens once three Schrift reach Lv 7.'
-      : `Bankai taken back ${n}/${BANKAI_IDS.length}. Take back all six to unlock A · The Almighty.`;
+      ? 'Every bankai taken back: A · The Almighty now awakens at three powers taken back in a run.'
+      : `Bankai taken back ${n}/${BANKAI_IDS.length}. A · The Almighty awakens at five powers taken back in a run; take back all six bankai and it wakes at three.`;
     box.append(medals, el('p', 'collection-text', text));
     return box;
   }
@@ -1309,12 +1316,14 @@ export class UI {
 
 const unknownCard: CardSpec = { icon: 'star', color: '#ffffff', title: '?', desc: '' };
 
-/** "Resonates with The Heat" on a card whose power has its resonance partner in your build already. */
+/** "Resonates with The Heat" on a card whose power has a resonance partner in your build already. */
 function resonanceNote(id: string, owned: ReadonlySet<string>): string | undefined {
-  const r = RESONANCES.find((q) => q.a === id || q.b === id);
-  if (!r) return undefined;
-  const partner = r.a === id ? r.b : r.a;
-  return owned.has(partner) ? `Resonates with ${POWER_BY_ID.get(partner)?.name ?? partner}` : undefined;
+  for (const r of RESONANCES) {
+    if (r.a !== id && r.b !== id) continue;
+    const partner = r.a === id ? r.b : r.a;
+    if (owned.has(partner)) return `Resonates with ${POWER_BY_ID.get(partner)?.name ?? partner}`;
+  }
+  return undefined;
 }
 
 /** Who a bankai belonged to and who stole it, for the results screen and banners. */

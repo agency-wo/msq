@@ -27,7 +27,7 @@ export interface OfferInput {
   maxPowers: number;
   maxPassives: number;
   /** Resonance pairs, and the ones already owned. */
-  resonances?: readonly { id: string; a: string; b: string }[];
+  resonances?: readonly { id: string; a: string; b: string; needA?: number; needB?: number }[];
   ownedResonances?: ReadonlySet<string>;
 }
 
@@ -81,13 +81,15 @@ export function generateOffers(input: OfferInput, rng: Rng, count = 3): Offer[] 
       pool.push({ item: { kind: 'power-up', id: def.id, to: level + 1 }, w: (def.group === 'bankai' || def.group === 'fragment' ? 5 : 3) + level });
     }
   }
-  // A resonance is offered, weighted high, once both of its powers are awakened (at their last level).
+  // A resonance is offered, weighted high, once both of its powers are strong enough (by default, at their last level).
   for (const r of input.resonances ?? []) {
     if (input.ownedResonances?.has(r.id)) continue;
     const da = defs.get(r.a);
     const db = defs.get(r.b);
     if (!da || !db) continue;
-    if (ownedPowers.get(r.a) === da.maxLevel && ownedPowers.get(r.b) === db.maxLevel) pool.push({ item: { kind: 'resonance', id: r.id }, w: 9 });
+    if ((ownedPowers.get(r.a) ?? 0) >= (r.needA ?? da.maxLevel) && (ownedPowers.get(r.b) ?? 0) >= (r.needB ?? db.maxLevel)) {
+      pool.push({ item: { kind: 'resonance', id: r.id }, w: 9 });
+    }
   }
   const ownedPassives = new Map(input.passives.map((p) => [p.id, p.level]));
   for (const def of input.passiveDefs) {

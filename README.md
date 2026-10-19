@@ -9,8 +9,10 @@ knights (Auswählen): 18 offensive powers with a Lv 7 attribute pick, plus 6
 utilities. Some fight for you: The Love charms enemies onto your side, The
 Zombie raises the infected dead, The Yourself sends out doubles. Every run,
 three random medallion bearers carry stolen bankai; beat one and its bankai is
-yours. Take back all six across your runs and **A · The Almighty** unlocks: from
-then on it awakens once three Schrift reach Lv 7, stops time every 24 s and
+yours. Every bankai, Fragment of the Soul King and awakened Schrift you take
+back in a run counts toward **A · The Almighty** (the HUD shows how many): at
+five it awakens (at three once you have taken back all six bankai across your
+runs). It stops time every 24 s and
 rewrites the future (enemy fire vanishes, everything on screen is struck down).
 All art is drawn in code: the Emperor, the Gotei 13 captains and the Royal
 Guard are chibi homages to their Bleach designs; everything else (Hollows, Soul
@@ -43,10 +45,15 @@ The **Codex** fills in as you play: every Schrift with its three awakenings,
 the resonances (with a hint for the ones still hidden), the relics, and every
 enemy and named boss with how many times you have beaten it.
 
-Two awakened Schrift can **resonate**: every attack has one partner, and once
-both are at Lv 7 a Resonance card joins the level-up board. Both powers keep
-working as before; the resonance ties them together (Firestorm: gusts carry
-The Heat's fire; Railgun: lightning down every beam; nine pairs in all).
+Powers can **resonate**: once both are strong enough a Resonance card joins
+the level-up board. Both keep working as before; the resonance ties them
+together. Every attack has one partner (Firestorm: gusts carry The Heat's fire;
+Railgun: lightning down every beam; nine pairs), and the story adds more: each
+Sternritter's Schrift with the bankai that knight stole (The Fear with
+Senbonzakura, The Iron with Hyōrinmaru, The Knowledge with Raikōben, The
+Explode with Tengen, The Overkill with Gonryō Rikyū) and the Emperor's own with
+The Almighty (Haschwalth's Balance, Royd Lloyd's Yourself, the stolen Zanka no
+Tachi). Seventeen in all.
 
 The story is told in short chapters that unlock as you play (the prologue
 before your first run, the invasion before your first Seireitei run, others

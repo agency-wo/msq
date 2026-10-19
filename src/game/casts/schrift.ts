@@ -9,6 +9,7 @@ import {
   FX_GLOW,
   FX_LIGHTNING,
   FX_METEOR,
+  FX_MISSILE,
   FX_RING,
   FX_SHOCK,
   HOLD_FEAR,
@@ -16,6 +17,7 @@ import {
   MF_CRATER,
   MF_SHATTER,
   MK_METEOR,
+  MK_MISSILE,
   MK_RAIN,
   MS_CIRCLE,
   PF_BURST,
@@ -593,6 +595,35 @@ export function castDrones(w: World, ps: PowerState, slot: number): void {
     fired++;
   }
   if (fired > 0) w.sound('shoot');
+  if (w.resonances.has('barrage') && ps.counter++ % 2 === 0) barrage(w, slot);
+}
+
+/** Raikōben Barrage: each drone calls a Raikōben missile down on the enemy nearest it. */
+function barrage(w: World, slot: number): void {
+  const rai = w.power('raikoben');
+  if (!rai) return;
+  const P = w.pr;
+  const E = w.en;
+  const prev = w.dmgSlot;
+  w.dmgSlot = w.slotOf('raikoben');
+  for (let i = 0; i < P.n; i++) {
+    if (P.kind[i] !== PK_DRONE || P.src[i] !== slot || P.life[i] <= 0) continue;
+    const n = enemiesInCircle(w, P.x[i], P.y[i], 320);
+    let j = -1;
+    let best = Infinity;
+    for (let k = 0; k < n; k++) {
+      const q = w.qout[k];
+      const d = (E.x[q] - P.x[i]) ** 2 + (E.y[q] - P.y[i]) ** 2;
+      if (d < best) {
+        best = d;
+        j = q;
+      }
+    }
+    if (j < 0) continue;
+    w.spawnMark(MK_MISSILE, MS_CIRCLE, E.x[j], E.y[j], 70, 0, 0, 0.9, rai.stats.damage * 0.5, 0);
+    w.spawnFx(FX_MISSILE, E.x[j], E.y[j] - 420, 0, 420 / 0.9, 0.9, 50, 50, 1, Math.PI / 2, 0, 0xffe2a0, LAYER_ADD);
+  }
+  w.dmgSlot = prev;
 }
 
 export function respawnDrones(w: World, slot: number): void {

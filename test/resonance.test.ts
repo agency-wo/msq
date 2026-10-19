@@ -39,8 +39,9 @@ function post(w: World, dx: number, dy: number, type = ENEMY_INDEX.brute): numbe
 }
 
 describe('resonances', () => {
-  it('pair every attack with exactly one partner', () => {
-    const used = RESONANCES.flatMap((r) => [r.a, r.b]);
+  it('the attack pairs give every attack exactly one partner', () => {
+    const attackPairs = RESONANCES.filter((r) => STARTABLE_IDS.includes(r.a) && STARTABLE_IDS.includes(r.b));
+    const used = attackPairs.flatMap((r) => [r.a, r.b]);
     expect(new Set(used).size).toBe(used.length);
     expect([...used].sort()).toEqual([...STARTABLE_IDS].sort());
   });

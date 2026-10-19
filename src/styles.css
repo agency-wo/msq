@@ -253,6 +253,23 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
+/* Toward The Almighty: an A and the count of powers taken back this run. */
+.hud-almighty {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: #ffe6a0;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+}
+
+.hud-almighty::before {
+  content: 'A ';
+  font-family: var(--serif);
+  font-size: 14px;
+  color: var(--gold);
+  text-shadow: 0 0 8px rgba(255, 203, 92, 0.8);
+}
+
 .hud-rush {
   font-size: 12px;
   font-weight: 800;
