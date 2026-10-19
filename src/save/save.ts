@@ -1,4 +1,4 @@
-import { UPGRADES } from '../data/archives';
+import { GESANG_VERSES, UPGRADES } from '../data/archives';
 import { BANKAI_IDS } from '../data/bankai';
 import { RESONANCE_BY_ID } from '../data/resonances';
 import { RELIC_BY_ID } from '../data/relics';
@@ -84,6 +84,11 @@ export interface SaveData {
   relicsOpen: string[];
   /** First-time tips already shown. */
   tips: string[];
+  /** Relics bought into the Armory, and the one every run (but the Daily Trial) starts with. */
+  armory: string[];
+  startRelic: string | null;
+  /** Verses of the Kaiser Gesang sung, 0 to GESANG_VERSES. */
+  gesang: number;
 }
 
 export interface Codex {
@@ -154,6 +159,9 @@ export function defaultSave(): SaveData {
     look: 'default',
     relicsOpen: [],
     tips: [],
+    armory: [],
+    startRelic: null,
+    gesang: 0,
   };
 }
 
@@ -248,6 +256,7 @@ export function migrate(raw: unknown): SaveData {
   const awakened = Array.isArray(r.awakened) ? STARTABLE_IDS.filter((id) => (r.awakened as unknown[]).includes(id)) : [];
   const start = typeof r.start === 'string' && awakened.includes(r.start) ? r.start : STARTING_POWER;
   const chapters = Array.isArray(r.chapters) ? (r.chapters as unknown[]).filter((id): id is string => typeof id === 'string' && CHAPTER_BY_ID.has(id)) : [];
+  const feats = migrateFeats(r);
   return {
     v: 1,
     best: { time: num(best.time, 0), level: num(best.level, 0), kills: num(best.kills, 0) },
@@ -284,9 +293,23 @@ export function migrate(raw: unknown): SaveData {
     },
     evolution: Math.max(0, Math.min(3, Math.floor(num(r.evolution, 0)))),
     codex: migrateCodex(r.codex, awakened, taken),
-    ...migrateFeats(r),
+    ...feats,
     tips: Array.isArray(r.tips) ? [...new Set(r.tips.filter((id): id is string => typeof id === 'string' && (TIP_IDS as string[]).includes(id)))] : [],
+    ...migrateArmory(r, feats.relicsOpen),
   };
+}
+
+/** The Armory and the Kaiser Gesang: only relics that exist (and are open), a start relic that is in the Armory, a whole number of verses. */
+function migrateArmory(r: Record<string, unknown>, relicsOpen: readonly string[]): Pick<SaveData, 'armory' | 'startRelic' | 'gesang'> {
+  const valid = (id: unknown): id is string => {
+    if (typeof id !== 'string') return false;
+    const relic = RELIC_BY_ID.get(id);
+    return !!relic && (!relic.locked || relicsOpen.includes(id));
+  };
+  const armory = Array.isArray(r.armory) ? [...new Set(r.armory.filter(valid))] : [];
+  const startRelic = typeof r.startRelic === 'string' && armory.includes(r.startRelic) ? r.startRelic : null;
+  const gesang = Math.min(GESANG_VERSES, Math.floor(num(r.gesang, 0)));
+  return { armory, startRelic, gesang };
 }
 
 /** Feats, looks and feat-opened relics, each checked against what exists. */

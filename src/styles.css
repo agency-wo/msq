@@ -2152,3 +2152,132 @@ button:focus-visible {
     transition: none;
   }
 }
+
+/* The Archives' tabs: gold where the Codex's are violet. */
+.archives-tabs {
+  margin: 2px 0 2px;
+}
+
+.archives-tabs .codex-tab.on {
+  background: rgba(255, 203, 92, 0.12);
+  color: var(--gold);
+  box-shadow: inset 0 -2px 0 var(--gold);
+}
+
+/* The Armory: relics bought for good, one of them equipped. */
+.armory-rarity {
+  margin-top: 2px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.armory-row.on {
+  border-color: var(--quincy-soft);
+  box-shadow: inset 0 0 0 1px rgba(89, 184, 255, 0.35);
+}
+
+.upgrade-buy.equip {
+  border-color: var(--quincy-soft);
+  background: transparent;
+  color: var(--quincy-soft);
+}
+
+.upgrade-buy.equipped {
+  border-color: var(--quincy-soft);
+  background: rgba(89, 184, 255, 0.16);
+  color: #e6f4ff;
+}
+
+/* The Kaiser Gesang: one long song, sung a verse at a time. */
+.gesang {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 14px;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--gold);
+  background: var(--panel);
+  text-align: center;
+}
+
+.gesang-lore {
+  margin: 0;
+  font-size: 13px;
+  font-style: italic;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.gesang-verse {
+  font-family: var(--serif);
+  font-size: 34px;
+  font-weight: 700;
+  color: var(--gold);
+  text-shadow: 0 0 14px rgba(255, 203, 92, 0.45);
+}
+
+.gesang-label {
+  margin-top: -8px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.gesang-bar {
+  width: 100%;
+  height: 6px;
+  overflow: hidden;
+  background: rgba(239, 234, 224, 0.12);
+}
+
+.gesang-fill {
+  width: 0;
+  height: 100%;
+  background: linear-gradient(90deg, #c9a040, var(--gold));
+  box-shadow: 0 0 8px rgba(255, 203, 92, 0.6);
+}
+
+.gesang-bonus {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.btn.gesang-buy {
+  width: 100%;
+  border-color: var(--gold);
+  background: rgba(255, 203, 92, 0.12);
+  color: var(--gold);
+}
+
+.btn.gesang-buy:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* Something in the Archives is affordable: a gold dot on its button. */
+.nav-btn.has-dot {
+  position: relative;
+}
+
+.nav-btn.has-dot::after {
+  content: '';
+  position: absolute;
+  top: 6px;
+  right: 12px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--gold);
+  box-shadow: 0 0 8px rgba(255, 203, 92, 0.9);
+}
+
+.afford-hint {
+  color: var(--gold);
+}

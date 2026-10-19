@@ -13,7 +13,20 @@ import { runGold } from './game/rewards';
 import { RUSH_TIERS, World } from './game/world';
 import { installGestureGuards, isIOS, isPhoneLandscape, isStandalone } from './platform/pwa';
 import { Renderer } from './render/renderer';
-import { buyUpgrade, goldMul, metaMods, metaRerolls, metaRevives, setStart } from './save/archives';
+import {
+  affordable,
+  buyArmory,
+  buyUpgrade,
+  buyVerse,
+  goldMul,
+  metaChoices,
+  metaMods,
+  metaRerolls,
+  metaRevives,
+  metaStartLevels,
+  setStart,
+  setStartRelic,
+} from './save/archives';
 import {
   almightyUnlocked,
   endlessOpen,
@@ -31,7 +44,7 @@ import {
 import { chaptersAfter, chaptersBefore, markChapter } from './save/story';
 import { evaluateFeats, type RunFacts } from './save/feats';
 import { resetTips, takeTip } from './save/tips';
-import { type CodexTab, damageRows, type Toggle, UI } from './ui/ui';
+import { type ArchivesTab, type CodexTab, damageRows, type Toggle, UI } from './ui/ui';
 
 type State =
   | 'title'
@@ -145,30 +158,32 @@ export class App {
       onDaily: () => this.showDaily(),
       daily: this.todaysDaily(),
       installHint: isIOS() && !isStandalone(),
+      archivesDot: affordable(this.save) !== null,
     });
   }
 
-  /** The Wandenreich Archives: buy upgrades, pick the starting Schrift. Every change is saved at once. */
-  private showArchives(relock = true): void {
+  /** The Wandenreich Archives: training, the Armory and the Kaiser Gesang. Every change is saved at once. */
+  private showArchives(relock = true, tab: ArchivesTab = 'training'): void {
     this.state = 'archives';
+    const done = (ok: boolean, sound: Parameters<Sfx['play']>[0]): void => {
+      if (!ok) return;
+      writeSave(this.save);
+      this.sfx.play(sound);
+      this.showArchives(false, tab);
+    };
     this.ui.showArchives(
       this.save,
       {
-        onBuy: (id) => {
-          if (!buyUpgrade(this.save, id)) return;
-          writeSave(this.save);
-          this.sfx.play('chest');
-          this.showArchives(false);
-        },
-        onStart: (id) => {
-          if (!setStart(this.save, id)) return;
-          writeSave(this.save);
-          this.sfx.play('blade');
-          this.showArchives(false);
-        },
+        onTab: (t) => this.showArchives(false, t),
+        onBuy: (id) => done(buyUpgrade(this.save, id), 'chest'),
+        onStart: (id) => done(setStart(this.save, id), 'blade'),
+        onArmory: (id) => done(buyArmory(this.save, id), 'chest'),
+        onEquip: (id) => done(setStartRelic(this.save, id), 'blade'),
+        onVerse: () => done(buyVerse(this.save), 'level'),
         onBack: () => this.showTitle(),
       },
       relock,
+      tab,
     );
   }
 
@@ -357,6 +372,10 @@ export class App {
       meta: metaMods(this.save),
       revives: metaRevives(this.save),
       rerolls: metaRerolls(this.save),
+      startLevels: metaStartLevels(this.save),
+      choices: metaChoices(this.save),
+      // The Armory's relic comes along on every run but the Daily Trial, which is the same for everyone.
+      relic: daily ? undefined : (this.save.startRelic ?? undefined),
       // The Daily Trial opens with Heilig Pfeil and today's Schrift; ?start= tries any attack (testing); otherwise the Archives' pick.
       start: daily ? STARTING_POWER : (p.get('start') ?? this.save.start),
       extra: daily?.schrift,
@@ -622,6 +641,7 @@ export class App {
         almighty: record.almighty,
         goldEarned: earned,
         goldTotal: this.save.gold,
+        afford: w.god ? null : affordable(this.save),
         starts: record.starts.map((id) => POWER_BY_ID.get(id)?.name ?? id),
         chapters: this.pendingChapters.map((c) => c.title),
         victory,

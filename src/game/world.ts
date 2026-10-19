@@ -169,6 +169,12 @@ export interface WorldOptions {
   bossRush?: boolean;
   /** Relics opened by feats, which may now turn up in chests. */
   relicsOpen?: string[];
+  /** A relic from the Armory the run starts with. */
+  relic?: string;
+  /** Gintō reserve: level-ups waiting as the run begins. */
+  startLevels?: number;
+  /** The Emperor's Foresight: extra cards on every level-up board. */
+  choices?: number;
   /** Daily Trial modifiers (see data/daily.ts). */
   mods?: string[];
 }
@@ -492,6 +498,11 @@ export class World {
     if (opts.extra && STARTABLE_IDS.includes(opts.extra) && !this.powers.some((ps) => ps.def.id === opts.extra)) this.addPower(opts.extra);
     this.player.revives += Math.max(0, Math.floor(opts.revives ?? 0));
     this.rerolls = Math.max(0, Math.floor(opts.rerolls ?? 0));
+    // The Armory's relic, the Gintō reserve and the Emperor's Foresight.
+    const relic = opts.relic ? RELIC_BY_ID.get(opts.relic) : undefined;
+    if (relic && (!relic.locked || this.relicsOpen.has(relic.id))) this.addRelic(relic.id);
+    this.pendingLevelUps += Math.max(0, Math.floor(opts.startLevels ?? 0));
+    this.choices = 3 + Math.max(0, Math.floor(opts.choices ?? 0));
     if (this.stress > 0) {
       for (const def of POWERS) {
         if (def.group === 'bankai') continue;
@@ -2204,8 +2215,12 @@ export class World {
         ownedResonances: this.resonances,
       },
       this.rng,
+      this.choices,
     );
   }
+
+  /** Cards on every level-up board: three, more with the Emperor's Foresight. */
+  choices = 3;
 
   relicChoices(kind: ChestKind): RelicDef[] {
     const pool = RELICS.filter((r) => !r.locked || this.relicsOpen.has(r.id));

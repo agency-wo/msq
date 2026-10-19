@@ -357,6 +357,38 @@ try {
     starts: await page.$$eval('.start-chip', (c) => c.map((x) => x.textContent)),
   });
   await shot('09c-archives-bought');
+  // The Armory: buy a relic for good and equip it; then a verse of the Kaiser Gesang.
+  await page.tap('.archives-tab.tab-armory');
+  await page.waitForSelector('.screen.archives .armory-row');
+  await wait(250);
+  const buyable = await page.$('.armory-row .upgrade-buy:not([disabled])');
+  if (buyable) {
+    await buyable.tap();
+    await wait(250);
+    const equip = await page.$('.armory-row .upgrade-buy.equip');
+    if (equip) await equip.tap();
+    await wait(250);
+  }
+  await shot('09d-armory');
+  const armory = await readSave();
+  await page.tap('.archives-tab.tab-gesang');
+  await page.waitForSelector('.screen.archives .gesang');
+  await wait(250);
+  const sing = await page.$('.gesang-buy:not([disabled])');
+  if (sing) {
+    await sing.tap();
+    await wait(250);
+  }
+  await shot('09e-gesang');
+  const sung = await readSave();
+  log('armory and gesang', {
+    relics: await page.evaluate(() => document.querySelectorAll('.armory-row').length),
+    armory: armory.armory,
+    startRelic: armory.startRelic,
+    gesang: sung.gesang,
+    gold: sung.gold,
+    verse: await page.textContent('.gesang-verse'),
+  });
   await page.tap('.screen.archives .btn.primary');
   await page.waitForSelector('.screen.title .btn.primary');
   await wait(300);

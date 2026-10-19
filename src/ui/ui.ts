@@ -1,5 +1,5 @@
 import { formatTime } from '../core/math';
-import { UPGRADES } from '../data/archives';
+import { ARMORY_COST, GESANG_VERSES, UPGRADES } from '../data/archives';
 import { BANKAI_BY_ID, BANKAI_IDS } from '../data/bankai';
 import { CODEX_ENEMIES, type CodexSection } from '../data/codex';
 import { DAILY_CLEAR_GOLD, DAILY_MOD_BY_ID, DAILY_SURVIVE_GOLD, DAILY_SURVIVE_TIME, dayLabel, type DailySpec } from '../data/daily';
@@ -14,7 +14,7 @@ import type { ChestKind, Offer } from '../game/offers';
 import type { Banner, World } from '../game/world';
 import { drawEmperor, drawSprite } from '../render/atlas';
 import { enemySpriteName } from '../render/names';
-import { nextCost, startOptions, upgradeLevel } from '../save/archives';
+import { armoryRelics, nextCost, nextVerseCost, startOptions, upgradeLevel } from '../save/archives';
 import { almightyUnlocked, endlessOpen, rushOpen, stageUnlocked, trialsOpen, type DailyRecord, type SaveData, type Settings } from '../save/save';
 import { chapterUnlocked } from '../save/story';
 import { codexFound, codexTotal, featProgress, FEATS, type LookId, LOOKS } from '../save/feats';
@@ -68,6 +68,27 @@ function button(cls: string, text: string): HTMLButtonElement {
 }
 
 const RARITY_COLOR: Readonly<Record<Rarity, string>> = { common: '#d8d2c4', rare: '#7cc4ff', legendary: '#ffcb5c' };
+
+/** The Archives' tabs. */
+export type ArchivesTab = 'training' | 'armory' | 'gesang';
+const ARCHIVES_TABS: readonly (readonly [ArchivesTab, string])[] = [
+  ['training', 'Training'],
+  ['armory', 'Armory'],
+  ['gesang', 'Kaiser Gesang'],
+];
+
+export interface ArchivesHandlers {
+  onTab: (tab: ArchivesTab) => void;
+  /** Training: buy an upgrade's next level, pick the starting Schrift. */
+  onBuy: (id: string) => void;
+  onStart: (id: string) => void;
+  /** Armory: buy a relic into it; equip one (null takes it off). */
+  onArmory: (id: string) => void;
+  onEquip: (id: string | null) => void;
+  /** Kaiser Gesang: sing the next verse. */
+  onVerse: () => void;
+  onBack: () => void;
+}
 const RARITY_LABEL: Readonly<Record<Rarity, string>> = { common: 'Common', rare: 'Rare', legendary: 'Legendary' };
 
 interface CardSpec {
@@ -129,6 +150,8 @@ export interface ResultSummary {
   /** Gold the run paid out, and the balance after it. */
   goldEarned: number;
   goldTotal: number;
+  /** Something in the Archives the balance now buys ("Licht Regen drills Lv 2"), or null. */
+  afford: string | null;
   /** Attacks awakened for the first time (names): new starting options. */
   starts: string[];
   /** Story chapters this run unlocked (titles), told next. */
@@ -422,6 +445,8 @@ export class UI {
       onDaily: () => void;
       daily: DailySpec;
       installHint: boolean;
+      /** Something in the Archives is affordable: the button carries a gold dot. */
+      archivesDot: boolean;
     },
   ): void {
     const p = this.open('title');
@@ -449,8 +474,10 @@ export class UI {
     play.addEventListener('click', this.guard(h.onPlay));
     const nav = el('nav', 'title-nav');
     nav.setAttribute('aria-label', 'More');
+    const archives = this.navButton(`archives-btn${h.archivesDot ? ' has-dot' : ''}`, 'vault', 'Archives', '#ffd27a', h.onArchives);
+    if (h.archivesDot) archives.setAttribute('aria-label', 'Archives: something to buy');
     nav.append(
-      this.navButton('archives-btn', 'vault', 'Archives', '#ffd27a', h.onArchives),
+      archives,
       this.navButton('codex-btn', 'book', 'Codex', '#d8c8ff', h.onCodex),
       this.navButton('feats-btn', 'crown', 'Feats', '#ffcb5c', h.onFeats),
       this.navButton('chronicle-btn', 'feather', 'Chronicle', '#9fdcff', h.onChronicle),
@@ -524,22 +551,41 @@ export class UI {
   }
 
   /**
-   * The Wandenreich Archives: gold balance, permanent upgrades with their next
-   * level's price, and the choice of starting Schrift. Redrawn after each
-   * purchase without the tap lock, so buying several in a row feels instant.
+   * The Wandenreich Archives, in three tabs: Training (permanent upgrades and
+   * the starting Schrift), the Armory (relics bought for good, one equipped
+   * for every run) and the Kaiser Gesang (verses without end). Redrawn after
+   * each purchase without the tap lock, so buying several in a row feels instant.
    */
-  showArchives(
-    save: SaveData,
-    h: { onBuy: (id: string) => void; onStart: (id: string) => void; onBack: () => void },
-    relock = true,
-  ): void {
+  showArchives(save: SaveData, h: ArchivesHandlers, relock = true, tab: ArchivesTab = 'training'): void {
     const p = this.open('archives');
     p.append(el('div', 'board-kicker', 'Wandenreich'), el('h2', 'board-title', 'Archives'));
     const balance = el('p', 'gold-line');
     const coin = el('canvas', 'gold-icon');
     drawIcon(coin, 'coin', '#ffd27a');
     balance.append(coin, el('span', '', `${gold(save.gold)} gold`));
-    p.append(balance, el('p', 'archives-hint', 'Every run pays gold. What you learn here stays with you.'));
+    p.append(balance);
+    const tabs = el('div', 'codex-tabs archives-tabs');
+    tabs.setAttribute('role', 'tablist');
+    for (const [id, label] of ARCHIVES_TABS) {
+      const b = button(`codex-tab archives-tab tab-${id}${tab === id ? ' on' : ''}`, label);
+      b.setAttribute('role', 'tab');
+      b.setAttribute('aria-selected', String(tab === id));
+      b.addEventListener('click', () => h.onTab(id));
+      tabs.append(b);
+    }
+    p.append(tabs);
+    if (tab === 'armory') this.archivesArmory(p, save, h);
+    else if (tab === 'gesang') this.archivesGesang(p, save, h);
+    else this.archivesTraining(p, save, h);
+    const back = button('btn primary', 'Back');
+    back.addEventListener('click', this.guard(h.onBack));
+    p.append(back);
+    if (relock) this.lock(150);
+  }
+
+  /** Training: the permanent upgrades, then the choice of starting Schrift. */
+  private archivesTraining(p: HTMLElement, save: SaveData, h: ArchivesHandlers): void {
+    p.append(el('p', 'archives-hint', 'Every run pays gold. What you learn here stays with you.'));
     const list = el('div', 'upgrades');
     for (const u of UPGRADES) {
       const level = upgradeLevel(save, u.id);
@@ -580,10 +626,82 @@ export class UI {
     }
     p.append(starts);
     if (options.length <= 1) p.append(el('p', 'archives-hint', 'Awaken an attack to Lv 7 in a run and you can start with it.'));
-    const back = button('btn primary', 'Back');
-    back.addEventListener('click', this.guard(h.onBack));
-    p.append(back);
-    if (relock) this.lock(150);
+  }
+
+  /** The Armory: buy relics for good, equip one, and every run (but the Daily Trial) starts with it. */
+  private archivesArmory(p: HTMLElement, save: SaveData, h: ArchivesHandlers): void {
+    const now = save.startRelic ? RELIC_BY_ID.get(save.startRelic) : undefined;
+    p.append(
+      el(
+        'p',
+        'archives-hint',
+        now
+          ? `Every run starts with the ${now.name}. Daily Trials start with nothing, the same for everyone.`
+          : 'Buy relics into the Armory, then equip one: every run but the Daily Trial starts with it.',
+      ),
+    );
+    const list = el('div', 'upgrades armory');
+    for (const r of armoryRelics(save)) {
+      const owned = save.armory.includes(r.id);
+      const on = save.startRelic === r.id;
+      const color = RARITY_COLOR[r.rarity];
+      const row = el('div', `upgrade armory-row${on ? ' on' : ''}`);
+      row.style.setProperty('--accent', color);
+      const icon = el('canvas', 'upgrade-icon');
+      drawIcon(icon, r.icon, color);
+      const body = el('div', 'upgrade-body');
+      body.append(el('div', 'upgrade-name', r.name), el('div', 'armory-rarity', RARITY_LABEL[r.rarity]), el('p', 'upgrade-desc', r.desc));
+      let b: HTMLButtonElement;
+      if (!owned) {
+        const cost = ARMORY_COST[r.rarity];
+        b = button('upgrade-buy', gold(cost));
+        b.setAttribute('aria-label', `Buy the ${r.name} into the Armory for ${cost} gold`);
+        if (save.gold < cost) {
+          b.disabled = true;
+          b.classList.add('poor');
+        } else {
+          b.addEventListener('click', this.guard(() => h.onArmory(r.id)));
+        }
+      } else {
+        b = button(`upgrade-buy ${on ? 'equipped' : 'equip'}`, on ? 'Equipped' : 'Equip');
+        b.setAttribute('aria-pressed', String(on));
+        b.setAttribute('aria-label', on ? `${r.name}: equipped, tap to take it off` : `Equip the ${r.name}`);
+        b.addEventListener('click', this.guard(() => h.onEquip(on ? null : r.id)));
+      }
+      row.append(icon, body, b);
+      list.append(row);
+    }
+    p.append(list);
+  }
+
+  /** The Kaiser Gesang: a hundred verses, each dearer than the last, each a little more strength in every run. */
+  private archivesGesang(p: HTMLElement, save: SaveData, h: ArchivesHandlers): void {
+    const box = el('div', 'gesang');
+    const bar = el('div', 'gesang-bar');
+    const fill = el('div', 'gesang-fill');
+    fill.style.width = `${(save.gesang / GESANG_VERSES) * 100}%`;
+    bar.append(fill);
+    const cost = nextVerseCost(save);
+    const sing = button('btn gesang-buy', cost === null ? 'Every verse is sung' : `Sing verse ${save.gesang + 1} · ${gold(cost)} gold`);
+    if (cost === null || save.gold < cost) {
+      sing.disabled = true;
+      sing.classList.add('poor');
+    } else {
+      sing.addEventListener('click', this.guard(h.onVerse));
+    }
+    box.append(
+      el(
+        'p',
+        'gesang-lore',
+        'The Kaiser Gesang foretold the sealed Emperor’s return: his heartbeat first, then his mind, then his power. Every verse you sing makes every run a little stronger.',
+      ),
+      el('div', 'gesang-verse', `${save.gesang} / ${GESANG_VERSES}`),
+      el('div', 'gesang-label', 'Verses sung'),
+      bar,
+      el('p', 'gesang-bonus', save.gesang > 0 ? `Every run: +${save.gesang}% damage and +${save.gesang}% health.` : 'Each verse: +1% damage and +1% health in every run.'),
+      sing,
+    );
+    p.append(box);
   }
 
   showAttributes(def: PowerDef, onPick: (attr: string) => void): void {
@@ -686,6 +804,7 @@ export class UI {
       line.append(coin, el('span', '', `+${gold(r.goldEarned)} gold · ${gold(r.goldTotal)} to spend in the Archives`));
       p.append(line);
     }
+    if (r.afford) p.append(el('p', 'archives-hint afford-hint', `Enough gold for ${r.afford}.`));
     if (r.damage.length > 0) p.append(el('h3', 'section-title', 'Damage'), this.damageList(r.damage));
     if (r.powers.length > 0) {
       const build = el('div', 'build');

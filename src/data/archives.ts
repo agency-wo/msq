@@ -1,12 +1,14 @@
 import type { StatMods } from '../game/stats';
+import type { Rarity } from './relics';
 
 /**
  * The Wandenreich Archives: permanent upgrades bought with the gold every run
  * pays out. Stat upgrades add their perLevel mods once per level owned; the
- * three special ones are read by the save helpers (revives, rerolls, gold).
+ * special ones are read by the save helpers (revives, rerolls, gold, level-ups
+ * waiting at the start, extra cards on every board).
  */
 
-export type UpgradeSpecial = 'revive' | 'reroll' | 'gold';
+export type UpgradeSpecial = 'revive' | 'reroll' | 'gold' | 'start' | 'choices';
 
 export interface UpgradeDef {
   id: string;
@@ -20,7 +22,7 @@ export interface UpgradeDef {
   costs: readonly number[];
   perLevel?: StatMods;
   special?: UpgradeSpecial;
-  /** Special upgrades: how much one level adds (a revive, a reroll, +10% gold). */
+  /** Special upgrades: how much one level adds (a revive, a reroll, +10% gold, a level-up, a card). */
   amount?: number;
 }
 
@@ -88,6 +90,26 @@ export const UPGRADES: readonly UpgradeDef[] = [
     perLevel: { xpGain: 0.04 },
   },
   {
+    id: 'lichtregen',
+    name: 'Licht Regen drills',
+    per: '+5% power size',
+    desc: 'Arrows rain down wider: every power covers more ground.',
+    icon: 'circles',
+    color: '#bfe6ff',
+    costs: [300, 600, 1000],
+    perLevel: { size: 0.05 },
+  },
+  {
+    id: 'seele',
+    name: 'Seele Schneider drills',
+    per: '+2% critical chance',
+    desc: 'A blade of humming reishi finds the gap in any guard.',
+    icon: 'blade',
+    color: '#9fe8ff',
+    costs: [250, 500, 900],
+    perLevel: { critChance: 0.02 },
+  },
+  {
     id: 'treasury',
     name: 'Treasury',
     per: '+10% gold',
@@ -120,6 +142,49 @@ export const UPGRADES: readonly UpgradeDef[] = [
     special: 'reroll',
     amount: 1,
   },
+  {
+    id: 'ginto',
+    name: 'Gintō reserve',
+    per: '+1 level-up as the run begins',
+    desc: 'Silver tubes filled with reishi before you set out: choose a power before the first enemy arrives.',
+    icon: 'tube',
+    color: '#d8e2f0',
+    costs: [800, 1600],
+    special: 'start',
+    amount: 1,
+  },
+  {
+    id: 'foresight',
+    name: 'The Emperor’s Foresight',
+    per: '+1 card on every level-up',
+    desc: 'See one more future each time you choose what to take back.',
+    icon: 'eye',
+    color: '#ffe6a0',
+    costs: [3500],
+    special: 'choices',
+    amount: 1,
+  },
 ];
 
 export const UPGRADE_BY_ID: ReadonlyMap<string, UpgradeDef> = new Map(UPGRADES.map((u) => [u.id, u]));
+
+/**
+ * The Armory: relics bought into it for good. One of them can be equipped,
+ * and every run (except the Daily Trial) starts with it. Priced by rarity.
+ */
+export const ARMORY_COST: Readonly<Record<Rarity, number>> = { common: 400, rare: 800, legendary: 1200 };
+
+/**
+ * The Kaiser Gesang, the song that foretold the sealed Emperor's return: his
+ * heartbeat first, then his mind, then his power. Its verses are bought one
+ * after another, each dearer than the last, and each makes every run a little
+ * stronger. There are a hundred.
+ */
+export const GESANG_VERSES = 100;
+/** What each verse adds: +1% damage and +1% max health. */
+export const GESANG_PER: Readonly<{ dmg: number; maxHp: number }> = { dmg: 0.01, maxHp: 0.01 };
+
+/** The price of the next verse when `sung` verses are already sung, or null once all are. */
+export function verseCost(sung: number): number | null {
+  return sung >= GESANG_VERSES ? null : 400 + 100 * sung;
+}

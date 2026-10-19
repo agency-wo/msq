@@ -1,5 +1,6 @@
-import { UPGRADE_BY_ID, UPGRADES, type UpgradeSpecial } from '../data/archives';
+import { ARMORY_COST, GESANG_PER, UPGRADE_BY_ID, UPGRADES, verseCost, type UpgradeSpecial } from '../data/archives';
 import { STARTABLE_IDS, STARTING_POWER } from '../data/powers';
+import { RELIC_BY_ID, RELICS, type RelicDef } from '../data/relics';
 import { scaleMods, type StatMods } from '../game/stats';
 import type { SaveData } from './save';
 
@@ -26,7 +27,7 @@ export function buyUpgrade(save: SaveData, id: string): boolean {
   return true;
 }
 
-/** Every stat upgrade owned, summed into one set of mods for the run. */
+/** Every stat upgrade owned and every verse of the Kaiser Gesang, summed into one set of mods for the run. */
 export function metaMods(save: SaveData): StatMods {
   const out: StatMods = {};
   for (const u of UPGRADES) {
@@ -34,6 +35,10 @@ export function metaMods(save: SaveData): StatMods {
     if (level === 0 || !u.perLevel) continue;
     const m = scaleMods(u.perLevel, level);
     for (const key of Object.keys(m) as (keyof StatMods)[]) out[key] = (out[key] ?? 0) + (m[key] ?? 0);
+  }
+  if (save.gesang > 0) {
+    out.dmg = (out.dmg ?? 0) + GESANG_PER.dmg * save.gesang;
+    out.maxHp = (out.maxHp ?? 0) + GESANG_PER.maxHp * save.gesang;
   }
   return out;
 }
@@ -55,6 +60,82 @@ export function metaRerolls(save: SaveData): number {
 /** Treasury: multiplier on the gold a run pays out. */
 export function goldMul(save: SaveData): number {
   return 1 + special(save, 'gold');
+}
+
+/** Gintō reserve: level-ups waiting as a run begins. */
+export function metaStartLevels(save: SaveData): number {
+  return special(save, 'start');
+}
+
+/** The Emperor's Foresight: extra cards on every level-up board. */
+export function metaChoices(save: SaveData): number {
+  return special(save, 'choices');
+}
+
+// ------------------------------------------------------------ the Armory
+
+/** What the Armory can hold: every relic, the feat relics once their feat has opened them. */
+export function armoryRelics(save: SaveData): RelicDef[] {
+  return RELICS.filter((r) => !r.locked || save.relicsOpen.includes(r.id));
+}
+
+/** The price of storing a relic in the Armory (by rarity), or null if there is no such relic. */
+export function armoryCost(id: string): number | null {
+  const r = RELIC_BY_ID.get(id);
+  return r ? ARMORY_COST[r.rarity] : null;
+}
+
+/** Buy a relic into the Armory. False if it is already there, not open yet, or unaffordable. */
+export function buyArmory(save: SaveData, id: string): boolean {
+  if (save.armory.includes(id) || !armoryRelics(save).some((r) => r.id === id)) return false;
+  const cost = armoryCost(id);
+  if (cost === null || save.gold < cost) return false;
+  save.gold -= cost;
+  save.armory.push(id);
+  return true;
+}
+
+/** Equip a relic from the Armory for every run, or null for none. */
+export function setStartRelic(save: SaveData, id: string | null): boolean {
+  if (id !== null && !save.armory.includes(id)) return false;
+  save.startRelic = id;
+  return true;
+}
+
+// ------------------------------------------------------------ the Kaiser Gesang
+
+/** The price of the next verse, or null once all hundred are sung. */
+export function nextVerseCost(save: SaveData): number | null {
+  return verseCost(save.gesang);
+}
+
+/** Sing the next verse. False once all are sung, or if it is unaffordable. */
+export function buyVerse(save: SaveData): boolean {
+  const cost = verseCost(save.gesang);
+  if (cost === null || save.gold < cost) return false;
+  save.gold -= cost;
+  save.gesang++;
+  return true;
+}
+
+/**
+ * The cheapest thing in the Archives the gold on hand can buy, as a short
+ * label ("Licht Regen drills Lv 2"), or null when nothing is affordable.
+ */
+export function affordable(save: SaveData): string | null {
+  const options: [number, string][] = [];
+  for (const u of UPGRADES) {
+    const cost = nextCost(save, u.id);
+    if (cost !== null && cost <= save.gold) options.push([cost, u.costs.length > 1 ? `${u.name} Lv ${upgradeLevel(save, u.id) + 1}` : u.name]);
+  }
+  for (const r of armoryRelics(save)) {
+    const cost = ARMORY_COST[r.rarity];
+    if (!save.armory.includes(r.id) && cost <= save.gold) options.push([cost, `the ${r.name} for the Armory`]);
+  }
+  const verse = verseCost(save.gesang);
+  if (verse !== null && verse <= save.gold) options.push([verse, `verse ${save.gesang + 1} of the Kaiser Gesang`]);
+  options.sort((a, b) => a[0] - b[0]);
+  return options[0]?.[1] ?? null;
 }
 
 /** Heilig Pfeil, plus every attack ever awakened to Lv 7, in the order the game lists them. */
