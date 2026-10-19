@@ -5,12 +5,12 @@ import { PASSIVE_BY_ID } from '../data/passives';
 import { POWER_BY_ID, type PowerDef } from '../data/powers';
 import type { Rarity, RelicDef } from '../data/relics';
 import { RESONANCE_BY_ID } from '../data/resonances';
-import { STAGES, stageById, type StageId } from '../data/stages';
+import { MAX_TRIAL, STAGES, stageById, TRIAL_NAMES, trialBlurb, type StageId } from '../data/stages';
 import { CHAPTERS, type Chapter } from '../data/story';
 import type { ChestKind, Offer } from '../game/offers';
 import type { Banner, World } from '../game/world';
 import { nextCost, startOptions, upgradeLevel } from '../save/archives';
-import { almightyUnlocked, stageUnlocked, type SaveData, type Settings } from '../save/save';
+import { almightyUnlocked, endlessOpen, stageUnlocked, trialsOpen, type SaveData, type Settings } from '../save/save';
 import { chapterUnlocked } from '../save/story';
 import { drawEmblem, drawIcon } from './icons';
 
@@ -51,6 +51,9 @@ interface CardSpec {
 
 export interface ResultSummary {
   stageName: string;
+  /** "Trial II", "Endless", or "" for a normal run. */
+  mode: string;
+  endless: boolean;
   /** A stage this run unlocked, by name. */
   unlocked: string | null;
   /** This run took back the last missing bankai: A · The Almighty is now unlocked. */
@@ -252,6 +255,7 @@ export class UI {
       onChronicle: () => void;
       onSettings: () => void;
       onStage: (id: StageId) => void;
+      onMode: () => void;
       installHint: boolean;
     },
   ): void {
@@ -275,7 +279,7 @@ export class UI {
       emblem,
       logo,
       el('p', 'tagline', 'The Emperor takes back what he gave.'),
-      this.stagePicker(save, h.onStage),
+      this.stagePicker(save, h.onStage, h.onMode),
       play,
       archives,
       row,
@@ -431,7 +435,8 @@ export class UI {
 
   showResults(r: ResultSummary, h: { onRetry: () => void; onMenu: () => void }): void {
     const p = this.open(`results ${r.victory ? 'won' : 'lost'}`);
-    const kicker = r.victory ? `${r.stageName} cleared` : r.quit ? 'Run abandoned' : `Fallen in ${r.stageName}`;
+    const where = r.mode ? `${r.stageName} · ${r.mode}` : r.stageName;
+    const kicker = r.victory ? `${where} cleared` : r.quit ? 'Run abandoned' : r.endless ? `${where}` : `Fallen in ${where}`;
     p.append(el('div', 'board-kicker', kicker), el('h2', 'board-title', r.victory ? 'Victory' : 'Fallen'));
     if (r.unlocked) p.append(el('p', 'unlock-note', `New stage unlocked: ${r.unlocked}`));
     if (r.almighty) p.append(el('p', 'unlock-note', 'Every bankai taken back. A · The Almighty is unlocked: it awakens once three Schrift reach Lv 7.'));
@@ -447,7 +452,7 @@ export class UI {
       stat('Survived', formatTime(r.time)),
       stat('Level', String(r.level)),
       stat('Kills', String(r.kills)),
-      stat(r.newBest ? 'New best' : 'Best', formatTime(r.bestTime)),
+      stat(r.newBest ? (r.endless ? 'New Endless best' : 'New best') : r.endless ? 'Endless best' : 'Best', formatTime(r.bestTime)),
     );
     p.append(stats);
     if (r.goldEarned > 0) {
@@ -529,15 +534,30 @@ export class UI {
     return box;
   }
 
-  /** One button per stage; locked ones say what opens them. The line underneath describes the pick. */
-  private stagePicker(save: SaveData, onStage: (id: StageId) => void): HTMLElement {
+  /**
+   * One button per stage; locked ones say what opens them. Under a cleared
+   * stage, a trial selector and the Endless toggle. The line underneath
+   * describes the pick.
+   */
+  private stagePicker(save: SaveData, onStage: (id: StageId) => void, onMode: () => void): HTMLElement {
     const box = el('div', 'stages');
     const row = el('div', 'stage-row');
     row.setAttribute('role', 'radiogroup');
     row.setAttribute('aria-label', 'Stage');
     const info = el('p', 'stage-info');
     const buttons: HTMLButtonElement[] = [];
+    const modes = el('div', 'mode-row');
+    const prev = button('mode-step', '‹');
+    prev.setAttribute('aria-label', 'Easier trial');
+    const label = el('span', 'mode-label', '');
+    const next = button('mode-step', '›');
+    next.setAttribute('aria-label', 'Harder trial');
+    const endless = button('mode-endless', 'Endless');
+    endless.setAttribute('role', 'switch');
+    modes.append(prev, label, next, endless);
+    let current: StageId = 'hueco';
     const select = (id: StageId): void => {
+      current = id;
       STAGES.forEach((def, k) => {
         const on = def.id === id;
         buttons[k].classList.toggle('on', on);
@@ -545,9 +565,34 @@ export class UI {
       });
       const def = stageById(id);
       const rec = save.stages[id];
+      const open = trialsOpen(save, id);
+      const trial = Math.min(save.trial, open);
+      const isEndless = save.endless && endlessOpen(save, id);
+      modes.classList.toggle('hidden', !rec.cleared);
+      label.textContent = TRIAL_NAMES[trial];
+      prev.disabled = trial <= 0;
+      next.disabled = trial >= open || trial >= MAX_TRIAL;
+      endless.classList.toggle('on', isEndless);
+      endless.setAttribute('aria-checked', String(isEndless));
       const best = rec.best > 0 ? ` Best ${formatTime(rec.best)}${rec.cleared ? ' · cleared' : ''}.` : '';
-      info.textContent = `${def.blurb}${best}`;
+      const extra = [trialBlurb(trial), isEndless ? `Endless: the night never ends.${rec.endless > 0 ? ` Best ${formatTime(rec.endless)}.` : ''}` : ''].filter(Boolean).join(' ');
+      info.textContent = extra ? extra : `${def.blurb}${best}`;
     };
+    prev.addEventListener('click', () => {
+      save.trial = Math.max(0, Math.min(save.trial, trialsOpen(save, current)) - 1);
+      onMode();
+      select(current);
+    });
+    next.addEventListener('click', () => {
+      save.trial = Math.min(trialsOpen(save, current), Math.min(save.trial, trialsOpen(save, current)) + 1);
+      onMode();
+      select(current);
+    });
+    endless.addEventListener('click', () => {
+      save.endless = !save.endless;
+      onMode();
+      select(current);
+    });
     for (const def of STAGES) {
       const open = stageUnlocked(save, def.id);
       const b = button(`stage-btn${open ? '' : ' locked'}`, '');
@@ -565,7 +610,7 @@ export class UI {
       row.append(b);
     }
     select(stageUnlocked(save, save.stage) ? save.stage : 'hueco');
-    box.append(row, info);
+    box.append(row, modes, info);
     return box;
   }
 

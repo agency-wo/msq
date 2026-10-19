@@ -285,6 +285,19 @@ try {
   });
   await shot('09-title-seireitei');
 
+  // Hueco Mundo is cleared in this save: its trials and Endless are open.
+  await page.tap('.stage-btn:nth-child(1)');
+  await wait(250);
+  await page.tap('.mode-step:nth-of-type(2)');
+  await page.tap('.mode-endless');
+  await wait(250);
+  log('modes', { label: await page.textContent('.mode-label'), endless: await page.isVisible('.mode-endless.on'), info: await page.textContent('.stage-info') });
+  await shot('09a-modes');
+  await page.tap('.mode-step:nth-of-type(1)');
+  await page.tap('.mode-endless');
+  await page.tap('.stage-btn:nth-child(2)');
+  await wait(250);
+
   // The Wandenreich Archives: buy an upgrade, pick a starting Schrift.
   await page.tap('.archives-btn');
   await page.waitForSelector('.screen.archives .upgrade');

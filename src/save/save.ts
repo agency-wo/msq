@@ -1,7 +1,7 @@
 import { UPGRADES } from '../data/archives';
 import { BANKAI_IDS } from '../data/bankai';
 import { STARTABLE_IDS, STARTING_POWER } from '../data/powers';
-import { STAGE_IDS, STAGES, type StageId } from '../data/stages';
+import { MAX_TRIAL, STAGE_IDS, STAGES, type StageId } from '../data/stages';
 import { CHAPTER_BY_ID } from '../data/story';
 
 /**
@@ -27,6 +27,10 @@ export interface StageRecord {
   /** Longest survival on this stage, seconds. */
   best: number;
   cleared: boolean;
+  /** Highest trial cleared (0 = normal), -1 before the first clear. */
+  clearTrial: number;
+  /** Longest Endless run, seconds. */
+  endless: number;
 }
 
 export interface SaveData {
@@ -49,6 +53,9 @@ export interface SaveData {
   start: string;
   /** Story chapters already told. */
   chapters: string[];
+  /** The trial and Endless picked on the title screen (checked against what each stage has opened). */
+  trial: number;
+  endless: boolean;
 }
 
 export interface RunResult {
@@ -57,6 +64,8 @@ export interface RunResult {
   bankai?: readonly string[];
   /** Powers awakened to Lv 7 during the run. */
   awakened?: readonly string[];
+  trial?: number;
+  endless?: boolean;
   time: number;
   level: number;
   kills: number;
@@ -75,14 +84,27 @@ export function defaultSave(): SaveData {
     totals: { runs: 0, kills: 0, clears: 0, gold: 0 },
     settings: { sound: true, music: true, numbers: true, shake: true },
     stage: 'hueco',
-    stages: Object.fromEntries(STAGE_IDS.map((id) => [id, { best: 0, cleared: false }])) as Record<StageId, StageRecord>,
+    stages: Object.fromEntries(STAGE_IDS.map((id) => [id, { best: 0, cleared: false, clearTrial: -1, endless: 0 }])) as Record<StageId, StageRecord>,
     taken: [],
     gold: 0,
     meta: {},
     awakened: [],
     start: STARTING_POWER,
     chapters: [],
+    trial: 0,
+    endless: false,
   };
+}
+
+/** The highest trial a stage offers: one past the highest cleared, once it has been cleared at all. */
+export function trialsOpen(save: SaveData, id: StageId): number {
+  const rec = save.stages[id];
+  return rec.cleared ? Math.min(MAX_TRIAL, Math.max(0, rec.clearTrial) + 1) : 0;
+}
+
+/** Endless opens once a stage has been cleared. */
+export function endlessOpen(save: SaveData, id: StageId): boolean {
+  return save.stages[id].cleared;
 }
 
 /** A · The Almighty: unlocked once every bankai has been taken back at least once. */
@@ -120,12 +142,15 @@ export function migrate(raw: unknown): SaveData {
   const stages = d.stages;
   for (const id of STAGE_IDS) {
     const rec = obj(stagesRaw[id]);
-    stages[id] = { best: num(rec.best, 0), cleared: bool(rec.cleared, false) };
+    const cleared = bool(rec.cleared, false);
+    const clearTrial = cleared ? Math.min(MAX_TRIAL, Math.floor(num(rec.clearTrial, 0))) : -1;
+    stages[id] = { best: num(rec.best, 0), cleared, clearTrial, endless: num(rec.endless, 0) };
   }
   // Saves from before stages existed: everything they recorded was Hueco Mundo.
   if (!('stages' in r)) {
     stages.hueco.best = num(best.time, 0);
     stages.hueco.cleared = num(totals.clears, 0) > 0;
+    stages.hueco.clearTrial = stages.hueco.cleared ? 0 : -1;
   }
   const stage = STAGE_IDS.find((id) => id === r.stage) ?? 'hueco';
   const taken = Array.isArray(r.taken) ? BANKAI_IDS.filter((id) => (r.taken as unknown[]).includes(id)) : [];
@@ -162,6 +187,8 @@ export function migrate(raw: unknown): SaveData {
     awakened,
     start,
     chapters: [...new Set(chapters)],
+    trial: Math.min(MAX_TRIAL, Math.floor(num(r.trial, 0))),
+    endless: bool(r.endless, false),
   };
 }
 
@@ -253,12 +280,15 @@ export function recordRun(save: SaveData, r: RunResult): RecordOutcome {
   if (r.cleared) save.totals.clears++;
   if (r.time > save.best.time) save.best = { time: r.time, level: r.level, kills: r.kills };
   const rec = save.stages[r.stage];
-  const newBest = r.time > rec.best;
-  if (newBest) rec.best = r.time;
+  // Endless runs keep their own record; newBest is about the record this run competes with.
+  const newBest = r.endless ? r.time > rec.endless : r.time > rec.best;
+  if (r.endless) rec.endless = Math.max(rec.endless, r.time);
+  else if (r.time > rec.best) rec.best = r.time;
   let unlocked: StageId | null = null;
   if (r.cleared && !rec.cleared) {
     rec.cleared = true;
     unlocked = STAGES.find((s) => s.unlockedBy === r.stage)?.id ?? null;
   }
+  if (r.cleared) rec.clearTrial = Math.max(rec.clearTrial, r.trial ?? 0);
   return { newBest, unlocked, almighty: !hadAlmighty && almightyUnlocked(save), starts };
 }

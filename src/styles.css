@@ -517,6 +517,52 @@ body {
   color: var(--quincy-soft);
 }
 
+.mode-row {
+  display: grid;
+  grid-template-columns: 40px 1fr 40px auto;
+  align-items: center;
+  gap: 6px;
+}
+
+.mode-step,
+.mode-endless {
+  appearance: none;
+  height: 36px;
+  border: 1px solid var(--line);
+  background: rgba(14, 16, 24, 0.85);
+  color: var(--text);
+  font: inherit;
+  font-weight: 800;
+  pointer-events: auto;
+  touch-action: manipulation;
+  cursor: pointer;
+}
+
+.mode-step:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.mode-label {
+  text-align: center;
+  font-family: var(--serif);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.mode-endless {
+  padding: 0 12px;
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.mode-endless.on {
+  border-color: #ff6a7e;
+  color: #ffb0bc;
+  box-shadow: inset 0 0 0 1px #ff6a7e;
+}
+
 .stage-info {
   margin: 0;
   min-height: 2.6em;

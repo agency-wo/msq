@@ -38,6 +38,11 @@ Runner) flees with treasure, a Reishi Storm rains mana, or an ambush closes in.
 Chain kills without being hit for **Blut Rush**: three tiers of extra damage and
 speed, shown by the counter beside your kills.
 
+Clear a stage and its **Trials** open one at a time (I to V: tougher enemies
+and bosses, harder hits, 50% more gold per tier), along with **Endless**: the
+final boss no longer ends the run, boss waves keep coming and the swarm keeps
+growing until you fall. Each stage keeps its best Endless time.
+
 Every run pays gold. Spend it in the **Wandenreich Archives** on permanent
 upgrades (attack, health, speed, pickup range, cooldowns, faster level-ups,
 more gold, a revive, level-up rerolls), and pick which awakened Schrift a run
@@ -88,7 +93,7 @@ Add these to the URL: `?debug` (FPS, CPU per frame and entity counts),
 `?bearers=raikoben,gonryo` (choose which bankai the bosses carry),
 `?stage=seireitei` (play a stage even if it is still locked), `?almighty`
 (start with A · The Almighty), `?start=xaxis` (open the run with that Schrift),
-`?res=firestorm,railgun` (own resonances).
+`?res=firestorm,railgun` (own resonances), `?trial=3` and `?endless`.
 Add `META=max` to the balance report for a player with every upgrade.
 
 ## How it is built

@@ -9,7 +9,18 @@ import { POWER_BY_ID, POWERS, STARTABLE_IDS, STARTING_POWER, upgradeCap } from '
 import { RELIC_BY_ID, RELICS, type RelicDef } from '../data/relics';
 import { RESONANCE_BY_ID, RESONANCES } from '../data/resonances';
 import { BOSS_LINES } from '../data/story';
-import { hpScale, phaseAt, spawnRate, speedScale, stageById, xpScale, type StageDef, type TimelineEvent } from '../data/stages';
+import {
+  hpScale,
+  phaseAt,
+  spawnRate,
+  speedScale,
+  stageById,
+  trialMods,
+  xpScale,
+  type StageDef,
+  type TimelineEvent,
+  type TrialMods,
+} from '../data/stages';
 import { updateMarks, updateZones } from './areas';
 import { rewrite } from './casts/almighty';
 import { burstAt } from './casts/common';
@@ -139,6 +150,10 @@ export interface WorldOptions {
   rerolls?: number;
   /** The Schrift the run opens with (an attack; anything else falls back to Heilig Pfeil). */
   start?: string;
+  /** Trial tier, 0 (normal) to 5. */
+  trial?: number;
+  /** Endless: the final boss does not end the run; the night goes on until you fall. */
+  endless?: boolean;
 }
 
 interface Warning {
@@ -166,6 +181,12 @@ const BEHAVIOR = Uint8Array.from(ENEMY_LIST, (d) => BEHAVIOR_CODE[d.behavior]);
 export class World {
   readonly rng: Rng;
   readonly stage: StageDef;
+  readonly trial: number;
+  readonly endless: boolean;
+  private readonly tm: TrialMods;
+  /** Endless: when the next wave of bosses comes, and how many have come. */
+  private endlessNext = 0;
+  private endlessWave = 0;
   readonly en = new EnemyPool(CAP.enemies);
   readonly pr = new ProjPool(CAP.projectiles);
   readonly orbs = new OrbPool(CAP.orbs);
@@ -321,6 +342,9 @@ export class World {
     this.rng = new Rng(opts.seed);
     this.metaMods = opts.meta ?? null;
     this.stage = stageById(opts.stage);
+    this.trial = Math.max(0, Math.min(5, Math.floor(opts.trial ?? 0)));
+    this.tm = trialMods(this.trial);
+    this.endless = !!opts.endless;
     this.almightyUnlocked = !!opts.almighty;
     this.stress = Math.max(0, Math.floor(opts.stress ?? 0));
     this.god = !!opts.god || this.stress > 0;
@@ -451,6 +475,7 @@ export class World {
     const events = this.stage.events;
     while (this.evCursor < events.length && this.t >= events[this.evCursor].at) this.fire(events[this.evCursor++]);
     if (this.t >= this.nextEventT) this.runEvent();
+    if (this.endless && this.endlessNext > 0 && this.t >= this.endlessNext) this.endlessWaveTick();
     if (this.victoryT > 0) {
       this.victoryT -= DT;
       if (this.victoryT <= 0) this.over = 'victory';
@@ -475,23 +500,7 @@ export class World {
         break;
       case 'bearer': {
         const id = this.bearers[ev.tier];
-        if (!id) break;
-        this.edgePoint(80);
-        // In Seireitei the bankai's own captain defends it; elsewhere a medallion bearer carries it.
-        const captain = !!this.stage.captains;
-        const i = this.spawnEnemy(captain ? ENEMY_INDEX.captain : ENEMY_INDEX.bearer, this.tx, this.ty, false, ev.hpMul);
-        if (i < 0) break;
-        this.en.variant[i] = BANKAI_IDS.indexOf(id);
-        this.bossCount++;
-        const bankaiName = POWER_BY_ID.get(id)?.name ?? id;
-        const info = BANKAI_BY_ID.get(id);
-        const quote = BOSS_LINES[`${captain ? 'captain' : 'bearer'}:${id}`];
-        this.banners.push(
-          captain && info
-            ? { kind: 'boss', title: info.owner, sub: `${info.rank} · ${bankaiName}`, quote }
-            : { kind: 'boss', title: 'Medallion Bearer', sub: `carries ${bankaiName}`, quote },
-        );
-        this.shake = Math.max(this.shake, 8);
+        if (id) this.spawnBearer(id, ev.hpMul);
         break;
       }
       case 'boss': {
@@ -526,7 +535,7 @@ export class World {
    */
   private runEvent(): void {
     const soon = this.stage.events.some((e) => (e.kind === 'bearer' || e.kind === 'boss') && e.at > this.t - 5 && e.at < this.t + 25);
-    if (this.boss.active || soon || this.t > this.stage.length - 40) {
+    if (this.boss.active || soon || (!this.endless && this.t > this.stage.length - 40)) {
       this.nextEventT = this.t + 15;
       return;
     }
@@ -572,6 +581,55 @@ export class World {
     this.sound('warn');
   }
 
+  /** A bankai boss: in Seireitei the bankai's own captain defends it; elsewhere a medallion bearer carries it. */
+  private spawnBearer(id: string, hpMul: number): void {
+    this.edgePoint(80);
+    const captain = !!this.stage.captains;
+    const i = this.spawnEnemy(captain ? ENEMY_INDEX.captain : ENEMY_INDEX.bearer, this.tx, this.ty, false, hpMul);
+    if (i < 0) return;
+    this.en.variant[i] = BANKAI_IDS.indexOf(id);
+    this.bossCount++;
+    const bankaiName = POWER_BY_ID.get(id)?.name ?? id;
+    const info = BANKAI_BY_ID.get(id);
+    const quote = BOSS_LINES[`${captain ? 'captain' : 'bearer'}:${id}`];
+    this.banners.push(
+      captain && info
+        ? { kind: 'boss', title: info.owner, sub: `${info.rank} · ${bankaiName}`, quote }
+        : { kind: 'boss', title: 'Medallion Bearer', sub: `carries ${bankaiName}`, quote },
+    );
+    this.shake = Math.max(this.shake, 8);
+  }
+
+  /**
+   * Endless: a new wave every 150 s past the stage's end. Two in three bring a
+   * bankai boss back, stronger each time; every third, the stage's own lord
+   * returns. Elites, chests and runes keep coming in between.
+   */
+  private endlessWaveTick(): void {
+    this.endlessNext = this.t + 150;
+    const k = this.endlessWave++;
+    const p = this.player;
+    if (k % 3 === 2) {
+      const last = this.stage.events.filter((e) => e.kind === 'boss' && e.final).pop();
+      if (last && last.kind === 'boss') {
+        this.edgePoint(80);
+        const i = this.spawnEnemy(ENEMY_INDEX[last.enemy], this.tx, this.ty, false, last.hpMul * Math.pow(1.3, (k + 1) / 3));
+        if (i >= 0) {
+          this.bossCount++;
+          this.banners.push({ kind: 'boss', title: ENEMY_LIST[ENEMY_INDEX[last.enemy]].name, sub: 'Returns, stronger', quote: BOSS_LINES[`boss:${last.enemy}`] });
+        }
+      }
+    } else {
+      const pool = this.stage.bearerPool ?? BANKAI_IDS;
+      this.spawnBearer(pool[this.rng.int(pool.length)], 14 * Math.pow(1.35, k));
+    }
+    this.edgePoint();
+    this.spawnEnemy(this.regularType(), this.tx, this.ty, true);
+    const a = this.rng.next() * TAU;
+    this.addPickup('chest', p.x + Math.cos(a) * 200, p.y + Math.sin(a) * 200);
+    this.sound('boss');
+  }
+
   private spawnTick(): void {
     // Nothing arrives while time stands still.
     if (this.almightyT > 0) return;
@@ -586,7 +644,10 @@ export class World {
       }
       return;
     }
-    this.spawnAcc += spawnRate(this.t) * this.stage.spawn * DT;
+    // Endless: past the stage's end the flood keeps rising.
+    const beyond = this.endless ? Math.max(0, this.t - this.stage.length) : 0;
+    const rate = Math.min(70, spawnRate(Math.min(this.t, this.stage.length)) + (beyond / 60) * 1.5);
+    this.spawnAcc += rate * this.stage.spawn * this.tm.spawn * DT;
     while (this.spawnAcc >= 1) {
       this.spawnAcc -= 1;
       if (E.n >= MAX_ENEMIES_ALIVE) {
@@ -655,10 +716,13 @@ export class World {
     const def = ENEMY_LIST[type];
     const i = E.n++;
     // Bosses get their health from the timeline alone; everything else also scales with time.
-    let hp = def.hp * hpMul * (def.boss ? 1 : hpScale(this.t) * this.stage.hp);
+    let hp = def.hp * hpMul * (def.boss ? this.tm.bossHp : hpScale(this.t) * this.stage.hp * this.tm.hp);
+    // Endless pressure: every minute past the stage's end, the swarm gets sturdier (faster and faster) and hits harder.
+    const over = this.endless ? Math.max(0, this.t - this.stage.length) / 60 : 0;
+    if (over > 0 && !def.boss) hp *= 1 + 0.15 * over + 0.02 * over * over;
     let r = def.radius;
     // Boss hits scale with the boss's tier: the first bearer is an introduction, the last boss hits hard.
-    let dmg = def.damage * (def.boss ? Math.min(1.6, 0.65 + 0.06 * hpMul) : 1);
+    let dmg = def.damage * (def.boss ? Math.min(1.6, 0.65 + 0.06 * hpMul) * this.tm.bossDamage : this.tm.damage) * (1 + 0.1 * over);
     let xp = def.xp * xpScale(this.t) * this.stage.xp;
     let flags = 0;
     if (elite) {
@@ -674,7 +738,7 @@ export class World {
     E.kx[i] = E.ky[i] = 0;
     E.hp[i] = E.maxHp[i] = hp;
     E.r[i] = r;
-    E.spd[i] = def.speed * (def.boss ? 1 : speedScale(this.t)) * this.rng.range(0.9, 1.1);
+    E.spd[i] = def.speed * (def.boss ? 1 : speedScale(this.t) * this.tm.speed) * this.rng.range(0.9, 1.1);
     E.dmg[i] = dmg;
     E.xp[i] = xp;
     E.flash[i] = 0;
@@ -1053,7 +1117,17 @@ export class World {
             : `${def.name} defeated`;
       this.messages.push({ text: fallen, kind: 'info' });
       this.bigBurst(x, y, def.color);
-      if (E.uid[i] === this.finalBossUid) this.victoryT = 2.2;
+      if (E.uid[i] === this.finalBossUid) {
+        if (this.endless) {
+          // Endless: the lord falls, and the night goes on.
+          this.bossKills++;
+          this.finalBossUid = -1;
+          this.endlessNext = this.t + 60;
+          this.banners.push({ kind: 'event', title: 'Endless', sub: 'The night goes on. How long can you last?' });
+        } else {
+          this.victoryT = 2.2;
+        }
+      }
     } else {
       if (flags & FLAG_EVENT) {
         // A sealed rift or a caught runner pays out.
@@ -1121,7 +1195,7 @@ export class World {
       if (this.ironBurst > 0) this.shockwave(140, this.ironBurst, 300);
       return;
     }
-    p.hp -= amount * this.stats.dmgTaken * (1 - this.balanceCut);
+    p.hp -= amount * this.stats.dmgTaken * (1 - this.balanceCut) * this.tm.damageTaken;
     p.iframes = PLAYER.iframes;
     this.breakChain();
     this.shake = Math.max(this.shake, 5);

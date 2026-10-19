@@ -4,7 +4,7 @@ import { Sfx } from './audio/sfx';
 import { Input } from './core/input';
 import { FixedLoop } from './core/loop';
 import { POWER_BY_ID } from './data/powers';
-import { STAGE_BY_ID, stageById, type StageId } from './data/stages';
+import { STAGE_BY_ID, stageById, TRIAL_NAMES, type StageId } from './data/stages';
 import { CHAPTER_BY_ID, type Chapter } from './data/story';
 import type { Offer } from './game/offers';
 import { runGold } from './game/rewards';
@@ -12,7 +12,18 @@ import { World } from './game/world';
 import { installGestureGuards, isIOS, isPhoneLandscape, isStandalone } from './platform/pwa';
 import { Renderer } from './render/renderer';
 import { buyUpgrade, goldMul, metaMods, metaRerolls, metaRevives, setStart } from './save/archives';
-import { almightyUnlocked, exportCode, importCode, loadSave, recordRun, stageUnlocked, writeSave, type SaveData } from './save/save';
+import {
+  almightyUnlocked,
+  endlessOpen,
+  exportCode,
+  importCode,
+  loadSave,
+  recordRun,
+  stageUnlocked,
+  trialsOpen,
+  writeSave,
+  type SaveData,
+} from './save/save';
 import { chaptersAfter, chaptersBefore, markChapter } from './save/story';
 import { UI, type Toggle } from './ui/ui';
 
@@ -38,7 +49,8 @@ function listParam(p: URLSearchParams, key: string): string[] {
  * powers, no damage), ?god, ?seed=123, ?t=600 (start at 10:00), ?play (skip title),
  * ?give=explode7,xaxis5 (own powers), ?bankai=zanka (grant a bankai), ?bearers=tengen,gonryo,
  * ?stage=seireitei (play a stage, locked or not), ?almighty (start with A · The Almighty),
- * ?start=xaxis (open the run with that Schrift, awakened or not), ?res=firestorm,railgun (own resonances).
+ * ?start=xaxis (open the run with that Schrift, awakened or not), ?res=firestorm,railgun (own resonances),
+ * ?trial=3 and ?endless (play a trial or Endless, opened or not).
  */
 export class App {
   private readonly renderer = new Renderer();
@@ -100,6 +112,7 @@ export class App {
         writeSave(this.save);
         this.renderer.setStage(id);
       },
+      onMode: () => writeSave(this.save),
       installHint: isIOS() && !isStandalone(),
     });
   }
@@ -155,6 +168,18 @@ export class App {
     });
   }
 
+  /** The trial for this run: ?trial= (testing), else the pick, capped at what the stage has opened. */
+  private runTrial(stage: StageId): number {
+    const forced = numParam(this.params, 'trial');
+    if (forced !== undefined) return Math.max(0, Math.min(5, Math.floor(forced)));
+    return Math.min(this.save.trial, trialsOpen(this.save, stage));
+  }
+
+  private runEndless(stage: StageId): boolean {
+    if (this.params.has('endless')) return true;
+    return this.save.endless && endlessOpen(this.save, stage);
+  }
+
   /** ?stage= wins (testing, even if locked); otherwise the stage picked on the title screen. */
   private runStage(): StageId {
     const forced = this.params.get('stage');
@@ -187,6 +212,8 @@ export class App {
     this.renderer.setStage(stage);
     this.world = new World({
       stage,
+      trial: this.runTrial(stage),
+      endless: this.runEndless(stage),
       seed: numParam(p, 'seed'),
       stress: numParam(p, 'stress'),
       god: p.has('god'),
@@ -377,6 +404,7 @@ export class App {
           cleared: victory,
           pickupGold: w.gold,
           goldMul: goldMul(this.save),
+          trial: w.trial,
         });
     const record = w.god
       ? { newBest: false, unlocked: null, almighty: false, starts: [] as string[] }
@@ -389,6 +417,8 @@ export class App {
           gold: earned,
           bankai: w.powers.filter((ps) => ps.def.group === 'bankai').map((ps) => ps.def.id),
           awakened: w.powers.filter((ps) => ps.attr !== null).map((ps) => ps.def.id),
+          trial: w.trial,
+          endless: w.endless,
         });
     if (!w.god) writeSave(this.save);
     this.pendingChapters = w.god ? [] : chaptersAfter(this.save);
@@ -396,6 +426,8 @@ export class App {
     this.ui.showResults(
       {
         stageName: w.stage.name,
+        mode: [w.trial > 0 ? TRIAL_NAMES[w.trial] : '', w.endless ? 'Endless' : ''].filter(Boolean).join(' · '),
+        endless: w.endless,
         unlocked: record.unlocked ? stageById(record.unlocked).name : null,
         almighty: record.almighty,
         goldEarned: earned,
@@ -407,7 +439,7 @@ export class App {
         time: w.t,
         level: w.level,
         kills: w.kills,
-        bestTime: this.save.stages[w.stage.id].best,
+        bestTime: w.endless ? this.save.stages[w.stage.id].endless : this.save.stages[w.stage.id].best,
         newBest: record.newBest,
         resonances: [...w.resonances],
         powers: w.powers.map((ps) => ({

@@ -1,4 +1,4 @@
-import { stageById } from '../data/stages';
+import { stageById, trialMods } from '../data/stages';
 
 /** What a finished run did, as far as its gold is concerned. */
 export interface RunTally {
@@ -14,6 +14,8 @@ export interface RunTally {
   pickupGold: number;
   /** Treasury bonus: 1 = none. */
   goldMul: number;
+  /** Trial tier (0 = normal): harder runs pay more. */
+  trial?: number;
 }
 
 export const GOLD_PER_MINUTE = 15;
@@ -33,5 +35,5 @@ export function runGold(r: RunTally): number {
     r.level * GOLD_PER_LEVEL +
     r.bossKills * GOLD_PER_BOSS +
     (r.cleared ? GOLD_FINAL_BOSS + GOLD_CLEAR : 0);
-  return Math.max(0, Math.round((earned * stageById(r.stage).gold + r.pickupGold) * r.goldMul));
+  return Math.max(0, Math.round((earned * stageById(r.stage).gold * trialMods(r.trial ?? 0).gold + r.pickupGold) * r.goldMul));
 }

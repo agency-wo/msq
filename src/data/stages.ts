@@ -151,6 +151,45 @@ const SEIREITEI: StageDef = {
 };
 
 export const STAGES: readonly StageDef[] = [HUECO, SEIREITEI];
+
+/**
+ * Trials: harder runs of a stage, unlocked one at a time by clearing the one
+ * before. Each tier adds to everything below, and pays more gold.
+ */
+export const MAX_TRIAL = 5;
+export const TRIAL_NAMES = ['Normal', 'Trial I', 'Trial II', 'Trial III', 'Trial IV', 'Trial V'] as const;
+
+export interface TrialMods {
+  hp: number;
+  speed: number;
+  spawn: number;
+  bossHp: number;
+  damage: number;
+  bossDamage: number;
+  damageTaken: number;
+  gold: number;
+}
+
+export function trialMods(trial: number): TrialMods {
+  const t = Math.max(0, Math.min(MAX_TRIAL, Math.floor(trial)));
+  return {
+    hp: 1 + 0.3 * t,
+    speed: 1 + 0.04 * t,
+    spawn: 1 + 0.08 * t,
+    bossHp: 1 + 0.25 * t,
+    damage: 1 + 0.05 * t,
+    bossDamage: 1 + 0.08 * t,
+    damageTaken: 1 + 0.06 * t,
+    gold: 1 + 0.5 * t,
+  };
+}
+
+/** One line for the stage picker. */
+export function trialBlurb(trial: number): string {
+  if (trial <= 0) return '';
+  const m = trialMods(trial);
+  return `${TRIAL_NAMES[trial]}: enemies +${Math.round((m.hp - 1) * 100)}% health and faster, bosses tougher, you take +${Math.round((m.damageTaken - 1) * 100)}% damage. Gold +${Math.round((m.gold - 1) * 100)}%.`;
+}
 export const STAGE_IDS: readonly StageId[] = STAGES.map((s) => s.id);
 export const STAGE_BY_ID: ReadonlyMap<string, StageDef> = new Map(STAGES.map((s) => [s.id, s]));
 
