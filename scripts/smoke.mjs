@@ -272,6 +272,12 @@ try {
     save.meta = { arterie: 2, reroll: 1 };
     save.awakened = ['xaxis', 'explode', 'fear'];
     save.evolution = 2;
+    save.codex = {
+      powers: ['heilig', 'xaxis', 'explode', 'fear', 'heat', 'wind', 'iron', 'senbonzakura', 'hyorinmaru', 'zanka', 'tengen'],
+      relics: ['crown', 'tube', 'sandals'],
+      resonances: ['firestorm'],
+      kills: { hollow: 420, hound: 80, brute: 30, volatile: 12, 'bearer:zanka': 2, 'bearer:tengen': 1, menos: 1, vasto: 1, rift: 2 },
+    };
     localStorage.setItem('msq.save', JSON.stringify(save));
   });
   await page.reload();
@@ -326,6 +332,23 @@ try {
   });
   await shot('09c-archives-bought');
   await page.tap('.screen.archives .btn.primary');
+  await page.waitForSelector('.screen.title .btn.primary');
+  await wait(300);
+
+  // The Codex: what this save has met, tab by tab.
+  await page.tap('.codex-btn');
+  await page.waitForSelector('.screen.codex .codex-entry');
+  await wait(250);
+  const codex = { found: await page.textContent('.screen.codex .archives-hint') };
+  await shot('09g-codex');
+  for (const tab of [2, 3, 4]) {
+    await page.tap(`.codex-tab:nth-child(${tab})`);
+    await wait(200);
+    codex[`tab${tab}`] = await page.$$eval('.screen.codex .codex-entry:not(.locked)', (e) => e.length);
+  }
+  await shot('09h-codex-enemies');
+  log('codex', codex);
+  await page.tap('.screen.codex .btn.primary');
   await page.waitForSelector('.screen.title .btn.primary');
   await wait(300);
 

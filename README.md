@@ -27,6 +27,10 @@ a portrait and a title. The pause and results screens break down the **damage**
 each power dealt (total, share and damage per second), and **Share** on the
 results turns the run into a picture for the phone's share sheet.
 
+The **Codex** fills in as you play: every Schrift with its three awakenings,
+the resonances (with a hint for the ones still hidden), the relics, and every
+enemy and named boss with how many times you have beaten it.
+
 Two awakened Schrift can **resonate**: every attack has one partner, and once
 both are at Lv 7 a Resonance card joins the level-up board. Both powers keep
 working as before; the resonance ties them together (Firestorm: gusts carry

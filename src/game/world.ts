@@ -5,6 +5,7 @@ import { Rng } from '../core/rng';
 import { BANKAI_BY_ID, BANKAI_IDS } from '../data/bankai';
 import { ENEMY_INDEX, ENEMY_LIST } from '../data/enemies';
 import { PASSIVE_BY_ID, PASSIVES } from '../data/passives';
+import { enemyKey } from '../data/codex';
 import { FRAGMENT_IDS } from '../data/fragments';
 import { POWER_BY_ID, POWERS, STARTABLE_IDS, STARTING_POWER, upgradeCap } from '../data/powers';
 import { RELIC_BY_ID, RELICS, type RelicDef } from '../data/relics';
@@ -360,6 +361,8 @@ export class World {
   surgeT = 0;
   /** Fragments that already dropped this run. */
   private readonly dropped = new Set<string>();
+  /** Kills this run by Codex key (named bosses each under their own). */
+  readonly killsBy = new Map<string, number>();
   /** Shrines: a pact board is waiting, the pacts made this run, and what they add up to. */
   pendingShrine = false;
   readonly pacts = new Set<string>();
@@ -1268,6 +1271,8 @@ export class World {
       return;
     }
     this.kills++;
+    const key = enemyKey(E.type[i], E.variant[i]);
+    this.killsBy.set(key, (this.killsBy.get(key) ?? 0) + 1);
     this.chainKill();
     if (E.charmT[i] > 0 && flags & FLAG_HEARTBREAK) this.queueBurst(x, y, 60 * this.stats.size, E.charmDmg[i] * 3);
     // An ink wisp splits in two as it dies.

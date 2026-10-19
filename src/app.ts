@@ -28,9 +28,9 @@ import {
   writeSave,
 } from './save/save';
 import { chaptersAfter, chaptersBefore, markChapter } from './save/story';
-import { damageRows, type Toggle, UI } from './ui/ui';
+import { type CodexTab, damageRows, type Toggle, UI } from './ui/ui';
 
-type State = 'title' | 'settings' | 'archives' | 'chronicle' | 'daily' | 'story' | 'playing' | 'paused' | 'levelup' | 'chest' | 'shrine' | 'over';
+type State = 'title' | 'settings' | 'archives' | 'chronicle' | 'codex' | 'daily' | 'story' | 'playing' | 'paused' | 'levelup' | 'chest' | 'shrine' | 'over';
 
 function numParam(p: URLSearchParams, key: string): number | undefined {
   const v = p.get(key);
@@ -112,6 +112,7 @@ export class App {
       onPlay: () => this.startRun(),
       onArchives: () => this.showArchives(),
       onChronicle: () => this.showChronicle(),
+      onCodex: () => this.showCodex('schrift'),
       onSettings: () => this.showSettings(),
       onStage: (id: StageId) => {
         this.save.stage = id;
@@ -147,6 +148,11 @@ export class App {
       },
       relock,
     );
+  }
+
+  private showCodex(tab: CodexTab): void {
+    this.state = 'codex';
+    this.ui.showCodex(this.save, tab, { onTab: (t) => this.showCodex(t), onBack: () => this.showTitle() });
   }
 
   private todaysDaily(): DailySpec {
@@ -474,6 +480,12 @@ export class App {
           daily: !!this.daily,
           evolution: w.evolution,
           bossRush: w.bossRush,
+          codex: {
+            powers: w.powers.map((ps) => ps.def.id),
+            relics: w.relics.map((r) => r.id),
+            resonances: [...w.resonances],
+            kills: Object.fromEntries(w.killsBy),
+          },
         });
     const daily = w.god || !this.daily ? null : recordDaily(this.save, this.daily.date, w.t, victory);
     if (!w.god) writeSave(this.save);

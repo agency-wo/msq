@@ -1,7 +1,10 @@
 import { UPGRADES } from '../data/archives';
 import { BANKAI_IDS } from '../data/bankai';
+import { RESONANCE_BY_ID } from '../data/resonances';
+import { RELIC_BY_ID } from '../data/relics';
+import { CODEX_ENEMY_KEYS } from '../data/codex';
 import { DAILY_CLEAR_GOLD, DAILY_SURVIVE_GOLD, DAILY_SURVIVE_TIME } from '../data/daily';
-import { STARTABLE_IDS, STARTING_POWER } from '../data/powers';
+import { POWER_BY_ID, STARTABLE_IDS, STARTING_POWER } from '../data/powers';
 import { MAX_TRIAL, STAGE_IDS, STAGES, type StageId } from '../data/stages';
 import { CHAPTER_BY_ID } from '../data/story';
 
@@ -65,6 +68,15 @@ export interface SaveData {
   daily: DailyRecord;
   /** The furthest the Emperor has evolved in any run (0 to 3), shown on the title. */
   evolution: number;
+  /** What the Codex has opened: powers held, relics found, resonances made, enemies defeated (by Codex key). */
+  codex: Codex;
+}
+
+export interface Codex {
+  powers: string[];
+  relics: string[];
+  resonances: string[];
+  kills: Record<string, number>;
 }
 
 export interface DailyRecord {
@@ -88,6 +100,8 @@ export interface RunResult {
   evolution?: number;
   /** A Boss Rush: keeps its own record (the fastest clear) and changes nothing else about the stage. */
   bossRush?: boolean;
+  /** What the run discovered, for the Codex. */
+  codex?: { powers: string[]; relics: string[]; resonances: string[]; kills: Record<string, number> };
   time: number;
   level: number;
   kills: number;
@@ -118,6 +132,8 @@ export function defaultSave(): SaveData {
     rush: false,
     daily: { date: '', best: 0, survived: false, cleared: false },
     evolution: 0,
+    // You always begin with Heilig Pfeil, so the Codex always knows it.
+    codex: { powers: [STARTING_POWER], relics: [], resonances: [], kills: {} },
   };
 }
 
@@ -246,7 +262,35 @@ export function migrate(raw: unknown): SaveData {
       cleared: bool(obj(r.daily).cleared, false),
     },
     evolution: Math.max(0, Math.min(3, Math.floor(num(r.evolution, 0)))),
+    codex: migrateCodex(r.codex, awakened, taken),
   };
+}
+
+/** The Codex, checked entry by entry. Saves from before it existed open what they already awakened and took back. */
+function migrateCodex(raw: unknown, awakened: readonly string[], taken: readonly string[]): Codex {
+  const c = obj(raw);
+  const list = (v: unknown, valid: (id: string) => boolean): string[] =>
+    Array.isArray(v) ? [...new Set(v.filter((id): id is string => typeof id === 'string' && valid(id)))] : [];
+  const kills: Record<string, number> = {};
+  for (const [key, n] of Object.entries(obj(c.kills))) {
+    if (CODEX_ENEMY_KEYS.has(key) && typeof n === 'number' && Number.isFinite(n) && n > 0) kills[key] = Math.floor(n);
+  }
+  const powers = raw !== undefined ? list(c.powers, (id) => POWER_BY_ID.has(id)) : [STARTING_POWER, ...awakened, ...taken];
+  return {
+    powers: [...new Set(powers)],
+    relics: list(c.relics, (id) => RELIC_BY_ID.has(id)),
+    resonances: list(c.resonances, (id) => RESONANCE_BY_ID.has(id)),
+    kills,
+  };
+}
+
+/** Fold a run's discoveries into the Codex. */
+function recordCodex(save: SaveData, found: NonNullable<RunResult['codex']>): void {
+  const c = save.codex;
+  for (const id of found.powers) if (POWER_BY_ID.has(id) && !c.powers.includes(id)) c.powers.push(id);
+  for (const id of found.relics) if (RELIC_BY_ID.has(id) && !c.relics.includes(id)) c.relics.push(id);
+  for (const id of found.resonances) if (RESONANCE_BY_ID.has(id) && !c.resonances.includes(id)) c.resonances.push(id);
+  for (const [key, n] of Object.entries(found.kills)) if (CODEX_ENEMY_KEYS.has(key) && n > 0) c.kills[key] = (c.kills[key] ?? 0) + n;
 }
 
 function defaultStorage(): Storage | null {
@@ -335,6 +379,7 @@ export function recordRun(save: SaveData, r: RunResult): RecordOutcome {
   save.totals.gold += r.gold;
   save.gold += r.gold;
   save.evolution = Math.max(save.evolution, Math.min(3, r.evolution ?? 0));
+  if (r.codex) recordCodex(save, r.codex);
   if (r.cleared) save.totals.clears++;
   if (r.time > save.best.time && !r.daily && !r.bossRush) save.best = { time: r.time, level: r.level, kills: r.kills };
   if (r.daily) return { newBest: false, unlocked: null, almighty: !hadAlmighty && almightyUnlocked(save), starts };

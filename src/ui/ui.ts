@@ -1,10 +1,11 @@
 import { formatTime } from '../core/math';
 import { UPGRADES } from '../data/archives';
 import { BANKAI_BY_ID, BANKAI_IDS } from '../data/bankai';
+import { CODEX_ENEMIES, type CodexSection } from '../data/codex';
 import { DAILY_CLEAR_GOLD, DAILY_MOD_BY_ID, DAILY_SURVIVE_GOLD, DAILY_SURVIVE_TIME, dayLabel, type DailySpec } from '../data/daily';
 import { PASSIVE_BY_ID } from '../data/passives';
-import { POWER_BY_ID, STARTING_POWER, type PowerDef } from '../data/powers';
-import type { Rarity, RelicDef } from '../data/relics';
+import { POWER_BY_ID, POWERS, STARTING_POWER, type PowerDef } from '../data/powers';
+import { RELICS, type Rarity, type RelicDef } from '../data/relics';
 import { RESONANCE_BY_ID, RESONANCES } from '../data/resonances';
 import { PACT_BY_ID, type PactDef } from '../data/shrines';
 import { MAX_TRIAL, STAGES, stageById, TRIAL_NAMES, trialBlurb, type StageId } from '../data/stages';
@@ -27,6 +28,30 @@ import { drawVista } from './vistas';
  */
 
 export type Toggle = keyof Settings;
+
+export type CodexTab = 'schrift' | 'resonances' | 'relics' | 'enemies';
+
+const CODEX_TABS: readonly [CodexTab, string][] = [
+  ['schrift', 'Schrift'],
+  ['resonances', 'Resonances'],
+  ['relics', 'Relics'],
+  ['enemies', 'Enemies'],
+];
+
+const POWER_SECTIONS: readonly [string, (d: PowerDef) => boolean, string][] = [
+  ['Schrift', (d) => d.group === 'schrift' || d.group === 'art', 'Take it from a level-up board.'],
+  ['Support', (d) => d.group === 'utility', 'Take it from a level-up board.'],
+  ['Bankai', (d) => d.group === 'bankai', 'Take it back from the one who carries it.'],
+  ['Fragments of the Soul King', (d) => d.group === 'fragment', 'Left by the Royal Guard in the Soul King Palace.'],
+  ['The Almighty', (d) => d.group === 'ultimate', 'Take back all six bankai, then awaken three Schrift in one run.'],
+];
+
+const ENEMY_SECTIONS: readonly [CodexSection, string][] = [
+  ['hueco', 'Hueco Mundo'],
+  ['seireitei', 'Seireitei'],
+  ['palace', 'Soul King Palace'],
+  ['events', 'Events'],
+];
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls?: string, text?: string): HTMLElementTagNameMap[K] {
   const e = document.createElement(tag);
@@ -363,6 +388,7 @@ export class UI {
       onPlay: () => void;
       onArchives: () => void;
       onChronicle: () => void;
+      onCodex: () => void;
       onSettings: () => void;
       onStage: (id: StageId) => void;
       onMode: () => void;
@@ -394,6 +420,7 @@ export class UI {
     nav.setAttribute('aria-label', 'More');
     nav.append(
       this.navButton('archives-btn', 'vault', 'Archives', '#ffd27a', h.onArchives),
+      this.navButton('codex-btn', 'book', 'Codex', '#d8c8ff', h.onCodex),
       this.navButton('chronicle-btn', 'feather', 'Chronicle', '#9fdcff', h.onChronicle),
       this.navButton('settings-btn', 'gear', 'Settings', '#c9cbd4', h.onSettings),
     );
@@ -757,6 +784,101 @@ export class UI {
     done.addEventListener('click', this.guard(onDone));
     p.append(body, done);
     this.lock(600);
+  }
+
+  /**
+   * The Codex: every Schrift and its awakenings, the resonances, the relics and
+   * every enemy, opened as you meet them. Unknown entries are silhouettes with
+   * a hint of where to look.
+   */
+  showCodex(save: SaveData, tab: CodexTab, h: { onTab: (t: CodexTab) => void; onBack: () => void }): void {
+    const p = this.open('codex');
+    const c = save.codex;
+    const powers = POWERS.filter((d) => POWER_SECTIONS.some(([, test]) => test(d)));
+    const found =
+      powers.filter((d) => c.powers.includes(d.id)).length +
+      RESONANCES.filter((r) => c.resonances.includes(r.id)).length +
+      RELICS.filter((r) => c.relics.includes(r.id)).length +
+      CODEX_ENEMIES.filter((e) => (c.kills[e.key] ?? 0) > 0).length;
+    const total = powers.length + RESONANCES.length + RELICS.length + CODEX_ENEMIES.length;
+    p.append(el('div', 'board-kicker', 'The Emperor’s'), el('h2', 'board-title', 'Codex'), el('p', 'archives-hint', `Discovered ${found} of ${total}.`));
+    const tabs = el('div', 'codex-tabs');
+    tabs.setAttribute('role', 'tablist');
+    for (const [id, label] of CODEX_TABS) {
+      const b = button(`codex-tab${id === tab ? ' on' : ''}`, label);
+      b.setAttribute('role', 'tab');
+      b.setAttribute('aria-selected', String(id === tab));
+      b.addEventListener('click', () => h.onTab(id));
+      tabs.append(b);
+    }
+    const list = el('div', 'codex-list');
+    if (tab === 'schrift') {
+      for (const [title, test, hint] of POWER_SECTIONS) {
+        list.append(el('h3', 'section-title', title));
+        for (const d of powers.filter(test)) {
+          if (!c.powers.includes(d.id)) {
+            list.append(this.codexEntry(d.icon, d.color, null, hint, d.letter));
+            continue;
+          }
+          const e = this.codexEntry(d.icon, d.color, d.name, d.desc, d.letter, d.credit);
+          if (d.attributes) {
+            const awaken = el('div', 'codex-awaken');
+            for (const a of d.attributes) awaken.append(el('div', '', `${a.name}: ${a.desc}`));
+            e.querySelector('.codex-body')?.append(awaken);
+          }
+          list.append(e);
+        }
+      }
+    } else if (tab === 'resonances') {
+      for (const r of RESONANCES) {
+        const a = POWER_BY_ID.get(r.a)?.name ?? r.a;
+        const b = POWER_BY_ID.get(r.b)?.name ?? r.b;
+        list.append(
+          c.resonances.includes(r.id)
+            ? this.codexEntry('star', r.color, r.name, r.desc, r.letters, `${a} + ${b}`)
+            : this.codexEntry('star', r.color, null, `${a} resonates with one other Schrift once both reach Lv 7.`, '?'),
+        );
+      }
+    } else if (tab === 'relics') {
+      for (const r of RELICS) {
+        list.append(
+          c.relics.includes(r.id)
+            ? this.codexEntry(r.icon, RARITY_COLOR[r.rarity], r.name, r.desc, undefined, RARITY_LABEL[r.rarity])
+            : this.codexEntry(r.icon, RARITY_COLOR[r.rarity], null, `A ${RARITY_LABEL[r.rarity].toLowerCase()} relic, found in chests.`),
+        );
+      }
+    } else {
+      for (const [section, title] of ENEMY_SECTIONS) {
+        list.append(el('h3', 'section-title', title));
+        for (const e of CODEX_ENEMIES.filter((x) => x.section === section)) {
+          const kills = c.kills[e.key] ?? 0;
+          const row = el('div', `codex-entry${kills > 0 ? '' : ' locked'}${e.boss ? ' boss' : ''}`);
+          const portrait = el('canvas', 'codex-portrait');
+          drawSprite(portrait, enemySpriteName(e.type, e.variant), 44);
+          const body = el('div', 'codex-body');
+          body.append(el('div', 'codex-name', kills > 0 ? e.name : '? ? ?'), el('div', 'codex-sub', kills > 0 ? `Defeated ${gold(kills)}` : 'Not yet defeated'));
+          row.append(portrait, body);
+          list.append(row);
+        }
+      }
+    }
+    const back = button('btn primary', 'Back');
+    back.addEventListener('click', this.guard(h.onBack));
+    p.append(tabs, list, back);
+    this.lock(150);
+  }
+
+  /** One Codex line: an icon, a name (or ? ? ? while unknown), a small line above the text. */
+  private codexEntry(icon: string, color: string, name: string | null, text: string, letter?: string, sub?: string): HTMLElement {
+    const row = el('div', `codex-entry${name === null ? ' locked' : ''}`);
+    const c = el('canvas', 'codex-icon');
+    drawIcon(c, icon, color, letter);
+    const body = el('div', 'codex-body');
+    body.append(el('div', 'codex-name', name ?? '? ? ?'));
+    if (sub && name !== null) body.append(el('div', 'codex-sub', sub));
+    body.append(el('p', 'codex-text', text));
+    row.append(c, body);
+    return row;
   }
 
   /** Every chapter: the told ones to reread, the rest as a hint of what unlocks them. */
