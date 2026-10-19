@@ -7,6 +7,7 @@ import { POWER_BY_ID, STARTING_POWER } from './data/powers';
 import { STAGE_BY_ID, stageById, TRIAL_NAMES, type StageId } from './data/stages';
 import { CHAPTER_BY_ID, type Chapter } from './data/story';
 import { dailyFor, dailyLine, dateKey, type DailySpec } from './data/daily';
+import type { TipId } from './data/tips';
 import type { Offer } from './game/offers';
 import { runGold } from './game/rewards';
 import { RUSH_TIERS, World } from './game/world';
@@ -29,6 +30,7 @@ import {
 } from './save/save';
 import { chaptersAfter, chaptersBefore, markChapter } from './save/story';
 import { evaluateFeats, type RunFacts } from './save/feats';
+import { resetTips, takeTip } from './save/tips';
 import { type CodexTab, damageRows, type Toggle, UI } from './ui/ui';
 
 type State =
@@ -82,6 +84,9 @@ export class App {
   private loop!: FixedLoop;
   private world: World | null = null;
   private state: State = 'title';
+  /** When the next first-time tip may show, and whether an event has happened this run. */
+  private tipUntil = 0;
+  private sawEvent = false;
   /** The Daily Trial being played, if the current run is one (Play again replays it). */
   private daily: DailySpec | null = null;
   /** Chapters a finished run unlocked, told when the player moves on from the results. */
@@ -265,7 +270,60 @@ export class App {
       onBack: () => this.showTitle(),
       onExport: () => this.exportSave(),
       onImport: () => this.importSave(),
+      onResetTips: () => {
+        resetTips(this.save);
+        writeSave(this.save);
+      },
     });
+  }
+
+  /** Testing switches skip the story and the tips. */
+  private get testing(): boolean {
+    const p = this.params;
+    return p.has('play') || p.has('stress') || p.has('god');
+  }
+
+  /** A first-time tip, or null (seen already, tips off, or a testing run). */
+  private tipOnce(id: TipId): string | null {
+    if (this.testing) return null;
+    const text = takeTip(this.save, id);
+    if (text) writeSave(this.save);
+    return text;
+  }
+
+  /** In-run tips for what is happening now, one at a time so they never pile up. */
+  private liveTips(w: World): void {
+    const now = performance.now();
+    if (now < this.tipUntil || this.testing || !this.save.settings.tips) return;
+    for (const id of LIVE_TIPS) {
+      if (this.save.tips.includes(id) || !this.tipDue(id, w)) continue;
+      const text = this.tipOnce(id);
+      if (!text) continue;
+      this.ui.tip(text);
+      this.tipUntil = now + 6500;
+      return;
+    }
+  }
+
+  private tipDue(id: TipId, w: World): boolean {
+    switch (id) {
+      case 'move':
+        return w.t > 1;
+      case 'boss':
+        return w.boss.active;
+      case 'event':
+        return this.sawEvent;
+      case 'rush':
+        return w.rushTier > 0;
+      case 'evolve':
+        return w.evolution > 0;
+      case 'fragment':
+        return w.powers.some((ps) => ps.def.group === 'fragment');
+      case 'seal':
+        return w.sealT > 0;
+      default:
+        return false;
+    }
   }
 
   private startRun(storyTold = false): void {
@@ -274,14 +332,14 @@ export class App {
     const daily = this.daily;
     const stage = daily ? daily.stage : this.runStage();
     // Story chapters that belong before this run (the prologue, the invasion); testing switches skip them.
-    const testing = p.has('play') || p.has('stress') || p.has('god');
-    const before = storyTold || testing ? [] : chaptersBefore(this.save, stage);
+    const before = storyTold || this.testing ? [] : chaptersBefore(this.save, stage);
     if (before.length > 0) {
       this.halt('story');
       this.tellChapters(before, () => this.startRun(true));
       return;
     }
     this.renderer.setStage(stage);
+    this.sawEvent = false;
     this.world = new World({
       stage,
       trial: daily ? 0 : this.runTrial(stage),
@@ -353,9 +411,12 @@ export class App {
       }
       if (w.banners.length > 0) {
         // Only the latest title card is shown; they never queue up behind each other.
-        this.ui.banner(w.banners[w.banners.length - 1]);
+        const b = w.banners[w.banners.length - 1];
+        if (b.kind === 'event') this.sawEvent = true;
+        this.ui.banner(b);
         w.banners.length = 0;
       }
+      if (this.state === 'playing') this.liveTips(w);
       // During a run (boards and pause included) the music follows the fight; results and story cards keep their own.
       const inRun = this.state === 'playing' || this.state === 'paused' || this.state === 'levelup' || this.state === 'chest' || this.state === 'shrine';
       if (inRun) this.music.play(this.runTrack(w));
@@ -397,9 +458,11 @@ export class App {
             },
           }
         : undefined;
+    const offers = w.offers();
+    const tip = this.tipOnce(offers.some((o) => o.kind === 'resonance') ? 'resonance' : offers.some((o) => o.kind === 'power-attr') ? 'awaken' : 'levelup');
     this.ui.showLevelUp(
       level,
-      w.offers(),
+      offers,
       (o: Offer) => {
         if (o.kind === 'power-attr') {
           const def = POWER_BY_ID.get(o.id);
@@ -416,6 +479,7 @@ export class App {
       },
       reroll,
       new Set(w.powers.map((ps) => ps.def.id)),
+      tip,
     );
   }
 
@@ -431,12 +495,17 @@ export class App {
     if (!w) return;
     this.halt('chest');
     const kind = w.pendingChests[0];
-    this.ui.showChest(kind, w.relicChoices(kind), (id) => {
-      if (id) w.addRelic(id);
-      else w.gold += 50;
-      w.pendingChests.shift();
-      this.continueFlow();
-    });
+    this.ui.showChest(
+      kind,
+      w.relicChoices(kind),
+      (id) => {
+        if (id) w.addRelic(id);
+        else w.gold += 50;
+        w.pendingChests.shift();
+        this.continueFlow();
+      },
+      this.tipOnce('chest'),
+    );
   }
 
   private continueFlow(): void {
@@ -453,11 +522,15 @@ export class App {
     const w = this.world;
     if (!w) return;
     this.halt('shrine');
-    this.ui.showShrine(w.shrineChoices(), (id) => {
-      w.pendingShrine = false;
-      if (id) w.takePact(id);
-      this.continueFlow();
-    });
+    this.ui.showShrine(
+      w.shrineChoices(),
+      (id) => {
+        w.pendingShrine = false;
+        if (id) w.takePact(id);
+        this.continueFlow();
+      },
+      this.tipOnce('shrine'),
+    );
   }
 
   private resume(): void {
@@ -723,6 +796,9 @@ export class App {
     });
   }
 }
+
+/** The tips that show while a run goes on, in the order they are checked. */
+const LIVE_TIPS: readonly TipId[] = ['move', 'boss', 'event', 'rush', 'evolve', 'fragment', 'seal'];
 
 /** What a finished run did, for the feats. */
 function runFacts(w: World, cleared: boolean, daily: boolean): RunFacts {

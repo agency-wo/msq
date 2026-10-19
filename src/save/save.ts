@@ -7,6 +7,7 @@ import { DAILY_CLEAR_GOLD, DAILY_SURVIVE_GOLD, DAILY_SURVIVE_TIME } from '../dat
 import { POWER_BY_ID, STARTABLE_IDS, STARTING_POWER } from '../data/powers';
 import { MAX_TRIAL, STAGE_IDS, STAGES, type StageId } from '../data/stages';
 import { CHAPTER_BY_ID } from '../data/story';
+import { TIP_IDS } from '../data/tips';
 import { FEAT_BY_ID, LOOKS, type LookId } from './feats';
 
 /**
@@ -20,6 +21,8 @@ export interface Settings {
   music: boolean;
   numbers: boolean;
   shake: boolean;
+  /** First-time tips. */
+  tips: boolean;
 }
 
 export interface Best {
@@ -79,6 +82,8 @@ export interface SaveData {
   look: LookId;
   /** Relics opened by feats, which can now turn up in chests. */
   relicsOpen: string[];
+  /** First-time tips already shown. */
+  tips: string[];
 }
 
 export interface Codex {
@@ -127,7 +132,7 @@ export function defaultSave(): SaveData {
     v: 1,
     best: { time: 0, level: 0, kills: 0 },
     totals: { runs: 0, kills: 0, clears: 0, gold: 0 },
-    settings: { sound: true, music: true, numbers: true, shake: true },
+    settings: { sound: true, music: true, numbers: true, shake: true, tips: true },
     stage: 'hueco',
     stages: Object.fromEntries(STAGE_IDS.map((id) => [id, { best: 0, cleared: false, clearTrial: -1, endless: 0, rush: 0 }])) as Record<StageId, StageRecord>,
     taken: [],
@@ -148,6 +153,7 @@ export function defaultSave(): SaveData {
     looks: ['default'],
     look: 'default',
     relicsOpen: [],
+    tips: [],
   };
 }
 
@@ -256,6 +262,7 @@ export function migrate(raw: unknown): SaveData {
       music: bool(settings.music, d.settings.music),
       numbers: bool(settings.numbers, d.settings.numbers),
       shake: bool(settings.shake, d.settings.shake),
+      tips: bool(settings.tips, d.settings.tips),
     },
     stage,
     stages,
@@ -278,6 +285,7 @@ export function migrate(raw: unknown): SaveData {
     evolution: Math.max(0, Math.min(3, Math.floor(num(r.evolution, 0)))),
     codex: migrateCodex(r.codex, awakened, taken),
     ...migrateFeats(r),
+    tips: Array.isArray(r.tips) ? [...new Set(r.tips.filter((id): id is string => typeof id === 'string' && (TIP_IDS as string[]).includes(id)))] : [],
   };
 }
 

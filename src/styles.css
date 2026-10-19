@@ -387,6 +387,41 @@ body {
   transition: transform 0.15s linear;
 }
 
+/* First-time tips: a calm line near the bottom that never takes a touch. */
+.tip-bubble {
+  position: absolute;
+  left: 50%;
+  bottom: calc(var(--safe-b) + 18%);
+  width: min(88%, 380px);
+  padding: 10px 14px;
+  border: 1px solid rgba(159, 220, 255, 0.5);
+  background: rgba(7, 8, 12, 0.88);
+  color: #e6f2ff;
+  font-size: 14px;
+  line-height: 1.35;
+  text-align: center;
+  opacity: 0;
+  transform: translate(-50%, 8px);
+  transition:
+    opacity 0.3s,
+    transform 0.3s;
+  pointer-events: none;
+}
+
+.tip-bubble.show {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+.board-tip {
+  margin: -4px 0 4px;
+  padding: 7px 10px;
+  border-left: 3px solid var(--quincy-soft);
+  background: rgba(89, 184, 255, 0.08);
+  font-size: 13px;
+  color: #d6eeff;
+}
+
 /* --------------------------------------------------------------- Toast */
 
 .toast {

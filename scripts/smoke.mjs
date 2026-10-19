@@ -167,6 +167,10 @@ try {
   await page.tap('.screen.title .btn.primary');
   await page.waitForSelector('.screen.story');
   log('prologue', { chapters: await passStory('01b-prologue') });
+  // The first run's first tip: how to move.
+  await wait(1600);
+  log('tip', { text: await page.textContent('.tip-bubble.show').catch(() => null) });
+  await shot('01c-first-tip');
   await wait(300);
   let picks = await steer(12000);
   log('early run', { ...(await stats()), picks, music: await page.evaluate(() => window.__msq.music) });

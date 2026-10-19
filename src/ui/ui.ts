@@ -195,6 +195,8 @@ export class UI {
   private readonly trayIcons = new Map<string, HTMLCanvasElement>();
   private readonly vignette: HTMLElement;
   private readonly toastEl: HTMLElement;
+  private readonly tipEl: HTMLElement;
+  private tipTimer = 0;
   private readonly bannerEl: HTMLElement;
   private readonly screen: HTMLElement;
   private readonly rotateEl: HTMLElement;
@@ -241,13 +243,15 @@ export class UI {
     this.hud.append(xp, row, this.tray, this.bossBar);
     this.toastEl = el('div', 'toast');
     this.toastEl.setAttribute('role', 'status');
+    this.tipEl = el('div', 'tip-bubble');
+    this.tipEl.setAttribute('role', 'status');
     this.bannerEl = el('div', 'banner');
     this.bannerEl.setAttribute('aria-live', 'polite');
     this.screen = el('div', 'screen hidden');
     this.rotateEl = el('div', 'rotate hidden');
     this.rotateEl.append(el('div', 'rotate-icon'), el('p', 'rotate-text', 'Turn your phone upright to play'));
     this.debugEl = el('div', 'debug hidden');
-    root.append(vignette, this.hud, this.toastEl, this.bannerEl, this.screen, this.rotateEl, this.debugEl);
+    root.append(vignette, this.hud, this.toastEl, this.tipEl, this.bannerEl, this.screen, this.rotateEl, this.debugEl);
   }
 
   // ------------------------------------------------------------- HUD
@@ -341,6 +345,16 @@ export class UI {
       },
       kind === 'boss' ? 3000 : 2200,
     );
+  }
+
+  /** A first-time tip near the bottom of the screen for a few seconds; the run goes on underneath. */
+  tip(text: string): void {
+    this.tipEl.textContent = text;
+    this.tipEl.className = 'tip-bubble show';
+    window.clearTimeout(this.tipTimer);
+    this.tipTimer = window.setTimeout(() => {
+      this.tipEl.className = 'tip-bubble';
+    }, 6000);
   }
 
   /** A title card that slides across the middle of the screen; the game keeps running. */
@@ -458,10 +472,16 @@ export class UI {
 
   showSettings(
     settings: Settings,
-    h: { onToggle: (k: Toggle) => boolean; onBack: () => void; onExport: () => void; onImport: () => void },
+    h: { onToggle: (k: Toggle) => boolean; onBack: () => void; onExport: () => void; onImport: () => void; onResetTips: () => void },
   ): void {
     const p = this.open('settings');
     p.append(el('h2', 'board-title', 'Settings'), this.toggles(settings, h.onToggle));
+    const again = button('btn small', 'Show the tips again');
+    again.addEventListener('click', () => {
+      h.onResetTips();
+      this.toast('Tips will show again');
+    });
+    p.append(again);
     const save = el('div', 'row-btns');
     const exp = button('btn small', 'Copy save code');
     exp.addEventListener('click', h.onExport);
@@ -480,9 +500,11 @@ export class UI {
     onPick: (o: Offer) => void,
     reroll?: { left: number; onReroll: () => void },
     owned: ReadonlySet<string> = new Set(),
+    tip: string | null = null,
   ): void {
     const p = this.open('board');
     p.append(el('div', 'board-kicker', 'Auswählen'), el('h2', 'board-title', `Level ${level}`));
+    if (tip) p.append(el('p', 'board-tip', tip));
     const list = el('div', 'cards');
     for (const o of offers) list.append(this.card(this.offerSpec(o, owned), () => onPick(o)));
     p.append(list);
@@ -568,12 +590,13 @@ export class UI {
     this.lock();
   }
 
-  showChest(kind: ChestKind, relics: readonly RelicDef[], onPick: (id: string | null) => void): void {
+  showChest(kind: ChestKind, relics: readonly RelicDef[], onPick: (id: string | null) => void, tip: string | null = null): void {
     const p = this.open(`board chest-${kind}`);
     p.append(
       el('div', 'board-kicker', kind === 'black' ? 'Boss reward' : 'Treasure'),
       el('h2', 'board-title', kind === 'black' ? 'Black chest' : 'Relic chest'),
     );
+    if (tip) p.append(el('p', 'board-tip', tip));
     const list = el('div', 'cards');
     if (relics.length === 0) {
       list.append(this.card({ icon: 'coin', color: '#ffd27a', title: 'Gold', desc: 'Only gold inside: +50.' }, () => onPick(null)));
@@ -705,9 +728,10 @@ export class UI {
   }
 
   /** A Quincy shrine: three pacts, each a gain at a price, or walk away. */
-  showShrine(pacts: readonly PactDef[], onPick: (id: string | null) => void): void {
+  showShrine(pacts: readonly PactDef[], onPick: (id: string | null) => void, tip: string | null = null): void {
     const p = this.open('board shrine');
     p.append(el('div', 'board-kicker', 'Quincy Shrine'), el('h2', 'board-title', 'Make a pact'));
+    if (tip) p.append(el('p', 'board-tip', tip));
     const list = el('div', 'cards');
     for (const d of pacts) {
       list.append(this.card({ icon: d.icon, color: d.color, title: d.name, desc: d.gain, cost: d.cost, tone: 'pact' }, () => onPick(d.id)));
@@ -1218,6 +1242,7 @@ export class UI {
       ['music', 'Music'],
       ['numbers', 'Damage numbers'],
       ['shake', 'Screen shake'],
+      ['tips', 'First-time tips'],
     ];
     for (const [key, label] of items) {
       const b = button('toggle', '');

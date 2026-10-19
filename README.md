@@ -34,6 +34,11 @@ each paying gold once; some open one of three new looks for the Emperor
 (Founder's Medallion: bankai arrive at Lv 2; Silbern Key: shrines offer four
 pacts; Soul King's Seal: fragments arrive a level up).
 
+New players get a one-line **tip** the first time each system shows up (moving,
+level-ups and awakenings, resonances, chests, shrines, bosses, events, Blut
+Rush, the Emperor's evolutions, fragments, Ichimonji), on the board itself or
+for a few seconds near the bottom. Settings turns them off or brings them back.
+
 The **Codex** fills in as you play: every Schrift with its three awakenings,
 the resonances (with a hint for the ones still hidden), the relics, and every
 enemy and named boss with how many times you have beaten it.
