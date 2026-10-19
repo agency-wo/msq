@@ -361,6 +361,7 @@ export class App {
         this.levelDone();
       },
       reroll,
+      new Set(w.powers.map((ps) => ps.def.id)),
     );
   }
 

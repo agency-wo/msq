@@ -74,11 +74,35 @@ body {
   display: none !important;
 }
 
-/* Ink vignette over the field. */
+/* Ink vignette over the field; it pulses red at the edges while your health is low. */
 .vignette {
   position: absolute;
   inset: 0;
   background: radial-gradient(ellipse at 50% 50%, rgba(0, 0, 0, 0) 55%, rgba(0, 0, 0, 0.55) 100%);
+}
+
+.vignette::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 50% 50%, rgba(160, 0, 24, 0) 50%, rgba(160, 0, 24, 0.55) 100%);
+  opacity: 0;
+  transition: opacity 0.4s;
+}
+
+.vignette.danger::after {
+  opacity: 1;
+  animation: danger 1.1s ease-in-out infinite;
+}
+
+@keyframes danger {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
 }
 
 /* ----------------------------------------------------------------- HUD */
@@ -90,8 +114,9 @@ body {
 }
 
 .xpbar {
-  height: 5px;
-  background: rgba(239, 234, 224, 0.1);
+  height: 7px;
+  border: 1px solid rgba(159, 220, 255, 0.22);
+  background: rgba(7, 8, 12, 0.55);
   overflow: hidden;
 }
 
@@ -120,10 +145,83 @@ body {
   text-shadow: 0 1px 2px #000;
 }
 
+/* The level as a small badge: LV over the number. */
 .hud-level {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 3px;
+  padding: 1px 7px 2px;
+  border: 1px solid rgba(159, 220, 255, 0.55);
+  background: rgba(7, 8, 12, 0.6);
   font-family: var(--serif);
   font-size: 17px;
   color: var(--bone);
+  font-variant-numeric: tabular-nums;
+}
+
+.hud-level::before {
+  content: 'LV';
+  font-family: var(--sans);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: var(--quincy-soft);
+}
+
+/* The build at a glance: one icon per power, its level in the corner. */
+.hud-tray {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  max-width: 72%;
+  margin-top: 6px;
+}
+
+.tray-item {
+  position: relative;
+  width: 26px;
+  height: 26px;
+  border: 1px solid rgba(239, 234, 224, 0.22);
+  background: rgba(7, 8, 12, 0.62);
+}
+
+.tray-icon {
+  width: 24px;
+  height: 24px;
+}
+
+.tray-lv {
+  position: absolute;
+  right: -3px;
+  bottom: -4px;
+  min-width: 12px;
+  padding: 0 2px;
+  background: var(--ink);
+  font-size: 9px;
+  font-weight: 800;
+  line-height: 12px;
+  text-align: center;
+  color: var(--bone);
+}
+
+.tray-item.awake {
+  border-color: var(--gold);
+  box-shadow: 0 0 6px rgba(255, 203, 92, 0.55);
+}
+
+.tray-item.awake .tray-lv,
+.tray-item.ultimate .tray-lv {
+  color: var(--gold);
+}
+
+.tray-item.bankai {
+  border-color: rgba(255, 203, 92, 0.75);
+  background: rgba(60, 40, 8, 0.6);
+}
+
+.tray-item.ultimate {
+  border-color: #ffffff;
+  box-shadow: 0 0 8px rgba(159, 220, 255, 0.7);
 }
 
 .hud-kills {
@@ -198,9 +296,44 @@ body {
 }
 
 .bossbar {
-  width: min(80%, 340px);
-  margin: 10px auto 0;
-  text-align: center;
+  display: grid;
+  grid-template-columns: 40px 1fr;
+  align-items: center;
+  gap: 8px;
+  width: min(86%, 360px);
+  margin: 8px auto 0;
+}
+
+.bossbar.hidden {
+  display: none;
+}
+
+.boss-portrait {
+  width: 40px;
+  height: 40px;
+  border: 1px solid rgba(255, 45, 74, 0.55);
+  background: radial-gradient(circle at 50% 40%, rgba(255, 45, 74, 0.28), rgba(7, 8, 12, 0.85) 70%);
+  object-fit: contain;
+}
+
+.boss-info {
+  min-width: 0;
+}
+
+.boss-sub {
+  margin: -2px 0 4px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #c9a2aa;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.boss-sub:empty {
+  display: none;
 }
 
 .boss-name {
@@ -218,7 +351,7 @@ body {
 }
 
 .boss-track {
-  height: 6px;
+  height: 7px;
   background: rgba(239, 234, 224, 0.1);
   overflow: hidden;
   border: 1px solid rgba(255, 45, 74, 0.35);
@@ -1174,7 +1307,7 @@ button:focus-visible {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 12px 14px 12px 18px;
+  padding: 10px 12px 10px 16px;
   border: 1px solid rgba(239, 234, 224, 0.55);
   background: var(--panel);
   color: var(--text);
@@ -1258,10 +1391,44 @@ button:focus-visible {
 }
 
 .card-desc {
-  margin: 5px 0 0;
+  margin: 4px 0 0;
   color: #c6c9d2;
-  font-size: 14px;
-  line-height: 1.35;
+  font-size: 13.5px;
+  line-height: 1.32;
+}
+
+/* Level pips on a card: lit up to the level this pick brings it to. */
+.card-pips {
+  display: flex;
+  gap: 3px;
+  margin-top: 6px;
+}
+
+.card-pips .pip {
+  width: 14px;
+  height: 4px;
+  border: 0;
+  background: rgba(239, 234, 224, 0.16);
+}
+
+.card-pips .pip.on {
+  background: var(--accent);
+  box-shadow: 0 0 6px var(--accent);
+}
+
+.card-note {
+  display: inline-block;
+  margin-top: 6px;
+  padding: 2px 7px;
+  border: 1px solid rgba(255, 203, 92, 0.6);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: var(--gold);
+}
+
+.card-note::before {
+  content: '\2726  ';
 }
 
 .card.tone-attr {
@@ -1513,7 +1680,8 @@ button:focus-visible {
   .panel,
   .banner,
   .rotate-icon,
-  .hero-portrait {
+  .hero-portrait,
+  .vignette.danger::after {
     animation: none;
     transition: none;
   }

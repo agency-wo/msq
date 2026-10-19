@@ -5,12 +5,13 @@ import { DAILY_CLEAR_GOLD, DAILY_MOD_BY_ID, DAILY_SURVIVE_GOLD, DAILY_SURVIVE_TI
 import { PASSIVE_BY_ID } from '../data/passives';
 import { POWER_BY_ID, STARTING_POWER, type PowerDef } from '../data/powers';
 import type { Rarity, RelicDef } from '../data/relics';
-import { RESONANCE_BY_ID } from '../data/resonances';
+import { RESONANCE_BY_ID, RESONANCES } from '../data/resonances';
 import { MAX_TRIAL, STAGES, stageById, TRIAL_NAMES, trialBlurb, type StageId } from '../data/stages';
 import { CHAPTERS, type Chapter } from '../data/story';
 import type { ChestKind, Offer } from '../game/offers';
 import type { Banner, World } from '../game/world';
 import { drawSprite } from '../render/atlas';
+import { enemySpriteName } from '../render/names';
 import { nextCost, startOptions, upgradeLevel } from '../save/archives';
 import { almightyUnlocked, endlessOpen, stageUnlocked, trialsOpen, type DailyRecord, type SaveData, type Settings } from '../save/save';
 import { chapterUnlocked } from '../save/story';
@@ -50,6 +51,10 @@ interface CardSpec {
   badge?: string;
   desc: string;
   tone?: Rarity | 'attr' | 'bankai' | 'resonance';
+  /** Level after picking this card, out of the most it can reach. */
+  pips?: readonly [number, number];
+  /** One extra line, such as the resonance this power is half of. */
+  note?: string;
 }
 
 export interface ResultSummary {
@@ -110,8 +115,14 @@ export class UI {
   private readonly rush: HTMLElement;
   private readonly timer: HTMLElement;
   private readonly bossBar: HTMLElement;
+  private readonly bossPortrait: HTMLCanvasElement;
   private readonly bossName: HTMLElement;
+  private readonly bossSub: HTMLElement;
   private readonly bossFill: HTMLElement;
+  private readonly tray: HTMLElement;
+  /** Tray icons, drawn once per power and reused whenever the tray is rebuilt. */
+  private readonly trayIcons = new Map<string, HTMLCanvasElement>();
+  private readonly vignette: HTMLElement;
   private readonly toastEl: HTMLElement;
   private readonly bannerEl: HTMLElement;
   private readonly screen: HTMLElement;
@@ -120,17 +131,22 @@ export class UI {
   private toastTimer = 0;
   private bannerTimer = 0;
   private unlockAt = 0;
-  private last = { level: -1, kills: -1, sec: -1, xp: -1, boss: -2, bossName: '', streak: -1, tier: -1 };
+  private last = UI.fresh();
+
+  private static fresh() {
+    return { level: -1, kills: -1, sec: -1, xp: -1, boss: -2, bossUid: -1, streak: -1, tier: -1, build: -1, danger: false };
+  }
 
   constructor(root: HTMLElement) {
     const vignette = el('div', 'vignette');
+    this.vignette = vignette;
     this.hud = el('div', 'hud hidden');
     const xp = el('div', 'xpbar');
     this.xpFill = el('div', 'xpfill');
     xp.append(this.xpFill);
     const row = el('div', 'hud-row');
     const left = el('div', 'hud-left');
-    this.lvl = el('span', 'hud-level', 'Lv 1');
+    this.lvl = el('span', 'hud-level', '1');
     this.kills = el('span', 'hud-kills', '0');
     this.rush = el('span', 'hud-rush hidden', '');
     left.append(this.lvl, this.kills, this.rush);
@@ -140,13 +156,18 @@ export class UI {
     pause.append(el('span', 'pause-glyph'));
     pause.addEventListener('click', () => this.onPause());
     row.append(left, this.timer, pause);
+    this.tray = el('div', 'hud-tray');
     this.bossBar = el('div', 'bossbar hidden');
+    this.bossPortrait = el('canvas', 'boss-portrait');
+    const bossInfo = el('div', 'boss-info');
     this.bossName = el('div', 'boss-name', '');
+    this.bossSub = el('div', 'boss-sub', '');
     const track = el('div', 'boss-track');
     this.bossFill = el('div', 'boss-fill');
     track.append(this.bossFill);
-    this.bossBar.append(this.bossName, track);
-    this.hud.append(xp, row, this.bossBar);
+    bossInfo.append(this.bossName, this.bossSub, track);
+    this.bossBar.append(this.bossPortrait, bossInfo);
+    this.hud.append(xp, row, this.tray, this.bossBar);
     this.toastEl = el('div', 'toast');
     this.toastEl.setAttribute('role', 'status');
     this.bannerEl = el('div', 'banner');
@@ -162,7 +183,8 @@ export class UI {
 
   showHud(show: boolean): void {
     this.hud.classList.toggle('hidden', !show);
-    if (show) this.last = { level: -1, kills: -1, sec: -1, xp: -1, boss: -2, bossName: '', streak: -1, tier: -1 };
+    this.last = UI.fresh();
+    this.vignette.classList.remove('danger');
   }
 
   /** Called every frame; touches the DOM only when a value actually changed. */
@@ -174,7 +196,17 @@ export class UI {
     }
     if (w.level !== this.last.level) {
       this.last.level = w.level;
-      this.lvl.textContent = `Lv ${w.level}`;
+      this.lvl.textContent = String(w.level);
+    }
+    if (w.buildVersion !== this.last.build) {
+      this.last.build = w.buildVersion;
+      this.drawTray(w);
+    }
+    // Low health: the edges of the screen pulse red.
+    const danger = w.player.hp > 0 && w.player.hp < w.player.maxHp * 0.3;
+    if (danger !== this.last.danger) {
+      this.last.danger = danger;
+      this.vignette.classList.toggle('danger', danger);
     }
     // Blut Rush: the chain counter shows from 10 kills, coloured by tier.
     const streak = w.streak >= 10 ? w.streak : 0;
@@ -199,10 +231,31 @@ export class UI {
       if (boss >= 0) this.bossFill.style.transform = `scaleX(${boss})`;
       this.last.boss = boss;
     }
-    if (w.boss.active && w.boss.name !== this.last.bossName) {
-      this.last.bossName = w.boss.name;
+    if (w.boss.active && w.boss.uid !== this.last.bossUid) {
+      this.last.bossUid = w.boss.uid;
       this.bossName.textContent = w.boss.name;
+      this.bossSub.textContent = w.boss.sub;
+      drawSprite(this.bossPortrait, enemySpriteName(w.boss.type, w.boss.variant), 40);
     }
+  }
+
+  /** The powers you hold, as small icons with their level; awakened ones ringed in gold. */
+  private drawTray(w: World): void {
+    const items: HTMLElement[] = [];
+    for (const ps of w.powers) {
+      const d = ps.def;
+      const kind = d.group === 'bankai' ? ' bankai' : d.group === 'ultimate' ? ' ultimate' : '';
+      const item = el('span', `tray-item${kind}${ps.attr ? ' awake' : ''}`);
+      let icon = this.trayIcons.get(d.id);
+      if (!icon) {
+        icon = el('canvas', 'tray-icon');
+        drawIcon(icon, d.icon, d.color, d.letter);
+        this.trayIcons.set(d.id, icon);
+      }
+      item.append(icon, el('span', 'tray-lv', d.group === 'ultimate' ? 'A' : String(ps.level)));
+      items.push(item);
+    }
+    this.tray.replaceChildren(...items);
   }
 
   toast(text: string, kind: 'boss' | 'info' = 'info'): void {
@@ -332,11 +385,17 @@ export class UI {
     this.lock(150);
   }
 
-  showLevelUp(level: number, offers: readonly Offer[], onPick: (o: Offer) => void, reroll?: { left: number; onReroll: () => void }): void {
+  showLevelUp(
+    level: number,
+    offers: readonly Offer[],
+    onPick: (o: Offer) => void,
+    reroll?: { left: number; onReroll: () => void },
+    owned: ReadonlySet<string> = new Set(),
+  ): void {
     const p = this.open('board');
     p.append(el('div', 'board-kicker', 'Auswählen'), el('h2', 'board-title', `Level ${level}`));
     const list = el('div', 'cards');
-    for (const o of offers) list.append(this.card(this.offerSpec(o), () => onPick(o)));
+    for (const o of offers) list.append(this.card(this.offerSpec(o, owned), () => onPick(o)));
     p.append(list);
     if (reroll && reroll.left > 0) {
       const b = button('btn small reroll', `Reroll · ${reroll.left} left`);
@@ -763,6 +822,14 @@ export class UI {
     head.append(titles);
     if (spec.badge) head.append(el('span', 'card-badge', spec.badge));
     body.append(head, el('p', 'card-desc', spec.desc));
+    if (spec.pips) {
+      const [lv, max] = spec.pips;
+      const pips = el('div', 'card-pips');
+      pips.setAttribute('aria-label', `Level ${lv} of ${max}`);
+      for (let k = 0; k < max; k++) pips.append(el('span', k < lv ? 'pip on' : 'pip'));
+      body.append(pips);
+    }
+    if (spec.note) body.append(el('div', 'card-note', spec.note));
     b.append(icon, body);
     b.addEventListener('click', this.guard(onPick));
     return b;
@@ -806,26 +873,37 @@ export class UI {
     return box;
   }
 
-  private offerSpec(o: Offer): CardSpec {
+  private offerSpec(o: Offer, owned: ReadonlySet<string>): CardSpec {
     switch (o.kind) {
       case 'power-new': {
         const d = POWER_BY_ID.get(o.id);
-        return d ? powerCard(d, 'New', d.desc) : unknownCard;
+        return d ? { ...powerCard(d, 'New', d.desc), pips: [1, d.maxLevel], note: resonanceNote(d.id, owned) } : unknownCard;
       }
       case 'power-up': {
         const d = POWER_BY_ID.get(o.id);
         if (!d) return unknownCard;
         const label = d.group === 'bankai' ? `Bankai ${o.to - 1} → ${o.to}` : `Lv ${o.to - 1} → ${o.to}`;
-        return powerCard(d, label, d.levels[o.to - 2]?.desc ?? d.desc);
+        return { ...powerCard(d, label, d.levels[o.to - 2]?.desc ?? d.desc), pips: [o.to, d.maxLevel], note: resonanceNote(d.id, owned) };
       }
       case 'power-attr': {
         const d = POWER_BY_ID.get(o.id);
-        return d ? powerCard(d, 'Lv 7 · Awaken', 'Pick one of three attributes that change how it works.', 'attr') : unknownCard;
+        if (!d) return unknownCard;
+        const names = (d.attributes ?? []).map((a) => a.name).join(' · ');
+        return { ...powerCard(d, 'Lv 7 · Awaken', `Choose one: ${names}.`, 'attr'), pips: [d.maxLevel, d.maxLevel], note: resonanceNote(d.id, owned) };
       }
       case 'passive': {
         const d = PASSIVE_BY_ID.get(o.id);
         return d
-          ? { icon: d.icon, color: d.color, letter: d.letter, credit: d.credit, title: d.name, badge: o.to === 1 ? 'New' : `Lv ${o.to - 1} → ${o.to}`, desc: d.desc }
+          ? {
+              icon: d.icon,
+              color: d.color,
+              letter: d.letter,
+              credit: d.credit,
+              title: d.name,
+              badge: o.to === 1 ? 'New' : `Lv ${o.to - 1} → ${o.to}`,
+              desc: d.desc,
+              pips: [o.to, d.max],
+            }
           : unknownCard;
       }
       case 'resonance': {
@@ -844,6 +922,14 @@ export class UI {
 }
 
 const unknownCard: CardSpec = { icon: 'star', color: '#ffffff', title: '?', desc: '' };
+
+/** "Resonates with The Heat" on a card whose power has its resonance partner in your build already. */
+function resonanceNote(id: string, owned: ReadonlySet<string>): string | undefined {
+  const r = RESONANCES.find((q) => q.a === id || q.b === id);
+  if (!r) return undefined;
+  const partner = r.a === id ? r.b : r.a;
+  return owned.has(partner) ? `Resonates with ${POWER_BY_ID.get(partner)?.name ?? partner}` : undefined;
+}
 
 /** Who a bankai belonged to and who stole it, for the results screen and banners. */
 export function bankaiLine(id: string): string {

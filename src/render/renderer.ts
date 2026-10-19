@@ -8,6 +8,7 @@ import { BANKAI_BY_ID, BANKAI_IDS } from '../data/bankai';
 import { ENEMY_INDEX, ENEMY_LIST } from '../data/enemies';
 import { DOUBLE_RING, doubleCount } from '../game/casts/schrift2';
 import { COMMANDER_HEAT } from '../game/hostile';
+import { enemySpriteName } from './names';
 import {
   EB_FIRE,
   EB_ICE,
@@ -149,6 +150,19 @@ interface View {
   halfH: number;
 }
 
+/** A stable pseudo-random number in [0, 1) for an integer: where each ambient mote lives. */
+function hash01(n: number): number {
+  const s = Math.sin(n * 127.1 + 311.7) * 43758.5453;
+  return s - Math.floor(s);
+}
+
+function mod(a: number, n: number): number {
+  return ((a % n) + n) % n;
+}
+
+/** Ambient motes in view at once. */
+const MOTES = 28;
+
 type LayerName =
   | 'zonesN'
   | 'zonesA'
@@ -197,6 +211,8 @@ export class Renderer {
   private eliteSprites: EnemySprite[] = [];
   /** Seireitei's captains, by bankai (Zanka no Tachi is the Captain-Commander himself). */
   private captainSprites: EnemySprite[] = [];
+  /** Drawn size against hitbox, by type: Hollows a little larger, so their masks read on a phone. */
+  private artScale: number[] = [];
   private bossAura: number[] = [];
   private grounds = new Map<string, Texture>();
   private groundId = '';
@@ -282,9 +298,9 @@ export class Renderer {
       golden: 11,
     };
     // Types drawn per variant (or per stage) fall back to one of their sprites here.
-    const NAME: Record<string, string> = { captain: 'cap_senbonzakura', golden: 'hollow' };
-    this.enemySprites = ENEMY_LIST.map((d) => sprite(NAME[d.id] ?? d.id, REF[d.id] ?? d.radius));
-    this.captainSprites = BANKAI_IDS.map((id) => (id === 'zanka' ? sprite('commander', 30) : sprite(`cap_${id}`, id === 'tengen' ? 30 : 28)));
+    this.enemySprites = ENEMY_LIST.map((d, t) => sprite(enemySpriteName(t), REF[d.id] ?? d.radius));
+    this.captainSprites = BANKAI_IDS.map((id, v) => sprite(enemySpriteName(ENEMY_INDEX.captain, v), id === 'zanka' || id === 'tengen' ? 30 : 28));
+    this.artScale = ENEMY_LIST.map((d) => (d.boss || d.shinigami || d.behavior === 'flee' || d.id === 'rift' || d.id === 'ashen' ? 1 : 1.1));
     const adjuchas = sprite('adjuchas', 24);
     const seated = sprite('seated', 24);
     this.eliteSprites = ENEMY_LIST.map((d) => (d.shinigami ? seated : adjuchas));
@@ -369,8 +385,9 @@ export class Renderer {
     this.ground.tilePosition.set(rootX, rootY);
 
     for (const layer of this.layers) layer.begin();
+    const view = { cx, cy, halfW, halfH };
+    this.drawAmbient(view, now);
     if (w) {
-      const view = { cx, cy, halfW, halfH };
       this.drawZones(w, alpha, now);
       this.drawMarks(w);
       this.drawPickups(w, now);
@@ -392,6 +409,32 @@ export class Renderer {
     }
     this.drawn = drawn;
     this.app.renderer.render(this.app.stage);
+  }
+
+  /**
+   * Motes drifting over the ground, fixed in the world so they slide past as
+   * you move: sand on the wind in Hueco Mundo, lantern embers rising in the
+   * Seireitei. A window of motes one view wide wraps around the camera.
+   */
+  private drawAmbient(v: View, now: number): void {
+    const f = this.atlas.frames;
+    const ember = this.groundId === 'seireitei';
+    const layer = ember ? this.L.auras : this.L.shadows;
+    const S = 2 * Math.max(v.halfW, v.halfH) + 80;
+    const x0 = v.cx - S / 2;
+    const y0 = v.cy - S / 2;
+    for (let k = 0; k < MOTES; k++) {
+      const a = hash01(k * 3 + 1);
+      const b = hash01(k * 3 + 2);
+      const c = hash01(k * 3 + 3);
+      const vx = ember ? (c - 0.5) * 10 : 22 + c * 26;
+      const vy = ember ? -(12 + c * 16) : 5 + c * 8;
+      const x = x0 + mod(a * 4096 + now * vx - x0, S);
+      const y = y0 + mod(b * 4096 + now * vy - y0, S);
+      const twinkle = 0.55 + 0.45 * Math.sin(now * (0.8 + a * 1.6) + k);
+      const s = (ember ? 2.2 + b * 1.8 : 2.6 + b * 2.6) / 32;
+      layer.add(f.glow, x, y, s, s, 0, ember ? 0xffa860 : 0xdfe6f5, (ember ? 0.85 : 0.45) * twinkle);
+    }
   }
 
   private drawZones(w: World, alpha: number, now: number): void {
@@ -598,7 +641,7 @@ export class Renderer {
         L.auras.add(f.glow, x, y, (r * 4.4) / 64, (r * 4.4) / 64, 0, w.stage.id === 'seireitei' ? 0xffe2a0 : 0xff2d4a, 0.45 + Math.sin(now * 5) * 0.15);
         L.auras.add(f.ring, x, y, (r * 3.4 * left) / 110 + 0.05, (r * 3.4 * left) / 110 + 0.05, 0, 0xffffff, 0.55);
       }
-      const scale = r / spr.ref / ATLAS_SCALE;
+      const scale = (r / spr.ref / ATLAS_SCALE) * this.artScale[type];
       if (elite) L.auras.add(f.ring, x, y, (r * 2.7) / 128, (r * 2.7) / 128, 0, 0xff2d4a, 0.55 + Math.sin(now * 6) * 0.2);
       if (boss) {
         const bearer = type === ENEMY_INDEX.bearer || type === ENEMY_INDEX.captain;
@@ -660,12 +703,15 @@ export class Renderer {
     const blink = p.iframes > 0 && w.vollT <= 0 && Math.floor(now * 18) % 2 === 0;
     const float = Math.sin(now * 3.2) * 1.2;
     L.player.add(justHit ? f.player_f : f.player, x, y - 4 + float, 0.5 * p.face, 0.5, 0, 0xffffff, blink ? 0.45 : 1);
+    // Health under the hero: a framed bar that flares red when it runs low.
     const sq = this.atlas.px.square.w;
-    const bw = 28;
-    const bh = 3.2;
+    const bw = 34;
+    const bh = 4;
     const frac = Math.max(0, p.hp / p.maxHp);
-    L.player.add(f.square, x - bw / 2, y + 21, bw / sq, bh / sq, 0, 0x10131c, 0.85, 0, 0.5);
+    L.player.add(f.square, x - bw / 2 - 1, y + 21, (bw + 2) / sq, (bh + 2) / sq, 0, 0xd6dcea, 0.32, 0, 0.5);
+    L.player.add(f.square, x - bw / 2, y + 21, bw / sq, bh / sq, 0, 0x10131c, 0.95, 0, 0.5);
     if (frac > 0) L.player.add(f.square, x - bw / 2, y + 21, (bw * frac) / sq, bh / sq, 0, 0xff3d5e, 1, 0, 0.5);
+    if (frac > 0 && frac < 0.3) L.auras.add(f.glow, x, y + 21, 0.75, 0.22, 0, 0xff2d4a, 0.25 + 0.25 * Math.sin(now * 9));
   }
 
   /** A motion streak behind a moving projectile, as long as it is fast. */

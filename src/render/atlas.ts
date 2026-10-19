@@ -127,6 +127,27 @@ function mask(g: Ctx, cx: number, cy: number, w: number, h: number, eyes: number
   g.beginPath();
   g.ellipse(cx + w * 0.2, ey, ew, eh, -0.35, 0, TAU);
   g.fill();
+  // A red glint deep in each eye: Hollows watch you from the dark.
+  g.save();
+  g.fillStyle = '#ff4a66';
+  g.shadowColor = '#ff2d4a';
+  g.shadowBlur = Math.max(2, w * 0.12);
+  const glint = Math.max(0.9, ew * 0.36);
+  for (const [gx, gy] of eyes === 3
+    ? [
+        [cx - w * 0.2, ey],
+        [cx + w * 0.2, ey],
+        [cx, ey - eh * 1.1],
+      ]
+    : [
+        [cx - w * 0.2, ey],
+        [cx + w * 0.2, ey],
+      ]) {
+    g.beginPath();
+    g.arc(gx, gy + eh * 0.15, glint, 0, TAU);
+    g.fill();
+  }
+  g.restore();
   if (teeth) {
     const ty = cy + h * 0.3;
     g.fillStyle = INK;
@@ -2830,11 +2851,30 @@ export function buildGroundTile(stage: string): Texture {
   return tex;
 }
 
-/** Hueco Mundo at night: dark sand, pale ripples, bone, dead white trees. */
+/** Hueco Mundo at night: moonlit sand, pale ripples, bone, dead white trees. */
 function huecoGround(g: Ctx, S: number): void {
-  g.fillStyle = '#0d1018';
+  g.fillStyle = '#121827';
   g.fillRect(0, 0, S, S);
   const rnd = seeded(1234);
+  // Broad dune crests catching the moon: wide soft bands that wrap across the tile's edges.
+  g.lineCap = 'round';
+  for (let k = 0; k < 6; k++) {
+    const y0 = (k / 6) * S + rnd() * 60;
+    const amp = 30 + rnd() * 40;
+    const freq = (1 + Math.floor(rnd() * 2)) * (TAU / S);
+    const phase = rnd() * TAU;
+    g.strokeStyle = `rgba(150,170,215,${(0.035 + rnd() * 0.03).toFixed(3)})`;
+    g.lineWidth = 70 + rnd() * 60;
+    for (const off of [-S, 0, S]) {
+      g.beginPath();
+      for (let x = 0; x <= S; x += 16) {
+        const y = y0 + off + Math.sin(x * freq + phase) * amp;
+        if (x === 0) g.moveTo(x, y);
+        else g.lineTo(x, y);
+      }
+      g.stroke();
+    }
+  }
   // Fine sand grain
   for (let i = 0; i < 2600; i++) {
     g.fillStyle = `rgba(160,170,200,${(0.015 + rnd() * 0.04).toFixed(3)})`;
@@ -2848,7 +2888,7 @@ function huecoGround(g: Ctx, S: number): void {
     const amp = 6 + rnd() * 14;
     const freq = (1 + Math.floor(rnd() * 3)) * (TAU / S);
     const phase = rnd() * TAU;
-    g.strokeStyle = `rgba(215,222,240,${(0.03 + rnd() * 0.05).toFixed(3)})`;
+    g.strokeStyle = `rgba(215,222,240,${(0.045 + rnd() * 0.06).toFixed(3)})`;
     g.lineWidth = 1.5 + rnd() * 2;
     for (const off of [-S, 0, S]) {
       g.beginPath();
@@ -2887,7 +2927,7 @@ function huecoGround(g: Ctx, S: number): void {
     tree(x2, y2, len * 0.68, a - 0.5 - rnd() * 0.3, depth - 1);
     tree(x2, y2, len * 0.68, a + 0.5 + rnd() * 0.3, depth - 1);
   };
-  g.strokeStyle = 'rgba(232,236,245,0.11)';
+  g.strokeStyle = 'rgba(232,236,245,0.16)';
   for (const [tx, ty] of [
     [260, 340],
     [760, 790],

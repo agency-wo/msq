@@ -325,7 +325,10 @@ export class World {
   /** Stopped Hourglass relic: seconds left of the global freeze. */
   freezeAllT = 0;
   /** The first live boss, for the boss health bar (final: it is the stage's last boss). */
-  readonly boss = { active: false, hp: 0, max: 1, name: '', final: false };
+  /** The boss on screen, for the HUD: who it is (type and variant pick the portrait) and how hurt. */
+  readonly boss = { active: false, hp: 0, max: 1, name: '', sub: '', final: false, type: -1, variant: 0, uid: -1 };
+  /** Bumped whenever a power is gained, levelled or awakened, so the HUD redraws its tray only then. */
+  buildVersion = 0;
   /** Scratch target written by densestPoint() and edgePoint(). */
   tx = 0;
   ty = 0;
@@ -1908,18 +1911,30 @@ export class World {
     if (this.bossCount > 0) {
       for (let i = 0; i < E.n; i++) {
         if (E.flags[i] & FLAG_BOSS) {
-          const def = ENEMY_LIST[E.type[i]];
-          this.boss.active = true;
-          this.boss.final = E.uid[i] === this.finalBossUid;
-          this.boss.hp = E.hp[i];
-          this.boss.max = E.maxHp[i];
-          const bankai = BANKAI_IDS[E.variant[i]];
-          this.boss.name =
-            def.id === 'bearer'
-              ? (POWER_BY_ID.get(bankai)?.name ?? def.name)
-              : def.id === 'captain'
-                ? (BANKAI_BY_ID.get(bankai)?.owner ?? def.name)
-                : def.name;
+          const B = this.boss;
+          B.active = true;
+          B.final = E.uid[i] === this.finalBossUid;
+          B.hp = E.hp[i];
+          B.max = E.maxHp[i];
+          if (B.uid !== E.uid[i]) {
+            B.uid = E.uid[i];
+            B.type = E.type[i];
+            B.variant = E.variant[i];
+            const def = ENEMY_LIST[E.type[i]];
+            const bankai = BANKAI_IDS[E.variant[i]];
+            if (def.id === 'bearer') {
+              B.name = POWER_BY_ID.get(bankai)?.name ?? def.name;
+              B.sub = 'Medallion bearer';
+            } else if (def.id === 'captain') {
+              const info = BANKAI_BY_ID.get(bankai);
+              B.name = info?.owner ?? def.name;
+              B.sub = info?.rank ?? '';
+            } else {
+              const ev = this.stage.events.find((e): e is Extract<TimelineEvent, { kind: 'boss' }> => e.kind === 'boss' && e.enemy === def.id);
+              B.name = def.name;
+              B.sub = ev?.sub ?? '';
+            }
+          }
           break;
         }
       }
@@ -1999,6 +2014,7 @@ export class World {
   }
 
   addPower(id: string): void {
+    this.buildVersion++;
     const owned = this.powers.find((ps) => ps.def.id === id);
     if (owned) {
       if (owned.level < upgradeCap(owned.def)) {
@@ -2020,6 +2036,7 @@ export class World {
     if (!ps.def.attributes.some((a) => a.id === attr)) return;
     ps.level = ps.def.maxLevel;
     ps.attr = attr;
+    this.buildVersion++;
     refreshPowerStats(ps);
     syncPower(this, this.powers.indexOf(ps));
     // The third awakened Schrift wakes The Almighty, once it is unlocked.
