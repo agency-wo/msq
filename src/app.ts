@@ -777,6 +777,8 @@ export class App {
     window.addEventListener('keydown', unlock);
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) this.pause();
+      // Back from the background: iOS may have interrupted the audio. Try to wake it (the next tap will, if this cannot).
+      else this.sfx.unlock();
       this.music.setHidden(document.hidden);
       this.loop.resetClock();
     });

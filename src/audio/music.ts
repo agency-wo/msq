@@ -4,7 +4,7 @@ import type { Sfx } from './sfx';
 /** Seconds of notes queued ahead of the audio clock, and how often the queue is topped up. */
 const LOOKAHEAD = 0.25;
 const TICK_MS = 50;
-const VOLUME = 0.55;
+const VOLUME = 0.95;
 const DUCKED = 0.35;
 const FADE = 0.7;
 
@@ -101,7 +101,7 @@ export class Music {
     if (this.master) return;
     const master = ctx.createGain();
     master.gain.value = VOLUME;
-    master.connect(ctx.destination);
+    master.connect(this.sfx.destination ?? ctx.destination);
     // A small echo-reverb: two short feedback delays through a lowpass, mixed back in quietly.
     const send = ctx.createGain();
     const wet = ctx.createGain();
@@ -268,8 +268,8 @@ export class Music {
   }
 
   private pad(ctx: AudioContext, bus: GainNode, f: number, t: number, d: number, v: number): void {
-    const g = this.env(ctx, bus, t, 0.5, d, 0.9, v * 0.035, true);
-    const lp = this.filter(ctx, 'lowpass', 1400, g);
+    const g = this.env(ctx, bus, t, 0.5, d, 0.9, v * 0.05, true);
+    const lp = this.filter(ctx, 'lowpass', 2200, g);
     const end = t + d + 1;
     this.osc(ctx, 'sawtooth', f, t, end, lp, -7);
     this.osc(ctx, 'sawtooth', f, t, end, lp, 7);
@@ -277,7 +277,7 @@ export class Music {
   }
 
   private choir(ctx: AudioContext, bus: GainNode, f: number, t: number, d: number, v: number): void {
-    const g = this.env(ctx, bus, t, 0.7, d, 1.2, v * 0.05, true);
+    const g = this.env(ctx, bus, t, 0.7, d, 1.2, v * 0.075, true);
     const end = t + d + 1.3;
     const o = this.osc(ctx, 'sine', f, t, end, g);
     this.vibrato(ctx, o, t, end, 5, 6, 0.3);
@@ -297,11 +297,14 @@ export class Music {
     const end = t + d + 0.2;
     this.osc(ctx, 'triangle', f, t, end, lp);
     this.osc(ctx, 'sine', f, t, end, lp);
+    // Overtones a phone speaker can play, so the bass line is heard and not only felt.
+    const edge = this.env(ctx, bus, t, 0.01, d * 0.8, 0.1, v * 0.05);
+    this.osc(ctx, 'sawtooth', f * 2, t, end, this.filter(ctx, 'lowpass', 1300, edge));
   }
 
   private lead(ctx: AudioContext, bus: GainNode, f: number, t: number, d: number, v: number): void {
-    const g = this.env(ctx, bus, t, 0.015, d * 0.9, 0.15, v * 0.03, true);
-    const lp = this.filter(ctx, 'lowpass', 2300, g);
+    const g = this.env(ctx, bus, t, 0.015, d * 0.9, 0.15, v * 0.055, true);
+    const lp = this.filter(ctx, 'lowpass', 2600, g);
     const end = t + d + 0.2;
     const o = this.osc(ctx, 'square', f, t, end, lp);
     this.vibrato(ctx, o, t, end, 6, 10, 0.12);
@@ -309,7 +312,7 @@ export class Music {
 
   /** A breathy, bending flute: a soft attack sliding up into the note, then vibrato. */
   private flute(ctx: AudioContext, bus: GainNode, f: number, t: number, d: number, v: number): void {
-    const g = this.env(ctx, bus, t, 0.07, d * 0.92, 0.25, v * 0.07, true);
+    const g = this.env(ctx, bus, t, 0.07, d * 0.92, 0.25, v * 0.1, true);
     const end = t + d + 0.3;
     const o = this.osc(ctx, 'sine', f, t, end, g, -40);
     o.detune.setValueAtTime(-40, t);
@@ -324,7 +327,7 @@ export class Music {
   }
 
   private bell(ctx: AudioContext, bus: GainNode, f: number, t: number, v: number): void {
-    const g = this.env(ctx, bus, t, 0.005, 0.01, 1.6, v * 0.06, true);
+    const g = this.env(ctx, bus, t, 0.005, 0.01, 1.6, v * 0.085, true);
     const end = t + 1.7;
     this.osc(ctx, 'sine', f, t, end, g);
     const h = ctx.createGain();
@@ -334,7 +337,7 @@ export class Music {
   }
 
   private stab(ctx: AudioContext, bus: GainNode, f: number, t: number, v: number): void {
-    const g = this.env(ctx, bus, t, 0.005, 0.02, 0.22, v * 0.03);
+    const g = this.env(ctx, bus, t, 0.005, 0.02, 0.22, v * 0.05);
     const lp = this.filter(ctx, 'lowpass', 3200, g);
     lp.frequency.setValueAtTime(3200, t);
     lp.frequency.exponentialRampToValueAtTime(700, t + 0.18);
@@ -347,6 +350,12 @@ export class Music {
     const g = this.env(ctx, bus, t, 0.002, 0.01, 0.3, v * 0.5);
     const o = this.osc(ctx, 'sine', 130, t, t + 0.35, g);
     o.frequency.exponentialRampToValueAtTime(42, t + 0.14);
+    // The beater's click, which is what a small speaker actually plays of a kick.
+    const click = this.env(ctx, bus, t, 0.001, 0.005, 0.03, v * 0.12);
+    this.noise(ctx, t, 0.04, this.filter(ctx, 'bandpass', 2600, click, 1.2));
+    const knock = this.env(ctx, bus, t, 0.002, 0.01, 0.08, v * 0.14);
+    const k = this.osc(ctx, 'triangle', 320, t, t + 0.1, knock);
+    k.frequency.exponentialRampToValueAtTime(160, t + 0.07);
   }
 
   private snare(ctx: AudioContext, bus: GainNode, t: number, v: number): void {
@@ -368,5 +377,11 @@ export class Music {
     o.frequency.exponentialRampToValueAtTime(52, t + 0.3);
     const skin = this.env(ctx, bus, t, 0.002, 0.01, 0.12, v * 0.12);
     this.noise(ctx, t, 0.15, this.filter(ctx, 'lowpass', 500, skin));
+    // The drum's ring and the stick on the skin, up where a phone speaker can play them.
+    const ring = this.env(ctx, bus, t, 0.002, 0.01, 0.22, v * 0.14);
+    const r = this.osc(ctx, 'triangle', 240, t, t + 0.25, ring);
+    r.frequency.exponentialRampToValueAtTime(150, t + 0.2);
+    const slap = this.env(ctx, bus, t, 0.001, 0.005, 0.05, v * 0.1);
+    this.noise(ctx, t, 0.06, this.filter(ctx, 'bandpass', 1100, slap, 1));
   }
 }

@@ -25,12 +25,15 @@ const GAP: Partial<Record<SoundName, number>> = {
 /**
  * Procedural sound effects with the Web Audio API: nothing to download.
  * iOS only allows audio after a user gesture, so `unlock()` is called from
- * the first tap; it also respects the phone's silent switch.
+ * every tap until the audio is running (and again whenever iOS interrupts it:
+ * a call, the app going to the background). On iOS 17 and later the game
+ * plays as media, so the silent switch does not mute it; Settings does.
  */
 export class Sfx {
   enabled = true;
   private ctx: AudioContext | null = null;
   private master: GainNode | null = null;
+  private output: AudioNode | null = null;
   private noise: AudioBuffer | null = null;
   private readonly last = new Map<SoundName, number>();
   private orbStep = 0;
@@ -40,18 +43,51 @@ export class Sfx {
     if (!this.ctx) {
       const Ctor = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
       if (!Ctor) return;
+      // iOS 17+: play as media, not as a ringtone, so the silent switch does not silence the game.
+      const session = (navigator as Navigator & { audioSession?: { type: string } }).audioSession;
+      if (session) {
+        try {
+          session.type = 'playback';
+        } catch {
+          // An engine that knows the API but refuses the type: carry on as before.
+        }
+      }
       const ctx = new Ctor();
+      // Everything goes through a gentle compressor, so a busy fight never clips.
+      const limiter = ctx.createDynamicsCompressor();
+      limiter.threshold.value = -14;
+      limiter.knee.value = 8;
+      limiter.ratio.value = 6;
+      limiter.attack.value = 0.003;
+      limiter.release.value = 0.2;
+      limiter.connect(ctx.destination);
       const master = ctx.createGain();
-      master.gain.value = 0.32;
-      master.connect(ctx.destination);
+      master.gain.value = 0.7;
+      master.connect(limiter);
       const noise = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
       const data = noise.getChannelData(0);
       for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+      // Older iOS only wakes audio for a sound started inside the tap itself: one silent sample.
+      const wake = ctx.createBufferSource();
+      wake.buffer = ctx.createBuffer(1, 1, ctx.sampleRate);
+      wake.connect(ctx.destination);
+      wake.start(0);
       this.ctx = ctx;
       this.master = master;
+      this.output = limiter;
       this.noise = noise;
     }
-    if (this.ctx.state === 'suspended') void this.ctx.resume();
+    // 'suspended' before the first tap, 'interrupted' on iOS after a call or a trip to the background.
+    if (this.ctx.state !== 'running') {
+      this.ctx.resume().catch(() => {
+        // Not inside a gesture: the next tap tries again.
+      });
+    }
+  }
+
+  /** Where the music connects: the same compressor as the sound effects, so the two never pile up into clipping. */
+  get destination(): AudioNode | null {
+    return this.output;
   }
 
   get unlocked(): boolean {
