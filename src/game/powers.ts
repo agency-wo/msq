@@ -19,7 +19,8 @@ import {
 } from './casts/schrift';
 import { castAlmighty } from './casts/almighty';
 import { castAntithesis, castDouble, castJail, castLove, castMaw, castPunch, castZombie } from './casts/schrift2';
-import { castBalance, castIron, castMiracle, castOverkill, castSuperstar, castVollstandig } from './casts/utility';
+import { castBalance, castIron, castMiracle, castOverkill, castSuperstar, castVollstandig, lichtRegen } from './casts/utility';
+import { BAMBIES, BAMBIES_HASTE } from '../data/resonances';
 import type { World } from './world';
 
 /** Runtime state of one owned power. */
@@ -67,6 +68,7 @@ export function updatePowers(w: World): void {
     if (slot === w.sealSlot && w.sealT > 0) continue;
     // Whatever this power hits while casting is credited to it.
     w.dmgSlot = slot;
+    const before = ps.timer;
     switch (ps.def.kind) {
       case 'stillness':
         castStillness(w, ps);
@@ -145,6 +147,7 @@ export function updatePowers(w: World): void {
         break;
       case 'vollstandig':
         castVollstandig(w, ps);
+        if (w.vollT > 0 && w.resonances.has('arrowrain')) lichtRegen(w);
         break;
       case 'balance':
         castBalance(w, ps);
@@ -174,8 +177,18 @@ export function updatePowers(w: World): void {
         castZanka(w, ps);
         break;
     }
+    // Its timer was wound back up: it has just cast (a short retry while it waits for a target does not count).
+    if (ps.timer > before + 0.4) afterCast(w, ps);
   }
   w.dmgSlot = 255;
+}
+
+/** The resonances of three that answer a cast: the Bambies hurry each other, the Soul King's pieces come back twice as fast. */
+function afterCast(w: World, ps: PowerState): void {
+  if (w.resonances.has('bambies') && BAMBIES.has(ps.def.id)) {
+    for (const other of w.powers) if (other !== ps && BAMBIES.has(other.def.id)) other.timer *= 1 - BAMBIES_HASTE;
+  }
+  if (w.resonances.has('soulking') && ps.def.group === 'fragment') ps.timer *= 0.5;
 }
 
 /** Rebuild whatever a power keeps in the world (orbiters, auras) after it levels or global size/count change. */

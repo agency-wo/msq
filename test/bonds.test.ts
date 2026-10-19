@@ -60,7 +60,7 @@ describe('bonds from the story', () => {
       expect(r?.b, id).toBe(b);
       expect(r?.story, id).toBe(true);
     }
-    expect(RESONANCES.length).toBe(22);
+    expect(RESONANCES.length).toBe(26);
   });
 
   it('Risen Bambietta: The Explode infects what it hits, and what it kills rises', () => {

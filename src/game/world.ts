@@ -11,7 +11,7 @@ import { POWER_BY_ID, POWERS, STARTABLE_IDS, STARTING_POWER, upgradeCap } from '
 import { RELIC_BY_ID, RELICS, type RelicDef } from '../data/relics';
 import { PACT_BY_ID, PACTS, type PactDef } from '../data/shrines';
 import { ROYAL_BY_ID, ROYAL_IDS } from '../data/royal';
-import { RESONANCE_BY_ID, RESONANCES } from '../data/resonances';
+import { RESONANCE_BY_ID, RESONANCES, resonanceParts } from '../data/resonances';
 import { BOSS_LINES } from '../data/story';
 import {
   hpScale,
@@ -333,6 +333,10 @@ export class World {
   almightyGranted = false;
   /** Zanka no Tachi has been taken from the Captain-Commander this run: he fights on without it. */
   zankaStolen = false;
+  /** Licht Regen: time to the next arrows of light. */
+  rainT = 0;
+  /** Schutzstaffel: the slots (as bits) of The X-Axis and The Deathdealing, which grow with your wounds. */
+  private schutzBits = 0;
   /** The Almighty is on its way: earned, arriving a moment later under its own title card. */
   private almightyDue = 0;
   almightyT = 0;
@@ -1194,7 +1198,9 @@ export class World {
     if (E.dead[i]) return;
     const crit = !noCrit && this.rng.next() < this.stats.critChance;
     const vul = E.vulnT[i] > 0 ? 1 + E.vulnK[i] : 1;
-    const dmg = base * this.dmgMul * vul * (crit ? this.stats.critMult : 1);
+    let dmg = base * this.dmgMul * vul * (crit ? this.stats.critMult : 1);
+    // Schutzstaffel: up to twice as hard the closer you are to falling.
+    if (this.schutzBits !== 0 && this.dmgSlot < 31 && (this.schutzBits >>> this.dmgSlot) & 1) dmg *= 2 - Math.max(0, this.player.hp) / this.player.maxHp;
     this.dmgBy[this.dmgSlot] += Math.min(dmg, Math.max(0, E.hp[i]));
     E.hp[i] -= dmg;
     E.flash[i] = 0.07;
@@ -2263,15 +2269,26 @@ export class World {
     const def = RESONANCE_BY_ID.get(id);
     if (!def || this.resonances.has(id)) return false;
     this.resonances.add(id);
-    const a = POWER_BY_ID.get(def.a)?.name ?? def.a;
-    const b = POWER_BY_ID.get(def.b)?.name ?? def.b;
-    this.banners.push({ kind: 'resonance', title: def.name, sub: `${a} + ${b}` });
+    this.refreshTrios();
+    const sub = resonanceParts(def)
+      .map((p) => POWER_BY_ID.get(p)?.name ?? p)
+      .join(' + ');
+    this.banners.push({ kind: 'resonance', title: def.name, sub });
     this.sound('bankai');
     this.shake = Math.max(this.shake, 8);
     const color = Number.parseInt(def.color.slice(1), 16);
     this.spawnFx(FX_GLOW, 0, 0, 0, 0, 0.8, 50, 520, 0.9, 0, 0, color, LAYER_ADD, 0, 1);
     this.spawnFx(FX_RING, 0, 0, 0, 0, 0.7, 30, 460, 1, 0, 0, 0xffffff, LAYER_ADD, 0, 1);
     return true;
+  }
+
+  /** Schutzstaffel: mark which slots grow with your wounds. */
+  private refreshTrios(): void {
+    this.schutzBits = 0;
+    if (!this.resonances.has('schutzstaffel')) return;
+    this.powers.forEach((ps, slot) => {
+      if ((ps.def.id === 'xaxis' || ps.def.id === 'death') && slot < 31) this.schutzBits |= 1 << slot;
+    });
   }
 
   /** An owned power by id (the resonances read their partner's numbers through this). */
@@ -2302,6 +2319,7 @@ export class World {
     ps.since = this.t;
     this.powers.push(ps);
     syncPower(this, this.powers.length - 1);
+    this.refreshTrios();
   }
 
   /**

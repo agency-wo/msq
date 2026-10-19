@@ -26,6 +26,14 @@ export interface ResonanceDef {
   needB?: number;
   /** From the story, not one of the nine core pairs: an attack can have more than one of these. */
   story?: boolean;
+  /** A third power, for the resonances of three. */
+  c?: string;
+  needC?: number;
+}
+
+/** Every power a resonance ties together: two, or three. */
+export function resonanceParts(r: ResonanceDef): string[] {
+  return r.c ? [r.a, r.b, r.c] : [r.a, r.b];
 }
 
 export const RESONANCES: readonly ResonanceDef[] = [
@@ -206,6 +214,58 @@ export const RESONANCES: readonly ResonanceDef[] = [
     color: '#ffd89a',
     story: true,
   },
+  // Three at once: knights who fought side by side, the oldest arts, the pieces of a king.
+  {
+    id: 'bambies',
+    name: 'The Bambies',
+    a: 'explode',
+    b: 'thunder',
+    c: 'glutton',
+    letters: 'ETG',
+    desc: 'Bambietta, Candice and Liltotto ran together as the Bambies. Whenever one of their three letters strikes, the other two are ready sooner.',
+    color: '#ff9ab8',
+    needA: 6,
+    needB: 6,
+    needC: 6,
+    story: true,
+  },
+  {
+    id: 'schutzstaffel',
+    name: 'Schutzstaffel',
+    a: 'xaxis',
+    b: 'death',
+    c: 'miracle',
+    letters: 'XDM',
+    desc: 'Lille Barro, Askin Nakk Le Vaar and Gerard Valkyrie were the Emperor’s own guard. The X-Axis and The Deathdealing grow with your wounds as The Miracle does: up to twice as hard when you are close to falling.',
+    color: '#e8d8a8',
+    needA: 6,
+    needB: 6,
+    story: true,
+  },
+  {
+    id: 'arrowrain',
+    name: 'Licht Regen',
+    a: 'heilig',
+    b: 'seele',
+    c: 'vollstandig',
+    letters: 'HSV',
+    desc: 'The Quincy arts as one. While Quincy: Vollständig shines, arrows of light rain down on the enemies around you.',
+    color: '#bfe6ff',
+    needA: 6,
+    needB: 6,
+    story: true,
+  },
+  {
+    id: 'soulking',
+    name: 'The Soul King, Whole',
+    a: 'rightarm',
+    b: 'leftarm',
+    c: 'heart',
+    letters: 'RLH',
+    desc: 'His right arm, his left arm and his heart, together again in the Emperor’s hands. All three answer twice as often.',
+    color: '#fff2c2',
+    story: true,
+  },
   // The Emperor's own.
   {
     id: 'otherhalf',
@@ -251,3 +311,8 @@ export const RESONANCES: readonly ResonanceDef[] = [
 ];
 
 export const RESONANCE_BY_ID: ReadonlyMap<string, ResonanceDef> = new Map(RESONANCES.map((r) => [r.id, r]));
+
+/** The Bambies: whenever one of these strikes, the other two are ready sooner. */
+export const BAMBIES: ReadonlySet<string> = new Set(['explode', 'thunder', 'glutton']);
+/** How much of the other two's wait each strike takes away. */
+export const BAMBIES_HASTE = 0.4;

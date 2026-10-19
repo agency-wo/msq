@@ -6,7 +6,7 @@ import { DAILY_CLEAR_GOLD, DAILY_MOD_BY_ID, DAILY_SURVIVE_GOLD, DAILY_SURVIVE_TI
 import { PASSIVE_BY_ID } from '../data/passives';
 import { POWER_BY_ID, POWERS, STARTING_POWER, type PowerDef } from '../data/powers';
 import { type Rarity, RELIC_BY_ID, type RelicDef, RELICS } from '../data/relics';
-import { RESONANCE_BY_ID, RESONANCES } from '../data/resonances';
+import { RESONANCE_BY_ID, RESONANCES, resonanceParts, type ResonanceDef } from '../data/resonances';
 import { PACT_BY_ID, type PactDef } from '../data/shrines';
 import { MAX_TRIAL, STAGES, stageById, TRIAL_NAMES, trialBlurb, type StageId } from '../data/stages';
 import { CHAPTERS, type Chapter } from '../data/story';
@@ -1002,11 +1002,16 @@ export class UI {
     } else if (tab === 'resonances') {
       for (const r of RESONANCES) {
         const a = POWER_BY_ID.get(r.a)?.name ?? r.a;
-        const b = POWER_BY_ID.get(r.b)?.name ?? r.b;
         list.append(
           c.resonances.includes(r.id)
-            ? this.codexEntry('star', r.color, r.name, r.desc, r.letters, `${a} + ${b}`)
-            : this.codexEntry('star', r.color, null, `${a} resonates with one other power once both are strong enough.`, '?'),
+            ? this.codexEntry('star', r.color, r.name, r.desc, r.letters, partsLine(r))
+            : this.codexEntry(
+                'star',
+                r.color,
+                null,
+                r.c ? `${a} resonates with two other powers at once, once all three are strong enough.` : `${a} resonates with one other power once both are strong enough.`,
+                '?',
+              ),
         );
       }
     } else if (tab === 'relics') {
@@ -1490,9 +1495,7 @@ export class UI {
       case 'resonance': {
         const r = RESONANCE_BY_ID.get(o.id);
         if (!r) return unknownCard;
-        const a = POWER_BY_ID.get(r.a)?.name ?? r.a;
-        const b = POWER_BY_ID.get(r.b)?.name ?? r.b;
-        return { icon: 'star', color: r.color, letter: r.letters, title: r.name, credit: `${a} + ${b}`, badge: 'Resonance', desc: r.desc, tone: 'resonance' };
+        return { icon: 'star', color: r.color, letter: r.letters, title: r.name, credit: partsLine(r), badge: r.c ? 'Resonance of three' : 'Resonance', desc: r.desc, tone: 'resonance' };
       }
       case 'heal':
         return { icon: 'heart', color: '#ff6b8a', title: 'Restore', desc: 'Recover 30% of your health.' };
@@ -1504,14 +1507,22 @@ export class UI {
 
 const unknownCard: CardSpec = { icon: 'star', color: '#ffffff', title: '?', desc: '' };
 
-/** "Resonates with The Heat" on a card whose power has a resonance partner in your build already. */
+/** "Resonates with The Heat" on a card whose power has its resonance partners in your build already. */
 function resonanceNote(id: string, owned: ReadonlySet<string>): string | undefined {
   for (const r of RESONANCES) {
-    if (r.a !== id && r.b !== id) continue;
-    const partner = r.a === id ? r.b : r.a;
-    if (owned.has(partner)) return `Resonates with ${POWER_BY_ID.get(partner)?.name ?? partner}`;
+    const parts = resonanceParts(r);
+    if (!parts.includes(id)) continue;
+    const others = parts.filter((p) => p !== id);
+    if (others.every((p) => owned.has(p))) return `Resonates with ${others.map((p) => POWER_BY_ID.get(p)?.name ?? p).join(' and ')}`;
   }
   return undefined;
+}
+
+/** "The Explode + The Thunderbolt + The Glutton". */
+function partsLine(r: ResonanceDef): string {
+  return resonanceParts(r)
+    .map((p) => POWER_BY_ID.get(p)?.name ?? p)
+    .join(' + ');
 }
 
 /** Who a bankai belonged to and who stole it, for the results screen and banners. */

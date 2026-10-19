@@ -59,7 +59,12 @@ Tachi, and Uryū's Antithesis, the letter of the heir he named). The knights'
 own bonds resonate too: Uryū's Antithesis with Haschwalth's Balance, Giselle's
 Zombie with Bambietta's Explode, Bazz-B's Heat with his old friend's Balance,
 and Gerard Valkyrie's Miracle with the Heart of the Soul King he turned out to
-be. Twenty-two in all.
+be. And four resonate in threes: the Bambies (The Explode, The Thunderbolt and
+The Glutton: each strike hurries the other two), the Schutzstaffel (The X-Axis
+and The Deathdealing grow with your wounds beside The Miracle), Licht Regen
+(Heilig Pfeil, Seele Schneider and Quincy: Vollständig: arrows of light rain
+while the wings shine) and the Soul King, Whole (his three Fragments answer
+twice as often). Twenty-six in all.
 
 The story is told in short chapters that unlock as you play (the prologue
 before your first run, the invasion before your first Seireitei run, others

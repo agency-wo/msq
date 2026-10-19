@@ -1,8 +1,8 @@
 import { DT } from '../../config';
-import { FX_GLOW, FX_RING, FX_STAR, FX_WINGS, LAYER_ADD } from '../constants';
+import { FX_GLOW, FX_RING, FX_STAR, FX_WINGS, LAYER_ADD, PK_ARROW } from '../constants';
 import type { PowerState } from '../powers';
 import type { World } from '../world';
-import { cooldown } from './common';
+import { cooldown, enemiesInCircle } from './common';
 
 /** The Iron: keeps shield charges topped up; World.hurtPlayer spends them. */
 export function castIron(w: World, ps: PowerState): void {
@@ -81,4 +81,27 @@ export function castVollstandig(w: World, ps: PowerState): void {
   w.spawnFx(FX_WINGS, 0, -6, 0, 0, dur, 120, 120, 0.9, 0, 0, 0xcfefff, LAYER_ADD, 0, 1);
   w.spawnFx(FX_RING, 0, 0, 0, 0, 0.5, 30, 340, 1, 0, 0, 0xbfe6ff, LAYER_ADD, 0, 1);
   w.sound('bankai');
+}
+
+/**
+ * Licht Regen (Heilig Pfeil, Seele Schneider and Quincy: Vollständig): while
+ * the wings shine, arrows of light fall on the enemies around you, two at a
+ * time, with Heilig Pfeil's strength. Credited to Heilig Pfeil.
+ */
+export function lichtRegen(w: World): void {
+  w.rainT -= DT;
+  if (w.rainT > 0) return;
+  w.rainT = 0.16;
+  const slot = w.powers.findIndex((q) => q.def.id === 'heilig');
+  if (slot < 0) return;
+  const heilig = w.powers[slot];
+  const p = w.player;
+  const n = enemiesInCircle(w, p.x, p.y, 330);
+  if (n === 0) return;
+  for (let k = 0; k < 2; k++) {
+    const j = w.qout[w.rng.int(n)];
+    const x = w.en.x[j] + w.rng.range(-14, 14);
+    const y = w.en.y[j];
+    w.spawnProjectile(PK_ARROW, slot, x, y - 260, 0, 1100, 0.3, heilig.stats.damage * 1.4, 7 * w.stats.size, 2, 0);
+  }
 }
