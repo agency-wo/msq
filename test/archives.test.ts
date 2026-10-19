@@ -185,7 +185,7 @@ describe('the Armory', () => {
     expect(w.relics.map((r) => r.id)).toEqual(['crown']);
     expect(w.stats.atk).toBe(130);
     // The relic is already held, so no chest offers it again.
-    expect(w.relicChoices('gold').some((r) => r.id === 'crown')).toBe(false);
+    for (let k = 0; k < 20; k++) expect(w.relicChoices('black').some((r) => r.id === 'crown')).toBe(false);
     // A feat relic the save has not opened does nothing.
     expect(new World({ seed: 1, relic: 'key' }).relics).toEqual([]);
     expect(new World({ seed: 1, relic: 'key', relicsOpen: ['key'] }).relics.map((r) => r.id)).toEqual(['key']);
