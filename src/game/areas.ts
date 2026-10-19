@@ -56,6 +56,7 @@ import {
   MK_INK,
   MK_THREAD,
   MK_SWORD,
+  MK_WATER,
   FX_SMOKE,
   LAYER_NORMAL,
 } from './constants';
@@ -384,6 +385,22 @@ function markFx(w: World, kind: number, x: number, y: number, r: number, len: nu
       w.spawnFx(FX_SHOCK, x, y, 0, 0, 0.25, r * 0.4, r * 1.8, 0.7, 0, 0, 0xe8eef8, LAYER_ADD);
       sparks(w, x, y, 4, 0xffffff);
       w.sound('strike');
+      break;
+    case MK_WATER:
+      // Water: a blade of it down the lane, or a torrent crashing down and spraying out.
+      if (len > 0) {
+        w.spawnFx(FX_BEAMH, x + (Math.cos(ang) * len) / 2, y + (Math.sin(ang) * len) / 2, 0, 0, 0.35, len, len, 1, ang, 0, 0x5ac8ff, LAYER_ADD, 0, 0, r * 1.4);
+      } else {
+        w.spawnFx(FX_GLOW, x, y, 0, 0, 0.45, r, r * 2.4, 0.9, 0, 0, 0x5ac8ff, LAYER_ADD);
+        w.spawnFx(FX_RING, x, y, 0, 0, 0.4, r * 0.4, r * 2, 0.9, 0, 0, 0xbfeeff, LAYER_ADD);
+        for (let k = 0; k < Math.min(10, 3 + Math.round(r / 20)); k++) {
+          const a = w.rng.next() * TAU;
+          const v = w.rng.range(60, 160);
+          w.spawnFx(FX_SMOKE, x + Math.cos(a) * r * 0.3, y + Math.sin(a) * r * 0.3, Math.cos(a) * v, Math.sin(a) * v, 0.6, r * 0.4, r * 1.1, 0.6, 0, 0, 0xd8f4ff, LAYER_NORMAL, 1.5);
+        }
+      }
+      w.shake = Math.max(w.shake, r > 100 ? 8 : 3);
+      w.sound('blast');
       break;
   }
 }

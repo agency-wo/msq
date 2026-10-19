@@ -47,6 +47,7 @@ export const CODEX_ENEMIES: readonly CodexEnemy[] = [
   })),
   plain('menos', 'hueco'),
   plain('vasto', 'hueco'),
+  plain('harribel', 'hueco'),
   ...(['officer', 'flash', 'caster', 'guard', 'ashen'] as const).map((id) => plain(id, 'seireitei')),
   ...BANKAI_IDS.filter((b) => b !== 'zanka').map((b) => ({
     key: `captain:${b}`,

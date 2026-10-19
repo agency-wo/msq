@@ -48,11 +48,12 @@ export const CHAPTERS: readonly Chapter[] = [
   {
     id: 'lord',
     kicker: 'Chapter II',
-    title: 'The Lord of the Desert',
+    title: 'The Queen of Las Noches',
     hint: 'Clear Hueco Mundo.',
     trigger: { when: 'after', condition: 'hueco' },
     text: [
-      'The Vasto Lorde was old when the desert was young. It falls without a sound, and the white moon looks away.',
+      'Since Aizen fell, the desert has had a queen: Tier Harribel, the Third Espada, keeping what was left of the Arrancar safe behind the white walls of Las Noches.',
+      'She met the Emperor in front of her own palace, and the sea she carried in her blade could not reach him. He leaves her in chains in her own halls. A queen is worth more alive.',
       'Beyond the dunes the sky tears open onto a wall of white stone: the Seireitei, city of the Soul Reapers. Every bankai his knights stole belonged to a captain who waits there.',
       'They will want their bankai back. The Emperor intends to take the rest.',
     ],
@@ -139,6 +140,7 @@ export const BOSS_LINES: Readonly<Record<string, string>> = {
   'captain:gonryo': '“No one reaches the Captain-Commander while I stand.”',
   'boss:menos': 'Its vast mask lowers, and the air in front of it begins to glow red.',
   'boss:vasto': 'The lord of the desert turns its horned mask toward you.',
+  'boss:harribel': '“This desert is under my protection. Go back the way you came.”',
   'boss:grandmaster': '“Every seal in this city answers to me.”',
   'boss:commander': '“I have burned for a thousand years. Tonight, so will you.”',
   'royal:tenjiro': '“Nobody leaves my springs the way they came in.”',

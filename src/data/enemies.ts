@@ -23,7 +23,8 @@ export type EnemyId =
   | 'asauchi'
   | 'attendant'
   | 'royal'
-  | 'ichibe';
+  | 'ichibe'
+  | 'harribel';
 
 /**
  * chase: walks at you · blink: walks, and every few seconds flash-steps closer ·
@@ -54,8 +55,10 @@ export interface EnemyDef {
 }
 
 /**
- * Hueco Mundo's Hollows, Seireitei's Soul Reapers, and the bosses. All are
- * original designs. Index order matters: enemies store their type as a byte.
+ * Hueco Mundo's Hollows, Seireitei's Soul Reapers, the palace's servants, and
+ * the bosses. The swarm, the bearers and the Hollow bosses are original
+ * designs; the captains, the Royal Guard and Tier Harribel are chibi homages.
+ * Index order matters: enemies store their type as a byte.
  */
 export const ENEMY_LIST: readonly EnemyDef[] = [
   { id: 'hollow', name: 'Lesser Hollow', hp: 10, speed: 46, radius: 11, damage: 8, xp: 1, behavior: 'chase', color: 0xe8e2d6 },
@@ -114,6 +117,8 @@ export const ENEMY_LIST: readonly EnemyDef[] = [
   // The Royal Guard (variant = which of them, see data/royal.ts) and Ichibē, who ends the stage.
   { id: 'royal', name: 'Royal Guard', hp: 2600, speed: 46, radius: 30, damage: 26, xp: 70, behavior: 'chase', boss: true, color: 0xfff6dc },
   { id: 'ichibe', name: 'Ichibē Hyōsube', hp: 2600, speed: 36, radius: 36, damage: 38, xp: 180, behavior: 'chase', boss: true, color: 0x9a7aff },
+  // Hueco Mundo's final boss: Tier Harribel, the Tres Espada, who has ruled Las Noches since Aizen fell.
+  { id: 'harribel', name: 'Tier Harribel', hp: 2600, speed: 50, radius: 30, damage: 36, xp: 170, behavior: 'chase', boss: true, color: 0x5ac8ff },
 ];
 
 export const ENEMY_INDEX: Readonly<Record<EnemyId, number>> = {
@@ -142,4 +147,5 @@ export const ENEMY_INDEX: Readonly<Record<EnemyId, number>> = {
   attendant: 22,
   royal: 23,
   ichibe: 24,
+  harribel: 25,
 };

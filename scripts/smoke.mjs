@@ -479,6 +479,35 @@ try {
   log('seireitei mid', await stats());
   await shot('11-seireitei-mid');
 
+  // Hueco Mundo's last boss: Tier Harribel (Ola Azul, Sonído), then Tiburón released and Cascada.
+  await page.goto(`${BASE}?debug&seed=7&play&god&stage=hueco&t=1196&give=xaxis6,explode6,heat6`);
+  await wait(400);
+  await steer(9000, { radius: 15 });
+  log('harribel', { ...(await stats()), bossBar: await page.isVisible('.bossbar'), boss: await page.textContent('.boss-name'), sub: await page.textContent('.boss-sub') });
+  await shot('12a-harribel');
+  const queen = () =>
+    page.evaluate(() => {
+      const w = window.__msq.world;
+      for (let i = 0; i < w.en.n; i++) if (w.en.type[i] === 25 && !w.en.dead[i]) return i;
+      return -1;
+    });
+  await page.evaluate((i) => {
+    const E = window.__msq.world.en;
+    E.hp[i] = E.maxHp[i] * 0.45;
+  }, await queen());
+  await steer(6000, { radius: 15 });
+  log('tiburon', {
+    ...(await stats()),
+    radius: await page.evaluate((i) => (i >= 0 ? window.__msq.world.en.r[i] : 0), await queen()),
+    water: await page.evaluate(() => {
+      const M = window.__msq.world.marks;
+      let n = 0;
+      for (let i = 0; i < M.n; i++) if (M.kind[i] === 15) n++;
+      return n;
+    }),
+  });
+  await shot('12b-tiburon');
+
   // The captains defend their own bankai in Seireitei.
   for (const id of ['senbonzakura', 'hyorinmaru', 'raikoben', 'tengen', 'gonryo']) {
     await page.goto(`${BASE}?debug&seed=3&play&god&stage=seireitei&t=298&bearers=${id}`);

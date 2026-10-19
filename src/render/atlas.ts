@@ -3576,6 +3576,384 @@ const fragment: Draw = (g, w, h) => {
   g.fill();
 };
 
+// ------------------------------------------------------------ Tier Harribel
+
+const HARRIBEL_SKIN = '#a8744e';
+const HARRIBEL_HAIR = '#f2cf63';
+const HARRIBEL_HAIR_DEEP = '#c99a32';
+const SHARK_BONE = '#f2efe6';
+const SHARK_BONE_SHADE = '#cfc8b8';
+
+/** Her three braids, hanging behind her left shoulder (drawn before the body). */
+function harribelBraids(g: Ctx, cx: number, hy: number, s: number, len: number): void {
+  g.lineCap = 'round';
+  for (let k = 0; k < 3; k++) {
+    const x0 = cx - (2 + k * 1.6) * s;
+    const y0 = hy + 3 * s;
+    const x1 = cx - (11 + k * 2.2) * s;
+    const y1 = hy + (len - k * 1.5) * s;
+    g.strokeStyle = HARRIBEL_HAIR_DEEP;
+    g.lineWidth = 2.4 * s;
+    g.beginPath();
+    g.moveTo(x0, y0);
+    g.quadraticCurveTo(cx - (9 + k) * s, hy + 6 * s, x1, y1);
+    g.stroke();
+    g.strokeStyle = HARRIBEL_HAIR;
+    g.lineWidth = 1.5 * s;
+    g.beginPath();
+    g.moveTo(x0, y0);
+    g.quadraticCurveTo(cx - (9 + k) * s, hy + 6 * s, x1, y1);
+    g.stroke();
+    // The plaits: little ticks down each braid.
+    g.strokeStyle = 'rgba(150,104,30,0.7)';
+    g.lineWidth = 0.5 * s;
+    for (let t = 0.25; t < 1; t += 0.22) {
+      const bx = (1 - t) * (1 - t) * x0 + 2 * (1 - t) * t * (cx - (9 + k) * s) + t * t * x1;
+      const by = (1 - t) * (1 - t) * y0 + 2 * (1 - t) * t * (hy + 6 * s) + t * t * y1;
+      g.beginPath();
+      g.moveTo(bx - 0.8 * s, by - 0.5 * s);
+      g.lineTo(bx + 0.8 * s, by + 0.5 * s);
+      g.stroke();
+    }
+  }
+}
+
+/** Her head: dark skin, messy blonde hair with spiked bangs, narrow green eyes; the lower face hidden (by `guard`). */
+function harribelHead(g: Ctx, cx: number, hy: number, s: number, guard: (y: number) => void, glowEyes: boolean): void {
+  // Hair behind the head
+  g.fillStyle = HARRIBEL_HAIR_DEEP;
+  g.beginPath();
+  g.ellipse(cx, hy - 0.6 * s, 7.6 * s, 7.4 * s, 0, 0, TAU);
+  g.fill();
+  faceAt(g, cx, hy + 0.6 * s, s, 5.6, 6.4);
+  g.fillStyle = HARRIBEL_SKIN;
+  g.beginPath();
+  g.ellipse(cx, hy + 0.6 * s, 5.6 * s, 6.4 * s, 0, 0, TAU);
+  g.fill();
+  // The crown of the hair and the spiky bangs over her brow
+  g.fillStyle = HARRIBEL_HAIR;
+  g.beginPath();
+  g.ellipse(cx, hy - 2.2 * s, 7.2 * s, 5.4 * s, 0, Math.PI * 0.94, Math.PI * 2.06);
+  g.fill();
+  poly(g, [
+    [cx - 7.2 * s, hy - 2 * s],
+    [cx - 6.6 * s, hy + 3.6 * s],
+    [cx - 4.4 * s, hy - 0.4 * s],
+    [cx - 2.8 * s, hy + 1.6 * s],
+    [cx - 1.2 * s, hy - 1 * s],
+    [cx + 0.6 * s, hy + 1.8 * s],
+    [cx + 2.2 * s, hy - 0.8 * s],
+    [cx + 4 * s, hy + 1.4 * s],
+    [cx + 5 * s, hy - 0.6 * s],
+    [cx + 6.8 * s, hy + 3.4 * s],
+    [cx + 7.2 * s, hy - 2.4 * s],
+  ]);
+  g.fill();
+  // Side locks framing the face
+  for (const dir of [-1, 1]) {
+    poly(g, [
+      [cx + dir * 5.4 * s, hy - 1 * s],
+      [cx + dir * 7.4 * s, hy + 1 * s],
+      [cx + dir * 6.6 * s, hy + 7 * s],
+      [cx + dir * 5 * s, hy + 3 * s],
+    ]);
+    g.fill();
+  }
+  // A few darker strands
+  g.strokeStyle = 'rgba(160,112,34,0.75)';
+  g.lineWidth = 0.6 * s;
+  g.beginPath();
+  g.moveTo(cx - 3 * s, hy - 6 * s);
+  g.lineTo(cx - 2.6 * s, hy - 0.6 * s);
+  g.moveTo(cx + 2 * s, hy - 6.4 * s);
+  g.lineTo(cx + 1.4 * s, hy - 0.4 * s);
+  g.stroke();
+  // Narrow green eyes under level brows
+  browsAt(g, cx, hy + 0.5 * s, s, '#8a6420', 0.5);
+  eyesAt(g, cx, hy + 1.9 * s, s, glowEyes ? '#b8ffe0' : '#7cf0b8', glowEyes ? '#2fe0a0' : '#2fae7a', 2.5);
+  g.strokeStyle = '#2a1a10';
+  g.lineWidth = 0.6 * s;
+  g.beginPath();
+  g.moveTo(cx - 4 * s, hy + 1.2 * s);
+  g.lineTo(cx - 1.2 * s, hy + 1.1 * s);
+  g.moveTo(cx + 1.2 * s, hy + 1.1 * s);
+  g.lineTo(cx + 4 * s, hy + 1.2 * s);
+  g.stroke();
+  guard(hy + 3.4 * s);
+}
+
+/**
+ * Tier Harribel, the Tres Espada (a chibi homage): dark skin, short messy
+ * blonde hair with three braids, narrow green eyes, the tall white collar of
+ * her Arrancar jacket hiding everything below them, and Tiburón, a broad
+ * blade with a hollow down its middle, slung across her back.
+ */
+const harribel: Draw = (g, w, h) => {
+  const s = 2;
+  const cx = w / 2;
+  const cy = h / 2 + 7;
+  const hy = cy - 13 * s;
+  aura(g, cx, cy, 54, 'rgba(90,200,255,0.16)');
+  // Tiburón, sealed, across her back: the hilt over her right shoulder.
+  g.save();
+  g.translate(cx + 2 * s, cy - 2 * s);
+  g.rotate(-0.85);
+  const bl = 15 * s;
+  g.fillStyle = '#c9d3e3';
+  roundRect(g, -bl, -3 * s, 2 * bl - 4 * s, 6 * s, 1.5 * s);
+  g.fill();
+  g.strokeStyle = '#5a6478';
+  g.lineWidth = 0.8 * s;
+  g.stroke();
+  g.fillStyle = '#1a2230';
+  roundRect(g, -bl + 3 * s, -1.2 * s, 2 * bl - 12 * s, 2.4 * s, 1 * s);
+  g.fill();
+  g.fillStyle = '#d8b04a';
+  g.fillRect(bl - 4.4 * s, -3.8 * s, 1.6 * s, 7.6 * s);
+  g.fillStyle = '#2a2f3a';
+  g.fillRect(bl - 2.8 * s, -1.3 * s, 6.4 * s, 2.6 * s);
+  g.restore();
+  harribelBraids(g, cx, hy, s, 15);
+  // White hakama to the feet, a black sash
+  const robe = g.createLinearGradient(0, cy - 6 * s, 0, cy + 20 * s);
+  robe.addColorStop(0, '#ffffff');
+  robe.addColorStop(1, '#cdd5e2');
+  g.fillStyle = robe;
+  g.beginPath();
+  g.moveTo(cx - 8 * s, cy - 6 * s);
+  g.lineTo(cx + 8 * s, cy - 6 * s);
+  g.lineTo(cx + 11 * s, cy + 20 * s);
+  g.lineTo(cx - 11 * s, cy + 20 * s);
+  g.closePath();
+  g.fill();
+  g.strokeStyle = 'rgba(30,40,60,0.45)';
+  g.lineWidth = 1;
+  g.stroke();
+  g.strokeStyle = 'rgba(30,40,60,0.22)';
+  g.beginPath();
+  g.moveTo(cx, cy + 7 * s);
+  g.lineTo(cx, cy + 20 * s);
+  g.stroke();
+  for (const dir of [-1, 1]) {
+    g.fillStyle = '#f4f2ec';
+    g.beginPath();
+    g.ellipse(cx + dir * 4 * s, cy + 20.6 * s, 2.6 * s, 1.4 * s, 0, 0, TAU);
+    g.fill();
+  }
+  // The short jacket stops above the sash
+  g.fillStyle = HARRIBEL_SKIN;
+  g.fillRect(cx - 7.4 * s, cy + 1.6 * s, 14.8 * s, 2.6 * s);
+  g.fillStyle = '#14161f';
+  g.fillRect(cx - 9 * s, cy + 4 * s, 18 * s, 2.2 * s);
+  g.fillStyle = '#f8f9fc';
+  g.beginPath();
+  g.moveTo(cx - 8.4 * s, cy - 6.5 * s);
+  g.lineTo(cx + 8.4 * s, cy - 6.5 * s);
+  g.lineTo(cx + 8.8 * s, cy + 1.8 * s);
+  g.lineTo(cx - 8.8 * s, cy + 1.8 * s);
+  g.closePath();
+  g.fill();
+  g.strokeStyle = '#14161f';
+  g.lineWidth = 0.9 * s;
+  g.beginPath();
+  g.moveTo(cx - 8.8 * s, cy + 1.8 * s);
+  g.lineTo(cx + 8.8 * s, cy + 1.8 * s);
+  g.stroke();
+  // Sleeves to the wrist, with black cuffs, and her hands
+  for (const dir of [-1, 1]) {
+    g.fillStyle = '#f4f6fa';
+    g.beginPath();
+    g.ellipse(cx + dir * 10.5 * s, cy + 1.5 * s, 4 * s, 7.4 * s, -dir * 0.25, 0, TAU);
+    g.fill();
+    g.strokeStyle = 'rgba(30,40,60,0.45)';
+    g.lineWidth = 0.8;
+    g.stroke();
+    g.strokeStyle = '#14161f';
+    g.lineWidth = 1.1 * s;
+    g.beginPath();
+    g.moveTo(cx + dir * 9.4 * s, cy + 7.6 * s);
+    g.lineTo(cx + dir * 13.4 * s, cy + 6.6 * s);
+    g.stroke();
+    g.fillStyle = HARRIBEL_SKIN;
+    g.beginPath();
+    g.arc(cx + dir * 11.6 * s, cy + 9.6 * s, 1.6 * s, 0, TAU);
+    g.fill();
+  }
+  harribelHead(
+    g,
+    cx,
+    hy,
+    s,
+    (y) => {
+      // The tall collar, up to just under her eyes.
+      g.fillStyle = '#f8f9fc';
+      g.beginPath();
+      g.moveTo(cx - 6.4 * s, y);
+      g.quadraticCurveTo(cx, y - 0.8 * s, cx + 6.4 * s, y);
+      g.lineTo(cx + 8.6 * s, cy - 6 * s);
+      g.lineTo(cx - 8.6 * s, cy - 6 * s);
+      g.closePath();
+      g.fill();
+      g.strokeStyle = '#14161f';
+      g.lineWidth = 0.8 * s;
+      g.beginPath();
+      g.moveTo(cx - 6.4 * s, y);
+      g.quadraticCurveTo(cx, y - 0.8 * s, cx + 6.4 * s, y);
+      g.stroke();
+      g.strokeStyle = 'rgba(30,40,60,0.3)';
+      g.lineWidth = 0.6 * s;
+      g.beginPath();
+      g.moveTo(cx, y);
+      g.lineTo(cx, cy - 6 * s);
+      g.stroke();
+    },
+    false,
+  );
+};
+
+/**
+ * Harribel with Tiburón released: white bone plates over her shoulders, chest
+ * and hips, a guard of bone across her face, and Tiburón become a great
+ * shark-tooth blade on her right arm, water glowing around it.
+ */
+const harribelReleased: Draw = (g, w, h) => {
+  const s = 2.05;
+  const cx = w / 2;
+  const cy = h / 2 + 8;
+  const hy = cy - 13 * s;
+  aura(g, cx, cy, 62, 'rgba(90,200,255,0.26)');
+  harribelBraids(g, cx, hy, s, 19);
+  // Dark-skinned legs and arms under the bone
+  g.fillStyle = HARRIBEL_SKIN;
+  for (const dir of [-1, 1]) {
+    g.beginPath();
+    g.ellipse(cx + dir * 4 * s, cy + 15 * s, 2.6 * s, 6 * s, 0, 0, TAU);
+    g.fill();
+    g.beginPath();
+    g.ellipse(cx + dir * 10.2 * s, cy + 2 * s, 2.4 * s, 7.4 * s, -dir * 0.2, 0, TAU);
+    g.fill();
+  }
+  // Bone boots
+  for (const dir of [-1, 1]) {
+    g.fillStyle = SHARK_BONE;
+    poly(g, [
+      [cx + dir * 1.6 * s, cy + 17 * s],
+      [cx + dir * 6.4 * s, cy + 17 * s],
+      [cx + dir * 6.8 * s, cy + 21.4 * s],
+      [cx + dir * 1.2 * s, cy + 21.4 * s],
+    ]);
+    g.fill();
+  }
+  // The hip plates: a skirt of bone with a jagged hem
+  g.fillStyle = SHARK_BONE;
+  g.beginPath();
+  g.moveTo(cx - 8 * s, cy + 2 * s);
+  g.lineTo(cx + 8 * s, cy + 2 * s);
+  for (let k = 0; k <= 6; k++) {
+    const x = cx + 9.4 * s - (k * 18.8 * s) / 6;
+    g.lineTo(x, cy + (k % 2 ? 9.5 : 12.5) * s);
+  }
+  g.closePath();
+  g.fill();
+  g.strokeStyle = SHARK_BONE_SHADE;
+  g.lineWidth = 0.7 * s;
+  g.stroke();
+  // The breastplate, and the shoulder plates with their fins
+  const chest = g.createLinearGradient(0, cy - 7 * s, 0, cy + 3 * s);
+  chest.addColorStop(0, '#ffffff');
+  chest.addColorStop(1, SHARK_BONE_SHADE);
+  g.fillStyle = chest;
+  roundRect(g, cx - 7.6 * s, cy - 7 * s, 15.2 * s, 9.6 * s, 2.4 * s);
+  g.fill();
+  g.strokeStyle = '#9a9282';
+  g.lineWidth = 0.6 * s;
+  g.beginPath();
+  g.moveTo(cx - 4 * s, cy - 2 * s);
+  g.lineTo(cx - 1 * s, cy + 1 * s);
+  g.moveTo(cx + 4 * s, cy - 2 * s);
+  g.lineTo(cx + 1 * s, cy + 1 * s);
+  g.stroke();
+  for (const dir of [-1, 1]) {
+    g.fillStyle = SHARK_BONE;
+    g.beginPath();
+    g.ellipse(cx + dir * 9.6 * s, cy - 5.4 * s, 4.6 * s, 3.2 * s, dir * 0.3, 0, TAU);
+    g.fill();
+    g.strokeStyle = SHARK_BONE_SHADE;
+    g.lineWidth = 0.6 * s;
+    g.stroke();
+    for (let k = 0; k < 3; k++) {
+      const bx = cx + dir * (7.6 + k * 1.9) * s;
+      poly(g, [
+        [bx - 0.8 * s, cy - 7.6 * s + k * 0.6 * s],
+        [bx + dir * 1.6 * s, cy - (12 - k * 1.2) * s],
+        [bx + 0.9 * s, cy - 7.2 * s + k * 0.6 * s],
+      ]);
+      g.fill();
+    }
+  }
+  // Her left hand; the right becomes the blade's grip
+  g.fillStyle = HARRIBEL_SKIN;
+  g.beginPath();
+  g.arc(cx - 11.6 * s, cy + 9.6 * s, 1.6 * s, 0, TAU);
+  g.fill();
+  // Tiburón released: a great shark-tooth blade rising from her right arm
+  g.save();
+  g.shadowColor = 'rgba(90,200,255,0.9)';
+  g.shadowBlur = 10;
+  const blade = g.createLinearGradient(cx + 10 * s, cy + 10 * s, cx + 14 * s, hy - 16 * s);
+  blade.addColorStop(0, '#d8e2f0');
+  blade.addColorStop(1, '#ffffff');
+  g.fillStyle = blade;
+  g.beginPath();
+  g.moveTo(cx + 7.4 * s, cy + 10.8 * s);
+  g.quadraticCurveTo(cx + 8 * s, hy + 1 * s, cx + 15.4 * s, hy - 14 * s);
+  g.quadraticCurveTo(cx + 22.6 * s, hy + 5 * s, cx + 18.6 * s, cy + 10.8 * s);
+  g.quadraticCurveTo(cx + 13 * s, cy + 12.6 * s, cx + 7.4 * s, cy + 10.8 * s);
+  g.closePath();
+  g.fill();
+  g.restore();
+  g.strokeStyle = '#7a8aa4';
+  g.lineWidth = 0.6 * s;
+  g.stroke();
+  g.fillStyle = '#1a2230';
+  g.beginPath();
+  g.moveTo(cx + 11.2 * s, cy + 6.4 * s);
+  g.quadraticCurveTo(cx + 11.2 * s, hy + 3 * s, cx + 15.2 * s, hy - 6 * s);
+  g.quadraticCurveTo(cx + 18.4 * s, hy + 4 * s, cx + 15.6 * s, cy + 6.4 * s);
+  g.closePath();
+  g.fill();
+  g.fillStyle = HARRIBEL_SKIN;
+  g.beginPath();
+  g.arc(cx + 12 * s, cy + 10 * s, 1.8 * s, 0, TAU);
+  g.fill();
+  harribelHead(
+    g,
+    cx,
+    hy,
+    s,
+    (y) => {
+      // A guard of bone across the lower half of her face.
+      g.fillStyle = SHARK_BONE;
+      g.beginPath();
+      g.moveTo(cx - 5.8 * s, y);
+      g.quadraticCurveTo(cx, y - 0.6 * s, cx + 5.8 * s, y);
+      g.quadraticCurveTo(cx + 5 * s, y + 4.6 * s, cx, y + 5 * s);
+      g.quadraticCurveTo(cx - 5 * s, y + 4.6 * s, cx - 5.8 * s, y);
+      g.closePath();
+      g.fill();
+      g.strokeStyle = '#9a9282';
+      g.lineWidth = 0.5 * s;
+      g.beginPath();
+      for (let k = -2; k <= 2; k++) {
+        g.moveTo(cx + k * 1.8 * s, y + 1 * s);
+        g.lineTo(cx + k * 1.6 * s, y + 3.6 * s);
+      }
+      g.stroke();
+    },
+    true,
+  );
+};
+
 // ------------------------------------------------------------ packing
 
 const ENEMY_DRAW: readonly [string, number, Draw][] = [
@@ -3613,6 +3991,8 @@ const ENEMY_DRAW: readonly [string, number, Draw][] = [
   ['royal_oetsu', 112, oetsu],
   ['royal_senjumaru', 120, senjumaru],
   ['ichibe', 144, ichibe],
+  ['harribel', 128, harribel],
+  ['harribel_tiburon', 144, harribelReleased],
 ];
 
 function specs(): Spec[] {

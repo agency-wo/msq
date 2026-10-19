@@ -53,14 +53,14 @@ describe('trials', () => {
 });
 
 describe('Endless', () => {
-  it('the lord falls and the night goes on: no victory, and a new wave of bosses a minute later', () => {
+  it('the queen falls and the night goes on: no victory, and a new wave of bosses a minute later', () => {
     const w = new World({ seed: 4, god: true, startTime: 1199, endless: true });
     w.powers.length = 0;
     steps(w, Math.round(3 / DT));
-    let lord = -1;
-    for (let i = 0; i < w.en.n; i++) if (w.en.type[i] === ENEMY_INDEX.vasto) lord = i;
-    expect(lord).toBeGreaterThanOrEqual(0);
-    w.killEnemy(lord);
+    let queen = -1;
+    for (let i = 0; i < w.en.n; i++) if (w.en.type[i] === ENEMY_INDEX.harribel) queen = i;
+    expect(queen).toBeGreaterThanOrEqual(0);
+    w.killEnemy(queen);
     steps(w, Math.round(5 / DT));
     expect(w.over).toBeNull();
     expect(w.banners.some((b) => b.title === 'Endless')).toBe(true);

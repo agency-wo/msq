@@ -76,8 +76,9 @@ function sorted(events: TimelineEvent[]): readonly TimelineEvent[] {
 
 /**
  * Hueco Mundo: the Hollow desert. Tuned with the balance report: each bearer
- * takes a careful player about 35-50 s, the Vasto Lorde about 45 s against a
- * full build with three bankai.
+ * takes a careful player about 35-50 s. A Vasto Lorde rises at 18:00, and at
+ * 20:00 Tier Harribel, the queen of Las Noches, ends the stage (about 45 s
+ * against a full build with three bankai).
  */
 const HUECO: StageDef = {
   id: 'hueco',
@@ -99,7 +100,16 @@ const HUECO: StageDef = {
       [1, 3.4, 14],
     ),
     { at: 905, kind: 'boss', enemy: 'menos', hpMul: 3, final: false, warn: 'A Menos Grande rises', sub: 'Its Cero burns in a straight line' },
-    { at: LENGTH, kind: 'boss', enemy: 'vasto', hpMul: 60, final: true, warn: 'The lord of Hueco Mundo awakens', sub: 'Lord of Hueco Mundo' },
+    { at: 1080, kind: 'boss', enemy: 'vasto', hpMul: 14, final: false, warn: 'A Vasto Lorde rises from the sand', sub: 'The last form a Hollow can take' },
+    {
+      at: LENGTH,
+      kind: 'boss',
+      enemy: 'harribel',
+      hpMul: 60,
+      final: true,
+      warn: 'Tier Harribel bars the way to Las Noches',
+      sub: 'Tres Espada · Queen of Hueco Mundo',
+    },
   ]),
   hp: 1,
   spawn: 1,

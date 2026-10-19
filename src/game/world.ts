@@ -1326,7 +1326,7 @@ export class World {
       if (E.uid[i] === this.huntUid) {
         this.huntUid = -1;
         this.addPickup('chestBlack', x - 36, y + 12);
-      } else if (def.id === 'menos' || def.id === 'grandmaster') {
+      } else if (def.id === 'menos' || def.id === 'grandmaster' || def.id === 'vasto') {
         this.addPickup('chest', x, y);
       }
       for (let k = 0; k < 10; k++) {

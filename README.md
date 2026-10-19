@@ -16,8 +16,8 @@ back in a run counts toward **A · The Almighty** (the HUD shows how many): at
 five it awakens (at three once you have taken back all six bankai across your
 runs). It stops time every 24 s and
 rewrites the future (enemy fire vanishes, everything on screen is struck down).
-All art is drawn in code: the Emperor, the Gotei 13 captains and the Royal
-Guard are chibi homages to their Bleach designs; everything else (Hollows, Soul
+All art is drawn in code: the Emperor, the Gotei 13 captains, the Royal Guard
+and Tier Harribel are chibi homages to their Bleach designs; everything else (Hollows, Soul
 Reaper soldiers, the palace's servants, medallion bearers, the other bosses,
 effects) is an original design.
 
@@ -101,7 +101,11 @@ opens with.
 
 Stages, 20 minutes each:
 
-- **Hueco Mundo**: Hollows, ending with the Vasto Lorde.
+- **Hueco Mundo**: Hollows. A Vasto Lorde rises at 18:00, and Tier Harribel,
+  the Tres Espada who has ruled Las Noches since Aizen fell, ends the stage:
+  Ola Azul waves, a Sonído rush down a warned lane, and below half health
+  Tiburón released and Cascada falling where you stand (in the story, the
+  Emperor beats her in front of her own palace).
 - **Seireitei** (unlocked by clearing Hueco Mundo): Soul Reaper soldiers that
   flash-step and cast Kidō, and lieutenants that throw sword waves. The bankai
   bosses here are the captains themselves (Byakuya, Hitsugaya, Suì-Fēng,

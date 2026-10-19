@@ -12,6 +12,7 @@ import {
   EB_WAVE,
   EB_SWORD,
   EB_THREAD,
+  EB_WATER,
   EBF_ROOT,
   EBF_SLOW,
   FLAG_BOSS,
@@ -36,6 +37,7 @@ import {
   MK_STEAM,
   MK_SWORD,
   MK_THREAD,
+  MK_WATER,
   MS_ARC,
   MS_CIRCLE,
   MS_LINE,
@@ -78,7 +80,14 @@ export function updateEnemyBullets(w: World): void {
   }
 }
 
-const BULLET_HIT: Record<number, number> = { [EB_ICE]: 0x8fd8ff, [EB_FIRE]: 0xff9a4a, [EB_WAVE]: 0xdfe8ff, [EB_SWORD]: 0xf2f6ff, [EB_THREAD]: 0xe2ccff };
+const BULLET_HIT: Record<number, number> = {
+  [EB_ICE]: 0x8fd8ff,
+  [EB_FIRE]: 0xff9a4a,
+  [EB_WAVE]: 0xdfe8ff,
+  [EB_SWORD]: 0xf2f6ff,
+  [EB_THREAD]: 0xe2ccff,
+  [EB_WATER]: 0x9fe0ff,
+};
 
 /**
  * Elites shoot every few seconds while on screen: Adjuchas spit a red Bala,
@@ -238,6 +247,78 @@ export function bossAI(w: World, i: number, dist: number): void {
     grandmasterAI(w, i);
   } else if (def.id === 'commander') {
     commanderAI(w, i, dist);
+  } else if (def.id === 'harribel') {
+    harribelAI(w, i);
+  }
+}
+
+/** Tier Harribel's size once Tiburón is released (the renderer switches to her released form). */
+export const HARRIBEL_RELEASED = 36;
+
+/**
+ * Tier Harribel, the Tres Espada, who has ruled Las Noches since Aizen fell.
+ * Ola Azul: waves cut from the hollow of her blade, in a fan at you. Sonído:
+ * a lane is warned and she is already through it. Below half health she
+ * releases Tiburón: bigger and faster, wider fans, and Cascada, a torrent
+ * that falls where you stand. Every move is warned first.
+ */
+function harribelAI(w: World, i: number): void {
+  const E = w.en;
+  const p = w.player;
+  const x = E.x[i];
+  const y = E.y[i];
+  const released = E.hp[i] < E.maxHp[i] * 0.5;
+  if (released && E.r[i] < HARRIBEL_RELEASED) {
+    E.r[i] = HARRIBEL_RELEASED;
+    E.spd[i] *= 1.3;
+    E.atkT[i] = 1.4;
+    w.spawnFx(FX_RING, x, y, 0, 0, 0.6, 30, 320, 1, 0, 0, 0x5ac8ff, LAYER_ADD);
+    w.spawnFx(FX_GLOW, x, y, 0, 0, 0.6, 40, 200, 0.9, 0, 0, 0x9fe0ff, LAYER_ADD);
+    w.shake = Math.max(w.shake, 8);
+    w.messages.push({ text: 'Harribel releases Tiburón', kind: 'boss' });
+    w.sound('rise');
+  }
+  if (E.atkT[i] > 0) return;
+  E.atkT[i] = released ? 2 : 2.6;
+  const dmg = E.dmg[i];
+  const toP = Math.atan2(p.y - y, p.x - x);
+  // The variant byte is free on this boss: use it as the move counter.
+  const move = E.variant[i] % 3;
+  E.variant[i] = (move + 1) % 3;
+  switch (move) {
+    case 0: {
+      // Ola Azul: a fan of waves from the hollow of her blade.
+      const n = released ? 5 : 3;
+      for (let k = 0; k < n; k++) {
+        const a = toP + (k - (n - 1) / 2) * 0.26;
+        w.spawnEnemyBullet(EB_WATER, x, y, Math.cos(a) * 210, Math.sin(a) * 210, 13, 3.6, dmg * 0.55);
+      }
+      w.sound('blade');
+      break;
+    }
+    case 1:
+      // Sonído: the lane is warned, and she is already moving down it.
+      w.spawnMark(MK_WATER, MS_LINE, x, y, 38, 440, toP, 0.65, dmg, MF_ENEMY);
+      E.kx[i] = Math.cos(toP) * 1250;
+      E.ky[i] = Math.sin(toP) * 1250;
+      w.sound('warn');
+      break;
+    case 2:
+      if (released) {
+        // Cascada: a torrent falls where you stand, and its spray lands all around.
+        w.spawnMark(MK_WATER, MS_CIRCLE, p.x, p.y, 120, 0, 0, 1.35, dmg * 1.2, MF_ENEMY);
+        const off = w.rng.next() * TAU;
+        for (let k = 0; k < 5; k++) {
+          const a = off + (k / 5) * TAU;
+          w.spawnMark(MK_WATER, MS_CIRCLE, p.x + Math.cos(a) * 185, p.y + Math.sin(a) * 185, 44, 0, 0, 1.6, dmg * 0.5, MF_ENEMY);
+        }
+        w.sound('warn');
+      } else {
+        // One great wave, slower and wider than the rest.
+        w.spawnEnemyBullet(EB_WATER, x, y, Math.cos(toP) * 150, Math.sin(toP) * 150, 24, 4.5, dmg * 0.8);
+        w.sound('blade');
+      }
+      break;
   }
 }
 

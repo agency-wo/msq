@@ -8,7 +8,7 @@ import { BANKAI_BY_ID, BANKAI_IDS } from '../data/bankai';
 import { ENEMY_INDEX, ENEMY_LIST } from '../data/enemies';
 import { ROYAL_IDS, ROYAL_INFO } from '../data/royal';
 import { DOUBLE_RING, doubleCount } from '../game/casts/schrift2';
-import { COMMANDER_HEAT } from '../game/hostile';
+import { COMMANDER_HEAT, HARRIBEL_RELEASED } from '../game/hostile';
 import { enemySpriteName } from './names';
 import {
   EB_FIRE,
@@ -17,6 +17,7 @@ import {
   EB_WAVE,
   EB_THREAD,
   EB_SWORD,
+  EB_WATER,
   FLAG_BOSS,
   FLAG_ELITE,
   FLAG_ZOMBIE,
@@ -222,6 +223,8 @@ export class Renderer {
   /** The Royal Guard by variant, and Kirio once she has shed her bulk. */
   private royalSprites: EnemySprite[] = [];
   private kirioSlim: EnemySprite | null = null;
+  /** Tier Harribel once Tiburón is released. */
+  private harribelReleased: EnemySprite | null = null;
   private bossAura: number[] = [];
   private grounds = new Map<string, Texture>();
   private groundId = '';
@@ -312,6 +315,7 @@ export class Renderer {
       attendant: 13,
       royal: 28,
       ichibe: 30,
+      harribel: 29,
     };
     // Types drawn per variant (or per stage) fall back to one of their sprites here.
     this.enemySprites = ENEMY_LIST.map((d, t) => sprite(enemySpriteName(t), REF[d.id] ?? d.radius));
@@ -319,6 +323,7 @@ export class Renderer {
     this.artScale = ENEMY_LIST.map((d) => (d.boss || d.shinigami || d.behavior === 'flee' || d.id === 'rift' || d.id === 'ashen' ? 1 : 1.1));
     this.royalSprites = ROYAL_IDS.map((id, v) => sprite(enemySpriteName(ENEMY_INDEX.royal, v), id === 'kirio' ? 30 : 28));
     this.kirioSlim = sprite('royal_kirio_slim', 26);
+    this.harribelReleased = sprite('harribel_tiburon', 31);
     const adjuchas = sprite('adjuchas', 24);
     const seated = sprite('seated', 24);
     // The palace's servants keep their own look as elites, just bigger.
@@ -676,7 +681,9 @@ export class Renderer {
               : (this.royalSprites[E.variant[i]] ?? this.enemySprites[type])
             : type === ENEMY_INDEX.golden && w.stage.id === 'seireitei'
             ? this.enemySprites[ENEMY_INDEX.officer]
-            : this.enemySprites[type];
+            : type === ENEMY_INDEX.harribel && E.r[i] >= HARRIBEL_RELEASED && this.harribelReleased
+              ? this.harribelReleased
+              : this.enemySprites[type];
       if (type === ENEMY_INDEX.golden) {
         // A treasure runner: gold, glowing, impossible to miss.
         L.auras.add(f.glow, x, y, (r * 4) / 64, (r * 4) / 64, 0, 0xffd27a, 0.55 + Math.sin(now * 8) * 0.2);
@@ -897,6 +904,11 @@ export class Renderer {
           break;
         case EB_THREAD:
           L.add(f.trail, x, y, (r * 5) / 64, (r * 1.4) / 16, rot, 0xe2ccff);
+          break;
+        case EB_WATER:
+          // Ola Azul: a crescent of sea-blue water, bright at its edge.
+          L.add(f.crescent, x, y, (r * 2.6) / 256, (r * 3.4) / 128, rot, 0x5ac8ff);
+          L.add(f.crescent, x, y, (r * 2) / 256, (r * 2.6) / 128, rot, 0xd8f4ff, 0.7);
           break;
         default:
           L.add(f.bala, x, y, (r * 2.8) / 20, (r * 2.8) / 20);
