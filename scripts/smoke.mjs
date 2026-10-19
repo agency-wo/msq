@@ -295,6 +295,10 @@ try {
   await wait(250);
   log('modes', { label: await page.textContent('.mode-label'), endless: await page.isVisible('.mode-endless.on'), info: await page.textContent('.stage-info') });
   await shot('09a-modes');
+  await page.tap('.mode-rush');
+  await wait(250);
+  log('rush mode', { on: await page.isVisible('.mode-rush.on'), info: await page.textContent('.stage-info') });
+  await shot('09a2-rush-mode');
   await page.tap('.mode-prev');
   await page.tap('.mode-standard');
   await page.tap('.stage-btn:nth-child(2)');
@@ -469,6 +473,12 @@ try {
   }
   log('fragment', { banner: await page.textContent('.banner .banner-title').catch(() => null), owned });
   await shot('18d-fragment');
+
+  // Boss Rush: the stage's bosses back to back, eight level-ups to start.
+  await page.goto(`${BASE}?debug&seed=7&play&god&rush&stage=hueco`);
+  await steer(16000, { radius: 25 });
+  log('boss rush', { ...(await stats()), rush: await page.evaluate(() => window.__msq.world.bossRush), boss: (await page.isVisible('.bossbar')) ? await page.textContent('.boss-name') : null });
+  await shot('19-boss-rush');
 
   // A Quincy shrine: walk into it and make a pact.
   await page.goto(`${BASE}?debug&seed=7&play&god&give=explode4,fear3`);

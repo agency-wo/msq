@@ -14,7 +14,7 @@ import type { Banner, World } from '../game/world';
 import { drawEmperor, drawSprite } from '../render/atlas';
 import { enemySpriteName } from '../render/names';
 import { nextCost, startOptions, upgradeLevel } from '../save/archives';
-import { almightyUnlocked, endlessOpen, stageUnlocked, trialsOpen, type DailyRecord, type SaveData, type Settings } from '../save/save';
+import { almightyUnlocked, endlessOpen, rushOpen, stageUnlocked, trialsOpen, type DailyRecord, type SaveData, type Settings } from '../save/save';
 import { chapterUnlocked } from '../save/story';
 import { drawEmblem, drawIcon } from './icons';
 import { shareRun } from './share';
@@ -109,6 +109,8 @@ export interface ResultSummary {
   chapters: string[];
   /** A Daily Trial: the best shown is today's, plus any bonus gold the run earned. */
   daily: boolean;
+  /** A Boss Rush: the record shown is the fastest clear. */
+  rush: boolean;
   dailyBonus: number;
   /** "Daily Trial · October 19 · Frail + Giants", or "" for any other run. */
   dailyLine: string;
@@ -583,7 +585,13 @@ export class UI {
     if (r.starts.length > 0) p.append(el('p', 'unlock-note', `New starting Schrift in the Archives: ${r.starts.join(', ')}`));
     if (r.chapters.length > 0) p.append(el('p', 'unlock-note', `New in the Chronicle: ${r.chapters.join(', ')}`));
     if (r.dailyBonus > 0) p.append(el('p', 'unlock-note', `Daily Trial bonus: +${r.dailyBonus} gold`));
-    const [best, beaten] = r.daily ? ["Today's best", 'New daily best'] : r.endless ? ['Endless best', 'New Endless best'] : ['Best', 'New best'];
+    const [best, beaten] = r.rush
+      ? ['Fastest clear', 'New fastest clear']
+      : r.daily
+        ? ["Today's best", 'New daily best']
+        : r.endless
+          ? ['Endless best', 'New Endless best']
+          : ['Best', 'New best'];
     const stats = el('div', 'stats');
     const stat = (label: string, value: string): HTMLElement => {
       const s = el('div', 'stat');
@@ -594,7 +602,7 @@ export class UI {
       stat('Survived', formatTime(r.time)),
       stat('Level', String(r.level)),
       stat('Kills', String(r.kills)),
-      stat(r.newBest ? beaten : best, formatTime(r.bestTime)),
+      stat(r.newBest ? beaten : best, r.rush && r.bestTime === 0 ? '—' : formatTime(r.bestTime)),
     );
     p.append(stats);
     if (r.goldEarned > 0) {
@@ -835,8 +843,9 @@ export class UI {
     seg.setAttribute('aria-label', 'Mode');
     const standard = button('mode-opt mode-standard', 'Standard');
     const endless = button('mode-opt mode-endless', 'Endless');
-    for (const b of [standard, endless]) b.setAttribute('role', 'radio');
-    seg.append(standard, endless);
+    const rush = button('mode-opt mode-rush', 'Boss Rush');
+    for (const b of [standard, endless, rush]) b.setAttribute('role', 'radio');
+    seg.append(standard, endless, rush);
     const trialBox = el('div', 'mode-trial');
     const prev = button('mode-step mode-prev', '‹');
     prev.setAttribute('aria-label', 'Easier trial');
@@ -857,17 +866,26 @@ export class UI {
       const rec = save.stages[id];
       const open = trialsOpen(save, id);
       const trial = Math.min(save.trial, open);
-      const isEndless = save.endless && endlessOpen(save, id);
+      const isRush = save.rush && rushOpen(save, id);
+      const isEndless = !isRush && save.endless && endlessOpen(save, id);
       modes.classList.toggle('hidden', !rec.cleared);
       label.textContent = TRIAL_NAMES[trial];
       prev.disabled = trial <= 0;
       next.disabled = trial >= open || trial >= MAX_TRIAL;
-      standard.classList.toggle('on', !isEndless);
-      standard.setAttribute('aria-checked', String(!isEndless));
+      standard.classList.toggle('on', !isEndless && !isRush);
+      standard.setAttribute('aria-checked', String(!isEndless && !isRush));
       endless.classList.toggle('on', isEndless);
       endless.setAttribute('aria-checked', String(isEndless));
+      rush.classList.toggle('on', isRush);
+      rush.setAttribute('aria-checked', String(isRush));
       const best = rec.best > 0 ? ` Best ${formatTime(rec.best)}${rec.cleared ? ' · cleared' : ''}.` : '';
-      const extra = [trialBlurb(trial), isEndless ? `Endless: the night never ends.${rec.endless > 0 ? ` Best ${formatTime(rec.endless)}.` : ''}` : ''].filter(Boolean).join(' ');
+      const extra = [
+        trialBlurb(trial),
+        isEndless ? `Endless: the night never ends.${rec.endless > 0 ? ` Best ${formatTime(rec.endless)}.` : ''}` : '',
+        isRush ? `Boss Rush: every boss, back to back.${rec.rush > 0 ? ` Fastest clear ${formatTime(rec.rush)}.` : ''}` : '',
+      ]
+        .filter(Boolean)
+        .join(' ');
       info.textContent = extra ? extra : `${def.blurb}${best}`;
     };
     prev.addEventListener('click', () => {
@@ -880,12 +898,14 @@ export class UI {
       onMode();
       select(current);
     });
-    for (const [b, on] of [
-      [standard, false],
-      [endless, true],
+    for (const [b, mode] of [
+      [standard, 'standard'],
+      [endless, 'endless'],
+      [rush, 'rush'],
     ] as const) {
       b.addEventListener('click', () => {
-        save.endless = on;
+        save.endless = mode === 'endless';
+        save.rush = mode === 'rush';
         onMode();
         select(current);
       });

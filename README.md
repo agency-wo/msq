@@ -57,7 +57,10 @@ speed, shown by the counter beside your kills.
 Clear a stage and its **Trials** open one at a time (I to V: tougher enemies
 and bosses, harder hits, 50% more gold per tier), along with **Endless**: the
 final boss no longer ends the run, boss waves keep coming and the swarm keeps
-growing until you fall. Each stage keeps its best Endless time.
+growing until you fall. Each stage keeps its best Endless time. **Boss Rush**
+opens with the first clear too: the stage's bosses back to back with their
+escorts and a thin swarm, eight level-ups to start and four for each boss down,
+racing for the fastest clear.
 
 The **Daily Trial** is one run a day, the same for every player: the date picks
 the stage, a Schrift held from the start beside Heilig Pfeil (any attack, even

@@ -42,6 +42,8 @@ export function installGestureGuards(): void {
   document.addEventListener(
     'touchmove',
     (e) => {
+      // A drag that began before a board opened under it may already be a scroll the browser will not cancel.
+      if (!e.cancelable) return;
       if (!(e.target instanceof Element) || !e.target.closest('.scroll')) e.preventDefault();
     },
     { passive: false },

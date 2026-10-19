@@ -21,10 +21,11 @@ import {
   loadSave,
   recordDaily,
   recordRun,
+  rushOpen,
+  type SaveData,
   stageUnlocked,
   trialsOpen,
   writeSave,
-  type SaveData,
 } from './save/save';
 import { chaptersAfter, chaptersBefore, markChapter } from './save/story';
 import { damageRows, type Toggle, UI } from './ui/ui';
@@ -203,6 +204,12 @@ export class App {
     return this.save.endless && endlessOpen(this.save, stage);
   }
 
+  /** Boss Rush for this run: ?rush (testing), or the title's pick once the stage is cleared. */
+  private runRush(stage: StageId): boolean {
+    if (this.params.has('rush')) return true;
+    return this.save.rush && rushOpen(this.save, stage);
+  }
+
   /** ?stage= wins (testing, even if locked); otherwise the stage picked on the title screen. */
   private runStage(): StageId {
     const forced = this.params.get('stage');
@@ -237,7 +244,8 @@ export class App {
     this.world = new World({
       stage,
       trial: daily ? 0 : this.runTrial(stage),
-      endless: daily ? false : this.runEndless(stage),
+      endless: daily ? false : !this.runRush(stage) && this.runEndless(stage),
+      bossRush: daily ? false : this.runRush(stage),
       mods: daily?.mods,
       seed: daily ? daily.seed : numParam(p, 'seed'),
       stress: numParam(p, 'stress'),
@@ -465,6 +473,7 @@ export class App {
           endless: w.endless,
           daily: !!this.daily,
           evolution: w.evolution,
+          bossRush: w.bossRush,
         });
     const daily = w.god || !this.daily ? null : recordDaily(this.save, this.daily.date, w.t, victory);
     if (!w.god) writeSave(this.save);
@@ -475,7 +484,10 @@ export class App {
         stage: w.stage.id,
         stageName: w.stage.name,
         evolution: w.evolution,
-        mode: this.daily ? 'Daily Trial' : [w.trial > 0 ? TRIAL_NAMES[w.trial] : '', w.endless ? 'Endless' : ''].filter(Boolean).join(' · '),
+        mode: this.daily
+          ? 'Daily Trial'
+          : [w.trial > 0 ? TRIAL_NAMES[w.trial] : '', w.endless ? 'Endless' : '', w.bossRush ? 'Boss Rush' : ''].filter(Boolean).join(' · '),
+        rush: w.bossRush,
         daily: !!this.daily,
         dailyBonus: daily?.bonus ?? 0,
         dailyLine: this.daily ? dailyLine(this.daily) : '',
@@ -493,7 +505,13 @@ export class App {
         time: w.t,
         level: w.level,
         kills: w.kills,
-        bestTime: this.daily ? this.save.daily.best : w.endless ? this.save.stages[w.stage.id].endless : this.save.stages[w.stage.id].best,
+        bestTime: this.daily
+          ? this.save.daily.best
+          : w.bossRush
+            ? this.save.stages[w.stage.id].rush
+            : w.endless
+              ? this.save.stages[w.stage.id].endless
+              : this.save.stages[w.stage.id].best,
         newBest: daily ? daily.newBest : record.newBest,
         resonances: [...w.resonances],
         powers: w.powers.map((ps) => ({

@@ -32,6 +32,8 @@ export interface StageRecord {
   clearTrial: number;
   /** Longest Endless run, seconds. */
   endless: number;
+  /** Fastest Boss Rush clear, seconds (0: not yet). */
+  rush: number;
 }
 
 export interface SaveData {
@@ -57,6 +59,8 @@ export interface SaveData {
   /** The trial and Endless picked on the title screen (checked against what each stage has opened). */
   trial: number;
   endless: boolean;
+  /** Boss Rush picked on the title screen (it and Endless exclude each other). */
+  rush: boolean;
   /** Today's Daily Trial: its date, best time, and whether its survival and clear bonuses were paid. */
   daily: DailyRecord;
   /** The furthest the Emperor has evolved in any run (0 to 3), shown on the title. */
@@ -82,6 +86,8 @@ export interface RunResult {
   daily?: boolean;
   /** How far the Emperor evolved in the run. */
   evolution?: number;
+  /** A Boss Rush: keeps its own record (the fastest clear) and changes nothing else about the stage. */
+  bossRush?: boolean;
   time: number;
   level: number;
   kills: number;
@@ -100,7 +106,7 @@ export function defaultSave(): SaveData {
     totals: { runs: 0, kills: 0, clears: 0, gold: 0 },
     settings: { sound: true, music: true, numbers: true, shake: true },
     stage: 'hueco',
-    stages: Object.fromEntries(STAGE_IDS.map((id) => [id, { best: 0, cleared: false, clearTrial: -1, endless: 0 }])) as Record<StageId, StageRecord>,
+    stages: Object.fromEntries(STAGE_IDS.map((id) => [id, { best: 0, cleared: false, clearTrial: -1, endless: 0, rush: 0 }])) as Record<StageId, StageRecord>,
     taken: [],
     gold: 0,
     meta: {},
@@ -109,6 +115,7 @@ export function defaultSave(): SaveData {
     chapters: [],
     trial: 0,
     endless: false,
+    rush: false,
     daily: { date: '', best: 0, survived: false, cleared: false },
     evolution: 0,
   };
@@ -141,6 +148,11 @@ export function trialsOpen(save: SaveData, id: StageId): number {
 
 /** Endless opens once a stage has been cleared. */
 export function endlessOpen(save: SaveData, id: StageId): boolean {
+  return save.stages[id].cleared;
+}
+
+/** Boss Rush opens on a stage once it has been cleared. */
+export function rushOpen(save: SaveData, id: StageId): boolean {
   return save.stages[id].cleared;
 }
 
@@ -181,7 +193,7 @@ export function migrate(raw: unknown): SaveData {
     const rec = obj(stagesRaw[id]);
     const cleared = bool(rec.cleared, false);
     const clearTrial = cleared ? Math.min(MAX_TRIAL, Math.floor(num(rec.clearTrial, 0))) : -1;
-    stages[id] = { best: num(rec.best, 0), cleared, clearTrial, endless: num(rec.endless, 0) };
+    stages[id] = { best: num(rec.best, 0), cleared, clearTrial, endless: num(rec.endless, 0), rush: num(rec.rush, 0) };
   }
   // Saves from before stages existed: everything they recorded was Hueco Mundo.
   if (!('stages' in r)) {
@@ -226,6 +238,7 @@ export function migrate(raw: unknown): SaveData {
     chapters: [...new Set(chapters)],
     trial: Math.min(MAX_TRIAL, Math.floor(num(r.trial, 0))),
     endless: bool(r.endless, false),
+    rush: bool(r.rush, false),
     daily: {
       date: typeof obj(r.daily).date === 'string' ? (obj(r.daily).date as string) : '',
       best: num(obj(r.daily).best, 0),
@@ -323,8 +336,14 @@ export function recordRun(save: SaveData, r: RunResult): RecordOutcome {
   save.gold += r.gold;
   save.evolution = Math.max(save.evolution, Math.min(3, r.evolution ?? 0));
   if (r.cleared) save.totals.clears++;
-  if (r.time > save.best.time && !r.daily) save.best = { time: r.time, level: r.level, kills: r.kills };
+  if (r.time > save.best.time && !r.daily && !r.bossRush) save.best = { time: r.time, level: r.level, kills: r.kills };
   if (r.daily) return { newBest: false, unlocked: null, almighty: !hadAlmighty && almightyUnlocked(save), starts };
+  if (r.bossRush) {
+    const rec = save.stages[r.stage];
+    const newBest = r.cleared && (rec.rush === 0 || r.time < rec.rush);
+    if (newBest) rec.rush = r.time;
+    return { newBest, unlocked: null, almighty: !hadAlmighty && almightyUnlocked(save), starts };
+  }
   const rec = save.stages[r.stage];
   // Endless runs keep their own record; newBest is about the record this run competes with.
   const newBest = r.endless ? r.time > rec.endless : r.time > rec.best;

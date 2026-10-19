@@ -86,8 +86,8 @@ describe('save', () => {
   it('carries an old save (before stages) over: its record and clear count as Hueco Mundo', () => {
     const old = { v: 1, best: { time: 1201, level: 55, kills: 8000 }, totals: { runs: 4, kills: 20000, clears: 1, gold: 100 } };
     const s = migrate(old);
-    expect(s.stages.hueco).toEqual({ best: 1201, cleared: true, clearTrial: 0, endless: 0 });
-    expect(s.stages.seireitei).toEqual({ best: 0, cleared: false, clearTrial: -1, endless: 0 });
+    expect(s.stages.hueco).toEqual({ best: 1201, cleared: true, clearTrial: 0, endless: 0, rush: 0 });
+    expect(s.stages.seireitei).toEqual({ best: 0, cleared: false, clearTrial: -1, endless: 0, rush: 0 });
     expect(stageUnlocked(s, 'seireitei')).toBe(true);
     expect(s.stage).toBe('hueco');
   });

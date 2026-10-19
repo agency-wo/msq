@@ -162,6 +162,8 @@ export interface WorldOptions {
   trial?: number;
   /** Endless: the final boss does not end the run; the night goes on until you fall. */
   endless?: boolean;
+  /** Boss Rush: the stage's bosses one after another, and nothing else on the timeline. */
+  bossRush?: boolean;
   /** Daily Trial modifiers (see data/daily.ts). */
   mods?: string[];
 }
@@ -178,6 +180,11 @@ function orbTier(v: number): number {
 }
 
 const MAX_BURSTS = 64;
+
+/** Boss Rush: each wave's health against a full run's, wave by wave (you meet them with far fewer levels). */
+const RUSH_HP = [1, 0.8, 0.55, 0.36];
+/** ...and how hard they hit: the Emperor faces the first wave with a run's first levels and base health. */
+const RUSH_DMG = [0.6, 0.75, 0.85, 0.9];
 
 /** Pickups you walk to rather than hoover up: never pulled by the magnet, never dropped for space. */
 const BIG_PICKUPS: ReadonlySet<PickupKind> = new Set<PickupKind>(['chest', 'chestBlack', 'medallion', 'shrine', 'fragment']);
@@ -198,6 +205,12 @@ export class World {
   readonly stage: StageDef;
   readonly trial: number;
   readonly endless: boolean;
+  readonly bossRush: boolean;
+  /** Boss Rush: the waves still to come (a boss and its escort each), and when the next one arrives. */
+  private rushQueue: TimelineEvent[][] = [];
+  private rushNext = 0;
+  /** Which wave is arriving, for its damage. */
+  private rushWave = 0;
   private readonly tm: TrialMods;
   /** Daily Trial modifiers, and what they add up to. */
   readonly mods: ReadonlySet<string>;
@@ -407,6 +420,7 @@ export class World {
     this.trial = Math.max(0, Math.min(5, Math.floor(opts.trial ?? 0)));
     this.tm = trialMods(this.trial);
     this.endless = !!opts.endless;
+    this.bossRush = !!opts.bossRush && !this.endless;
     const mods = new Set(opts.mods ?? []);
     this.mods = mods;
     this.modHp = (mods.has('swarm') ? 0.85 : 1) * (mods.has('giants') ? 1.5 : 1);
@@ -452,6 +466,7 @@ export class World {
       while (this.warnCursor < this.warnings.length && this.warnings[this.warnCursor].at < start) this.warnCursor++;
     }
     this.nextEventT = this.t + this.rng.range(100, 140);
+    if (this.bossRush) this.setupBossRush();
     this.addPower(opts.start && STARTABLE_IDS.includes(opts.start) ? opts.start : STARTING_POWER);
     if (opts.extra && STARTABLE_IDS.includes(opts.extra) && !this.powers.some((ps) => ps.def.id === opts.extra)) this.addPower(opts.extra);
     this.player.revives += Math.max(0, Math.floor(opts.revives ?? 0));
@@ -546,23 +561,65 @@ export class World {
 
   private runTimeline(): void {
     if (this.stress > 0) return;
-    while (this.warnCursor < this.warnings.length && this.t >= this.warnings[this.warnCursor].at) {
-      const warn = this.warnings[this.warnCursor++];
-      if (this.calledEarly.has(warn.ev)) continue;
-      this.messages.push({ text: warn.text, kind: 'boss' });
-      this.sound('boss');
+    if (this.bossRush) {
+      this.rushTick();
+    } else {
+      while (this.warnCursor < this.warnings.length && this.t >= this.warnings[this.warnCursor].at) {
+        const warn = this.warnings[this.warnCursor++];
+        if (this.calledEarly.has(warn.ev)) continue;
+        this.messages.push({ text: warn.text, kind: 'boss' });
+        this.sound('boss');
+      }
+      const events = this.stage.events;
+      while (this.evCursor < events.length && this.t >= events[this.evCursor].at) {
+        const k = this.evCursor++;
+        if (!this.calledEarly.has(k)) this.fire(events[k]);
+      }
+      if (this.t >= this.nextEventT) this.runEvent();
+      if (this.endless && this.endlessNext > 0 && this.t >= this.endlessNext) this.endlessWaveTick();
     }
-    const events = this.stage.events;
-    while (this.evCursor < events.length && this.t >= events[this.evCursor].at) {
-      const k = this.evCursor++;
-      if (!this.calledEarly.has(k)) this.fire(events[k]);
-    }
-    if (this.t >= this.nextEventT) this.runEvent();
-    if (this.endless && this.endlessNext > 0 && this.t >= this.endlessNext) this.endlessWaveTick();
     if (this.victoryT > 0) {
       this.victoryT -= DT;
       if (this.victoryT <= 0) this.over = 'victory';
     }
+  }
+
+  /**
+   * Boss Rush: the stage's bosses in order, each wave with whatever escorts
+   * it (bosses and elites within 12 s of it), made lighter because you meet
+   * them with far fewer levels than a full run would give you. Eight level-ups
+   * to start; the next wave comes 6 s after the last boss falls.
+   */
+  private setupBossRush(): void {
+    const events = this.stage.events;
+    const grouped = new Set<TimelineEvent>();
+    const waves: TimelineEvent[][] = [];
+    for (const e of events) {
+      if ((e.kind !== 'bearer' && e.kind !== 'boss') || grouped.has(e)) continue;
+      const wave = events.filter((x) => !grouped.has(x) && x.at >= e.at && x.at <= e.at + 12 && (x.kind === 'bearer' || x.kind === 'boss' || x.kind === 'elite'));
+      for (const x of wave) grouped.add(x);
+      waves.push(wave);
+    }
+    this.rushQueue = waves.map((wave, k) => {
+      const scale = RUSH_HP[Math.min(k, RUSH_HP.length - 1)];
+      return wave.map((x) => (x.kind === 'bearer' || x.kind === 'boss' ? { ...x, hpMul: x.hpMul * scale } : x));
+    });
+    this.rushNext = 12;
+    this.pendingLevelUps = 8;
+    this.nextEventT = Infinity;
+  }
+
+  private rushTick(): void {
+    if (this.bossCount > 0 || this.rushQueue.length === 0) return;
+    if (this.rushNext <= 0) {
+      this.rushNext = this.t + 6;
+      this.messages.push({ text: 'The next one is coming', kind: 'boss' });
+      return;
+    }
+    if (this.t < this.rushNext) return;
+    this.rushNext = 0;
+    for (const e of this.rushQueue.shift() ?? []) this.fire(e);
+    this.rushWave++;
   }
 
   private fire(ev: TimelineEvent): void {
@@ -752,7 +809,8 @@ export class World {
     // Endless: past the stage's end the flood keeps rising.
     const beyond = this.endless ? Math.max(0, this.t - this.stage.length) : 0;
     const rate = Math.min(70, spawnRate(Math.min(this.t, this.stage.length)) + (beyond / 60) * 1.5);
-    this.spawnAcc += rate * this.stage.spawn * this.tm.spawn * this.modSpawn * DT;
+    // Boss Rush keeps only a thin swarm between and around the bosses.
+    this.spawnAcc += rate * this.stage.spawn * this.tm.spawn * this.modSpawn * (this.bossRush ? 0.35 : 1) * DT;
     while (this.spawnAcc >= 1) {
       this.spawnAcc -= 1;
       if (E.n >= MAX_ENEMIES_ALIVE) {
@@ -845,6 +903,7 @@ export class World {
     E.hp[i] = E.maxHp[i] = hp;
     E.r[i] = r;
     E.spd[i] = def.speed * (def.boss ? 1 : speedScale(this.t) * this.tm.speed) * this.modSpeed * this.pactSpeed * this.rng.range(0.9, 1.1);
+    if (def.boss && this.bossRush) dmg *= RUSH_DMG[Math.min(this.rushWave, RUSH_DMG.length - 1)];
     E.dmg[i] = dmg;
     E.xp[i] = xp;
     E.flash[i] = 0;
@@ -1220,6 +1279,8 @@ export class World {
     if (flags & FLAG_BOSS) {
       this.bossCount = Math.max(0, this.bossCount - 1);
       if (E.uid[i] !== this.finalBossUid) this.bossKills++;
+      // Boss Rush: every boss down is four more level-ups.
+      if (this.bossRush && E.uid[i] !== this.finalBossUid) this.pendingLevelUps += 4;
       const carrier = def.id === 'bearer' || def.id === 'captain';
       if (carrier) {
         this.addPickup('medallion', x, y, BANKAI_IDS[E.variant[i]]);
