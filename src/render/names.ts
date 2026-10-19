@@ -5,7 +5,7 @@ import { HERO_IDS } from '../data/heroes';
 import { ROYAL_IDS } from '../data/royal';
 
 /** Enemies drawn with another enemy's sprite. */
-const SPRITE_NAME: Readonly<Record<string, string>> = { captain: 'cap_senbonzakura', golden: 'hollow', mirage: 'heroes_aizen' };
+const SPRITE_NAME: Readonly<Record<string, string>> = { captain: 'cap_senbonzakura', golden: 'ganju', mirage: 'heroes_aizen' };
 
 /**
  * The atlas sprite an enemy is drawn with: a captain by the bankai they
@@ -20,6 +20,11 @@ export function enemySpriteName(type: number, variant = 0): string {
     if (bankai) return `cap_${bankai}`;
   }
   if (id === 'royal') return `royal_${ROYAL_IDS[variant] ?? 'tenjiro'}`;
+  // Each stolen bankai's knight, drawn as themselves (Zanka no Tachi was never a knight's: the plain bearer).
+  if (id === 'bearer') {
+    const bankai = BANKAI_IDS[variant];
+    return bankai && bankai !== 'zanka' ? `thief_${bankai}` : 'bearer';
+  }
   if (id === 'gotei') return `gotei_${GOTEI_IDS[variant] ?? 'kenpachi'}`;
   if (id === 'defender') return `heroes_${HERO_IDS[variant] ?? 'renji'}`;
   return SPRITE_NAME[id] ?? id;

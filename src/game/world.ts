@@ -202,6 +202,15 @@ const MAX_BURSTS = 64;
 export const ALMIGHTY_AT = 5;
 export const ALMIGHTY_AT_UNLOCKED = 3;
 
+/** The runaway each stage sends: something that is carrying more than it should, and flees. */
+const RUNNERS: Readonly<Record<string, { title: string; sub: string }>> = {
+  hueco: { title: 'Gorged Adjuchas', sub: 'It has eaten its fill of Hollows. Catch it before it gets away.' },
+  seireitei: { title: 'Ganju Shiba', sub: 'He and Bonnie are making off with the fireworks. Catch them.' },
+  silbern: { title: 'Ganju Shiba', sub: 'He and Bonnie are making off with the fireworks. Catch them.' },
+  palace: { title: 'Kon', sub: 'A runaway mod soul, its pockets full. Catch it.' },
+  wahrwelt: { title: 'Kon', sub: 'A runaway mod soul, its pockets full. Catch it.' },
+};
+
 /** Boss Rush: each wave's health against a full run's, wave by wave (you meet them with far fewer levels). */
 const RUSH_HP = [1, 0.8, 0.55, 0.36];
 /** ...and how hard they hit: the Emperor faces the first wave with a run's first levels and base health. */
@@ -502,7 +511,7 @@ export class World {
               ? 'A captain approaches'
               : this.stage.roster === 'heroes'
                 ? 'Someone climbs up to meet you'
-                : 'A medallion bearer approaches';
+                : 'A Sternritter approaches';
         this.warnings.push({ at: e.at - 4, text, ev });
       }
       else if (e.kind === 'boss') this.warnings.push({ at: e.at - 4, text: e.warn, ev });
@@ -754,7 +763,7 @@ export class World {
 
   /** Start one run event now. */
   startEvent(kind: 'rift' | 'golden' | 'storm' | 'ambush' | 'shrine'): void {
-    const sei = this.stage.id === 'seireitei';
+    const hollowWorld = this.stage.id === 'hueco';
     const p = this.player;
     if (kind === 'rift') {
       const a = this.rng.next() * TAU;
@@ -764,7 +773,7 @@ export class World {
         this.en.atkT[i] = 0.5;
         this.en.atk2T[i] = 25;
       }
-      this.banners.push({ kind: 'event', title: sei ? 'Senkaimon' : 'Garganta', sub: 'A rift tears open. Close it before it seals.' });
+      this.banners.push({ kind: 'event', title: hollowWorld ? 'Garganta' : 'Senkaimon', sub: 'A gate tears open. Close it before it seals.' });
     } else if (kind === 'golden') {
       const a = this.rng.next() * TAU;
       const i = this.spawnEnemy(ENEMY_INDEX.golden, p.x + Math.cos(a) * 160, p.y + Math.sin(a) * 160);
@@ -772,7 +781,7 @@ export class World {
         this.en.flags[i] |= FLAG_EVENT;
         this.en.atk2T[i] = 18;
       }
-      this.banners.push({ kind: 'event', title: sei ? 'Treasury Runner' : 'Golden Hollow', sub: 'Catch it before it escapes.' });
+      this.banners.push({ kind: 'event', ...RUNNERS[this.stage.id] });
     } else if (kind === 'storm') {
       this.stormT = 15;
       this.banners.push({ kind: 'event', title: 'Reishi Storm', sub: 'Mana falls like rain.' });
@@ -782,7 +791,7 @@ export class World {
       this.addPickup('shrine', p.x + Math.cos(a) * 210, p.y + Math.sin(a) * 210);
       this.banners.push({ kind: 'event', title: 'Quincy Shrine', sub: 'Walk to it and make a pact, or pass it by.' });
     } else {
-      const heavy = ENEMY_INDEX[sei ? 'guard' : 'brute'];
+      const heavy = ENEMY_INDEX[this.stage.id === 'hueco' ? 'brute' : this.stage.id === 'palace' ? 'sentinel' : 'guard'];
       this.spawnEnemy(heavy, p.x - 230, p.y, true);
       this.spawnEnemy(heavy, p.x + 230, p.y, true);
       for (let k = 0; k < 24; k++) {
@@ -811,7 +820,7 @@ export class World {
     this.banners.push(
       captain && info
         ? { kind: 'boss', title: info.owner, sub: `${info.rank} · ${bankaiName}`, quote }
-        : { kind: 'boss', title: 'Medallion Bearer', sub: `carries ${bankaiName}`, quote },
+        : { kind: 'boss', title: info?.thief ?? 'Sternritter', sub: `Sternritter ${info?.thiefLetter ?? ''} · carries ${bankaiName}`, quote },
     );
     this.shake = Math.max(this.shake, 8);
     return i;
@@ -1470,7 +1479,7 @@ export class World {
       this.shake = Math.max(this.shake, 14);
       const fallen =
         def.id === 'bearer'
-          ? 'The bearer falls. Take back its medallion.'
+          ? `${BANKAI_BY_ID.get(BANKAI_IDS[E.variant[i]])?.thief ?? 'The Sternritter'} falls. Take back the medallion.`
           : def.id === 'captain'
             ? `${BANKAI_BY_ID.get(BANKAI_IDS[E.variant[i]])?.owner ?? 'The captain'} falls. Seize the bankai.`
             : `${def.name} defeated`;
@@ -2295,8 +2304,9 @@ export class World {
             const def = ENEMY_LIST[E.type[i]];
             const bankai = BANKAI_IDS[E.variant[i]];
             if (def.id === 'bearer') {
-              B.name = POWER_BY_ID.get(bankai)?.name ?? def.name;
-              B.sub = 'Medallion bearer';
+              const info = BANKAI_BY_ID.get(bankai);
+              B.name = info && info.thiefLetter ? info.thief : def.name;
+              B.sub = `Sternritter ${info?.thiefLetter ?? ''} · ${POWER_BY_ID.get(bankai)?.name ?? ''}`;
             } else if (def.id === 'captain') {
               const info = BANKAI_BY_ID.get(bankai);
               B.name = info?.owner ?? def.name;

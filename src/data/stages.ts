@@ -79,10 +79,11 @@ function sorted(events: TimelineEvent[]): readonly TimelineEvent[] {
 }
 
 /**
- * Hueco Mundo: the Hollow desert. Tuned with the balance report: each bearer
- * takes a careful player about 35-50 s. A Vasto Lorde rises at 18:00, and at
- * 20:00 Tier Harribel, the queen of Las Noches, ends the stage (about 45 s
- * against a full build with three bankai).
+ * Hueco Mundo: the Hollow desert, where the Wandenreich made its camp. Its
+ * 5:00, 10:00 and 15:00 bosses are three of the five Sternritter who stole a
+ * bankai with a medallion (each takes a careful player about 35-50 s). A
+ * Vasto Lorde rises at 18:00, and at 20:00 Tier Harribel, the queen of Las
+ * Noches, ends the stage (about 45 s against a full build with three bankai).
  */
 const HUECO: StageDef = {
   id: 'hueco',
@@ -119,6 +120,8 @@ const HUECO: StageDef = {
   spawn: 1,
   xp: 1,
   gold: 1,
+  // The five stolen bankai: Zanka no Tachi was never a knight's; the Emperor takes it from Yamamoto.
+  bearerPool: ['senbonzakura', 'hyorinmaru', 'raikoben', 'tengen', 'gonryo'],
 };
 
 /**

@@ -40,9 +40,9 @@ export const CHAPTERS: readonly Chapter[] = [
     hint: 'Take back your first bankai.',
     trigger: { when: 'after', condition: 'bankai' },
     text: [
-      'Some of his knights did more than keep his gifts. With medallions of his design they reached into the Soul Reapers and tore out their bankai, the final and truest form of a soul’s blade.',
-      'They thought a stolen soul would make them his equals. They ran with their medallions into the desert, where the Hollows obey no one.',
-      'The first medallion is warm in the Emperor’s hand. It still remembers whose it was. That does not matter. Everything taken in his name belongs to him.',
+      'With medallions of his design, five of his Sternritter reached into the captains of the Gotei 13 and tore out their bankai, the final and truest form of a soul’s blade: Äs Nödt, Cang Du, BG9, Bambietta and Driscoll.',
+      'They thought a stolen soul made them something more than his knights. In the desert where the Wandenreich makes its camp, they wait to see whether he will ask for it back.',
+      'He does not ask. The first medallion is warm in the Emperor’s hand. It still remembers whose it was. That does not matter. Everything taken in his name belongs to him.',
     ],
   },
   {
@@ -187,11 +187,11 @@ export const CHAPTER_BY_ID: ReadonlyMap<string, Chapter> = new Map(CHAPTERS.map(
  * Emperor's own knights, speaking to him; Seireitei's captains defend their city.
  */
 export const BOSS_LINES: Readonly<Record<string, string>> = {
-  'bearer:senbonzakura': '“A thousand petals, Your Majesty, and not one of them is yours.”',
-  'bearer:hyorinmaru': '“The ice answers to me now. Even you will freeze.”',
-  'bearer:raikoben': '“You taught us to take. I took the biggest weapon there was.”',
-  'bearer:tengen': '“This giant kneels to me. Will you?”',
-  'bearer:gonryo': '“Lightning has no master. Neither do I, anymore.”',
+  'bearer:senbonzakura': '“A thousand petals, Your Majesty, and every one of them carries my fear.”',
+  'bearer:hyorinmaru': '“My skin is iron and the ice answers to me now. Strike, if you like.”',
+  'bearer:raikoben': '“Analysis complete. The chance you take this back is low.”',
+  'bearer:tengen': '“Everything I touch explodes, and this giant kneels to me. Will you?”',
+  'bearer:gonryo': '“Every kill makes me stronger. You would make a big one.”',
   'bearer:zanka': '“I carry a fire that burned for a thousand years. Burn with me.”',
   'captain:senbonzakura': '“My blade was taken once. It will not be taken again.”',
   'captain:hyorinmaru': '“You walked into my city. You will not walk out.”',

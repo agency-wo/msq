@@ -14,10 +14,10 @@ export interface DailyMod {
 }
 
 export const DAILY_MODS: readonly DailyMod[] = [
-  { id: 'glass', name: 'Glass Cannon', desc: 'You deal 40% more damage, and take 40% more.' },
+  { id: 'glass', name: 'Letzt Stil', desc: 'You deal 40% more damage, and take 40% more: everything, at a price.' },
   { id: 'swarm', name: 'The Swarm', desc: '35% more enemies, each 15% weaker.' },
   { id: 'giants', name: 'Giants', desc: 'Enemies are bigger, 50% sturdier and a little slower.' },
-  { id: 'haste', name: 'Haste', desc: 'Everyone moves 15% faster, you included.' },
+  { id: 'haste', name: 'Shunpo', desc: 'Everyone moves 15% faster, you included.' },
   { id: 'frail', name: 'Frail', desc: '60% of your health, but you regenerate 1.5 health a second.' },
   { id: 'barren', name: 'Barren', desc: 'Chests hold gold, never relics, but you level up 30% faster.' },
 ];

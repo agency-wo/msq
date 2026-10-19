@@ -41,12 +41,13 @@ function plain(id: EnemyId, section: CodexSection): CodexEnemy {
 
 export const CODEX_ENEMIES: readonly CodexEnemy[] = [
   ...(['hollow', 'hound', 'brute', 'volatile'] as const).map((id) => plain(id, 'hueco')),
-  ...BANKAI_IDS.map((b, v) => ({
+  // The Sternritter who stole a bankai (Zanka no Tachi was never a knight's).
+  ...BANKAI_IDS.filter((b) => b !== 'zanka').map((b) => ({
     key: `bearer:${b}`,
-    name: `Bearer of ${POWER_BY_ID.get(b)?.name ?? b}`,
+    name: `${BANKAI_BY_ID.get(b)?.thief ?? b} (${POWER_BY_ID.get(b)?.name ?? b})`,
     section: 'hueco' as const,
     type: ENEMY_INDEX.bearer,
-    variant: v,
+    variant: BANKAI_IDS.indexOf(b),
     boss: true,
   })),
   plain('menos', 'hueco'),

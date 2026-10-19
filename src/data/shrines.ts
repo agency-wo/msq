@@ -16,12 +16,12 @@ export interface PactDef {
 }
 
 export const PACTS: readonly PactDef[] = [
-  { id: 'blood', name: 'Blood Pact', gain: '+30% damage for the rest of the run.', cost: '25% less health.', icon: 'drop', color: '#ff5a72' },
-  { id: 'iron', name: 'Iron Pact', gain: '+40% health and 2 health a second.', cost: '15% less damage.', icon: 'shield', color: '#dfe7f2' },
-  { id: 'haste', name: 'Pact of Haste', gain: '+20% speed and 10% shorter cooldowns.', cost: 'Enemies move 12% faster.', icon: 'feather', color: '#9fdcff' },
-  { id: 'greed', name: 'Pact of Greed', gain: 'The run pays 60% more gold.', cost: 'Enemies are 20% sturdier.', icon: 'coin', color: '#ffd27a' },
-  { id: 'offering', name: 'Offering', gain: 'Your strongest attack gains two levels.', cost: 'Your weakest attack loses two.', icon: 'candle', color: '#ffcb5c' },
-  { id: 'hunter', name: "Hunter's Pact", gain: 'The next boss leaves an extra black chest.', cost: 'It comes for you now.', icon: 'crown', color: '#ff8a4a' },
+  { id: 'blood', name: 'Blut Arterie', gain: '+30% damage for the rest of the run.', cost: '25% less health: blood that strikes cannot also guard.', icon: 'drop', color: '#ff5a72' },
+  { id: 'iron', name: 'Blut Vene', gain: '+40% health and 2 health a second.', cost: '15% less damage: blood that guards cannot also strike.', icon: 'shield', color: '#dfe7f2' },
+  { id: 'haste', name: 'Hirenkyaku', gain: '+20% speed and 10% shorter cooldowns.', cost: 'Enemies move 12% faster.', icon: 'feather', color: '#9fdcff' },
+  { id: 'greed', name: 'Gintō Hoard', gain: 'The run pays 60% more gold.', cost: 'Enemies are 20% sturdier.', icon: 'coin', color: '#ffd27a' },
+  { id: 'offering', name: 'Auswählen', gain: 'Your strongest attack gains two levels.', cost: 'Your weakest attack loses two: taken from the unworthy, given to the chosen.', icon: 'candle', color: '#ffcb5c' },
+  { id: 'hunter', name: 'Jagdarmee', gain: 'The next boss leaves an extra black chest.', cost: 'The hunting army drives it to you now.', icon: 'crown', color: '#ff8a4a' },
   { id: 'gamble', name: 'Gamble', gain: 'Even odds: a legendary relic.', cost: 'Or half your health, gone.', icon: 'reroll', color: '#c9a8ff' },
   { id: 'renewal', name: 'Renewal', gain: 'Full health and one more reroll.', cost: 'You lose your progress toward the next level.', icon: 'heart', color: '#ff9cc2' },
   { id: 'echoes', name: 'Pact of Echoes', gain: 'One more arrow, blade and strike on every attack.', cost: '20% less damage.', icon: 'twin', color: '#bfe6ff' },

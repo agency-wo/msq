@@ -13,10 +13,10 @@ describe('medallion bearers and bankai', () => {
     }
   });
 
-  it('over many runs, every bankai shows up as a bearer', () => {
+  it('over many runs, every bankai a Sternritter stole shows up; Zanka no Tachi only comes from Yamamoto', () => {
     const seen = new Set<string>();
     for (let seed = 1; seed < 80; seed++) for (const id of new World({ seed }).bearers) seen.add(id);
-    expect(seen).toEqual(new Set(BANKAI_IDS));
+    expect(seen).toEqual(new Set(BANKAI_IDS.filter((id) => id !== 'zanka')));
   });
 
   it('honours forced bearers first (testing switch)', () => {

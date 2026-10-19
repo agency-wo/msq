@@ -64,26 +64,29 @@ export interface EnemyDef {
 
 /**
  * Hueco Mundo's Hollows, Seireitei's Soul Reapers, the palace's servants, and
- * the bosses. The swarm, the bearers and the Hollow bosses are original
- * designs; the captains, the Royal Guard and Tier Harribel are chibi homages.
- * Index order matters: enemies store their type as a byte.
+ * the bosses. The swarm and the Hollow bosses are original designs; every
+ * named character (the Sternritter, the captains, the Royal Guard, Harribel,
+ * the defenders, the runaways) is a chibi homage. Index order matters:
+ * enemies store their type as a byte.
  */
 export const ENEMY_LIST: readonly EnemyDef[] = [
   { id: 'hollow', name: 'Lesser Hollow', hp: 10, speed: 46, radius: 11, damage: 8, xp: 1, behavior: 'chase', color: 0xe8e2d6 },
   // Faster than you on purpose: hounds punish standing still or kiting lazily.
   { id: 'hound', name: 'Hound Hollow', hp: 8, speed: 135, radius: 9, damage: 6, xp: 1, behavior: 'chase', color: 0xe8e2d6 },
   { id: 'brute', name: 'Brute Hollow', hp: 70, speed: 34, radius: 18, damage: 14, xp: 4, behavior: 'chase', color: 0xe8e2d6 },
-  { id: 'volatile', name: 'Volatile Hollow', hp: 18, speed: 80, radius: 12, damage: 22, xp: 2, behavior: 'chase', bomber: true, color: 0xff6a3c },
-  { id: 'bearer', name: 'Medallion Bearer', hp: 2600, speed: 44, radius: 30, damage: 25, xp: 60, behavior: 'chase', boss: true, color: 0xffcb5c },
+  // Shrieker's leeches: they burst when they reach you.
+  { id: 'volatile', name: 'Shrieker’s Leech', hp: 18, speed: 80, radius: 12, damage: 22, xp: 2, behavior: 'chase', bomber: true, color: 0xff6a3c },
+  // The Sternritter who stole a bankai (variant = which bankai, so which knight; see data/bankai.ts).
+  { id: 'bearer', name: 'Sternritter', hp: 2600, speed: 44, radius: 30, damage: 25, xp: 60, behavior: 'chase', boss: true, color: 0xffcb5c },
   { id: 'menos', name: 'Menos Grande', hp: 2600, speed: 30, radius: 44, damage: 30, xp: 80, behavior: 'chase', boss: true, color: 0xff2d4a },
   { id: 'vasto', name: 'Vasto Lorde', hp: 2600, speed: 52, radius: 34, damage: 35, xp: 120, behavior: 'chase', boss: true, color: 0xff2d4a },
   { id: 'officer', name: 'Unseated Officer', hp: 12, speed: 50, radius: 11, damage: 9, xp: 1, behavior: 'chase', shinigami: true, color: 0xd8dce8 },
-  { id: 'flash', name: 'Flash-Step Scout', hp: 10, speed: 72, radius: 9, damage: 7, xp: 1, behavior: 'blink', shinigami: true, color: 0xc9b8ff },
-  { id: 'caster', name: 'Kidō Caster', hp: 16, speed: 42, radius: 11, damage: 8, xp: 2, behavior: 'ranged', shinigami: true, color: 0xff8a4a },
+  { id: 'flash', name: 'Onmitsukidō Agent', hp: 10, speed: 72, radius: 9, damage: 7, xp: 1, behavior: 'blink', shinigami: true, color: 0xc9b8ff },
+  { id: 'caster', name: 'Kidō Corps Officer', hp: 16, speed: 42, radius: 11, damage: 8, xp: 2, behavior: 'ranged', shinigami: true, color: 0xff8a4a },
   { id: 'guard', name: 'Heavy Guard', hp: 90, speed: 32, radius: 19, damage: 16, xp: 5, behavior: 'chase', shinigami: true, color: 0xd8dce8 },
   {
     id: 'grandmaster',
-    name: 'Kidō Grandmaster',
+    name: 'Kidō Corps Commander',
     hp: 2600,
     speed: 40,
     radius: 32,
@@ -114,7 +117,8 @@ export const ENEMY_LIST: readonly EnemyDef[] = [
   { id: 'ashen', name: 'Ashen Dead', hp: 30, speed: 70, radius: 12, damage: 12, xp: 1, behavior: 'chase', color: 0xc08a5a },
   // Run events: a rift that pours out enemies until destroyed, and a treasure runner that flees.
   { id: 'rift', name: 'Garganta', hp: 900, speed: 0, radius: 26, damage: 0, xp: 30, behavior: 'chase', color: 0xff2d4a },
-  { id: 'golden', name: 'Golden Hollow', hp: 400, speed: 105, radius: 13, damage: 0, xp: 40, behavior: 'flee', color: 0xffd27a },
+  // A runaway carrying treasure: a gorged Adjuchas, Ganju and Bonnie, or Kon, by stage.
+  { id: 'golden', name: 'Runaway', hp: 400, speed: 105, radius: 13, damage: 0, xp: 40, behavior: 'flee', color: 0xffd27a },
   // The Soul King Palace. Its servants are original designs.
   { id: 'sentinel', name: 'Palace Sentinel', hp: 22, speed: 42, radius: 13, damage: 10, xp: 2, behavior: 'charge', color: 0xf0e2b0 },
   { id: 'inkwisp', name: 'Ink Wisp', hp: 16, speed: 54, radius: 12, damage: 9, xp: 1, behavior: 'chase', color: 0x3a3050 },

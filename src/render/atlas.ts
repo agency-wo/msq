@@ -1775,32 +1775,33 @@ const brute: Draw = (g, w, h) => {
   mask(g, cx, cy - 7, 32, 24, 2, true);
 };
 
+/** Shrieker's leech: a fat black leech with a little white mask, its belly glowing as it swells to burst. */
 const volatile: Draw = (g, w, h) => {
   const cx = w / 2;
-  const cy = h / 2 + 2;
+  const cy = h / 2 + 3;
   aura(g, cx, cy, 25, 'rgba(255,110,40,0.3)');
-  const grad = g.createRadialGradient(cx - 5, cy - 6, 2, cx, cy, 19);
-  grad.addColorStop(0, '#4a2420');
-  grad.addColorStop(1, '#0d0708');
-  g.fillStyle = grad;
-  g.beginPath();
-  g.arc(cx, cy + 2, 18, 0, TAU);
-  g.fill();
+  // Segmented body, thickest at the middle
+  for (let k = 4; k >= 0; k--) {
+    const x = cx + 10 - k * 5;
+    const r = 6 + Math.sin(((k + 0.5) / 5) * Math.PI) * 6;
+    const grad = g.createRadialGradient(x - 2, cy - 3, 1, x, cy, r);
+    grad.addColorStop(0, '#3a2440');
+    grad.addColorStop(1, '#0d070e');
+    g.fillStyle = grad;
+    g.beginPath();
+    g.ellipse(x, cy, r * 0.8, r, 0, 0, TAU);
+    g.fill();
+  }
+  // The glowing belly about to go
   g.save();
-  g.strokeStyle = '#ff7a3c';
+  g.fillStyle = '#ff7a3c';
   g.shadowColor = '#ff3d1f';
-  g.shadowBlur = 8;
-  g.lineWidth = 2;
+  g.shadowBlur = 10;
   g.beginPath();
-  g.moveTo(cx - 12, cy - 4);
-  g.lineTo(cx - 4, cy + 3);
-  g.lineTo(cx - 9, cy + 12);
-  g.moveTo(cx + 11, cy - 5);
-  g.lineTo(cx + 3, cy + 4);
-  g.lineTo(cx + 10, cy + 13);
-  g.stroke();
+  g.ellipse(cx, cy + 3, 6, 4, 0, 0, TAU);
+  g.fill();
   g.restore();
-  mask(g, cx, cy - 8, 16, 13, 2, false);
+  mask(g, cx + 12, cy - 4, 10, 8, 2, false);
 };
 
 /** Elite: armored, with red war markings on the mask. */
@@ -5110,6 +5111,458 @@ const ichigoMask: Draw = (g, w, h) => {
   g.stroke();
 };
 
+// ------------------------------------------------------------ the Sternritter who stole a bankai
+
+/**
+ * A Sternritter's white Wandenreich uniform: a long coat (or a short skirt and
+ * boots), black trim down the front, a black belt, the Quincy star at the
+ * chest, a white cape behind and black gloves. Heads are drawn by each knight.
+ */
+function sternritter(g: Ctx, cx: number, cy: number, s: number, o: { broad?: number; skirt?: boolean; skin?: string } = {}): void {
+  const b = o.broad ?? 1;
+  g.fillStyle = '#e6eaf2';
+  g.beginPath();
+  g.moveTo(cx - 9 * s * b, cy - 7 * s);
+  g.quadraticCurveTo(cx - 16 * s * b, cy + 6 * s, cx - 14 * s * b, cy + 19.5 * s);
+  g.lineTo(cx + 14 * s * b, cy + 19.5 * s);
+  g.quadraticCurveTo(cx + 16 * s * b, cy + 6 * s, cx + 9 * s * b, cy - 7 * s);
+  g.closePath();
+  g.fill();
+  g.strokeStyle = 'rgba(30,36,50,0.4)';
+  g.lineWidth = 1;
+  g.stroke();
+  if (o.skirt) {
+    // Long black boots under a short skirt
+    g.fillStyle = '#14161f';
+    for (const dir of [-1, 1]) {
+      roundRect(g, cx + dir * 4 * s - 2.4 * s, cy + 9 * s, 4.8 * s, 11.6 * s, 1.4 * s);
+      g.fill();
+    }
+  }
+  const coat = g.createLinearGradient(0, cy - 6 * s, 0, cy + 20 * s);
+  coat.addColorStop(0, '#ffffff');
+  coat.addColorStop(1, '#c8d0de');
+  g.fillStyle = coat;
+  g.beginPath();
+  g.moveTo(cx - 8 * s * b, cy - 6 * s);
+  g.lineTo(cx + 8 * s * b, cy - 6 * s);
+  const hem = o.skirt ? 10.5 : 20;
+  g.lineTo(cx + (o.skirt ? 10.8 : 10.6) * s * b, cy + hem * s);
+  g.lineTo(cx - (o.skirt ? 10.8 : 10.6) * s * b, cy + hem * s);
+  g.closePath();
+  g.fill();
+  g.strokeStyle = 'rgba(20,24,36,0.5)';
+  g.stroke();
+  g.strokeStyle = '#14161f';
+  g.lineWidth = 0.9 * s;
+  g.beginPath();
+  g.moveTo(cx, cy - 5 * s);
+  g.lineTo(cx, cy + hem * s);
+  g.stroke();
+  g.fillStyle = '#14161f';
+  g.fillRect(cx - 8.6 * s * b, cy + 3.6 * s, 17.2 * s * b, 1.8 * s);
+  // The Quincy star at the chest
+  g.beginPath();
+  for (let k = 0; k < 10; k++) {
+    const a = (k / 10) * TAU - Math.PI / 2;
+    const r = k % 2 === 0 ? 1.9 * s : 0.8 * s;
+    g.lineTo(cx - 4 * s * b + Math.cos(a) * r, cy - 1.2 * s + Math.sin(a) * r);
+  }
+  g.closePath();
+  g.fill();
+  if (!o.skirt) {
+    g.fillStyle = '#14161f';
+    for (const dir of [-1, 1]) {
+      g.beginPath();
+      g.ellipse(cx + dir * 4 * s, cy + 20.4 * s, 2.8 * s, 1.4 * s, 0, 0, TAU);
+      g.fill();
+    }
+  }
+  // Sleeves and black gloves
+  for (const dir of [-1, 1]) {
+    g.fillStyle = '#eef2f8';
+    g.beginPath();
+    g.ellipse(cx + dir * 10.4 * s * b, cy + 1.5 * s, 3.9 * s, 7.3 * s, -dir * 0.25, 0, TAU);
+    g.fill();
+    g.strokeStyle = 'rgba(20,24,36,0.35)';
+    g.lineWidth = 0.8;
+    g.stroke();
+    g.fillStyle = o.skin ?? '#14161f';
+    g.beginPath();
+    g.arc(cx + dir * 11.6 * s * b, cy + 9.6 * s, 1.7 * s, 0, TAU);
+    g.fill();
+  }
+}
+
+/**
+ * Äs Nödt (a chibi homage), Sternritter F, The Fear, who stole Senbonzakura:
+ * a white hood over wild black hair, dark sunken eyes, and a lipless mouth of
+ * bared teeth. Pink petals drift around him.
+ */
+const thiefFear: Draw = (g, w, h) => {
+  const s = 2;
+  const cx = w / 2;
+  const cy = h / 2 + 7;
+  const hy = cy - 13 * s;
+  aura(g, cx, cy, 56, 'rgba(255,156,194,0.18)');
+  sternritter(g, cx, cy, s);
+  // The hood
+  g.fillStyle = '#eef2f8';
+  g.beginPath();
+  g.ellipse(cx, hy - 0.5 * s, 7.8 * s, 8 * s, 0, 0, TAU);
+  g.fill();
+  g.strokeStyle = 'rgba(20,24,36,0.4)';
+  g.lineWidth = 0.8;
+  g.stroke();
+  g.fillStyle = '#c9ced8';
+  g.beginPath();
+  g.ellipse(cx, hy + 1 * s, 5.6 * s, 6.2 * s, 0, 0, TAU);
+  g.fill();
+  // Wild black hair spilling out under the hood
+  g.fillStyle = '#0d0e14';
+  for (let k = -3; k <= 3; k++) {
+    poly(g, [
+      [cx + k * 1.5 * s - 1 * s, hy - 4.6 * s],
+      [cx + k * 1.7 * s, hy - 0.8 * s],
+      [cx + k * 1.5 * s + 1 * s, hy - 4.6 * s],
+    ]);
+    g.fill();
+  }
+  // Sunken eyes
+  for (const dir of [-1, 1]) {
+    g.fillStyle = '#1a1622';
+    g.beginPath();
+    g.ellipse(cx + dir * 2.4 * s, hy + 1 * s, 1.7 * s, 1.4 * s, 0, 0, TAU);
+    g.fill();
+    glowDot(g, cx + dir * 2.4 * s, hy + 1 * s, 0.5 * s, 0.5 * s, '#ff6a8a', 'rgba(255,60,100,0.9)', 3);
+  }
+  // A lipless mouth: bared teeth
+  g.fillStyle = '#f2ede2';
+  g.fillRect(cx - 3 * s, hy + 3.6 * s, 6 * s, 1.8 * s);
+  g.strokeStyle = '#2a2026';
+  g.lineWidth = 0.35 * s;
+  g.beginPath();
+  for (let k = -2; k <= 2; k++) {
+    g.moveTo(cx + k * 1.2 * s, hy + 3.6 * s);
+    g.lineTo(cx + k * 1.2 * s, hy + 5.4 * s);
+  }
+  g.moveTo(cx - 3 * s, hy + 4.5 * s);
+  g.lineTo(cx + 3 * s, hy + 4.5 * s);
+  g.stroke();
+  // Senbonzakura's petals
+  g.fillStyle = 'rgba(255,170,205,0.9)';
+  for (const [x, y] of [
+    [-17, -6],
+    [16, -10],
+    [-14, 12],
+    [18, 8],
+  ] as const) {
+    g.beginPath();
+    g.ellipse(cx + x * s, cy + y * s, 1.4 * s, 0.8 * s, 0.6, 0, TAU);
+    g.fill();
+  }
+};
+
+/**
+ * Cang Du (a chibi homage), Sternritter I, The Iron, who stole Hyōrinmaru:
+ * long black hair in a braid over his shoulder, narrow eyes, a high collar,
+ * and hands gone to steel. Frost glints around him.
+ */
+const thiefIron: Draw = (g, w, h) => {
+  const s = 2;
+  const cx = w / 2;
+  const cy = h / 2 + 7;
+  const hy = cy - 13 * s;
+  aura(g, cx, cy, 56, 'rgba(143,216,255,0.18)');
+  sternritter(g, cx, cy, s, { skin: '#9aa6b8' });
+  // The braid, over the left shoulder
+  g.strokeStyle = '#0d0e14';
+  g.lineWidth = 2.4 * s;
+  g.lineCap = 'round';
+  g.beginPath();
+  g.moveTo(cx - 4 * s, hy + 3 * s);
+  g.quadraticCurveTo(cx - 9 * s, cy - 2 * s, cx - 8 * s, cy + 8 * s);
+  g.stroke();
+  // High collar
+  g.fillStyle = '#ffffff';
+  g.fillRect(cx - 4.4 * s, cy - 8.6 * s, 8.8 * s, 3 * s);
+  faceAt(g, cx, hy + 0.8 * s, s, 5.4, 6.2);
+  // Black hair, combed straight back
+  g.fillStyle = '#0d0e14';
+  g.beginPath();
+  g.ellipse(cx, hy - 2.2 * s, 6.4 * s, 5 * s, 0, Math.PI * 0.95, Math.PI * 2.05);
+  g.fill();
+  // Narrow eyes
+  g.strokeStyle = '#1a1c26';
+  g.lineWidth = 0.7 * s;
+  g.beginPath();
+  g.moveTo(cx - 4 * s, hy + 1.6 * s);
+  g.lineTo(cx - 1.4 * s, hy + 1.2 * s);
+  g.moveTo(cx + 1.4 * s, hy + 1.2 * s);
+  g.lineTo(cx + 4 * s, hy + 1.6 * s);
+  g.stroke();
+  // Frost
+  g.strokeStyle = 'rgba(200,236,255,0.85)';
+  g.lineWidth = 0.6 * s;
+  for (const [x, y] of [
+    [-16, -4],
+    [17, 2],
+    [-13, 14],
+  ] as const) {
+    g.beginPath();
+    for (let k = 0; k < 3; k++) {
+      const a = (k / 3) * Math.PI;
+      g.moveTo(cx + x * s - Math.cos(a) * 2 * s, cy + y * s - Math.sin(a) * 2 * s);
+      g.lineTo(cx + x * s + Math.cos(a) * 2 * s, cy + y * s + Math.sin(a) * 2 * s);
+    }
+    g.stroke();
+  }
+};
+
+/**
+ * BG9 (a chibi homage), Sternritter K, The Knowledge, who stole Raikōben: a
+ * closed steel helmet with one glowing visor and a grille, heavy armoured
+ * shoulders over the uniform, and launch tubes on his back.
+ */
+const thiefKnowledge: Draw = (g, w, h) => {
+  const s = 2;
+  const cx = w / 2;
+  const cy = h / 2 + 7;
+  const hy = cy - 13 * s;
+  aura(g, cx, cy, 58, 'rgba(255,210,122,0.18)');
+  // Launch tubes on his back
+  g.fillStyle = '#4a5262';
+  for (const dir of [-1, 1]) {
+    roundRect(g, cx + dir * 9 * s - 2 * s, cy - 14 * s, 4 * s, 9 * s, 1 * s);
+    g.fill();
+  }
+  sternritter(g, cx, cy, s, { broad: 1.25 });
+  // Armoured shoulders
+  g.fillStyle = '#5a6272';
+  for (const dir of [-1, 1]) {
+    g.beginPath();
+    g.ellipse(cx + dir * 9.6 * s, cy - 5.4 * s, 4.8 * s, 3.4 * s, dir * 0.3, 0, TAU);
+    g.fill();
+  }
+  // The helmet
+  const helm = g.createLinearGradient(0, hy - 7 * s, 0, hy + 7 * s);
+  helm.addColorStop(0, '#8a94a8');
+  helm.addColorStop(1, '#3a4252');
+  g.fillStyle = helm;
+  roundRect(g, cx - 6.4 * s, hy - 6.4 * s, 12.8 * s, 13.4 * s, 4 * s);
+  g.fill();
+  g.strokeStyle = 'rgba(20,24,36,0.6)';
+  g.lineWidth = 0.6 * s;
+  g.stroke();
+  glowDot(g, cx, hy + 0.4 * s, 4.4 * s, 0.9 * s, '#ffe680', 'rgba(255,220,90,0.9)', 6);
+  g.strokeStyle = '#1a1e28';
+  g.lineWidth = 0.4 * s;
+  g.beginPath();
+  for (let k = -2; k <= 2; k++) {
+    g.moveTo(cx + k * 1.2 * s, hy + 3 * s);
+    g.lineTo(cx + k * 1.2 * s, hy + 5.6 * s);
+  }
+  g.stroke();
+};
+
+/**
+ * Bambietta Basterbine (a chibi homage), Sternritter E, The Explode, who
+ * stole Kokujō Tengen Myō'ō: long straight black hair with a fringe, violet
+ * eyes, a smirk, a short skirt and long black boots.
+ */
+const thiefExplode: Draw = (g, w, h) => {
+  const s = 1.9;
+  const cx = w / 2;
+  const cy = h / 2 + 8;
+  const hy = cy - 13 * s;
+  aura(g, cx, cy, 54, 'rgba(255,170,90,0.18)');
+  // Long hair behind
+  g.fillStyle = '#0d0e14';
+  g.beginPath();
+  g.moveTo(cx - 7 * s, hy - 2 * s);
+  g.lineTo(cx - 8.6 * s, cy + 6 * s);
+  g.lineTo(cx + 8.6 * s, cy + 6 * s);
+  g.lineTo(cx + 7 * s, hy - 2 * s);
+  g.closePath();
+  g.fill();
+  sternritter(g, cx, cy, s, { skirt: true });
+  faceAt(g, cx, hy + 0.8 * s, s, 5.4, 6.2);
+  g.fillStyle = '#0d0e14';
+  g.beginPath();
+  g.ellipse(cx, hy - 2 * s, 6.6 * s, 5.2 * s, 0, Math.PI * 0.95, Math.PI * 2.05);
+  g.fill();
+  g.fillRect(cx - 5.8 * s, hy - 3.6 * s, 11.6 * s, 3.2 * s);
+  for (const dir of [-1, 1]) g.fillRect(cx + dir * 5.6 * s - (dir > 0 ? 1.6 * s : 0), hy - 1 * s, 1.6 * s, 8 * s);
+  eyesAt(g, cx, hy + 1.8 * s, s, '#e0c8ff', '#9a6ad8', 2.4);
+  // A smirk
+  g.strokeStyle = '#7a3a4a';
+  g.lineWidth = 0.6 * s;
+  g.beginPath();
+  g.moveTo(cx - 1.4 * s, hy + 4.4 * s);
+  g.quadraticCurveTo(cx + 0.6 * s, hy + 5 * s, cx + 1.8 * s, hy + 3.8 * s);
+  g.stroke();
+};
+
+/**
+ * Driscoll Berci (a chibi homage), Sternritter O, The Overkill, who stole
+ * Kōkō Gonryō Rikyū: a huge, thick-necked brute with a flat-topped crew cut
+ * and a grin full of teeth.
+ */
+const thiefOverkill: Draw = (g, w, h) => {
+  const s = 2.1;
+  const cx = w / 2;
+  const cy = h / 2 + 8;
+  const hy = cy - 12.4 * s;
+  aura(g, cx, cy, 62, 'rgba(255,243,160,0.18)');
+  sternritter(g, cx, cy, s, { broad: 1.42 });
+  // A thick neck
+  g.fillStyle = SKIN;
+  g.fillRect(cx - 4.2 * s, hy + 4 * s, 8.4 * s, 4 * s);
+  // A broad, square face
+  g.fillStyle = SKIN;
+  roundRect(g, cx - 6.6 * s, hy - 5 * s, 13.2 * s, 12.4 * s, 4 * s);
+  g.fill();
+  // The flat-topped crew cut
+  g.fillStyle = '#2a2018';
+  g.fillRect(cx - 6.4 * s, hy - 7 * s, 12.8 * s, 3.4 * s);
+  // Small eyes under a heavy brow
+  browsAt(g, cx, hy - 0.4 * s, s, '#2a2018', 0.4);
+  eyesAt(g, cx, hy + 1.2 * s, s, '#f0e8d8', '#8a7050', 2.6);
+  // The grin
+  g.fillStyle = '#f8f4ea';
+  g.beginPath();
+  g.moveTo(cx - 4.2 * s, hy + 3.8 * s);
+  g.quadraticCurveTo(cx, hy + 7.4 * s, cx + 4.2 * s, hy + 3.8 * s);
+  g.closePath();
+  g.fill();
+  g.strokeStyle = 'rgba(60,30,20,0.8)';
+  g.lineWidth = 0.4 * s;
+  g.stroke();
+  g.beginPath();
+  for (let k = -3; k <= 3; k++) {
+    g.moveTo(cx + k * 1.1 * s, hy + 4 * s);
+    g.lineTo(cx + k * 1 * s, hy + 5.8 * s);
+  }
+  g.stroke();
+};
+
+/**
+ * Ganju Shiba on Bonnie (a chibi homage): the Shiba clan's fireworks man, a
+ * bandana on his head, riding his great boar, a sack of fireworks over his
+ * shoulder.
+ */
+const ganju: Draw = (g, w, h) => {
+  const cx = w / 2;
+  const cy = h / 2 + 6;
+  aura(g, cx, cy, 30, 'rgba(255,200,120,0.18)');
+  // Bonnie: a big brown boar, white tusks
+  g.fillStyle = '#7a4a2a';
+  g.beginPath();
+  g.ellipse(cx, cy + 8, 20, 11, 0, 0, TAU);
+  g.fill();
+  g.fillStyle = '#5a3418';
+  for (const dx of [-12, -4, 6, 13]) g.fillRect(cx + dx - 2, cy + 15, 4, 7);
+  g.fillStyle = '#7a4a2a';
+  g.beginPath();
+  g.ellipse(cx + 18, cy + 6, 8, 7, 0, 0, TAU);
+  g.fill();
+  g.fillStyle = '#c87a6a';
+  g.beginPath();
+  g.ellipse(cx + 25, cy + 7, 3, 2.6, 0, 0, TAU);
+  g.fill();
+  g.strokeStyle = '#f4f0e4';
+  g.lineWidth = 1.6;
+  g.beginPath();
+  g.moveTo(cx + 22, cy + 10);
+  g.quadraticCurveTo(cx + 26, cy + 9, cx + 27, cy + 5);
+  g.stroke();
+  g.fillStyle = '#14100c';
+  g.beginPath();
+  g.arc(cx + 20, cy + 3, 1.3, 0, TAU);
+  g.fill();
+  // Ganju, astride
+  g.fillStyle = '#3a3048';
+  roundRect(g, cx - 8, cy - 14, 14, 18, 4);
+  g.fill();
+  g.fillStyle = '#e8c8a0';
+  g.beginPath();
+  g.arc(cx - 1, cy - 20, 6.4, 0, TAU);
+  g.fill();
+  g.fillStyle = '#c83a3a';
+  g.fillRect(cx - 7.6, cy - 25, 13.2, 3);
+  g.fillStyle = '#1a1410';
+  g.beginPath();
+  g.arc(cx - 3, cy - 20, 0.9, 0, TAU);
+  g.arc(cx + 1.6, cy - 20, 0.9, 0, TAU);
+  g.fill();
+  // The fireworks sack
+  g.fillStyle = '#d8c8a0';
+  g.beginPath();
+  g.ellipse(cx - 11, cy - 14, 6, 7, -0.3, 0, TAU);
+  g.fill();
+  for (const [dx, col] of [
+    [-13, '#ff5a5a'],
+    [-10, '#5ac8ff'],
+    [-7, '#ffd25a'],
+  ] as const) {
+    g.fillStyle = col;
+    g.fillRect(cx + dx, cy - 24, 2, 5);
+  }
+};
+
+/** Kon (a chibi homage): a mod soul in a stuffed lion, mane bristling, arms up, running for it. */
+const kon: Draw = (g, w, h) => {
+  const cx = w / 2;
+  const cy = h / 2 + 4;
+  aura(g, cx, cy, 24, 'rgba(255,220,120,0.2)');
+  // Mane
+  g.fillStyle = '#d88a2a';
+  for (let k = 0; k < 12; k++) {
+    const a = (k / 12) * TAU;
+    g.beginPath();
+    g.ellipse(cx + Math.cos(a) * 10, cy - 6 + Math.sin(a) * 10, 5, 4, a, 0, TAU);
+    g.fill();
+  }
+  // Body and head
+  g.fillStyle = '#f2c860';
+  g.beginPath();
+  g.ellipse(cx, cy + 10, 8, 9, 0, 0, TAU);
+  g.fill();
+  g.beginPath();
+  g.arc(cx, cy - 6, 9, 0, TAU);
+  g.fill();
+  // Arms up, legs running
+  g.strokeStyle = '#f2c860';
+  g.lineWidth = 4;
+  g.lineCap = 'round';
+  g.beginPath();
+  g.moveTo(cx - 6, cy + 5);
+  g.lineTo(cx - 12, cy - 2);
+  g.moveTo(cx + 6, cy + 5);
+  g.lineTo(cx + 12, cy - 2);
+  g.moveTo(cx - 3, cy + 17);
+  g.lineTo(cx - 6, cy + 22);
+  g.moveTo(cx + 3, cy + 17);
+  g.lineTo(cx + 7, cy + 21);
+  g.stroke();
+  // Face: button eyes and a stitched smile
+  g.fillStyle = '#1a1410';
+  g.beginPath();
+  g.arc(cx - 3, cy - 7, 1.4, 0, TAU);
+  g.arc(cx + 3, cy - 7, 1.4, 0, TAU);
+  g.fill();
+  g.strokeStyle = '#6a3a1a';
+  g.lineWidth = 1;
+  g.beginPath();
+  g.moveTo(cx - 3, cy - 2);
+  g.quadraticCurveTo(cx, cy, cx + 3, cy - 2);
+  g.stroke();
+  g.fillStyle = '#a05a2a';
+  g.beginPath();
+  g.ellipse(cx, cy - 4, 1.6, 1.1, 0, 0, TAU);
+  g.fill();
+};
+
 // ------------------------------------------------------------ packing
 
 const ENEMY_DRAW: readonly [string, number, Draw][] = [
@@ -5163,6 +5616,13 @@ const ENEMY_DRAW: readonly [string, number, Draw][] = [
   ['heroes_aizen', 112, aizen],
   ['ichigo', 120, ichigo],
   ['ichigo_mask', 128, ichigoMask],
+  ['thief_senbonzakura', 112, thiefFear],
+  ['thief_hyorinmaru', 112, thiefIron],
+  ['thief_raikoben', 116, thiefKnowledge],
+  ['thief_tengen', 104, thiefExplode],
+  ['thief_gonryo', 124, thiefOverkill],
+  ['ganju', 68, ganju],
+  ['kon', 52, kon],
 ];
 
 function specs(): Spec[] {

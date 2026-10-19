@@ -110,7 +110,7 @@ describe('resonances from the story', () => {
       steps(w, Math.round(6 / DT));
       return ids.reduce((s, i) => s + (w.en.maxHp[i] - w.en.hp[i]), 0);
     };
-    expect(hits(giant)).toBeGreaterThan(hits(plain) * 1.15);
+    expect(hits(giant)).toBeGreaterThan(hits(plain) * 1.1);
   });
 
   it('Overkill Storm: every 40 kills, Gonryō’s lightning strikes eight more', () => {

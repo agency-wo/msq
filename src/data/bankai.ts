@@ -1,9 +1,11 @@
 import { stats, type PowerDef } from './powerTypes';
 
 /**
- * The six stolen bankai. Each run, three of them are carried by medallion
- * bearers (the bosses); beating a bearer gives you its bankai, no choice.
- * They level from 1 to 5 through the normal level-up cards.
+ * The six bankai the Emperor takes. Five were stolen by Sternritter with his
+ * medallions, and in Hueco Mundo three of those five knights stand in his
+ * way each run (beating one gives you its bankai, no choice). Zanka no Tachi
+ * he takes from the Captain-Commander himself, in the Seireitei. They level
+ * from 1 to 5 through the normal level-up cards.
  */
 
 export interface BankaiInfo {
@@ -12,6 +14,9 @@ export interface BankaiInfo {
   owner: string;
   /** Who stole it with a medallion. */
   thief: string;
+  /** The thief's Schrift: its letter and name (empty for Zanka no Tachi, which the Emperor took himself). */
+  thiefLetter: string;
+  thiefSchrift: string;
   /** The owner's rank in the Gotei 13, shown when they fight you in Seireitei. */
   rank: string;
   /** Colour of the bearer's aura and of the medallion pickup. */
@@ -19,12 +24,12 @@ export interface BankaiInfo {
 }
 
 export const BANKAI_INFO: readonly BankaiInfo[] = [
-  { id: 'senbonzakura', owner: 'Byakuya Kuchiki', thief: 'Äs Nödt', rank: 'Captain of the 6th Division', aura: 0xff9cc2 },
-  { id: 'hyorinmaru', owner: 'Tōshirō Hitsugaya', thief: 'Cang Du', rank: 'Captain of the 10th Division', aura: 0x8fd8ff },
-  { id: 'raikoben', owner: 'Suì-Fēng', thief: 'BG9', rank: 'Captain of the 2nd Division', aura: 0xffd27a },
-  { id: 'tengen', owner: 'Sajin Komamura', thief: 'Bambietta Basterbine', rank: 'Captain of the 7th Division', aura: 0xc9b58a },
-  { id: 'gonryo', owner: 'Chōjirō Sasakibe', thief: 'Driscoll Berci', rank: 'Lieutenant of the 1st Division', aura: 0xfff3a0 },
-  { id: 'zanka', owner: 'Genryūsai Yamamoto', thief: 'the Emperor', rank: 'Captain-Commander of the Gotei 13', aura: 0xff7a3c },
+  { id: 'senbonzakura', owner: 'Byakuya Kuchiki', thief: 'Äs Nödt', thiefLetter: 'F', thiefSchrift: 'The Fear', rank: 'Captain of the 6th Division', aura: 0xff9cc2 },
+  { id: 'hyorinmaru', owner: 'Tōshirō Hitsugaya', thief: 'Cang Du', thiefLetter: 'I', thiefSchrift: 'The Iron', rank: 'Captain of the 10th Division', aura: 0x8fd8ff },
+  { id: 'raikoben', owner: 'Suì-Fēng', thief: 'BG9', thiefLetter: 'K', thiefSchrift: 'The Knowledge', rank: 'Captain of the 2nd Division', aura: 0xffd27a },
+  { id: 'tengen', owner: 'Sajin Komamura', thief: 'Bambietta Basterbine', thiefLetter: 'E', thiefSchrift: 'The Explode', rank: 'Captain of the 7th Division', aura: 0xc9b58a },
+  { id: 'gonryo', owner: 'Chōjirō Sasakibe', thief: 'Driscoll Berci', thiefLetter: 'O', thiefSchrift: 'The Overkill', rank: 'Lieutenant of the 1st Division', aura: 0xfff3a0 },
+  { id: 'zanka', owner: 'Genryūsai Yamamoto', thief: 'the Emperor', thiefLetter: '', thiefSchrift: '', rank: 'Captain-Commander of the Gotei 13', aura: 0xff7a3c },
 ];
 
 export const BANKAI_IDS: readonly string[] = BANKAI_INFO.map((b) => b.id);

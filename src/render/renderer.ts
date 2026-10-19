@@ -232,6 +232,9 @@ export class Renderer {
   /** The Royal Guard by variant, and Kirio once she has shed her bulk. */
   private royalSprites: EnemySprite[] = [];
   private goteiSprites: EnemySprite[] = [];
+  private thiefSprites: EnemySprite[] = [];
+  /** The runaway, by stage: a gorged Adjuchas in Hueco Mundo, Kon above the clouds, Ganju and Bonnie elsewhere. */
+  private runners: Record<string, EnemySprite> = {};
   private heroSprites: EnemySprite[] = [];
   /** Ichigo once his Hollow mask forms. */
   private ichigoMasked: EnemySprite | null = null;
@@ -320,7 +323,7 @@ export class Renderer {
       commander: 30,
       ashen: 11,
       rift: 22,
-      golden: 11,
+      golden: 13,
       inkwisp: 8,
       inkling: 6.5,
       weaver: 9,
@@ -342,6 +345,9 @@ export class Renderer {
     this.artScale = ENEMY_LIST.map((d) => (d.boss || d.shinigami || d.behavior === 'flee' || d.id === 'rift' || d.id === 'ashen' ? 1 : 1.1));
     this.royalSprites = ROYAL_IDS.map((id, v) => sprite(enemySpriteName(ENEMY_INDEX.royal, v), id === 'kirio' ? 30 : 28));
     this.goteiSprites = GOTEI_IDS.map((id, v) => sprite(enemySpriteName(ENEMY_INDEX.gotei, v), id === 'kenpachi' ? 30 : 28));
+    this.thiefSprites = BANKAI_IDS.map((id, v) => sprite(enemySpriteName(ENEMY_INDEX.bearer, v), id === 'gonryo' ? 30 : 28));
+    const kon = sprite('kon', 12);
+    this.runners = { hueco: sprite('adjuchas', 22), palace: kon, wahrwelt: kon };
     this.heroSprites = HERO_IDS.map((_, v) => sprite(enemySpriteName(ENEMY_INDEX.defender, v), 28));
     this.ichigoMasked = sprite('ichigo_mask', 30);
     this.kirioSlim = sprite('royal_kirio_slim', 26);
@@ -710,6 +716,10 @@ export class Renderer {
       const type = E.type[i];
       const spr = elite
         ? this.eliteSprites[type]
+        : type === ENEMY_INDEX.golden
+          ? (this.runners[w.stage.id] ?? this.enemySprites[type])
+        : type === ENEMY_INDEX.bearer
+          ? (this.thiefSprites[E.variant[i]] ?? this.enemySprites[type])
         : type === ENEMY_INDEX.captain
           ? (this.captainSprites[E.variant[i]] ?? this.enemySprites[type])
           : type === ENEMY_INDEX.royal
@@ -722,8 +732,6 @@ export class Renderer {
               ? (this.heroSprites[E.variant[i]] ?? this.enemySprites[type])
             : type === ENEMY_INDEX.ichigo && E.r[i] >= ICHIGO_MASKED && this.ichigoMasked
               ? this.ichigoMasked
-            : type === ENEMY_INDEX.golden && w.stage.id === 'seireitei'
-            ? this.enemySprites[ENEMY_INDEX.officer]
             : type === ENEMY_INDEX.harribel && E.r[i] >= HARRIBEL_RELEASED && this.harribelReleased
               ? this.harribelReleased
               : this.enemySprites[type];
@@ -733,7 +741,7 @@ export class Renderer {
       } else if (type === ENEMY_INDEX.rift) {
         // The rift pulses, and a ring shrinks as it runs out of time.
         const left = Math.max(0, Math.min(1, E.atk2T[i] / 25));
-        L.auras.add(f.glow, x, y, (r * 4.4) / 64, (r * 4.4) / 64, 0, w.stage.id === 'seireitei' ? 0xffe2a0 : 0xff2d4a, 0.45 + Math.sin(now * 5) * 0.15);
+        L.auras.add(f.glow, x, y, (r * 4.4) / 64, (r * 4.4) / 64, 0, w.stage.id === 'hueco' ? 0xff2d4a : 0xffe2a0, 0.45 + Math.sin(now * 5) * 0.15);
         L.auras.add(f.ring, x, y, (r * 3.4 * left) / 110 + 0.05, (r * 3.4 * left) / 110 + 0.05, 0, 0xffffff, 0.55);
       }
       const scale = (r / spr.ref / ATLAS_SCALE) * this.artScale[type];
@@ -760,7 +768,7 @@ export class Renderer {
         }
         L.shadows.add(f.shadow, x, y + r * 0.85, (r * 2.2) / 48, (r * 2.2) / 48, 0, 0xffffff, 0.8);
       }
-      let tint = type === ENEMY_INDEX.golden ? 0xffd27a : type === ENEMY_INDEX.rift && w.stage.id === 'seireitei' ? 0xfff0d0 : 0xffffff;
+      let tint = type === ENEMY_INDEX.golden && w.stage.id === 'hueco' ? 0xffd27a : type === ENEMY_INDEX.rift && w.stage.id !== 'hueco' ? 0xfff0d0 : 0xffffff;
       if (E.charmT[i] > 0) tint = flags & FLAG_ZOMBIE ? 0x9fd88a : 0xff9cc8;
       else if (E.freezeT[i] > 0) tint = HOLD_TINT[E.holdKind[i]] ?? 0x8fd0ff;
       else if (frozenAll && !boss) tint = 0x8fd0ff;

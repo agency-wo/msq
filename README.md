@@ -9,17 +9,19 @@ knights (Auswählen): 19 offensive powers with a Lv 7 attribute pick, plus 6
 utilities. Some fight for you: The Love charms enemies onto your side, The
 Zombie raises the infected dead, The Yourself sends out doubles, and Uryū
 Ishida's Antithesis reverses your wounds: you heal half, and the sturdiest
-enemies near you lose the same share of their health. Every run,
-three random medallion bearers carry stolen bankai; beat one and its bankai is
-yours. Every bankai, Fragment of the Soul King and awakened Schrift you take
+enemies near you lose the same share of their health. Every run in Hueco
+Mundo, three of the Sternritter who stole the captains' bankai with their
+medallions come for you (Äs Nödt with Senbonzakura, Cang Du with Hyōrinmaru,
+BG9 with Raikōben, Bambietta with Tengen, Driscoll with Gonryō Rikyū); beat
+one and its bankai is yours. Every bankai, Fragment of the Soul King and awakened Schrift you take
 back in a run counts toward **A · The Almighty** (the HUD shows how many): at
 five it awakens (at three once you have taken back all six bankai across your
 runs). It stops time every 24 s and
 rewrites the future (enemy fire vanishes, everything on screen is struck down).
-All art is drawn in code: the Emperor, the Gotei 13 captains, the Royal Guard
-and Tier Harribel are chibi homages to their Bleach designs; everything else (Hollows, Soul
-Reaper soldiers, the palace's servants, medallion bearers, the other bosses,
-effects) is an original design.
+All art is drawn in code: the Emperor, the Sternritter, the Gotei 13 captains,
+the Royal Guard, Tier Harribel and the other named characters are chibi
+homages to their Bleach designs; everything else (Hollows, Soul Reaper
+soldiers, the palace's servants, effects) is an original design.
 
 As he takes power back, the Emperor **evolves** in front of you: reishi wings
 with the first bankai or awakened Schrift, crimson eyes opening across his
@@ -77,14 +79,16 @@ download): a regal title theme, the eerie "White Moon" for Hueco Mundo, taiko
 and flute for Seireitei, a driving boss theme with a Seireitei version and a
 finale, and victory and defeat stingers. It can be turned off in Settings.
 
-Between the bosses, **events** break the rhythm: a Garganta (a Senkaimon in
-Seireitei) pours out enemies until you destroy it, a Golden Hollow (a Treasury
-Runner) flees with treasure, a Reishi Storm rains mana, or an ambush closes in.
+Between the bosses, **events** break the rhythm: a Garganta (a Senkaimon
+outside Hueco Mundo) pours out enemies until you destroy it, a runaway flees
+with treasure (a gorged Adjuchas in Hueco Mundo, Ganju Shiba on his boar
+Bonnie in the Seireitei and Silbern, the mod soul Kon in the Palace and the
+Wahrwelt), a Reishi Storm rains mana, or an ambush closes in.
 **Quincy shrines** turn up too (always one around 3:40): walk into one for a
-choice of three pacts, each a real gain at a real price (Blood: +30% damage
-for a quarter of your health; Greed: 60% more gold, sturdier enemies;
-Hunter's: the next boss now, for an extra black chest; and seven more), or
-walk away. Each pact can be made once a run.
+choice of three pacts, each a real gain at a real price (Blut Arterie: +30%
+damage for a quarter of your health; Gintō Hoard: 60% more gold, sturdier
+enemies; Jagdarmee: the next boss now, for an extra black chest; and seven
+more), or walk away. Each pact can be made once a run.
 Chain kills without being hit for **Blut Rush**: three tiers of extra damage and
 speed, shown by the counter beside your kills.
 
@@ -98,8 +102,8 @@ racing for the fastest clear.
 
 The **Daily Trial** is one run a day, the same for every player: the date picks
 the stage, a Schrift held from the start beside Heilig Pfeil (any attack, even
-one you have not awakened yet) and two rules that bend the run (Glass Cannon,
-The Swarm, Giants, Haste, Frail, Barren). Surviving five minutes pays 100 bonus
+one you have not awakened yet) and two rules that bend the run (Letzt Stil,
+The Swarm, Giants, Shunpo, Frail, Barren). Surviving five minutes pays 100 bonus
 gold once a day and clearing it pays 300; the day keeps its own best time.
 
 Every run pays gold. Spend it in the **Wandenreich Archives** on permanent
@@ -109,16 +113,18 @@ opens with.
 
 Stages, 20 minutes each:
 
-- **Hueco Mundo**: Hollows. A Vasto Lorde rises at 18:00, and Tier Harribel,
+- **Hueco Mundo**: Hollows, Shriekers' leeches that burst, and three of the
+  bankai thieves. A Vasto Lorde rises at 18:00, and Tier Harribel,
   the Third Espada who has ruled Las Noches since Aizen fell, ends the stage:
   Ola Azul waves, a Sonído rush down a warned lane, and below half health
   Tiburón released and Cascada falling where you stand (in the story, the
   Emperor beats her in front of her own palace).
-- **Seireitei** (unlocked by clearing Hueco Mundo): Soul Reaper soldiers that
-  flash-step and cast Kidō, and lieutenants that throw sword waves. The bankai
+- **Seireitei** (unlocked by clearing Hueco Mundo): Soul Reaper soldiers,
+  Onmitsukidō agents that flash-step, Kidō Corps officers that cast, and
+  lieutenants that throw sword waves. The bankai
   bosses here are the captains themselves (Byakuya, Hitsugaya, Suì-Fēng,
-  Komamura, Lieutenant Sasakibe), each fighting with their own bankai; the Kidō
-  Grandmaster escorts the third, and Captain-Commander Yamamoto ends the stage
+  Komamura, Lieutenant Sasakibe), each fighting with their own bankai; a Kidō
+  Corps Commander escorts the third, and Captain-Commander Yamamoto ends the stage
   with Zanka no Tachi's fire and the ashen dead. Bring him below half health
   and the Emperor takes his bankai, as he did in the story: Yamamoto fights on
   with Ennetsu Jigoku's pillars of flame and his fists (Ikkotsu, Sōkotsu).
@@ -185,7 +191,7 @@ Add these to the URL: `?debug` (FPS, CPU per frame and entity counts),
 `?stress=1500` (swarm plus every power maxed, no damage), `?god`, `?seed=123`,
 `?t=600` (start at 10:00), `?play` (skip the title), `?give=explode7,xaxis5`
 (own powers at those levels), `?bankai=zanka,tengen` (start with bankai),
-`?bearers=raikoben,gonryo` (choose which bankai the bosses carry),
+`?bearers=raikoben,gonryo` (choose which bankai the bosses carry; in Hueco Mundo that picks the Sternritter),
 `?stage=seireitei` (play a stage even if it is still locked), `?almighty`
 (start with A · The Almighty), `?start=xaxis` (open the run with that Schrift),
 `?res=firestorm,railgun` (own resonances), `?trial=3` and `?endless`.
