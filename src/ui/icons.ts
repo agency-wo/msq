@@ -499,23 +499,23 @@ const GLYPHS: Record<string, Glyph> = {
   },
 };
 
-function setup(canvas: HTMLCanvasElement, size: number): Ctx | null {
-  const dpr = Math.min(window.devicePixelRatio || 1, 3);
-  canvas.width = Math.round(size * dpr);
-  canvas.height = Math.round(size * dpr);
+function setup(canvas: HTMLCanvasElement, size: number, ratio = Math.min(window.devicePixelRatio || 1, 3)): Ctx | null {
+  canvas.width = Math.round(size * ratio);
+  canvas.height = Math.round(size * ratio);
   const g = canvas.getContext('2d');
   if (!g) return null;
-  g.scale(dpr, dpr);
+  g.scale(ratio, ratio);
   g.clearRect(0, 0, size, size);
   return g;
 }
 
 /**
- * Draw a card icon at 48x48 CSS pixels. With a `letter`, it is that Schrift
- * letter in a ring of reishi; otherwise the named glyph.
+ * Draw a card icon at 48x48 CSS pixels (at the screen's pixel ratio unless
+ * `ratio` is given). With a `letter`, it is that Schrift letter in a ring of
+ * reishi; otherwise the named glyph.
  */
-export function drawIcon(canvas: HTMLCanvasElement, name: string, color: string, letter?: string): void {
-  const g = setup(canvas, 48);
+export function drawIcon(canvas: HTMLCanvasElement, name: string, color: string, letter?: string, ratio?: number): void {
+  const g = setup(canvas, 48, ratio);
   if (!g) return;
   g.strokeStyle = color;
   g.fillStyle = color;

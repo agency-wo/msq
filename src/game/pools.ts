@@ -93,6 +93,9 @@ export class EnemyPool extends Pool {
   /** Bosses: which bankai a medallion bearer carries (index into BANKAI_IDS). */
   readonly variant = this.u8();
   readonly flags = this.u8();
+  /** Power slots behind an enemy's burn and behind its charm (or its rising as a zombie), for the damage report. */
+  readonly dotSrc = this.u8();
+  readonly charmSrc = this.u8();
   /** Set when killed mid-step; the slot is reclaimed at the end of the step. */
   readonly dead = this.u8();
   /** Never reused, so a piercing arrow can remember who it already hit. */

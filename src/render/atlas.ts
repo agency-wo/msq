@@ -2824,11 +2824,11 @@ export function buildAtlas(): Atlas {
  * boss portraits, the Codex). `cssWidth` is the canvas's CSS width; it is
  * drawn at the device's pixel ratio so it stays sharp.
  */
-export function drawSprite(canvas: HTMLCanvasElement, name: string, cssWidth: number): boolean {
+export function drawSprite(canvas: HTMLCanvasElement, name: string, cssWidth: number, ratio = Math.min(window.devicePixelRatio || 1, 3)): boolean {
   const spec = specs().find((s) => s.name === name);
   const g = spec ? canvas.getContext('2d') : null;
   if (!spec || !g) return false;
-  const k = (cssWidth / spec.w) * Math.min(window.devicePixelRatio || 1, 3);
+  const k = (cssWidth / spec.w) * ratio;
   canvas.width = Math.round(spec.w * k);
   canvas.height = Math.round(spec.h * k);
   g.scale(k, k);

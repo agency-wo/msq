@@ -1599,6 +1599,91 @@ button:focus-visible {
   color: var(--muted);
 }
 
+/* The Emperor above the verdict. */
+.results-head {
+  display: flex;
+  justify-content: center;
+  margin-bottom: -6px;
+}
+
+.results-portrait {
+  width: 64px;
+  height: 77px;
+  filter: drop-shadow(0 0 16px rgba(255, 203, 92, 0.55));
+}
+
+.results.lost .results-portrait {
+  filter: grayscale(1) brightness(0.85) drop-shadow(0 0 14px rgba(255, 45, 74, 0.45));
+}
+
+.section-title {
+  margin: 6px 0 -2px;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.3em;
+  margin-right: -0.3em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* The damage report: one bar per power, scaled to the top dealer. */
+.damage {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.dmg-row {
+  --accent: #9fdcff;
+  display: grid;
+  grid-template-columns: 28px 1fr;
+  align-items: center;
+  gap: 8px;
+}
+
+.dmg-icon {
+  width: 28px;
+  height: 28px;
+}
+
+.dmg-body {
+  min-width: 0;
+}
+
+.dmg-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.dmg-name {
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dmg-num {
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.dmg-bar {
+  height: 5px;
+  margin-top: 3px;
+  background: rgba(239, 234, 224, 0.1);
+}
+
+.dmg-fill {
+  height: 100%;
+  transform-origin: left center;
+  background: var(--accent);
+  box-shadow: 0 0 8px var(--accent);
+}
+
 .results.won .board-title {
   color: var(--gold);
 }

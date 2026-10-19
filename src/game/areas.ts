@@ -63,6 +63,7 @@ export function updateZones(w: World): void {
   const plague = w.resonances.has('plague');
   const nightmare = w.resonances.has('nightmare');
   for (let i = Z.n - 1; i >= 0; i--) {
+    w.dmgSlot = Z.src[i];
     Z.life[i] -= DT;
     if (Z.life[i] <= 0) {
       if (Z.kind[i] === ZK_CAGE && Z.extra[i] > 0) openCage(w, i);
@@ -184,9 +185,11 @@ export function updateMarks(w: World): void {
   for (let i = M.n - 1; i >= 0; i--) {
     M.delay[i] -= DT;
     if (M.delay[i] > 0) continue;
+    w.dmgSlot = M.src[i];
     resolveMark(w, i);
     M.remove(i);
   }
+  w.dmgSlot = 255;
 }
 
 /** The warning ran out: hit whatever stands inside the shape. */

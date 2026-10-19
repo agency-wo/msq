@@ -6,7 +6,7 @@ import { FixedLoop } from './core/loop';
 import { POWER_BY_ID, STARTING_POWER } from './data/powers';
 import { STAGE_BY_ID, stageById, TRIAL_NAMES, type StageId } from './data/stages';
 import { CHAPTER_BY_ID, type Chapter } from './data/story';
-import { dailyFor, dateKey, type DailySpec } from './data/daily';
+import { dailyFor, dailyLine, dateKey, type DailySpec } from './data/daily';
 import type { Offer } from './game/offers';
 import { runGold } from './game/rewards';
 import { World } from './game/world';
@@ -27,7 +27,7 @@ import {
   type SaveData,
 } from './save/save';
 import { chaptersAfter, chaptersBefore, markChapter } from './save/story';
-import { UI, type Toggle } from './ui/ui';
+import { damageRows, type Toggle, UI } from './ui/ui';
 
 type State = 'title' | 'settings' | 'archives' | 'chronicle' | 'daily' | 'story' | 'playing' | 'paused' | 'levelup' | 'chest' | 'over';
 
@@ -454,10 +454,13 @@ export class App {
     this.ui.showHud(false);
     this.ui.showResults(
       {
+        stage: w.stage.id,
         stageName: w.stage.name,
         mode: this.daily ? 'Daily Trial' : [w.trial > 0 ? TRIAL_NAMES[w.trial] : '', w.endless ? 'Endless' : ''].filter(Boolean).join(' · '),
         daily: !!this.daily,
         dailyBonus: daily?.bonus ?? 0,
+        dailyLine: this.daily ? dailyLine(this.daily) : '',
+        damage: damageRows(w),
         endless: w.endless,
         unlocked: record.unlocked ? stageById(record.unlocked).name : null,
         almighty: record.almighty,

@@ -36,6 +36,8 @@ export interface PowerState {
   angle: number;
   /** Orbiters: seconds they stay out (Infinity for permanent ones); 0 while resting. */
   active: number;
+  /** Run time when it was gained, for damage per second. */
+  since: number;
 }
 
 export function computePowerStats(def: PowerDef, level: number): PowerStats {
@@ -50,7 +52,7 @@ export function computePowerStats(def: PowerDef, level: number): PowerStats {
 }
 
 export function newPowerState(def: PowerDef): PowerState {
-  return { def, level: 1, attr: null, stats: computePowerStats(def, 1), timer: 0.35, timer2: 0.5, counter: 0, angle: 0, active: 0 };
+  return { def, level: 1, attr: null, stats: computePowerStats(def, 1), timer: 0.35, timer2: 0.5, counter: 0, angle: 0, active: 0, since: 0 };
 }
 
 export function refreshPowerStats(ps: PowerState): void {
@@ -60,6 +62,8 @@ export function refreshPowerStats(ps: PowerState): void {
 export function updatePowers(w: World): void {
   for (let slot = 0; slot < w.powers.length; slot++) {
     const ps = w.powers[slot];
+    // Whatever this power hits while casting is credited to it.
+    w.dmgSlot = slot;
     switch (ps.def.kind) {
       case 'bolt':
         castBolt(w, ps, slot);
@@ -156,6 +160,7 @@ export function updatePowers(w: World): void {
         break;
     }
   }
+  w.dmgSlot = 255;
 }
 
 /** Rebuild whatever a power keeps in the world (orbiters, auras) after it levels or global size/count change. */

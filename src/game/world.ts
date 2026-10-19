@@ -329,6 +329,12 @@ export class World {
   readonly boss = { active: false, hp: 0, max: 1, name: '', sub: '', final: false, type: -1, variant: 0, uid: -1 };
   /** Bumped whenever a power is gained, levelled or awakened, so the HUD redraws its tray only then. */
   buildVersion = 0;
+  /** The power slot that the damage being dealt right now belongs to; 255 is everything else (runes, revives). */
+  dmgSlot = 255;
+  /** Damage dealt this run by power slot (255: everything else), counting only health actually removed. */
+  readonly dmgBy = new Float64Array(256);
+  /** When the run began, for the damage per second of everything else. */
+  private readonly startT: number;
   /** Scratch target written by densestPoint() and edgePoint(). */
   tx = 0;
   ty = 0;
@@ -351,7 +357,7 @@ export class World {
   private sanreiOff = false;
   private finalBossUid = -1;
   private victoryT = -1;
-  private readonly bursts = new Float32Array(MAX_BURSTS * 4);
+  private readonly bursts = new Float32Array(MAX_BURSTS * 5);
   private burstN = 0;
 
   constructor(opts: WorldOptions = {}) {
@@ -394,6 +400,7 @@ export class World {
     }
 
     const start = Math.max(0, opts.startTime ?? 0);
+    this.startT = start;
     if (start > 0) {
       this.t = start;
       while (this.evCursor < events.length && events[this.evCursor].at < start) this.evCursor++;
@@ -455,6 +462,7 @@ export class World {
     this.flushBursts();
     updateMarks(this);
     updateZones(this);
+    this.dmgSlot = 255;
     updateEnemyBullets(this);
     this.updateOrbs();
     this.updatePickups();
@@ -811,6 +819,7 @@ export class World {
     const items = g.items;
     for (let i = 0; i < E.n; i++) {
       if (E.dead[i]) continue;
+      this.dmgSlot = 255;
       let x = E.x[i];
       let y = E.y[i];
       E.ox[i] = x;
@@ -826,7 +835,9 @@ export class World {
         E.dotTick[i] -= DT;
         if (E.dotTick[i] <= 0) {
           E.dotTick[i] += 0.5;
+          this.dmgSlot = E.dotSrc[i];
           this.damageEnemy(i, E.dotDps[i] * 0.5, 0, x, y, true);
+          this.dmgSlot = 255;
           if (E.dead[i]) continue;
         }
       }
@@ -884,7 +895,9 @@ export class World {
           } else if (E.atk2T[i] <= 0) {
             E.atk2T[i] = 0.5;
             if (flags & FLAG_PLAGUE) E.infT[t] = Math.max(E.infT[t], 4);
+            this.dmgSlot = E.charmSrc[i];
             this.damageEnemy(t, E.charmDmg[i] * 0.5, 30, x, y, true);
+            this.dmgSlot = 255;
           }
         } else if (dist > 70) {
           x += (dx / dist) * v;
@@ -1009,6 +1022,7 @@ export class World {
     const crit = !noCrit && this.rng.next() < this.stats.critChance;
     const vul = E.vulnT[i] > 0 ? 1 + E.vulnK[i] : 1;
     const dmg = base * this.dmgMul * vul * (crit ? this.stats.critMult : 1);
+    this.dmgBy[this.dmgSlot] += Math.min(dmg, Math.max(0, E.hp[i]));
     E.hp[i] -= dmg;
     E.flash[i] = 0.07;
     if (knock > 0 && !(E.flags[i] & (FLAG_BOSS | FLAG_EVENT))) {
@@ -1057,6 +1071,8 @@ export class World {
     if (E.dead[i]) return;
     if (E.dotT[i] <= 0) E.dotTick[i] = 0.5;
     E.dotT[i] = Math.max(E.dotT[i], secs);
+    // The strongest burn sets the rate, so it is the one credited.
+    if (dps >= E.dotDps[i]) E.dotSrc[i] = this.dmgSlot;
     E.dotDps[i] = Math.max(E.dotDps[i], dps);
     E.dotKind[i] = kind;
   }
@@ -1073,6 +1089,7 @@ export class World {
     const s = E.flags[j] & FLAG_ELITE && attr !== 'adoration' ? secs * 0.5 : secs;
     if (s > E.charmT[j]) E.charmT[j] = s;
     E.charmDmg[j] = Math.max(E.charmDmg[j], dps);
+    E.charmSrc[j] = this.dmgSlot;
     if (attr === 'heartbreak') E.flags[j] |= FLAG_HEARTBREAK;
     E.atk2T[j] = Math.min(E.atk2T[j], 0.2);
     this.spawnFx(FX_GLOW, E.x[j], E.y[j], 0, 0, 0.3, E.r[j] * 1.5, E.r[j] * 3, 0.7, 0, 0, 0xff9cc8, LAYER_ADD);
@@ -1091,6 +1108,7 @@ export class World {
     E.flags[z] |= FLAG_ZOMBIE | (this.zombiePlague ? FLAG_PLAGUE : 0) | (this.zombieBurst ? FLAG_BLOODBURST : 0);
     E.charmT[z] = this.zombieLife;
     E.charmDmg[z] = this.zombieDps;
+    E.charmSrc[z] = this.slotOf('zombie');
     E.atk2T[z] = 0.3;
     this.zombieN++;
     this.spawnFx(FX_GLOW, x, y, 0, 0, 0.4, E.r[z] * 1.5, E.r[z] * 3.5, 0.8, 0, 0, 0xff3050, LAYER_ADD);
@@ -1108,7 +1126,7 @@ export class World {
     if (flags & FLAG_ZOMBIE) {
       // The risen crumble: no mana, no drops, not a kill.
       this.zombieN = Math.max(0, this.zombieN - 1);
-      if (flags & FLAG_BLOODBURST) this.queueBurst(x, y, 56 * this.stats.size, E.charmDmg[i] * 2.5);
+      if (flags & FLAG_BLOODBURST) this.queueBurst(x, y, 56 * this.stats.size, E.charmDmg[i] * 2.5, E.charmSrc[i]);
       // Plague: the risen leave a lethal cloud behind.
       const death = this.resonances.has('plague') ? this.power('death') : undefined;
       if (death) this.spawnZone(ZK_POISON, x, y, 0, 0, 44 * this.stats.size, 2.5, death.stats.tick, death.stats.damage * 0.7, 0, 0.3);
@@ -1219,7 +1237,7 @@ export class World {
       p.iframes = 0.6;
       this.spawnFx(FX_RING, 0, 0, 0, 0, 0.35, 20, 70, 1, 0, 0, 0xdfe7f2, LAYER_ADD, 0, 1);
       this.sound('shield');
-      if (this.ironBurst > 0) this.shockwave(140, this.ironBurst, 300);
+      if (this.ironBurst > 0) this.credit('iron', () => this.shockwave(140, this.ironBurst, 300));
       return;
     }
     p.hp -= amount * this.stats.dmgTaken * (1 - this.balanceCut) * this.tm.damageTaken * this.modTaken;
@@ -1228,13 +1246,13 @@ export class World {
     this.shake = Math.max(this.shake, 5);
     this.sound('hurt');
     // The Balance: the misfortune is shared with everything around you.
-    if (this.balanceDmg > 0) this.shockwave(this.balanceR, this.balanceDmg, 140);
+    if (this.balanceDmg > 0) this.credit('balance', () => this.shockwave(this.balanceR, this.balanceDmg, 140));
     if (p.hp > 0) return;
     if (p.revives > 0) {
       p.revives--;
       p.hp = p.maxHp * 0.5;
       p.iframes = 2.5;
-      this.shockwave(220, 40 + this.level * 4, 420);
+      this.credit(null, () => this.shockwave(220, 40 + this.level * 4, 420));
       this.messages.push({ text: 'Reishi threads lift you back up', kind: 'info' });
     } else {
       p.hp = 0;
@@ -1343,6 +1361,7 @@ export class World {
     const p = this.player;
     for (let i = 0; i < P.n; i++) {
       if (P.life[i] <= 0) continue;
+      this.dmgSlot = P.src[i];
       const kind = P.kind[i];
       P.ox[i] = P.x[i];
       P.oy[i] = P.y[i];
@@ -1453,19 +1472,21 @@ export class World {
   }
 
   /** Volatile kills explode after the step's projectile pass, so chains never recurse. */
-  private queueBurst(x: number, y: number, r: number, dmg: number): void {
+  private queueBurst(x: number, y: number, r: number, dmg: number, slot = this.dmgSlot): void {
     if (this.burstN >= MAX_BURSTS || dmg <= 0) return;
-    const b = this.burstN++ * 4;
+    const b = this.burstN++ * 5;
     this.bursts[b] = x;
     this.bursts[b + 1] = y;
     this.bursts[b + 2] = r;
     this.bursts[b + 3] = dmg;
+    this.bursts[b + 4] = slot;
   }
 
   private flushBursts(): void {
     let done = 0;
     while (this.burstN > 0 && done < MAX_BURSTS) {
-      const b = --this.burstN * 4;
+      const b = --this.burstN * 5;
+      this.dmgSlot = this.bursts[b + 4];
       burstAt(this, this.bursts[b], this.bursts[b + 1], this.bursts[b + 2], this.bursts[b + 3], -1, false, 0xffb37a);
       done++;
     }
@@ -1523,7 +1544,7 @@ export class World {
     M.kind[i] = kind;
     M.shape[i] = shape;
     M.flags[i] = flags;
-    M.src[i] = 0;
+    M.src[i] = this.dmgSlot;
     return i;
   }
 
@@ -2026,8 +2047,35 @@ export class World {
     }
     const def = POWER_BY_ID.get(id);
     if (!def) return;
-    this.powers.push(newPowerState(def));
+    const ps = newPowerState(def);
+    ps.since = this.t;
+    this.powers.push(ps);
     syncPower(this, this.powers.length - 1);
+  }
+
+  /** A power's slot in `powers`, or 255 when you do not hold it. */
+  slotOf(id: string): number {
+    const k = this.powers.findIndex((ps) => ps.def.id === id);
+    return k < 0 ? 255 : k;
+  }
+
+  /** Deal damage inside `fn` on behalf of a power (null: nobody's, as with a revive's blast). */
+  private credit(id: string | null, fn: () => void): void {
+    const prev = this.dmgSlot;
+    this.dmgSlot = id ? this.slotOf(id) : 255;
+    fn();
+    this.dmgSlot = prev;
+  }
+
+  /**
+   * Damage this run by power, most first: the total, and damage per second
+   * over the time each was held. Everything not dealt by a power is "other".
+   */
+  damageReport(): { id: string; total: number; dps: number }[] {
+    const rows = this.powers.map((ps, slot) => ({ id: ps.def.id, total: this.dmgBy[slot], dps: this.dmgBy[slot] / Math.max(1, this.t - ps.since) }));
+    const other = this.dmgBy[255];
+    if (other > 0) rows.push({ id: 'other', total: other, dps: other / Math.max(1, this.t - this.startT) });
+    return rows.filter((r) => r.total > 0).sort((a, b) => b.total - a.total);
   }
 
   chooseAttribute(id: string, attr: string): void {

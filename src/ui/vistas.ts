@@ -176,7 +176,7 @@ const seireitei: Paint = (g, w, h) => {
   g.strokeStyle = '#d9dbe6';
   g.lineWidth = 1.2;
   g.beginPath();
-  g.moveTo(tx, h * 0.2);
+  g.moveTo(tx, h * 0.25);
   g.lineTo(tx, h * 0.3);
   g.stroke();
   for (let k = 0; k < 3; k++) {
@@ -206,12 +206,11 @@ const seireitei: Paint = (g, w, h) => {
 const VISTAS: Readonly<Partial<Record<StageId, Paint>>> = { hueco, seireitei };
 
 /** Paint a stage's vista into a canvas; `w` and `h` are its CSS size (CSS covers the card with it). */
-export function drawVista(canvas: HTMLCanvasElement, stage: StageId, w = 200, h = 104): void {
-  const dpr = Math.min(window.devicePixelRatio || 1, 3);
-  canvas.width = Math.round(w * dpr);
-  canvas.height = Math.round(h * dpr);
+export function drawVista(canvas: HTMLCanvasElement, stage: StageId, w = 200, h = 104, ratio = Math.min(window.devicePixelRatio || 1, 3)): void {
+  canvas.width = Math.round(w * ratio);
+  canvas.height = Math.round(h * ratio);
   const g = canvas.getContext('2d');
   if (!g) return;
-  g.scale(dpr, dpr);
+  g.scale(ratio, ratio);
   (VISTAS[stage] ?? hueco)(g, w, h);
 }

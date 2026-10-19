@@ -359,7 +359,7 @@ try {
 
   // The Daily Trial: today's stage, Schrift and rules; the run keeps its own record for the day.
   await wait(500); // the results ignore taps for a moment
-  await page.tap('.screen.results .btn:not(.primary)');
+  await page.tap('.screen.results .menu-btn');
   await wait(300);
   await passStory();
   await page.waitForSelector('.screen.title .daily-btn');
@@ -394,8 +394,14 @@ try {
     kicker: await page.textContent('.screen.results .board-kicker'),
     best: await page.$$eval('.screen.results .stat-label', (s) => s.map((x) => x.textContent)),
     record: (await readSave()).daily,
+    damage: await page.$$eval('.screen.results .dmg-row', (r) => r.map((x) => x.textContent)),
   });
   await shot('10d-results-daily');
+  // Share: headless Edge has no share sheet, so the card is saved as a download instead.
+  await page.evaluate(() => Object.defineProperty(navigator, 'share', { value: undefined, configurable: true }));
+  const [card] = await Promise.all([page.waitForEvent('download', { timeout: 10000 }), page.tap('.share-btn')]);
+  await card.saveAs(join(OUT, '10e-share-card.png'));
+  log('share', { file: card.suggestedFilename(), toast: await page.textContent('.toast') });
 
   // Mid-run: flash-steps, Kidō fire, a seated officer (elite at 7:30).
   await page.goto(`${BASE}?debug&seed=7&play&god&stage=seireitei&t=445&give=xaxis5,explode5,wind5`);

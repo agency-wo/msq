@@ -40,6 +40,17 @@ export const DAILY_SURVIVE_TIME = 300;
 export const DAILY_SURVIVE_GOLD = 100;
 export const DAILY_CLEAR_GOLD = 300;
 
+/** "October 19" for "2026-10-19". */
+export function dayLabel(date: string): string {
+  const [y, m, d] = date.split('-').map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
+}
+
+/** "Daily Trial · October 19 · Frail + Giants". */
+export function dailyLine(spec: DailySpec): string {
+  return `Daily Trial · ${dayLabel(spec.date)} · ${spec.mods.map((m) => DAILY_MOD_BY_ID.get(m)?.name ?? m).join(' + ')}`;
+}
+
 export function dateKey(d: Date = new Date()): string {
   const pad = (n: number): string => String(n).padStart(2, '0');
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;

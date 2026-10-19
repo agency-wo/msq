@@ -1,7 +1,7 @@
 import { formatTime } from '../core/math';
 import { UPGRADES } from '../data/archives';
 import { BANKAI_BY_ID, BANKAI_IDS } from '../data/bankai';
-import { DAILY_CLEAR_GOLD, DAILY_MOD_BY_ID, DAILY_SURVIVE_GOLD, DAILY_SURVIVE_TIME, type DailySpec } from '../data/daily';
+import { DAILY_CLEAR_GOLD, DAILY_MOD_BY_ID, DAILY_SURVIVE_GOLD, DAILY_SURVIVE_TIME, dayLabel, type DailySpec } from '../data/daily';
 import { PASSIVE_BY_ID } from '../data/passives';
 import { POWER_BY_ID, STARTING_POWER, type PowerDef } from '../data/powers';
 import type { Rarity, RelicDef } from '../data/relics';
@@ -16,6 +16,7 @@ import { nextCost, startOptions, upgradeLevel } from '../save/archives';
 import { almightyUnlocked, endlessOpen, stageUnlocked, trialsOpen, type DailyRecord, type SaveData, type Settings } from '../save/save';
 import { chapterUnlocked } from '../save/story';
 import { drawEmblem, drawIcon } from './icons';
+import { shareRun } from './share';
 import { drawVista } from './vistas';
 
 /**
@@ -57,7 +58,35 @@ interface CardSpec {
   note?: string;
 }
 
+/** One power's line in the damage report. */
+export interface DamageRow {
+  name: string;
+  icon: string;
+  color: string;
+  letter?: string;
+  total: number;
+  dps: number;
+}
+
+/** The world's damage report with names and icons, for the pause and results screens. */
+export function damageRows(w: World): DamageRow[] {
+  return w.damageReport().map((r) => {
+    const d = POWER_BY_ID.get(r.id);
+    return d
+      ? { name: d.name, icon: d.icon, color: d.color, letter: d.letter, total: r.total, dps: r.dps }
+      : { name: 'Other', icon: 'star', color: '#9a9fae', total: r.total, dps: r.dps };
+  });
+}
+
+/** 12.3k, 1.24M: big numbers in a narrow column. */
+function short(n: number): string {
+  if (n >= 1e6) return `${(n / 1e6).toFixed(n >= 1e7 ? 1 : 2)}M`;
+  if (n >= 1e4) return `${(n / 1e3).toFixed(n >= 1e5 ? 0 : 1)}k`;
+  return String(Math.round(n));
+}
+
 export interface ResultSummary {
+  stage: StageId;
   stageName: string;
   /** "Trial II", "Endless", or "" for a normal run. */
   mode: string;
@@ -76,6 +105,9 @@ export interface ResultSummary {
   /** A Daily Trial: the best shown is today's, plus any bonus gold the run earned. */
   daily: boolean;
   dailyBonus: number;
+  /** "Daily Trial · October 19 · Frail + Giants", or "" for any other run. */
+  dailyLine: string;
+  damage: DamageRow[];
   victory: boolean;
   quit: boolean;
   time: number;
@@ -508,7 +540,10 @@ export class UI {
     resume.addEventListener('click', this.guard(h.onResume));
     const quit = button('btn danger', 'Quit run');
     quit.addEventListener('click', this.guard(h.onQuit));
-    p.append(build, resume, this.toggles(settings, h.onToggle), quit);
+    p.append(build);
+    const rows = damageRows(w);
+    if (rows.length > 0) p.append(el('h3', 'section-title', 'Damage'), this.damageList(rows));
+    p.append(resume, this.toggles(settings, h.onToggle), quit);
     this.lock(200);
   }
 
@@ -516,7 +551,12 @@ export class UI {
     const p = this.open(`results ${r.victory ? 'won' : 'lost'}`);
     const where = r.mode ? `${r.stageName} · ${r.mode}` : r.stageName;
     const kicker = r.victory ? `${where} cleared` : r.quit ? 'Run abandoned' : r.endless ? `${where}` : `Fallen in ${where}`;
-    p.append(el('div', 'board-kicker', kicker), el('h2', 'board-title', r.victory ? 'Victory' : 'Fallen'));
+    // The Emperor above the verdict: lit gold in victory, grey in defeat.
+    const head = el('div', 'results-head');
+    const portrait = el('canvas', 'results-portrait');
+    drawSprite(portrait, 'player', 64);
+    head.append(portrait);
+    p.append(head, el('div', 'board-kicker', kicker), el('h2', 'board-title', r.victory ? 'Victory' : 'Fallen'));
     if (r.unlocked) p.append(el('p', 'unlock-note', `New stage unlocked: ${r.unlocked}`));
     if (r.almighty) p.append(el('p', 'unlock-note', 'Every bankai taken back. A · The Almighty is unlocked: it awakens once three Schrift reach Lv 7.'));
     if (r.starts.length > 0) p.append(el('p', 'unlock-note', `New starting Schrift in the Archives: ${r.starts.join(', ')}`));
@@ -543,6 +583,7 @@ export class UI {
       line.append(coin, el('span', '', `+${gold(r.goldEarned)} gold · ${gold(r.goldTotal)} to spend in the Archives`));
       p.append(line);
     }
+    if (r.damage.length > 0) p.append(el('h3', 'section-title', 'Damage'), this.damageList(r.damage));
     if (r.powers.length > 0) {
       const build = el('div', 'build');
       for (const pw of r.powers) {
@@ -553,10 +594,60 @@ export class UI {
     }
     const retry = button('btn primary', 'Play again');
     retry.addEventListener('click', this.guard(h.onRetry));
-    const menu = button('btn', 'Menu');
+    const row = el('div', 'row-btns');
+    const share = button('btn share-btn', 'Share');
+    share.addEventListener('click', this.guard(() => void this.share(r)));
+    const menu = button('btn menu-btn', 'Menu');
     menu.addEventListener('click', this.guard(h.onMenu));
-    p.append(retry, menu);
+    row.append(share, menu);
+    p.append(retry, row);
     this.lock(700);
+  }
+
+  /** The share sheet with the run's card, or a saved PNG where there is no share sheet. */
+  private async share(r: ResultSummary): Promise<void> {
+    const sum = r.damage.reduce((s, d) => s + d.total, 0);
+    const top = r.damage.find((d) => d.name !== 'Other');
+    const result = await shareRun({
+      stage: r.stage,
+      stageName: r.stageName,
+      mode: r.mode,
+      victory: r.victory,
+      quit: r.quit,
+      time: r.time,
+      level: r.level,
+      kills: r.kills,
+      powers: r.powers,
+      top: top && sum > 0 ? { name: top.name, share: Math.round((top.total / sum) * 100) } : null,
+      daily: r.dailyLine || null,
+    });
+    if (result === 'saved') this.toast('Result card saved');
+    else if (result === 'failed') this.toast('Could not make the card');
+  }
+
+  /** Damage by power: a bar each, the biggest first, with its share and damage per second. */
+  private damageList(rows: readonly DamageRow[]): HTMLElement {
+    const box = el('div', 'damage');
+    const top = rows[0]?.total ?? 0;
+    const sum = rows.reduce((s, r) => s + r.total, 0);
+    for (const r of rows.slice(0, 10)) {
+      const row = el('div', 'dmg-row');
+      row.style.setProperty('--accent', r.color);
+      const icon = el('canvas', 'dmg-icon');
+      drawIcon(icon, r.icon, r.color, r.letter);
+      const body = el('div', 'dmg-body');
+      const head = el('div', 'dmg-head');
+      const pct = sum > 0 ? Math.round((r.total / sum) * 100) : 0;
+      head.append(el('span', 'dmg-name', r.name), el('span', 'dmg-num', `${short(r.total)} · ${pct}% · ${short(r.dps)}/s`));
+      const bar = el('div', 'dmg-bar');
+      const fill = el('div', 'dmg-fill');
+      fill.style.transform = `scaleX(${top > 0 ? r.total / top : 0})`;
+      bar.append(fill);
+      body.append(head, bar);
+      row.append(icon, body);
+      box.append(row);
+    }
+    return box;
   }
 
   // --------------------------------------------------------- helpers
@@ -564,9 +655,7 @@ export class UI {
   /** Today's Daily Trial: where, with what, under which rules, and what it has paid so far. */
   showDaily(spec: DailySpec, record: DailyRecord, h: { onBegin: () => void; onBack: () => void }): void {
     const p = this.open('daily');
-    const [y, m, d] = spec.date.split('-').map(Number);
-    const day = new Date(y, m - 1, d).toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
-    p.append(el('div', 'board-kicker', 'Daily Trial'), el('h2', 'board-title', day));
+    p.append(el('div', 'board-kicker', 'Daily Trial'), el('h2', 'board-title', dayLabel(spec.date)));
     const where = el('p', 'archives-hint', `${stageById(spec.stage).name}. Today's seed, opening Schrift and rules are the same for every player.`);
     // You open with Heilig Pfeil and today's Schrift, which is lit.
     const opener = el('div', 'start-chips');
