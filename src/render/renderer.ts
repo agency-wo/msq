@@ -7,6 +7,7 @@ import type { Input } from '../core/input';
 import { BANKAI_BY_ID, BANKAI_IDS } from '../data/bankai';
 import { ENEMY_INDEX, ENEMY_LIST } from '../data/enemies';
 import { TRAIL_BY_ID } from '../data/looks';
+import { GOTEI_IDS, GOTEI_INFO } from '../data/gotei';
 import { ROYAL_IDS, ROYAL_INFO } from '../data/royal';
 import { DOUBLE_RING, doubleCount } from '../game/casts/schrift2';
 import { COMMANDER_HEAT, HARRIBEL_RELEASED } from '../game/hostile';
@@ -74,6 +75,8 @@ import {
   ZK_POISON,
   ZF_BLAZE,
   ZF_FOLLOW,
+  MK_GAS,
+  MK_MIST,
 } from '../game/constants';
 import type { World } from '../game/world';
 import { ATLAS_SCALE, buildAtlas, buildGroundTile, CAPE_PIVOT, type Atlas } from './atlas';
@@ -225,6 +228,7 @@ export class Renderer {
   private artScale: number[] = [];
   /** The Royal Guard by variant, and Kirio once she has shed her bulk. */
   private royalSprites: EnemySprite[] = [];
+  private goteiSprites: EnemySprite[] = [];
   private kirioSlim: EnemySprite | null = null;
   /** Tier Harribel once Tiburón is released. */
   private harribelReleased: EnemySprite | null = null;
@@ -319,12 +323,17 @@ export class Renderer {
       royal: 28,
       ichibe: 30,
       harribel: 29,
+      brawler: 11,
+      specimen: 14,
+      kyoraku: 30,
+      jizo: 30,
     };
     // Types drawn per variant (or per stage) fall back to one of their sprites here.
     this.enemySprites = ENEMY_LIST.map((d, t) => sprite(enemySpriteName(t), REF[d.id] ?? d.radius));
     this.captainSprites = BANKAI_IDS.map((id, v) => sprite(enemySpriteName(ENEMY_INDEX.captain, v), id === 'zanka' || id === 'tengen' ? 30 : 28));
     this.artScale = ENEMY_LIST.map((d) => (d.boss || d.shinigami || d.behavior === 'flee' || d.id === 'rift' || d.id === 'ashen' ? 1 : 1.1));
     this.royalSprites = ROYAL_IDS.map((id, v) => sprite(enemySpriteName(ENEMY_INDEX.royal, v), id === 'kirio' ? 30 : 28));
+    this.goteiSprites = GOTEI_IDS.map((id, v) => sprite(enemySpriteName(ENEMY_INDEX.gotei, v), id === 'kenpachi' ? 30 : 28));
     this.kirioSlim = sprite('royal_kirio_slim', 26);
     this.harribelReleased = sprite('harribel_tiburon', 31);
     const adjuchas = sprite('adjuchas', 24);
@@ -582,7 +591,8 @@ export class Renderer {
       const kind = M.kind[i];
       // Of your own strikes, only the slow big ones (meteors, missiles) show where they will land.
       if (!enemy && kind !== MK_METEOR && kind !== MK_MISSILE) continue;
-      const tint = enemy ? 0xff2d4a : 0xffcb5c;
+      // Poison warns in green and Sakanade's harmless mist in pink; every other enemy strike in red.
+      const tint = enemy ? (kind === MK_GAS ? 0x9dff6a : kind === MK_MIST ? 0xff9ad8 : 0xff2d4a) : 0xffcb5c;
       const t = 1 - Math.max(0, M.delay[i]) / M.max[i];
       const x = M.x[i];
       const y = M.y[i];
@@ -696,6 +706,8 @@ export class Renderer {
             ? ROYAL_IDS[E.variant[i]] === 'kirio' && E.r[i] < 26 && this.kirioSlim
               ? this.kirioSlim
               : (this.royalSprites[E.variant[i]] ?? this.enemySprites[type])
+            : type === ENEMY_INDEX.gotei
+              ? (this.goteiSprites[E.variant[i]] ?? this.enemySprites[type])
             : type === ENEMY_INDEX.golden && w.stage.id === 'seireitei'
             ? this.enemySprites[ENEMY_INDEX.officer]
             : type === ENEMY_INDEX.harribel && E.r[i] >= HARRIBEL_RELEASED && this.harribelReleased
@@ -718,7 +730,9 @@ export class Renderer {
           ? (this.bankaiAura[E.variant[i]] ?? 0xffcb5c)
           : type === ENEMY_INDEX.royal
             ? (ROYAL_INFO[E.variant[i]]?.aura ?? 0xfff6dc)
-            : this.bossAura[type];
+            : type === ENEMY_INDEX.gotei
+              ? (GOTEI_INFO[E.variant[i]]?.aura ?? 0xf4f6fb)
+              : this.bossAura[type];
         L.auras.add(f.glow, x, y, (r * 3.6) / 64, (r * 3.6) / 64, 0, aura, 0.5 + Math.sin(now * 3) * 0.12);
         if (type === ENEMY_INDEX.commander && !w.zankaStolen) {
           // Zanka no Tachi's heat: anything inside this ring burns (until the bankai is taken from him).
@@ -759,6 +773,11 @@ export class Renderer {
     if (w.superT > 0) L.auras.add(f.glow, x, y, 1.6, 1.6, 0, 0xffd27a, 0.45 + Math.sin(now * 10) * 0.1);
     // The Heart of the Soul King's surge: nothing can touch you while it shines.
     if (w.surgeT > 0) L.auras.add(f.glow, x, y - 4, 2.2, 2.2, 0, 0xffcf7a, 0.5 + Math.sin(now * 12) * 0.15);
+    // Sakanade: a sweet pink haze turns about you while your directions are backwards.
+    if (w.invertT > 0) {
+      L.auras.add(f.glow, x, y - 2, 1.5, 1.5, 0, 0xff9ad8, 0.3 + Math.sin(now * 7) * 0.1);
+      L.auras.add(f.ring, x, y + 4, 0.48, 0.48, -now * 3, 0xffb8e0, 0.6);
+    }
     if (w.shieldCharges > 0) L.auras.add(f.ring, x, y - 2, 0.42, 0.42, 0, 0xdfe7f2, 0.35 + 0.1 * w.shieldCharges);
     // The Yourself: translucent doubles standing around you.
     for (const ps of w.powers) {

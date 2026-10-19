@@ -51,6 +51,7 @@ const POWER_SECTIONS: readonly [string, (d: PowerDef) => boolean, string][] = [
 const ENEMY_SECTIONS: readonly [CodexSection, string][] = [
   ['hueco', 'Hueco Mundo'],
   ['seireitei', 'Seireitei'],
+  ['silbern', 'Silbern'],
   ['palace', 'Soul King Palace'],
   ['events', 'Events'],
 ];
@@ -1367,6 +1368,15 @@ export class UI {
     }
     select(stageUnlocked(save, save.stage) ? save.stage : 'hueco');
     box.append(row, modes, info);
+    // With more stages than fit, the strip scrolls; bring the chosen one into view once it is on screen.
+    requestAnimationFrame(() => {
+      const k = STAGES.findIndex((d) => d.id === current);
+      const card = buttons[k];
+      if (!card || row.scrollWidth <= row.clientWidth) return;
+      const a = card.getBoundingClientRect();
+      const r = row.getBoundingClientRect();
+      if (a.left < r.left || a.right > r.right) row.scrollLeft += a.left - r.left - 8;
+    });
     return box;
   }
 

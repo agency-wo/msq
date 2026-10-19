@@ -567,6 +567,27 @@ try {
   });
   await shot('12b-tiburon');
 
+  // Silbern: the second invasion's captains, then the Captain-Commander and his bankai.
+  for (const id of ['kenpachi', 'mayuri', 'shinji', 'kensei']) {
+    await page.goto(`${BASE}?debug&seed=3&play&god&stage=silbern&t=298&bearers=${id}`);
+    await wait(400);
+    await steer(6500, { radius: 20 });
+    log(`silbern ${id}`, { ...(await stats()), boss: (await page.isVisible('.bossbar')) ? await page.textContent('.boss-name') : null, inverted: await page.evaluate(() => window.__msq.world.invertT > 0) });
+    await shot(`12d-silbern-${id}`);
+  }
+  await page.goto(`${BASE}?debug&seed=7&play&god&stage=silbern&t=1196&give=xaxis6,explode6,heat6`);
+  await wait(400);
+  await steer(8000, { radius: 15 });
+  log('kyoraku', { ...(await stats()), boss: await page.textContent('.boss-name'), sub: await page.textContent('.boss-sub') });
+  await shot('12e-kyoraku');
+  await page.evaluate(() => {
+    const w = window.__msq.world;
+    for (let i = 0; i < w.en.n; i++) if (w.en.type[i] === 29 && !w.en.dead[i]) w.en.hp[i] = w.en.maxHp[i] * 0.45;
+  });
+  await steer(6000, { radius: 15 });
+  log('karamatsu', { ...(await stats()), marks: await page.evaluate(() => window.__msq.world.marks.n) });
+  await shot('12f-karamatsu');
+
   // The captains defend their own bankai in Seireitei.
   for (const id of ['senbonzakura', 'hyorinmaru', 'raikoben', 'tengen', 'gonryo']) {
     await page.goto(`${BASE}?debug&seed=3&play&god&stage=seireitei&t=298&bearers=${id}`);

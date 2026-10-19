@@ -4134,6 +4134,517 @@ const harribelReleased: Draw = (g, w, h) => {
   );
 };
 
+// ------------------------------------------------------------ Silbern
+
+/** A sword held point-down at his side: a straight blade, a guard and a hilt. Returns nothing. */
+function heldSword(g: Ctx, hx: number, hy: number, s: number, len: number, ang: number, blade = '#d8dee8', notched = false): void {
+  g.save();
+  g.translate(hx, hy);
+  g.rotate(ang);
+  // Hilt above the hand, blade below it
+  g.fillStyle = '#2a2f3a';
+  g.fillRect(-0.9 * s, -5 * s, 1.8 * s, 5 * s);
+  g.fillStyle = '#c9a040';
+  g.fillRect(-2.2 * s, -0.6 * s, 4.4 * s, 1.2 * s);
+  g.fillStyle = blade;
+  g.beginPath();
+  g.moveTo(-1 * s, 0.6 * s);
+  if (notched) {
+    // A chipped edge, nicked by a thousand fights
+    for (let k = 1; k <= 5; k++) {
+      g.lineTo(-1 * s + (k % 2 ? 0.7 : 0) * s, 0.6 * s + (len * k) / 6);
+    }
+  }
+  g.lineTo(-1 * s, len * s * 0.94);
+  g.lineTo(0, len * s);
+  g.lineTo(1 * s, len * s * 0.94);
+  g.lineTo(1 * s, 0.6 * s);
+  g.closePath();
+  g.fill();
+  g.strokeStyle = 'rgba(40,46,60,0.6)';
+  g.lineWidth = 0.6;
+  g.stroke();
+  g.restore();
+}
+
+/**
+ * Kenpachi Zaraki (a chibi homage): wild spiked black hair, the long scar
+ * down over his left eye, a wolfish grin, his haori torn ragged at the hem,
+ * and a long nicked blade.
+ */
+const kenpachi: Draw = (g, w, h) => {
+  const s = 2.05;
+  const cx = w / 2;
+  const cy = h / 2 + 7;
+  const hy = cy - 13 * s;
+  aura(g, cx, cy, 58, 'rgba(255,224,138,0.2)');
+  captainBody(g, cx, cy, s, { haori: 'sleeved', broad: 1.18, obi: '#1a1c26' });
+  // The haori's hem, torn into rags
+  g.fillStyle = '#07080c';
+  for (let k = 0; k < 7; k++) {
+    const x = cx - 14 * s + k * 4.6 * s;
+    poly(g, [
+      [x, cy + 19 * s],
+      [x + 2.3 * s, cy + (14.5 + (k % 2) * 1.5) * s],
+      [x + 4.6 * s, cy + 19 * s],
+    ]);
+    g.fill();
+  }
+  heldSword(g, cx + 12.2 * s, cy + 9.6 * s, s, 15, -0.18, '#cfd6e2', true);
+  faceAt(g, cx, hy + 0.6 * s, s, 5.8, 6.6);
+  // Spiked hair, a crown of points
+  g.fillStyle = '#0d0e14';
+  g.beginPath();
+  g.ellipse(cx, hy - 2.4 * s, 6.8 * s, 5.2 * s, 0, Math.PI * 0.95, Math.PI * 2.05);
+  g.fill();
+  for (let k = 0; k < 11; k++) {
+    const a = Math.PI * (1.02 + (k / 10) * 0.96);
+    const r0 = 5.6 * s;
+    const r1 = (11 + (k % 2) * 3.2) * s;
+    const x0 = cx + Math.cos(a - 0.12) * r0;
+    const y0 = hy - 1.5 * s + Math.sin(a - 0.12) * r0;
+    const x1 = cx + Math.cos(a) * r1;
+    const y1 = hy - 1.5 * s + Math.sin(a) * r1;
+    const x2 = cx + Math.cos(a + 0.12) * r0;
+    const y2 = hy - 1.5 * s + Math.sin(a + 0.12) * r0;
+    poly(g, [
+      [x0, y0],
+      [x1, y1],
+      [x2, y2],
+    ]);
+    g.fill();
+  }
+  // Fierce eyes, and the scar running down over the left one
+  browsAt(g, cx, hy + 0.2 * s, s, '#0d0e14', 1.8);
+  eyesAt(g, cx, hy + 1.8 * s, s, '#fff2c0', '#ffd25a', 2.6);
+  g.strokeStyle = '#9a4a3a';
+  g.lineWidth = 0.7 * s;
+  g.beginPath();
+  g.moveTo(cx + 3.2 * s, hy - 3.6 * s);
+  g.lineTo(cx + 2.4 * s, hy + 5.4 * s);
+  g.stroke();
+  // A wide grin, teeth showing
+  g.fillStyle = '#1a0c0c';
+  g.beginPath();
+  g.ellipse(cx, hy + 4.6 * s, 2.8 * s, 1.1 * s, 0, 0, Math.PI);
+  g.fill();
+  g.fillStyle = '#f4f2ec';
+  g.fillRect(cx - 2.4 * s, hy + 4.5 * s, 4.8 * s, 0.5 * s);
+};
+
+/**
+ * Mayuri Kurotsuchi (a chibi homage): a face painted white with black about
+ * the eyes, black lips and gold eyes, the gold headpiece with its two points,
+ * a purple scarf, and Ashisogi Jizō's three golden prongs.
+ */
+const mayuri: Draw = (g, w, h) => {
+  const s = 2;
+  const cx = w / 2;
+  const cy = h / 2 + 7;
+  const hy = cy - 13 * s;
+  aura(g, cx, cy, 56, 'rgba(157,255,138,0.18)');
+  captainBody(g, cx, cy, s, { haori: 'sleeved', obi: '#6a4a9a' });
+  // The purple scarf at his throat
+  g.fillStyle = '#7a4aa8';
+  g.beginPath();
+  g.ellipse(cx, cy - 5.2 * s, 6.4 * s, 2.4 * s, 0, 0, TAU);
+  g.fill();
+  // Ashisogi Jizō: three golden prongs
+  g.save();
+  g.translate(cx + 12.2 * s, cy + 9.4 * s);
+  g.rotate(-0.2);
+  g.fillStyle = '#2a2f3a';
+  g.fillRect(-0.8 * s, -4 * s, 1.6 * s, 4 * s);
+  g.fillStyle = '#e8c840';
+  g.shadowColor = 'rgba(232,200,64,0.7)';
+  g.shadowBlur = 4;
+  for (const dx of [-2.4, 0, 2.4]) {
+    poly(g, [
+      [dx * s - 0.7 * s, 0],
+      [dx * s, (dx === 0 ? 13 : 10) * s],
+      [dx * s + 0.7 * s, 0],
+    ]);
+    g.fill();
+  }
+  g.fillRect(-3.2 * s, -0.4 * s, 6.4 * s, 1.2 * s);
+  g.restore();
+  // The gold headpiece: a cap with a point rising on either side
+  g.fillStyle = '#d8b040';
+  for (const dir of [-1, 1]) {
+    poly(g, [
+      [cx + dir * 4.2 * s, hy - 3 * s],
+      [cx + dir * 9.6 * s, hy - 11.4 * s],
+      [cx + dir * 7.4 * s, hy - 1 * s],
+    ]);
+    g.fill();
+  }
+  g.beginPath();
+  g.ellipse(cx, hy - 2.6 * s, 6.6 * s, 5 * s, 0, Math.PI, TAU);
+  g.fill();
+  g.strokeStyle = 'rgba(120,90,20,0.8)';
+  g.lineWidth = 0.6 * s;
+  g.stroke();
+  // A white-painted face, black about the eyes, black lips
+  g.fillStyle = '#f2f2ee';
+  g.beginPath();
+  g.ellipse(cx, hy + 0.8 * s, 5.4 * s, 6.4 * s, 0, 0, TAU);
+  g.fill();
+  g.fillStyle = '#16141c';
+  g.beginPath();
+  g.ellipse(cx, hy + 1.6 * s, 4.8 * s, 1.9 * s, 0, 0, TAU);
+  g.fill();
+  eyesAt(g, cx, hy + 1.6 * s, s, '#ffe24a', '#c9a020', 2.3);
+  g.fillStyle = '#16141c';
+  g.beginPath();
+  g.ellipse(cx, hy + 4.6 * s, 2.2 * s, 0.8 * s, 0, 0, TAU);
+  g.fill();
+  g.fillStyle = '#f2f2ee';
+  g.fillRect(cx - 1.8 * s, hy + 4.4 * s, 3.6 * s, 0.35 * s);
+};
+
+/**
+ * Shinji Hirako (a chibi homage): a straight blond bob cut level above his
+ * eyes, half-lidded eyes over a wide toothy grin, and Sakanade with the ring
+ * at the end of its hilt.
+ */
+const shinji: Draw = (g, w, h) => {
+  const s = 2;
+  const cx = w / 2;
+  const cy = h / 2 + 7;
+  const hy = cy - 13 * s;
+  aura(g, cx, cy, 56, 'rgba(255,184,224,0.18)');
+  captainBody(g, cx, cy, s, { haori: 'sleeved' });
+  // Sakanade, the ring on its pommel
+  g.save();
+  g.translate(cx + 12.2 * s, cy + 9.6 * s);
+  g.rotate(-0.25);
+  g.strokeStyle = '#d8b040';
+  g.lineWidth = 0.9 * s;
+  g.beginPath();
+  g.arc(0, -6.6 * s, 1.8 * s, 0, TAU);
+  g.stroke();
+  g.restore();
+  heldSword(g, cx + 12.2 * s, cy + 9.6 * s, s, 14, -0.25);
+  // The bob: straight blond hair falling to the jaw, the fringe cut level
+  g.fillStyle = '#f2d36b';
+  g.beginPath();
+  g.moveTo(cx - 7.2 * s, hy + 4.8 * s);
+  g.lineTo(cx - 7.4 * s, hy - 2 * s);
+  g.quadraticCurveTo(cx, hy - 11.2 * s, cx + 7.4 * s, hy - 2 * s);
+  g.lineTo(cx + 7.2 * s, hy + 4.8 * s);
+  g.closePath();
+  g.fill();
+  faceAt(g, cx, hy + 1 * s, s, 5.2, 6.2);
+  g.fillStyle = '#f2d36b';
+  g.fillRect(cx - 5.6 * s, hy - 4.2 * s, 11.2 * s, 3.4 * s);
+  g.strokeStyle = 'rgba(160,120,40,0.6)';
+  g.lineWidth = 0.4 * s;
+  g.beginPath();
+  for (let k = -4; k <= 4; k += 2) {
+    g.moveTo(cx + k * s, hy - 4.2 * s);
+    g.lineTo(cx + k * s, hy - 0.9 * s);
+  }
+  g.stroke();
+  // Half-lidded eyes
+  g.strokeStyle = '#3a2a10';
+  g.lineWidth = 0.8 * s;
+  g.beginPath();
+  g.moveTo(cx - 4 * s, hy + 1.4 * s);
+  g.lineTo(cx - 1.4 * s, hy + 1.4 * s);
+  g.moveTo(cx + 1.4 * s, hy + 1.4 * s);
+  g.lineTo(cx + 4 * s, hy + 1.4 * s);
+  g.stroke();
+  // The grin, all teeth
+  g.fillStyle = '#f8f6f0';
+  g.beginPath();
+  g.moveTo(cx - 3.4 * s, hy + 3.6 * s);
+  g.quadraticCurveTo(cx, hy + 6.6 * s, cx + 3.4 * s, hy + 3.6 * s);
+  g.closePath();
+  g.fill();
+  g.strokeStyle = 'rgba(60,30,30,0.7)';
+  g.lineWidth = 0.35 * s;
+  g.stroke();
+  g.beginPath();
+  for (let k = -2; k <= 2; k++) {
+    g.moveTo(cx + k * 1.2 * s, hy + 3.8 * s);
+    g.lineTo(cx + k * 1.1 * s, hy + 5.2 * s);
+  }
+  g.stroke();
+};
+
+/**
+ * Kensei Muguruma (a chibi homage): short spiked silver hair, a scowl, bare
+ * arms under a sleeveless haori, and Tachikaze, a combat knife, in his fist.
+ */
+const kensei: Draw = (g, w, h) => {
+  const s = 2;
+  const cx = w / 2;
+  const cy = h / 2 + 7;
+  const hy = cy - 13 * s;
+  aura(g, cx, cy, 56, 'rgba(207,230,255,0.18)');
+  captainBody(g, cx, cy, s, { haori: 'sleeveless', broad: 1.1 });
+  // Tachikaze: a short combat knife
+  heldSword(g, cx + 12.4 * s, cy + 9.6 * s, s, 7, -0.6, '#e8eef8');
+  faceAt(g, cx, hy + 0.8 * s, s, 5.6, 6.4);
+  // Short spiked silver hair
+  g.fillStyle = '#c9ced8';
+  g.beginPath();
+  g.ellipse(cx, hy - 2.6 * s, 6.4 * s, 4.6 * s, 0, Math.PI * 0.95, Math.PI * 2.05);
+  g.fill();
+  for (let k = 0; k < 9; k++) {
+    const a = Math.PI * (1.05 + (k / 8) * 0.9);
+    poly(g, [
+      [cx + Math.cos(a - 0.16) * 5.4 * s, hy - 2 * s + Math.sin(a - 0.16) * 5.4 * s],
+      [cx + Math.cos(a) * 9 * s, hy - 2 * s + Math.sin(a) * 9 * s],
+      [cx + Math.cos(a + 0.16) * 5.4 * s, hy - 2 * s + Math.sin(a + 0.16) * 5.4 * s],
+    ]);
+    g.fill();
+  }
+  // A scowl
+  browsAt(g, cx, hy + 0.4 * s, s, '#8a8f9c', 2);
+  eyesAt(g, cx, hy + 1.9 * s, s, '#e8eaf0', '#8a90a8', 2.5);
+  g.strokeStyle = '#5a3a30';
+  g.lineWidth = 0.6 * s;
+  g.beginPath();
+  g.moveTo(cx - 1.8 * s, hy + 4.8 * s);
+  g.quadraticCurveTo(cx, hy + 4.2 * s, cx + 1.8 * s, hy + 4.8 * s);
+  g.stroke();
+};
+
+/**
+ * Captain-Commander Shunsui Kyōraku (a chibi homage): the straw hat, wavy
+ * brown hair tied back, stubble on his chin, a patch over his right eye, the
+ * pink flowered kimono worn over his haori, and Katen Kyōkotsu's two blades.
+ */
+const kyoraku: Draw = (g, w, h) => {
+  const s = 2.05;
+  const cx = w / 2;
+  const cy = h / 2 + 8;
+  const hy = cy - 13 * s;
+  aura(g, cx, cy, 60, 'rgba(255,154,200,0.2)');
+  // The ponytail behind
+  g.fillStyle = '#5a3a24';
+  g.beginPath();
+  g.ellipse(cx + 5 * s, hy + 6 * s, 2.4 * s, 6 * s, 0.4, 0, TAU);
+  g.fill();
+  captainBody(g, cx, cy, s, { haori: 'sleeved', obi: '#c86a9a' });
+  // The pink kimono, worn open over the haori: it covers his shoulders and sides
+  const pink = (dir: number): void => {
+    g.beginPath();
+    g.moveTo(cx + dir * 3.2 * s, cy - 7.2 * s);
+    g.quadraticCurveTo(cx + dir * 17.5 * s, cy - 5 * s, cx + dir * 16.2 * s, cy + 19.6 * s);
+    g.lineTo(cx + dir * 5.6 * s, cy + 19.6 * s);
+    g.quadraticCurveTo(cx + dir * 6.4 * s, cy + 4 * s, cx + dir * 3.2 * s, cy - 7.2 * s);
+    g.closePath();
+  };
+  for (const dir of [-1, 1]) {
+    g.fillStyle = '#ff9ac8';
+    pink(dir);
+    g.fill();
+    g.strokeStyle = 'rgba(120,40,80,0.45)';
+    g.lineWidth = 0.6 * s;
+    g.stroke();
+  }
+  g.fillStyle = 'rgba(255,255,255,0.8)';
+  const rnd = seeded(808);
+  for (let k = 0; k < 18; k++) {
+    const dir = k % 2 ? 1 : -1;
+    const x = cx + dir * (7 + rnd() * 8) * s;
+    const y = cy + (rnd() * 24 - 4) * s;
+    for (let q = 0; q < 5; q++) {
+      const a = (q / 5) * TAU;
+      g.beginPath();
+      g.arc(x + Math.cos(a) * 0.8 * s, y + Math.sin(a) * 0.8 * s, 0.5 * s, 0, TAU);
+      g.fill();
+    }
+  }
+  // Katen Kyōkotsu: two blades, low
+  heldSword(g, cx + 12.2 * s, cy + 9.6 * s, s, 13, -0.35);
+  heldSword(g, cx - 12.2 * s, cy + 9.6 * s, s, 8, 0.45);
+  faceAt(g, cx, hy + 0.8 * s, s, 5.6, 6.4);
+  // Wavy brown hair, framing the face
+  g.fillStyle = '#5a3a24';
+  g.beginPath();
+  g.ellipse(cx, hy - 1.8 * s, 6.8 * s, 5 * s, 0, Math.PI * 0.95, Math.PI * 2.05);
+  g.fill();
+  for (const dir of [-1, 1]) {
+    g.beginPath();
+    g.moveTo(cx + dir * 5 * s, hy - 2 * s);
+    g.quadraticCurveTo(cx + dir * 7.6 * s, hy + 2 * s, cx + dir * 6.2 * s, hy + 6 * s);
+    g.quadraticCurveTo(cx + dir * 5.6 * s, hy + 2 * s, cx + dir * 4.2 * s, hy - 0.4 * s);
+    g.closePath();
+    g.fill();
+  }
+  // Stubble on the chin, a lazy eye, and the patch over his right
+  g.fillStyle = 'rgba(70,46,30,0.75)';
+  g.beginPath();
+  g.ellipse(cx, hy + 5.8 * s, 2.2 * s, 1.2 * s, 0, 0, TAU);
+  g.fill();
+  g.strokeStyle = '#2a1a10';
+  g.lineWidth = 0.8 * s;
+  g.beginPath();
+  g.moveTo(cx + 1.4 * s, hy + 1.6 * s);
+  g.lineTo(cx + 4 * s, hy + 1.4 * s);
+  g.stroke();
+  g.fillStyle = '#14161f';
+  g.beginPath();
+  g.ellipse(cx - 2.7 * s, hy + 1.5 * s, 1.9 * s, 1.5 * s, 0, 0, TAU);
+  g.fill();
+  g.strokeStyle = '#14161f';
+  g.lineWidth = 0.5 * s;
+  g.beginPath();
+  g.moveTo(cx - 6 * s, hy - 0.6 * s);
+  g.lineTo(cx + 5.6 * s, hy - 0.2 * s);
+  g.stroke();
+  // The straw hat, tipped back
+  g.fillStyle = '#c9a868';
+  g.beginPath();
+  g.moveTo(cx - 13 * s, hy - 3.4 * s);
+  g.quadraticCurveTo(cx, hy - 16 * s, cx + 13 * s, hy - 4.6 * s);
+  g.quadraticCurveTo(cx, hy - 6.4 * s, cx - 13 * s, hy - 3.4 * s);
+  g.closePath();
+  g.fill();
+  g.strokeStyle = 'rgba(110,80,30,0.7)';
+  g.lineWidth = 0.5 * s;
+  g.beginPath();
+  for (let k = -3; k <= 3; k++) {
+    g.moveTo(cx + k * 1.4 * s, hy - 12.6 * s + Math.abs(k) * 0.4 * s);
+    g.lineTo(cx + k * 3.6 * s, hy - 5 * s - Math.abs(k) * 0.2 * s);
+  }
+  g.stroke();
+};
+
+/**
+ * Konjiki Ashisogi Jizō (a chibi homage to Mayuri's bankai): a great golden
+ * caterpillar on blade legs, a baby's face, and a halo floating above it.
+ */
+const jizo: Draw = (g, w, h) => {
+  const cx = w / 2;
+  const cy = h / 2 + 10;
+  aura(g, cx, cy, 64, 'rgba(232,200,64,0.18)');
+  // Body segments, curling back from the head
+  for (let k = 5; k >= 0; k--) {
+    const x = cx + 20 - k * 8;
+    const y = cy + 10 - Math.sin(k * 0.7) * 6;
+    const r = 13 - k * 0.8;
+    // Blade legs
+    g.strokeStyle = '#4a2a6a';
+    g.lineWidth = 2;
+    g.beginPath();
+    g.moveTo(x - 3, y + r * 0.6);
+    g.lineTo(x - 6, y + r + 7);
+    g.moveTo(x + 3, y + r * 0.6);
+    g.lineTo(x + 6, y + r + 7);
+    g.stroke();
+    const body = g.createRadialGradient(x - 3, y - 4, 2, x, y, r);
+    body.addColorStop(0, '#fff0a8');
+    body.addColorStop(0.6, '#e8c840');
+    body.addColorStop(1, '#9a7020');
+    g.fillStyle = body;
+    g.beginPath();
+    g.arc(x, y, r, 0, TAU);
+    g.fill();
+    g.fillStyle = 'rgba(106,58,154,0.55)';
+    g.beginPath();
+    g.ellipse(x, y + r * 0.5, r * 0.8, r * 0.35, 0, 0, TAU);
+    g.fill();
+  }
+  // The head: a baby's face, pale, eyes shut
+  const hx = cx - 24;
+  const hy = cy - 4;
+  g.fillStyle = '#f4e2d0';
+  g.beginPath();
+  g.arc(hx, hy, 15, 0, TAU);
+  g.fill();
+  g.strokeStyle = '#5a3a2a';
+  g.lineWidth = 1.4;
+  g.beginPath();
+  g.arc(hx - 5, hy - 1, 2.6, 0.1 * Math.PI, 0.9 * Math.PI);
+  g.moveTo(hx + 7.6, hy - 1);
+  g.arc(hx + 5, hy - 1, 2.6, 0.1 * Math.PI, 0.9 * Math.PI);
+  g.stroke();
+  g.fillStyle = '#c86a6a';
+  g.beginPath();
+  g.ellipse(hx, hy + 7, 2.6, 1.6, 0, 0, TAU);
+  g.fill();
+  // The halo
+  g.save();
+  g.strokeStyle = '#ffe880';
+  g.shadowColor = 'rgba(255,232,128,0.9)';
+  g.shadowBlur = 8;
+  g.lineWidth = 2.4;
+  g.beginPath();
+  g.ellipse(hx, hy - 22, 11, 3.6, 0, 0, TAU);
+  g.stroke();
+  g.restore();
+};
+
+/** An Eleventh Division brawler (original): sleeves torn off, a headband, blade up and ready. */
+const brawler: Draw = (g, w, h) => {
+  aura(g, w / 2, h / 2 + 4, 26, 'rgba(255,224,138,0.14)');
+  reaper(g, w / 2, h / 2 + 2, 1.06, { broad: 1.1, sash: '#c9a040', sword: 'raised' });
+  // Bare arms, and a red headband
+  g.fillStyle = SKIN;
+  for (const dir of [-1, 1]) {
+    g.beginPath();
+    g.ellipse(w / 2 + dir * 8.8, h / 2 + 3, 2.2, 4.6, -dir * 0.2, 0, TAU);
+    g.fill();
+  }
+  g.fillStyle = '#c83a3a';
+  g.fillRect(w / 2 - 6, h / 2 - 19, 12, 2);
+};
+
+/** A Twelfth Division specimen (original): a bloated thing of stitched green flesh, one great eye, a vial on its back. */
+const specimen: Draw = (g, w, h) => {
+  const cx = w / 2;
+  const cy = h / 2 + 4;
+  aura(g, cx, cy, 30, 'rgba(157,255,138,0.16)');
+  // The vial on its back, bubbling
+  g.fillStyle = 'rgba(200,255,200,0.55)';
+  roundRect(g, cx + 4, cy - 22, 7, 14, 3);
+  g.fill();
+  g.fillStyle = '#9dff8a';
+  roundRect(g, cx + 5, cy - 15, 5, 6, 2);
+  g.fill();
+  // The body
+  const body = g.createRadialGradient(cx - 4, cy - 6, 3, cx, cy, 17);
+  body.addColorStop(0, '#c8ff9a');
+  body.addColorStop(0.7, '#6ac85a');
+  body.addColorStop(1, '#2e6a2a');
+  g.fillStyle = body;
+  g.beginPath();
+  g.ellipse(cx, cy, 16, 14, 0, 0, TAU);
+  g.fill();
+  // Stitches across it
+  g.strokeStyle = '#1e3a1a';
+  g.lineWidth = 1.2;
+  g.beginPath();
+  g.moveTo(cx - 12, cy + 4);
+  g.quadraticCurveTo(cx, cy + 9, cx + 12, cy + 3);
+  g.stroke();
+  for (let k = -4; k <= 4; k++) {
+    const x = cx + k * 2.6;
+    const y = cy + 6 - Math.abs(k) * 0.5;
+    g.beginPath();
+    g.moveTo(x, y - 2);
+    g.lineTo(x, y + 2);
+    g.stroke();
+  }
+  // One great eye
+  g.fillStyle = '#fff6c8';
+  g.beginPath();
+  g.ellipse(cx - 1, cy - 4, 5.4, 4.4, 0, 0, TAU);
+  g.fill();
+  glowDot(g, cx - 1, cy - 4, 2.2, 2.2, '#2a1a08', 'rgba(255,220,80,0.8)', 4);
+  // Stubby legs
+  g.fillStyle = '#3e7a34';
+  for (const dx of [-9, -3, 3, 9]) {
+    g.beginPath();
+    g.ellipse(cx + dx, cy + 14, 2.4, 3, 0, 0, TAU);
+    g.fill();
+  }
+};
+
 // ------------------------------------------------------------ packing
 
 const ENEMY_DRAW: readonly [string, number, Draw][] = [
@@ -4173,6 +4684,14 @@ const ENEMY_DRAW: readonly [string, number, Draw][] = [
   ['ichibe', 144, ichibe],
   ['harribel', 128, harribel],
   ['harribel_tiburon', 144, harribelReleased],
+  ['brawler', 52, brawler],
+  ['specimen', 56, specimen],
+  ['gotei_kenpachi', 120, kenpachi],
+  ['gotei_mayuri', 112, mayuri],
+  ['gotei_shinji', 112, shinji],
+  ['gotei_kensei', 112, kensei],
+  ['kyoraku', 128, kyoraku],
+  ['jizo', 128, jizo],
 ];
 
 function specs(): Spec[] {
@@ -4368,10 +4887,89 @@ export function buildGroundTile(stage: string): Texture {
   if (!g) throw new Error('Canvas 2D is not available');
   if (stage === 'seireitei') seireiteiGround(g, S);
   else if (stage === 'palace') palaceGround(g, S);
+  else if (stage === 'silbern') silbernGround(g, S);
   else huecoGround(g, S);
   const tex = Texture.from(c);
   tex.source.addressMode = 'repeat';
   return tex;
+}
+
+/**
+ * Silbern: the Wandenreich's city laid over the Seireitei. Pale slate flagstones
+ * with silver seams, the Quincy cross set into the stone, and pools of the
+ * shadow it rose from.
+ */
+function silbernGround(g: Ctx, S: number): void {
+  g.fillStyle = '#1a1f2c';
+  g.fillRect(0, 0, S, S);
+  const rnd = seeded(5150);
+  const tile = 128;
+  for (let ty = 0; ty < S; ty += tile) {
+    for (let tx = 0; tx < S; tx += tile) {
+      const v = Math.floor(rnd() * 10);
+      g.fillStyle = `rgb(${40 + v},${46 + v},${62 + v})`;
+      g.fillRect(tx + 2, ty + 2, tile - 4, tile - 4);
+      // A lighter band along the top of each stone, as if lit from above.
+      g.fillStyle = 'rgba(214,226,250,0.04)';
+      g.fillRect(tx + 2, ty + 2, tile - 4, 10);
+      if (rnd() < 0.2) {
+        // The Quincy cross, inlaid: a five-pointed star in a ring.
+        const cx = tx + tile / 2;
+        const cy = ty + tile / 2;
+        g.strokeStyle = 'rgba(160,200,255,0.14)';
+        g.lineWidth = 2;
+        g.beginPath();
+        g.arc(cx, cy, 38, 0, TAU);
+        g.stroke();
+        g.beginPath();
+        for (let k = 0; k <= 5; k++) {
+          const a = ((k * 2) / 5) * TAU - Math.PI / 2;
+          const x = cx + Math.cos(a) * 34;
+          const y = cy + Math.sin(a) * 34;
+          if (k === 0) g.moveTo(x, y);
+          else g.lineTo(x, y);
+        }
+        g.stroke();
+      }
+    }
+  }
+  // Silver seams between the stones
+  g.strokeStyle = 'rgba(200,214,240,0.16)';
+  g.lineWidth = 2;
+  for (let k = 0; k <= S; k += tile) {
+    g.beginPath();
+    g.moveTo(k, 0);
+    g.lineTo(k, S);
+    g.moveTo(0, k);
+    g.lineTo(S, k);
+    g.stroke();
+  }
+  // Pools of shadow, the Schatten Bereich showing through
+  for (let k = 0; k < 7; k++) {
+    const x = rnd() * S;
+    const y = rnd() * S;
+    const r = 60 + rnd() * 110;
+    for (const [ox, oy] of [
+      [0, 0],
+      [S, 0],
+      [-S, 0],
+      [0, S],
+      [0, -S],
+    ] as const) {
+      const grad = g.createRadialGradient(x + ox, y + oy, 4, x + ox, y + oy, r);
+      grad.addColorStop(0, 'rgba(4,5,12,0.42)');
+      grad.addColorStop(1, 'rgba(4,5,12,0)');
+      g.fillStyle = grad;
+      g.fillRect(x + ox - r, y + oy - r, r * 2, r * 2);
+    }
+  }
+  // A few glints of reishi in the seams
+  for (let k = 0; k < 40; k++) {
+    const x = Math.round((rnd() * S) / tile) * tile + (rnd() - 0.5) * 6;
+    const y = rnd() * S;
+    g.fillStyle = `rgba(160,210,255,${0.12 + rnd() * 0.2})`;
+    g.fillRect(x - 1, y, 2, 2 + rnd() * 6);
+  }
 }
 
 /** Hueco Mundo at night: moonlit sand, pale ripples, bone, dead white trees. */

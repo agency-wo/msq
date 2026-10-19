@@ -1,5 +1,6 @@
 import { BANKAI_BY_ID, BANKAI_IDS } from './bankai';
 import { ENEMY_INDEX, ENEMY_LIST, type EnemyId } from './enemies';
+import { GOTEI_BY_ID, GOTEI_IDS } from './gotei';
 import { POWER_BY_ID } from './powers';
 import { ROYAL_BY_ID, ROYAL_IDS } from './royal';
 
@@ -9,7 +10,7 @@ import { ROYAL_BY_ID, ROYAL_IDS } from './royal';
  * An entry opens once you have defeated it.
  */
 
-export type CodexSection = 'hueco' | 'seireitei' | 'palace' | 'events';
+export type CodexSection = 'hueco' | 'seireitei' | 'silbern' | 'palace' | 'events';
 
 export interface CodexEnemy {
   /** Kill-count key: an enemy id, or `bearer:zanka`, `captain:tengen`, `royal:kirio`. */
@@ -27,6 +28,7 @@ export function enemyKey(type: number, variant: number): string {
   const id = ENEMY_LIST[type]?.id ?? '';
   if (id === 'bearer' || id === 'captain') return `${id}:${BANKAI_IDS[variant] ?? ''}`;
   if (id === 'royal') return `royal:${ROYAL_IDS[variant] ?? ''}`;
+  if (id === 'gotei') return `gotei:${GOTEI_IDS[variant] ?? ''}`;
   return id;
 }
 
@@ -59,6 +61,16 @@ export const CODEX_ENEMIES: readonly CodexEnemy[] = [
   })),
   plain('grandmaster', 'seireitei'),
   plain('commander', 'seireitei'),
+  ...(['brawler', 'specimen', 'jizo'] as const).map((id) => plain(id, 'silbern')),
+  ...GOTEI_IDS.map((g, v) => ({
+    key: `gotei:${g}`,
+    name: GOTEI_BY_ID.get(g)?.name ?? g,
+    section: 'silbern' as const,
+    type: ENEMY_INDEX.gotei,
+    variant: v,
+    boss: true,
+  })),
+  plain('kyoraku', 'silbern'),
   ...(['inkwisp', 'inkling', 'sentinel', 'weaver', 'asauchi', 'attendant'] as const).map((id) => plain(id, 'palace')),
   ...ROYAL_IDS.map((r, v) => ({
     key: `royal:${r}`,

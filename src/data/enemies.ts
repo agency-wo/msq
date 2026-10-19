@@ -24,7 +24,12 @@ export type EnemyId =
   | 'attendant'
   | 'royal'
   | 'ichibe'
-  | 'harribel';
+  | 'harribel'
+  | 'brawler'
+  | 'specimen'
+  | 'gotei'
+  | 'kyoraku'
+  | 'jizo';
 
 /**
  * chase: walks at you · blink: walks, and every few seconds flash-steps closer ·
@@ -119,6 +124,14 @@ export const ENEMY_LIST: readonly EnemyDef[] = [
   { id: 'ichibe', name: 'Ichibē Hyōsube', hp: 2600, speed: 36, radius: 36, damage: 38, xp: 180, behavior: 'chase', boss: true, color: 0x9a7aff },
   // Hueco Mundo's final boss: Tier Harribel, the Third Espada, who has ruled Las Noches since Aizen fell.
   { id: 'harribel', name: 'Tier Harribel', hp: 2600, speed: 50, radius: 30, damage: 36, xp: 170, behavior: 'chase', boss: true, color: 0x5ac8ff },
+  // Silbern, the second invasion. The swarm's new faces are original designs.
+  { id: 'brawler', name: 'Eleventh Division Brawler', hp: 16, speed: 66, radius: 12, damage: 12, xp: 2, behavior: 'chase', shinigami: true, color: 0xd8dce8 },
+  { id: 'specimen', name: 'Twelfth Division Specimen', hp: 40, speed: 30, radius: 15, damage: 10, xp: 3, behavior: 'chase', color: 0x9dff8a },
+  // Silbern's captains (variant = which of them, see data/gotei.ts) and the Captain-Commander who ends the stage.
+  { id: 'gotei', name: 'Captain', hp: 2600, speed: 46, radius: 30, damage: 26, xp: 70, behavior: 'chase', boss: true, shinigami: true, color: 0xf4f6fb },
+  { id: 'kyoraku', name: 'Shunsui Kyōraku', hp: 2600, speed: 42, radius: 32, damage: 36, xp: 180, behavior: 'chase', boss: true, shinigami: true, color: 0xff9ac8 },
+  // Mayuri's bankai, Konjiki Ashisogi Jizō: a giant that keeps its distance and breathes poison.
+  { id: 'jizo', name: 'Konjiki Ashisogi Jizō', hp: 420, speed: 26, radius: 34, damage: 20, xp: 20, behavior: 'ranged', color: 0xe8c840 },
 ];
 
 export const ENEMY_INDEX: Readonly<Record<EnemyId, number>> = {
@@ -148,4 +161,9 @@ export const ENEMY_INDEX: Readonly<Record<EnemyId, number>> = {
   royal: 23,
   ichibe: 24,
   harribel: 25,
+  brawler: 26,
+  specimen: 27,
+  gotei: 28,
+  kyoraku: 29,
+  jizo: 30,
 };

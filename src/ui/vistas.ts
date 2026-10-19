@@ -269,7 +269,59 @@ const palace: Paint = (g, w, h) => {
   clouds(g, w, h * 0.9, 'rgba(255,255,255,0.75)', 18, rnd);
 };
 
-const VISTAS: Readonly<Partial<Record<StageId, Paint>>> = { hueco, seireitei, palace };
+/** Silbern: white towers of the Wandenreich over the Seireitei's dark roofs, at dusk. */
+const silbern: Paint = (g, w, h) => {
+  const rnd = seeded(31);
+  const sky = g.createLinearGradient(0, 0, 0, h);
+  sky.addColorStop(0, '#0c1428');
+  sky.addColorStop(0.6, '#3a4a78');
+  sky.addColorStop(1, '#9aa8cc');
+  g.fillStyle = sky;
+  g.fillRect(0, 0, w, h);
+  stars(g, w, h * 0.3, 14, rnd);
+  halo(g, w * 0.5, h * 0.62, h * 0.7, '200,220,255', 0.32);
+  // The white city: spires, each crowned with the Quincy cross.
+  for (const [x, top, width] of [
+    [0.18, 0.36, 7],
+    [0.32, 0.22, 9],
+    [0.5, 0.1, 13],
+    [0.68, 0.24, 9],
+    [0.82, 0.38, 7],
+  ] as const) {
+    const px = w * x;
+    g.fillStyle = '#e8eef8';
+    g.beginPath();
+    g.moveTo(px - width / 2, h * 0.82);
+    g.lineTo(px - width / 3, h * top + 6);
+    g.lineTo(px, h * top);
+    g.lineTo(px + width / 3, h * top + 6);
+    g.lineTo(px + width / 2, h * 0.82);
+    g.closePath();
+    g.fill();
+    g.fillStyle = 'rgba(90,110,160,0.35)';
+    g.fillRect(px, h * top + 6, width / 2, h * (0.82 - top) - 6);
+    // The Quincy cross at the tip: a five-pointed star
+    g.fillStyle = '#bfe6ff';
+    g.beginPath();
+    for (let k = 0; k < 10; k++) {
+      const a = (k / 10) * TAU - Math.PI / 2;
+      const r = k % 2 === 0 ? 3.6 : 1.5;
+      g.lineTo(px + Math.cos(a) * r, h * top - 5 + Math.sin(a) * r);
+    }
+    g.closePath();
+    g.fill();
+  }
+  // The Seireitei's old roofs, in shadow below.
+  g.fillStyle = '#0a0d18';
+  g.beginPath();
+  g.moveTo(0, h);
+  for (let x = 0, k = 0; x <= w + 14; x += 14, k++) g.lineTo(x, k % 2 === 0 ? h * 0.86 : h * 0.8);
+  g.lineTo(w, h);
+  g.closePath();
+  g.fill();
+};
+
+const VISTAS: Readonly<Partial<Record<StageId, Paint>>> = { hueco, seireitei, silbern, palace };
 
 /** Paint a stage's vista into a canvas; `w` and `h` are its CSS size (CSS covers the card with it). */
 export function drawVista(canvas: HTMLCanvasElement, stage: StageId, w = 200, h = 104, ratio = Math.min(window.devicePixelRatio || 1, 3)): void {

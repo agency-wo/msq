@@ -5,7 +5,7 @@
  * check every bar without an AudioContext.
  */
 
-export type TrackId = 'title' | 'hueco' | 'seireitei' | 'palace' | 'boss' | 'bossSei' | 'bossPalace' | 'final' | 'victory' | 'defeat';
+export type TrackId = 'title' | 'hueco' | 'seireitei' | 'silbern' | 'palace' | 'boss' | 'bossSei' | 'bossPalace' | 'final' | 'victory' | 'defeat';
 
 export type Inst = 'pad' | 'choir' | 'bass' | 'lead' | 'flute' | 'bell' | 'stab' | 'kick' | 'snare' | 'hat' | 'taiko';
 
@@ -260,6 +260,102 @@ const seireitei: Track = {
       ...hits('taiko', fill ? [0, 6, 8, 12, 13, 14, 15] : [0, 6, 8, 11, 12], 0.6, [0, 8]),
       ...hits('hat', [0, 2, 4, 6, 8, 10, 12, 14], 0.18, [4, 12]),
       ...line('flute', SEI_FLUTE[i % 8], 0.6),
+    ];
+  },
+};
+
+// ------------------------------------------------------------- silbern
+
+/**
+ * "Silbern": the Wandenreich's city over the Seireitei. D minor and martial:
+ * a snare that marches, brass stabs on the off-beats, a choir under it all and
+ * a lead like a call to arms.
+ */
+const SIL_CHORDS: readonly (readonly string[])[] = [
+  ['D3', 'F3', 'A3'],
+  ['A#2', 'D3', 'F3'],
+  ['C3', 'E3', 'G3'],
+  ['A2', 'C3', 'E3'],
+  ['D3', 'F3', 'A3'],
+  ['G2', 'A#2', 'D3'],
+  ['A#2', 'D3', 'F3'],
+  ['A2', 'C3', 'E3'],
+];
+const SIL_LEAD: readonly Line[] = [
+  [
+    [0, 'D5', 4],
+    [4, 'F5', 2],
+    [6, 'E5', 2],
+    [8, 'D5', 4],
+    [12, 'A4', 4],
+  ],
+  [
+    [0, 'A#4', 4],
+    [4, 'D5', 2],
+    [6, 'F5', 2],
+    [8, 'A5', 6],
+    [14, 'G5', 2],
+  ],
+  [
+    [0, 'G5', 4],
+    [4, 'E5', 2],
+    [6, 'C5', 2],
+    [8, 'E5', 4],
+    [12, 'G5', 4],
+  ],
+  [
+    [0, 'A5', 8],
+    [8, 'G5', 2],
+    [10, 'F5', 2],
+    [12, 'E5', 4],
+  ],
+  [
+    [0, 'D5', 2],
+    [2, 'D5', 2],
+    [4, 'F5', 4],
+    [8, 'A5', 4],
+    [12, 'D6', 4],
+  ],
+  [
+    [0, 'C6', 4],
+    [4, 'A#5', 4],
+    [8, 'A5', 4],
+    [12, 'G5', 4],
+  ],
+  [
+    [0, 'F5', 4],
+    [4, 'A#5', 4],
+    [8, 'A5', 2],
+    [10, 'G5', 2],
+    [12, 'F5', 4],
+  ],
+  [
+    [0, 'E5', 8],
+    [8, 'A4', 4],
+    [12, 'D5', 4],
+  ],
+];
+
+const silbern: Track = {
+  id: 'silbern',
+  bpm: 108,
+  bars: 8,
+  loop: true,
+  scale: [2, 4, 5, 7, 9, 10, 0],
+  bar(i) {
+    const c = SIL_CHORDS[i % 8];
+    const roll = i % 4 === 3;
+    return [
+      ...chord('pad', c, 0, 16, 0.3),
+      ...chord('choir', c, 0, 16, 0.2),
+      { inst: 'bass', step: 0, midi: midi(c[0]) - 12, len: 6, vel: 0.5 },
+      { inst: 'bass', step: 8, midi: midi(c[0]) - 12, len: 6, vel: 0.45 },
+      ...hits('kick', [0, 8], 0.4),
+      ...hits('snare', roll ? [4, 12, 13, 14, 15] : [4, 12], 0.35, [4, 12]),
+      ...hits('hat', [2, 6, 10, 14], 0.14),
+      ...chord('stab', c, 2, 2, 0.22),
+      ...chord('stab', c, 10, 2, 0.22),
+      ...line('lead', SIL_LEAD[i % 8], 0.42),
     ];
   },
 };
@@ -522,6 +618,7 @@ export const TRACKS: Readonly<Record<TrackId, Track>> = {
   title,
   hueco,
   seireitei,
+  silbern,
   palace,
   boss,
   bossSei,

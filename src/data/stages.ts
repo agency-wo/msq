@@ -7,7 +7,7 @@ import { FIRST_SHRINE_AT } from './shrines';
  * boss at 20:00 to clear it. Swarm rings, elites, chests and runes in between.
  */
 
-export type StageId = 'hueco' | 'seireitei' | 'palace';
+export type StageId = 'hueco' | 'seireitei' | 'silbern' | 'palace';
 
 export interface SpawnPhase {
   from: number;
@@ -47,8 +47,12 @@ export interface StageDef {
   captains?: boolean;
   /** Which bankai the bosses can carry (all six when missing). */
   bearerPool?: readonly string[];
-  /** The bosses are the Royal Guard, who leave Fragments of the Soul King instead of medallions. */
-  royals?: boolean;
+  /**
+   * Who the 5:00, 10:00 and 15:00 bosses are when they are not medallion
+   * bearers: the Royal Guard (who leave Fragments of the Soul King), or
+   * Silbern's captains (who leave black chests).
+   */
+  roster?: 'royal' | 'gotei';
   /** Clearing this stage unlocks this one. */
   unlockedBy?: StageId;
 }
@@ -208,11 +212,56 @@ const PALACE: StageDef = {
   spawn: 1,
   xp: 1.3,
   gold: 1.5,
-  royals: true,
+  roster: 'royal',
   unlockedBy: 'seireitei',
 };
 
-export const STAGES: readonly StageDef[] = [HUECO, SEIREITEI, PALACE];
+/**
+ * Silbern: the Wandenreich's city, risen out of the Seireitei's own shadow to
+ * take its place in the second invasion. The Gotei 13 fights back in streets
+ * that are no longer theirs: brawlers of the 11th Division, the 12th's
+ * specimens, and three of four captains (Kenpachi, Mayuri, Shinji, Kensei).
+ * The new Captain-Commander, Shunsui Kyōraku, waits at 20:00. Unlocked with
+ * the Palace by clearing the Seireitei.
+ */
+const SILBERN: StageDef = {
+  id: 'silbern',
+  name: 'Silbern',
+  blurb: 'The Wandenreich’s city, risen out of the Seireitei’s own shadow.',
+  length: LENGTH,
+  phases: [
+    { from: 0, mix: [['officer', 2], ['brawler', 2]] },
+    { from: 45, mix: [['officer', 1], ['brawler', 3], ['flash', 1]] },
+    { from: 150, mix: [['brawler', 2], ['flash', 2], ['specimen', 1], ['caster', 1]] },
+    { from: 300, mix: [['brawler', 3], ['flash', 2], ['specimen', 2], ['caster', 1], ['guard', 1]] },
+    { from: 600, mix: [['brawler', 3], ['flash', 3], ['specimen', 2], ['caster', 2], ['guard', 2]] },
+    { from: 900, mix: [['brawler', 3], ['flash', 3], ['specimen', 3], ['caster', 2], ['guard', 3]] },
+  ],
+  events: sorted([
+    ...skeleton(
+      (t) => (t < 400 ? 'brawler' : 'flash'),
+      (t) => (t < 300 ? 'brawler' : 'guard'),
+      [1.3, 4.6, 18],
+    ),
+    {
+      at: LENGTH,
+      kind: 'boss',
+      enemy: 'kyoraku',
+      hpMul: 38,
+      final: true,
+      warn: 'Shunsui Kyōraku tips back his hat',
+      sub: 'Captain-Commander of the Gotei 13',
+    },
+  ]),
+  hp: 1.3,
+  spawn: 1.08,
+  xp: 1.2,
+  gold: 1.6,
+  roster: 'gotei',
+  unlockedBy: 'seireitei',
+};
+
+export const STAGES: readonly StageDef[] = [HUECO, SEIREITEI, SILBERN, PALACE];
 
 /**
  * Trials: harder runs of a stage, unlocked one at a time by clearing the one

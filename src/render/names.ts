@@ -1,5 +1,6 @@
 import { BANKAI_IDS } from '../data/bankai';
 import { ENEMY_LIST } from '../data/enemies';
+import { GOTEI_IDS } from '../data/gotei';
 import { ROYAL_IDS } from '../data/royal';
 
 /** Enemies drawn with another enemy's sprite. */
@@ -18,5 +19,6 @@ export function enemySpriteName(type: number, variant = 0): string {
     if (bankai) return `cap_${bankai}`;
   }
   if (id === 'royal') return `royal_${ROYAL_IDS[variant] ?? 'tenjiro'}`;
+  if (id === 'gotei') return `gotei_${GOTEI_IDS[variant] ?? 'kenpachi'}`;
   return SPRITE_NAME[id] ?? id;
 }

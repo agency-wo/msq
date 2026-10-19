@@ -57,6 +57,9 @@ import {
   MK_THREAD,
   MK_SWORD,
   MK_WATER,
+  MK_GAS,
+  MK_MIST,
+  MF_INVERT,
   FX_SMOKE,
   LAYER_NORMAL,
 } from './constants';
@@ -219,9 +222,10 @@ function resolveMark(w: World, i: number): void {
     else if (shape === MS_LINE) hit = segmentDist(p.x, p.y, x, y, ang, len) < r / 2 + PLAYER.radius;
     else hit = inArc(p.x, p.y, x, y, ang, r, len, PLAYER.radius);
     if (hit) {
-      w.hurtPlayer(dmg);
+      if (dmg > 0) w.hurtPlayer(dmg);
       if (flags & (MF_SLOW | MF_FREEZE)) p.slowT = Math.max(p.slowT, 1.5);
       if (flags & MF_ROOT && w.vollT <= 0) p.rootT = Math.max(p.rootT, 1);
+      if (flags & MF_INVERT) w.invert(3);
     }
   } else {
     const E = w.en;
@@ -385,6 +389,24 @@ function markFx(w: World, kind: number, x: number, y: number, r: number, len: nu
       w.spawnFx(FX_SHOCK, x, y, 0, 0, 0.25, r * 0.4, r * 1.8, 0.7, 0, 0, 0xe8eef8, LAYER_ADD);
       sparks(w, x, y, 4, 0xffffff);
       w.sound('strike');
+      break;
+    case MK_GAS:
+      // Poison: a green cloud that bursts and drifts apart.
+      w.spawnFx(FX_GLOW, x, y, 0, 0, 0.45, r, r * 2.2, 0.8, 0, 0, 0x9dff8a, LAYER_ADD);
+      for (let k = 0; k < 4; k++) {
+        const a = w.rng.next() * TAU;
+        w.spawnFx(FX_SMOKE, x + Math.cos(a) * r * 0.3, y + Math.sin(a) * r * 0.3, Math.cos(a) * 30, Math.sin(a) * 30, 0.9, r * 0.6, r * 1.6, 0.6, 0, 0, 0x6ac85a, LAYER_NORMAL, 1);
+      }
+      w.sound('blast');
+      break;
+    case MK_MIST:
+      // Sakanade's mist: sweet, pink, and harmless until it turns you around.
+      w.spawnFx(FX_RING, x, y, 0, 0, 0.5, r * 0.4, r * 1.6, 0.8, 0, 0, 0xffb8e0, LAYER_ADD);
+      for (let k = 0; k < 5; k++) {
+        const a = w.rng.next() * TAU;
+        w.spawnFx(FX_SMOKE, x + Math.cos(a) * r * 0.5, y + Math.sin(a) * r * 0.5, Math.cos(a) * 20, Math.sin(a) * 20, 1, r * 0.4, r, 0.45, 0, 0, 0xffc8e8, LAYER_NORMAL, 1);
+      }
+      w.sound('shield');
       break;
     case MK_WATER:
       // Water: a blade of it down the lane, or a torrent crashing down and spraying out.

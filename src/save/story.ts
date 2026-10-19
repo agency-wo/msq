@@ -21,6 +21,8 @@ function conditionMet(save: SaveData, c: Chapter): boolean {
       return save.stages.palace.cleared;
     case 'heir':
       return save.codex.powers.includes('antithesis');
+    case 'silbern':
+      return save.stages.silbern.cleared;
   }
 }
 

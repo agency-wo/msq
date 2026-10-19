@@ -31,7 +31,7 @@ a portrait and a title. The pause and results screens break down the **damage**
 each power dealt (total, share and damage per second), and **Share** on the
 results turns the run into a picture for the phone's share sheet.
 
-Thirty **Feats** give long goals (a hundred thousand kills, every letter
+Thirty-one **Feats** give long goals (a hundred thousand kills, every letter
 awakened, Trial V, a Boss Rush under 4:00, all three fragments in one run...),
 each paying gold once; some open one of three new looks for the Emperor
 (Wandenreich White, Crimson, Gilded) or a relic that can then turn up in chests
@@ -122,6 +122,17 @@ Stages, 20 minutes each:
   with Zanka no Tachi's fire and the ashen dead. Bring him below half health
   and the Emperor takes his bankai, as he did in the story: Yamamoto fights on
   with Ennetsu Jigoku's pillars of flame and his fists (Ikkotsu, Sōkotsu).
+- **Silbern** (unlocked by clearing Seireitei, with the Palace): the second
+  invasion. The Wandenreich's city has risen out of the Seireitei's shadow and
+  taken its place, and the Gotei 13 fights back in it: Eleventh Division
+  brawlers, the Twelfth's specimens that burst into poison, and three of four
+  captains. Kenpachi Zaraki slashes, charges and finally takes his sword in
+  both hands (Kendō); Mayuri Kurotsuchi's Ashisogi Jizō paralyzes, his gas
+  spreads and Konjiki Ashisogi Jizō joins the fight; Shinji Hirako's Sakanade
+  turns you around (your controls flip for three seconds); Kensei Muguruma
+  throws Tachikaze's wind and Tekken Tachikaze's punches. Captain-Commander
+  Shunsui Kyōraku ends the stage with Katen Kyōkotsu's games (Kageoni,
+  Takaoni, Bushōgoma) and, at half health, Karamatsu Shinjū.
 - **Soul King Palace** (unlocked by clearing Seireitei): sentinels that wind up
   and lunge, ink wisps that split as they die, weavers whose threads hold you,
   flying asauchi and attendants that heal what stands near them. Three of the

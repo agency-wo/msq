@@ -235,7 +235,7 @@ export class App {
   }
 
   private todaysDaily(): DailySpec {
-    return dailyFor(dateKey(), stageUnlocked(this.save, 'seireitei'), stageUnlocked(this.save, 'palace'));
+    return dailyFor(dateKey(), stageUnlocked(this.save, 'seireitei'), stageUnlocked(this.save, 'palace'), stageUnlocked(this.save, 'silbern'));
   }
 
   private showDaily(): void {
@@ -481,9 +481,9 @@ export class App {
   /** The stage's theme, its boss theme while a boss is up, the finale for the last boss. */
   private runTrack(w: World): TrackId {
     const id = w.stage.id;
-    if (!w.boss.active) return id === 'seireitei' ? 'seireitei' : id === 'palace' ? 'palace' : 'hueco';
+    if (!w.boss.active) return id === 'seireitei' ? 'seireitei' : id === 'silbern' ? 'silbern' : id === 'palace' ? 'palace' : 'hueco';
     if (w.boss.final) return 'final';
-    return id === 'seireitei' ? 'bossSei' : id === 'palace' ? 'bossPalace' : 'boss';
+    return id === 'seireitei' || id === 'silbern' ? 'bossSei' : id === 'palace' ? 'bossPalace' : 'boss';
   }
 
   private openLevelUp(): void {

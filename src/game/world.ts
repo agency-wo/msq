@@ -10,6 +10,7 @@ import { FRAGMENT_IDS } from '../data/fragments';
 import { POWER_BY_ID, POWERS, STARTABLE_IDS, STARTING_POWER, upgradeCap } from '../data/powers';
 import { RELIC_BY_ID, RELICS, type RelicDef } from '../data/relics';
 import { PACT_BY_ID, PACTS, type PactDef } from '../data/shrines';
+import { GOTEI_BY_ID, GOTEI_IDS } from '../data/gotei';
 import { ROYAL_BY_ID, ROYAL_IDS } from '../data/royal';
 import { RESONANCE_BY_ID, RESONANCES, resonanceParts } from '../data/resonances';
 import { BOSS_LINES } from '../data/story';
@@ -74,6 +75,9 @@ import {
   PK_PETAL,
   PK_SHARD,
   ZK_POISON,
+  MK_GAS,
+  MF_ENEMY,
+  MS_CIRCLE,
 } from './constants';
 import { blinkAI, bossAI, casterAI, chargeAI, COMMANDER_HEAT, eliteAI, eventAI, updateEnemyBullets } from './hostile';
 import { generateOffers, rollRelics, type ChestKind, type Offer } from './offers';
@@ -335,6 +339,8 @@ export class World {
   zankaStolen = false;
   /** Licht Regen: time to the next arrows of light. */
   rainT = 0;
+  /** Sakanade: seconds left with your directions inverted. */
+  invertT = 0;
   /** Schutzstaffel: the slots (as bits) of The X-Axis and The Deathdealing, which grow with your wounds. */
   private schutzBits = 0;
   /** The Almighty is on its way: earned, arriving a moment later under its own title card. */
@@ -471,8 +477,8 @@ export class World {
 
     // Draw this run's bearers: three different bankai from the stage's pool (in the palace, three
     // of the Royal Guard), any forced ones first.
-    const roster = this.stage.royals ? ROYAL_IDS : BANKAI_IDS;
-    const pool = (this.stage.royals ? ROYAL_IDS : (this.stage.bearerPool ?? BANKAI_IDS)).slice();
+    const roster = this.rosterIds();
+    const pool = (this.stage.roster ? roster : (this.stage.bearerPool ?? BANKAI_IDS)).slice();
     for (let i = pool.length - 1; i > 0; i--) {
       const j = this.rng.int(i + 1);
       const tmp = pool[i];
@@ -486,7 +492,12 @@ export class World {
     const events = this.stage.events;
     events.forEach((e, ev) => {
       if (e.kind === 'bearer') {
-        const text = this.stage.royals ? 'A guardian of the palace approaches' : this.stage.captains ? 'A captain approaches' : 'A medallion bearer approaches';
+        const text =
+          this.stage.roster === 'royal'
+            ? 'A guardian of the palace approaches'
+            : this.stage.roster === 'gotei' || this.stage.captains
+              ? 'A captain approaches'
+              : 'A medallion bearer approaches';
         this.warnings.push({ at: e.at - 4, text, ev });
       }
       else if (e.kind === 'boss') this.warnings.push({ at: e.at - 4, text: e.warn, ev });
@@ -526,6 +537,12 @@ export class World {
   /** Advance one fixed 1/60 s step. (mx, my) is the joystick vector. */
   step(mx: number, my: number): void {
     if (this.over) return;
+    // Sakanade: every direction comes out backwards.
+    if (this.invertT > 0) {
+      this.invertT -= DT;
+      mx = -mx;
+      my = -my;
+    }
     this.t += DT;
     this.steps++;
     this.updateBuffs();
@@ -775,7 +792,8 @@ export class World {
   /** A bankai boss: in Seireitei the bankai's own captain defends it; elsewhere a medallion bearer carries it. */
   private spawnBearer(id: string, hpMul: number): number {
     this.edgePoint(80);
-    if (this.stage.royals) return this.spawnRoyal(id, hpMul);
+    if (this.stage.roster === 'royal') return this.spawnRoyal(id, hpMul);
+    if (this.stage.roster === 'gotei') return this.spawnGotei(id, hpMul);
     const captain = !!this.stage.captains;
     const i = this.spawnEnemy(captain ? ENEMY_INDEX.captain : ENEMY_INDEX.bearer, this.tx, this.ty, false, hpMul);
     if (i < 0) return -1;
@@ -791,6 +809,42 @@ export class World {
     );
     this.shake = Math.max(this.shake, 8);
     return i;
+  }
+
+  /** The bosses a stage draws its three from: the Royal Guard, Silbern's captains, or the six bankai. */
+  private rosterIds(): readonly string[] {
+    return this.stage.roster === 'royal' ? ROYAL_IDS : this.stage.roster === 'gotei' ? GOTEI_IDS : BANKAI_IDS;
+  }
+
+  /** One of Silbern's captains comes out to meet you. */
+  private spawnGotei(id: string, hpMul: number): number {
+    const i = this.spawnEnemy(ENEMY_INDEX.gotei, this.tx, this.ty, false, hpMul);
+    if (i < 0) return -1;
+    this.en.variant[i] = Math.max(0, GOTEI_IDS.indexOf(id));
+    this.bossCount++;
+    const info = GOTEI_BY_ID.get(id);
+    this.banners.push({ kind: 'boss', title: info?.name ?? 'Captain', sub: info?.title ?? '', quote: BOSS_LINES[`gotei:${id}`] });
+    this.shake = Math.max(this.shake, 8);
+    return i;
+  }
+
+  /** A little memory for bosses whose variant byte is taken (it says who they are): their move counter and phase. */
+  private readonly memos = new Map<number, { move: number; phase: number }>();
+
+  bossMemo(i: number): { move: number; phase: number } {
+    const uid = this.en.uid[i];
+    let m = this.memos.get(uid);
+    if (!m) {
+      m = { move: 0, phase: 0 };
+      this.memos.set(uid, m);
+    }
+    return m;
+  }
+
+  /** Sakanade's mist: up is down and left is right for a while. */
+  invert(secs: number): void {
+    if (this.invertT <= 0) this.messages.push({ text: 'Sakanade: up is down, left is right', kind: 'boss' });
+    this.invertT = Math.max(this.invertT, secs);
   }
 
   /** One of the Royal Guard steps out to meet you. */
@@ -825,7 +879,7 @@ export class World {
         }
       }
     } else {
-      const pool = this.stage.royals ? ROYAL_IDS : (this.stage.bearerPool ?? BANKAI_IDS);
+      const pool = this.stage.roster ? this.rosterIds() : (this.stage.bearerPool ?? BANKAI_IDS);
       this.spawnBearer(pool[this.rng.int(pool.length)], 14 * Math.pow(1.35, k));
     }
     this.edgePoint();
@@ -1328,6 +1382,10 @@ export class World {
     if (def.id === 'inkwisp') {
       for (const dir of [-1, 1]) this.spawnEnemy(ENEMY_INDEX.inkling, x + dir * 10, y + dir * 4);
     }
+    // A Twelfth Division specimen bursts into poison as it dies.
+    if (def.id === 'specimen' && !(E.flags[i] & FLAG_ZOMBIE) && E.charmT[i] <= 0) {
+      this.spawnMark(MK_GAS, MS_CIRCLE, x, y, 46, 0, 0, 0.7, E.dmg[i] * 1.1, MF_ENEMY);
+    }
     this.spawnOrb(x, y, E.xp[i]);
     if (E.volT[i] > 0) this.queueBurst(x, y, 44 * this.stats.size, E.volDmg[i]);
     if (flags & FLAG_BOSS) {
@@ -1341,6 +1399,11 @@ export class World {
         this.addPickup('chestBlack', x + 36, y + 12);
       }
       // The Royal Guard each leave a Fragment of the Soul King you do not have yet (gold once you hold all three).
+      // Silbern's captains carry no bankai to take: two black chests instead.
+      if (def.id === 'gotei') {
+        this.addPickup('chestBlack', x - 36, y - 12);
+        this.addPickup('chestBlack', x + 36, y + 12);
+      }
       if (def.id === 'royal') {
         const fragment = this.fragmentToDrop();
         if (fragment) this.addPickup('fragment', x, y, undefined, fragment);
@@ -2195,6 +2258,10 @@ export class World {
               B.sub = info?.rank ?? '';
             } else if (def.id === 'royal') {
               const info = ROYAL_BY_ID.get(ROYAL_IDS[E.variant[i]]);
+              B.name = info?.name ?? def.name;
+              B.sub = info?.title ?? '';
+            } else if (def.id === 'gotei') {
+              const info = GOTEI_BY_ID.get(GOTEI_IDS[E.variant[i]]);
               B.name = info?.name ?? def.name;
               B.sub = info?.title ?? '';
             } else {

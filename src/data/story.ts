@@ -6,7 +6,7 @@
 /** When a chapter is shown: before a run (on a given stage) or after one, once its condition holds. */
 export type ChapterTrigger =
   | { when: 'before'; stage?: string }
-  | { when: 'after'; condition: 'bankai' | 'hueco' | 'seireitei' | 'almighty' | 'palace' | 'heir' };
+  | { when: 'after'; condition: 'bankai' | 'hueco' | 'seireitei' | 'almighty' | 'palace' | 'heir' | 'silbern' };
 
 export interface Chapter {
   id: string;
@@ -107,8 +107,32 @@ export const CHAPTERS: readonly Chapter[] = [
     ],
   },
   {
-    id: 'palace',
+    id: 'silbern',
     kicker: 'Chapter VI',
+    title: 'Silbern',
+    hint: 'Set foot in Silbern.',
+    trigger: { when: 'before', stage: 'silbern' },
+    text: [
+      'The second time, he did not come through the walls. The Wandenreich had been there all along, in the Seireitei’s own shadow, and now its city rose and took the Seireitei’s place: Silbern, white towers where the barracks stood.',
+      'Yamamoto is gone. Shunsui Kyōraku wears the Captain-Commander’s haori now, and the captains who are left have had time to get ready.',
+      'They fight in streets that are no longer theirs. The Emperor lets them. Every captain who falls here is one fewer waiting below the palace.',
+    ],
+  },
+  {
+    id: 'games',
+    kicker: 'Chapter VII',
+    title: 'Children’s Games',
+    hint: 'Clear Silbern.',
+    trigger: { when: 'after', condition: 'silbern' },
+    text: [
+      'Kyōraku fought the way he always has: lazily, and then all at once, with children’s games that kill. Shadows that bite. A game of who stands higher. A stage play of grief.',
+      'When it is over his straw hat lies in the road, and the Gotei 13 has no Captain-Commander again.',
+      'Above Silbern the sky has already opened. The palace is waiting.',
+    ],
+  },
+  {
+    id: 'palace',
+    kicker: 'Chapter VIII',
     title: 'The Palace in the Sky',
     hint: 'Set foot in the Soul King Palace.',
     trigger: { when: 'before', stage: 'palace' },
@@ -120,7 +144,7 @@ export const CHAPTERS: readonly Chapter[] = [
   },
   {
     id: 'soulking',
-    kicker: 'Chapter VII',
+    kicker: 'Chapter IX',
     title: 'The Soul King',
     hint: 'Clear the Soul King Palace.',
     trigger: { when: 'after', condition: 'palace' },
@@ -153,6 +177,11 @@ export const BOSS_LINES: Readonly<Record<string, string>> = {
   'boss:menos': 'Its vast mask lowers, and the air in front of it begins to glow red.',
   'boss:vasto': 'The lord of the desert turns its horned mask toward you.',
   'boss:harribel': '“This desert is under my protection. Go back the way you came.”',
+  'gotei:kenpachi': '“Finally, someone worth cutting. Don’t you dare die too quick.”',
+  'gotei:mayuri': '“The Quincy king himself, alive. I shall take very careful notes.”',
+  'gotei:shinji': '“Careful where you step. Up might not be up for long.”',
+  'gotei:kensei': '“You stole the Seireitei out from under us. Time to take it back.”',
+  'boss:kyoraku': '“I’d rather not do this. But the old man left me his haori, so here we are.”',
   'boss:grandmaster': '“Every seal in this city answers to me.”',
   'boss:commander': '“I have burned for a thousand years. Tonight, so will you.”',
   'royal:tenjiro': '“Nobody leaves my springs the way they came in.”',

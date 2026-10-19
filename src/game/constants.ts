@@ -106,6 +106,8 @@ export const MK_INK = 12; // a stroke or pool of ink (Ichibē)
 export const MK_THREAD = 13; // a binding thread or closing cloth (Senjumaru)
 export const MK_SWORD = 14; // a falling blade (Ōetsu)
 export const MK_WATER = 15; // a lane or a falling torrent of water (Harribel)
+export const MK_GAS = 16; // a cloud of poison gas (Mayuri, his specimens, Konjiki Ashisogi Jizō)
+export const MK_MIST = 17; // Sakanade's sweet mist: it does no harm, it turns you around (Shinji)
 
 /** Mark shapes. */
 export const MS_CIRCLE = 0;
@@ -120,6 +122,7 @@ export const MF_BURN = 8;
 export const MF_SLOW = 16; // slows the player on hit
 export const MF_ROOT = 32; // roots the player in place on hit
 export const MF_SHATTER = 64; // Armageddon: the impact flings reishi bombs
+export const MF_INVERT = 128; // inverts the player's directions for a while (Sakanade)
 
 /** Enemy bullet kinds and flags. */
 export const EB_BALA = 0;

@@ -2,6 +2,7 @@ import { DT, PLAYER } from '../config';
 import { TAU } from '../core/math';
 import { BANKAI_IDS } from '../data/bankai';
 import { ENEMY_INDEX, ENEMY_LIST } from '../data/enemies';
+import { GOTEI_BY_ID, GOTEI_IDS } from '../data/gotei';
 import { ROYAL_IDS } from '../data/royal';
 import { enemiesInCircle } from './casts/common';
 import {
@@ -38,6 +39,10 @@ import {
   MK_SWORD,
   MK_THREAD,
   MK_WATER,
+  MK_GAS,
+  MK_MIST,
+  MF_INVERT,
+  MF_SLOW,
   MS_ARC,
   MS_CIRCLE,
   MS_LINE,
@@ -171,6 +176,16 @@ export function casterAI(w: World, i: number, dist: number): void {
   if (dist > 270) return;
   const p = w.player;
   const a = Math.atan2(p.y - E.y[i], p.x - E.x[i]);
+  if (E.type[i] === ENEMY_INDEX.jizo) {
+    // Konjiki Ashisogi Jizō breathes its poison out ahead of it.
+    E.atkT[i] = 3.2;
+    for (let k = 1; k <= 3; k++) {
+      const d = 70 * k;
+      w.spawnMark(MK_GAS, MS_CIRCLE, E.x[i] + Math.cos(a) * d, E.y[i] + Math.sin(a) * d, 40 + k * 6, 0, 0, 0.8 + k * 0.15, E.dmg[i] * 0.6, MF_ENEMY | MF_SLOW);
+    }
+    w.sound('warn');
+    return;
+  }
   if (E.type[i] === ENEMY_INDEX.weaver) {
     w.spawnEnemyBullet(EB_THREAD, E.x[i], E.y[i], Math.cos(a) * 150, Math.sin(a) * 150, 6, 3.2, E.dmg[i] * 0.5, EBF_ROOT);
     return;
@@ -249,6 +264,203 @@ export function bossAI(w: World, i: number, dist: number): void {
     commanderAI(w, i, dist);
   } else if (def.id === 'harribel') {
     harribelAI(w, i);
+  } else if (def.id === 'gotei') {
+    goteiAI(w, i, GOTEI_IDS[E.variant[i]] ?? 'kenpachi');
+  } else if (def.id === 'kyoraku') {
+    kyorakuAI(w, i);
+  }
+}
+
+/**
+ * Silbern's captains, each with what is canon for them, every attack warned
+ * on the ground first. Below half health each shows more: Kenpachi takes his
+ * sword in both hands (Kendō), Mayuri releases Konjiki Ashisogi Jizō, Shinji
+ * puts on his Hollow mask, Kensei releases Tekken Tachikaze.
+ */
+function goteiAI(w: World, i: number, id: string): void {
+  const E = w.en;
+  const p = w.player;
+  const x = E.x[i];
+  const y = E.y[i];
+  const toP = Math.atan2(p.y - y, p.x - x);
+  const dmg = E.dmg[i];
+  const memo = w.bossMemo(i);
+  const late = E.hp[i] < E.maxHp[i] * 0.5;
+  if (late && memo.phase === 0) {
+    memo.phase = 1;
+    E.atkT[i] = 1.2;
+    w.spawnFx(FX_RING, x, y, 0, 0, 0.6, 30, 300, 1, 0, 0, GOTEI_BY_ID.get(id)?.aura ?? 0xffffff, LAYER_ADD);
+    w.shake = Math.max(w.shake, 6);
+    w.sound('bankai');
+    if (id === 'kenpachi') {
+      E.spd[i] *= 1.3;
+      w.messages.push({ text: 'Kenpachi takes his sword in both hands', kind: 'boss' });
+    } else if (id === 'mayuri') {
+      w.spawnEnemy(ENEMY_INDEX.jizo, x - Math.cos(toP) * 70, y - Math.sin(toP) * 70, false, 4);
+      w.messages.push({ text: 'Bankai: Konjiki Ashisogi Jizō', kind: 'boss' });
+    } else if (id === 'shinji') {
+      w.messages.push({ text: 'Shinji puts on his Hollow mask', kind: 'boss' });
+    } else {
+      w.messages.push({ text: 'Bankai: Tekken Tachikaze', kind: 'boss' });
+    }
+  }
+  if (E.atkT[i] > 0) return;
+  const move = memo.move++ % 3;
+  switch (id) {
+    case 'kenpachi':
+      E.atkT[i] = late ? 2 : 2.5;
+      if (move === 1) {
+        // A charge down a warned lane, and he is already moving.
+        w.spawnMark(MK_SLASH, MS_LINE, x, y, 40, 420, toP, 0.65, dmg, MF_ENEMY);
+        E.kx[i] = Math.cos(toP) * 1300;
+        E.ky[i] = Math.sin(toP) * 1300;
+      } else if (late) {
+        // Kendō: both hands on the blade, one great cut down a long line.
+        w.spawnMark(MK_SLASH, MS_LINE, x, y, 70, 720, toP, 1, dmg * 1.6, MF_ENEMY);
+      } else {
+        // A wild slash in front of him.
+        w.spawnMark(MK_SLASH, MS_ARC, x, y, 170, 0.9, toP, 0.7, dmg * 1.1, MF_ENEMY);
+      }
+      w.sound('warn');
+      break;
+    case 'mayuri':
+      E.atkT[i] = late ? 2.2 : 2.8;
+      if (move === 0) {
+        // Ashisogi Jizō: a thrust whose poison leaves the limbs dead for a moment.
+        w.spawnMark(MK_LANCE, MS_LINE, x, y, 30, 340, toP, 0.75, dmg, MF_ENEMY | MF_ROOT);
+        w.sound('warn');
+      } else if (move === 1) {
+        // Poison gas drifting in around you.
+        for (let k = 0; k < 5; k++) {
+          const a = w.rng.next() * TAU;
+          const d = k === 0 ? 0 : 60 + w.rng.next() * 80;
+          w.spawnMark(MK_GAS, MS_CIRCLE, p.x + Math.cos(a) * d, p.y + Math.sin(a) * d, 44, 0, 0, 1 + k * 0.1, dmg * 0.55, MF_ENEMY | MF_SLOW);
+        }
+        w.sound('warn');
+      } else {
+        // His specimens, let loose around you.
+        for (let k = 0; k < 4; k++) {
+          const a = (k / 4) * TAU + w.rng.next() * 0.3;
+          w.spawnEnemy(ENEMY_INDEX.specimen, p.x + Math.cos(a) * 240, p.y + Math.sin(a) * 240);
+        }
+        w.sound('rise');
+      }
+      break;
+    case 'shinji':
+      E.atkT[i] = late ? 2 : 2.6;
+      if (move === 0) {
+        // Sakanade: a sweet mist settles around you. Inside it when it lands, up is down and left is right.
+        w.spawnMark(MK_MIST, MS_CIRCLE, p.x, p.y, 110, 0, 0, 1.3, 0, MF_ENEMY | MF_INVERT);
+        w.sound('warn');
+      } else if (move === 1 || late) {
+        // A Cero from his Hollow mask (masked, it comes in place of the sword waves).
+        w.spawnMark(MK_CERO, MS_LINE, x, y, late ? 60 : 48, 900, toP, late ? 0.9 : 1.1, dmg * 1.2, MF_ENEMY);
+        w.sound('warn');
+      } else {
+        // Sword waves in a fan.
+        for (let k = -1; k <= 1; k++) {
+          w.spawnEnemyBullet(EB_WAVE, x, y, Math.cos(toP + k * 0.24) * 175, Math.sin(toP + k * 0.24) * 175, 12, 3.5, dmg * 0.6);
+        }
+        w.sound('blade');
+      }
+      break;
+    default:
+      // Kensei Muguruma.
+      E.atkT[i] = late ? 2 : 2.5;
+      if (move === 0) {
+        // Tachikaze: blades of wind in a fan.
+        const n = late ? 7 : 5;
+        for (let k = 0; k < n; k++) {
+          const a = toP + (k - (n - 1) / 2) * 0.2;
+          w.spawnEnemyBullet(EB_WAVE, x, y, Math.cos(a) * 200, Math.sin(a) * 200, 10, 3.2, dmg * 0.5);
+        }
+        w.sound('blade');
+      } else if (move === 1) {
+        // Bursts of wind marching toward you; released, Tekken Tachikaze's punches come in fives.
+        const n = late ? 5 : 3;
+        for (let k = 0; k < n; k++) {
+          const t = (k + 1) / n;
+          w.spawnMark(MK_STEAM, MS_CIRCLE, x + (p.x - x) * t, y + (p.y - y) * t, 46, 0, 0, 0.6 + k * 0.18, dmg * 0.7, MF_ENEMY);
+        }
+        w.sound('warn');
+      } else {
+        // A dash down a warned lane.
+        w.spawnMark(MK_SLASH, MS_LINE, x, y, 36, 380, toP, 0.6, dmg * 0.9, MF_ENEMY);
+        E.kx[i] = Math.cos(toP) * 1250;
+        E.ky[i] = Math.sin(toP) * 1250;
+        w.sound('warn');
+      }
+      break;
+  }
+}
+
+/**
+ * Captain-Commander Shunsui Kyōraku: Katen Kyōkotsu makes children's games
+ * real. Kageoni: what steps on a shadow is struck from it, so keep moving.
+ * Takaoni: a ring of strikes around you, so keep to its middle. Bushōgoma:
+ * spinning tops flung out from him. Below half health his bankai, Katen
+ * Kyōkotsu: Karamatsu Shinjū, darkens the ground into a pool that drags at
+ * you, and threads cross where you stand.
+ */
+function kyorakuAI(w: World, i: number): void {
+  const E = w.en;
+  const p = w.player;
+  const x = E.x[i];
+  const y = E.y[i];
+  const dmg = E.dmg[i];
+  const memo = w.bossMemo(i);
+  const late = E.hp[i] < E.maxHp[i] * 0.5;
+  if (late && memo.phase === 0) {
+    memo.phase = 1;
+    E.atkT[i] = 1.4;
+    w.spawnFx(FX_RING, x, y, 0, 0, 0.8, 40, 420, 1, 0, 0, 0xff9ac8, LAYER_ADD);
+    w.messages.push({ text: 'Bankai: Katen Kyōkotsu: Karamatsu Shinjū', kind: 'boss' });
+    w.shake = Math.max(w.shake, 8);
+    w.sound('bankai');
+  }
+  if (E.atkT[i] > 0) return;
+  E.atkT[i] = late ? 2.1 : 2.6;
+  const move = memo.move++ % (late ? 4 : 3);
+  const toP = Math.atan2(p.y - y, p.x - x);
+  switch (move) {
+    case 0: {
+      // Kageoni: struck from your own shadow, then from where you are heading.
+      w.spawnMark(MK_INK, MS_CIRCLE, p.x, p.y + 6, 40, 0, 0, 0.6, dmg * 0.9, MF_ENEMY);
+      const ahead = 0.9 / DT;
+      w.spawnMark(MK_INK, MS_CIRCLE, p.x + (p.x - p.ox) * ahead, p.y + (p.y - p.oy) * ahead + 6, 44, 0, 0, 1.05, dmg * 0.9, MF_ENEMY);
+      w.sound('warn');
+      break;
+    }
+    case 1:
+      // Takaoni: a ring of strikes around you; its middle is the high ground.
+      for (let k = 0; k < 10; k++) {
+        const a = (k / 10) * TAU;
+        w.spawnMark(MK_SWORD, MS_CIRCLE, p.x + Math.cos(a) * 130, p.y + Math.sin(a) * 130, 40, 0, 0, 1.1, dmg * 0.7, MF_ENEMY);
+      }
+      w.sound('warn');
+      break;
+    case 2: {
+      // Bushōgoma: spinning tops flung out from him in three arms.
+      const base = w.t * 1.7;
+      for (let arm = 0; arm < 3; arm++) {
+        for (let k = 0; k < 6; k++) {
+          const a = base + (arm * TAU) / 3 + k * 0.12;
+          const spd = 130 + k * 18;
+          w.spawnEnemyBullet(EB_WAVE, x, y, Math.cos(a) * spd, Math.sin(a) * spd, 9, 4, dmg * 0.35);
+        }
+      }
+      w.sound('blade');
+      break;
+    }
+    default: {
+      // Karamatsu Shinjū: the ground darkens into a pool that drags at you, and threads cross where you stand.
+      w.spawnMark(MK_INK, MS_CIRCLE, p.x, p.y, 170, 0, 0, 1.6, dmg * 0.6, MF_ENEMY | MF_SLOW);
+      for (const a of [toP, toP + Math.PI / 2]) {
+        w.spawnMark(MK_THREAD, MS_LINE, p.x - Math.cos(a) * 300, p.y - Math.sin(a) * 300, 30, 600, a, 1.2, dmg * 0.8, MF_ENEMY);
+      }
+      w.sound('warn');
+      break;
+    }
   }
 }
 

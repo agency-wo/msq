@@ -2421,3 +2421,28 @@ button:focus-visible {
 .btn.feats-wardrobe {
   align-self: center;
 }
+
+/* Four stages or more: a strip that scrolls sideways, two and a half cards in view. */
+.stage-row.n4,
+.stage-row.n5 {
+  display: flex;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+}
+
+.stage-row.n4::-webkit-scrollbar,
+.stage-row.n5::-webkit-scrollbar {
+  display: none;
+}
+
+.stage-row.n4 .stage-btn,
+.stage-row.n5 .stage-btn {
+  flex: 0 0 40%;
+  scroll-snap-align: start;
+}
+
+.stage-row.n4 .stage-name,
+.stage-row.n5 .stage-name {
+  font-size: 14px;
+}
