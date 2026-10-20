@@ -300,7 +300,7 @@ try {
     save.look = 'white';
     save.codex = {
       powers: ['heilig', 'xaxis', 'explode', 'fear', 'heat', 'wind', 'iron', 'senbonzakura', 'hyorinmaru', 'zanka', 'tengen'],
-      relics: ['crown', 'tube', 'sandals'],
+      relics: ['crown', 'tube', 'sandals', 'spoil-haori', 'spoil-getsuga', 'spoil-eyepatch'],
       resonances: ['firestorm'],
       kills: { hollow: 420, hound: 80, brute: 30, volatile: 12, 'bearer:zanka': 2, 'bearer:tengen': 1, ayon: 1, nel: 1, rift: 2 },
     };
@@ -399,10 +399,11 @@ try {
   await wait(250);
   const codex = { found: await page.textContent('.screen.codex .archives-hint') };
   await shot('09g-codex');
-  for (const tab of [2, 3, 4]) {
+  for (const tab of [2, 3, 4, 5]) {
     await page.tap(`.codex-tab:nth-child(${tab})`);
     await wait(200);
     codex[`tab${tab}`] = await page.$$eval('.screen.codex .codex-entry:not(.locked)', (e) => e.length);
+    if (tab === 4) await shot('09h2-codex-spoils');
   }
   await shot('09h-codex-enemies');
   log('codex', codex);
@@ -587,6 +588,34 @@ try {
     log(`boss ${name} late`, { ...(await stats()), phase: await page.evaluate(() => window.__msq.world.boss.phase) });
     await shot(`12j-${name}-late`);
   }
+
+  // Spoils of war: a boss falls and leaves its own; its title card when you take it; spoils that strike on their own.
+  await page.goto(`${BASE}?debug&seed=3&play&god&stage=silbern&t=298&bearers=kenpachi`);
+  await wait(400);
+  await steer(5000, { radius: 20 });
+  await page.evaluate(() => {
+    const w = window.__msq.world;
+    for (let i = 0; i < w.en.n; i++) if (w.en.type[i] === 28 && !w.en.dead[i]) w.killEnemy(i);
+  });
+  await wait(700);
+  log('spoil dropped', { ...(await stats()), spoil: await page.evaluate(() => window.__msq.world.pickups.filter((q) => q.kind === 'spoil').map((q) => q.relic)) });
+  await shot('12k-spoil-drop');
+  await page.evaluate(() => {
+    const w = window.__msq.world;
+    const q = w.pickups.find((x) => x.kind === 'spoil');
+    if (q) {
+      w.player.x = w.player.ox = q.x;
+      w.player.y = w.player.oy = q.y;
+    }
+  });
+  await wait(500);
+  log('spoil taken', { relics: await page.evaluate(() => window.__msq.world.relics.map((r) => r.id)), banner: await page.textContent('.banner') });
+  await shot('12k-spoil-banner');
+  await page.goto(`${BASE}?debug&seed=4&play&god&stage=hueco&t=120&spoils=tengen,getsuga,ember,tsukishiro,taiho`);
+  await wait(400);
+  await steer(9000, { radius: 25 });
+  log('spoils striking', await stats());
+  await shot('12k-spoils-strike');
 
   // Silbern: the second invasion's captains, then the Captain-Commander and his bankai.
   for (const id of ['kenpachi', 'mayuri', 'shinji', 'kensei']) {

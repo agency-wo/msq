@@ -1604,6 +1604,27 @@ button:focus-visible {
   border-bottom: 1px solid rgba(255, 236, 180, 0.55);
 }
 
+/* Spoils of war: a boss's own trophy, crimson and gold. */
+.banner.spoil .banner-kicker {
+  color: #ff8b9b;
+}
+
+.banner.spoil .banner-title {
+  color: #ffe6a0;
+  text-shadow:
+    0 0 16px rgba(255, 203, 92, 0.85),
+    0 0 4px rgba(255, 45, 74, 0.7);
+}
+
+.banner.spoil {
+  border-top: 1px solid rgba(255, 45, 74, 0.6);
+  border-bottom: 1px solid rgba(255, 203, 92, 0.6);
+}
+
+.codex-entry.spoil {
+  border-left: 3px solid var(--accent, rgba(255, 203, 92, 0.7));
+}
+
 .banner.evolve .banner-kicker {
   color: #ff8b9b;
 }

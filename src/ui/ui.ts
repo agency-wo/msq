@@ -8,13 +8,14 @@ import { POWER_BY_ID, POWERS, STARTING_POWER, type PowerDef } from '../data/powe
 import { type Rarity, RELIC_BY_ID, type RelicDef, RELICS } from '../data/relics';
 import { RESONANCE_BY_ID, RESONANCES, resonanceParts, type ResonanceDef } from '../data/resonances';
 import { PACT_BY_ID, type PactDef } from '../data/shrines';
+import { SPOILS } from '../data/spoils';
 import { MAX_TRIAL, STAGES, stageById, TRIAL_NAMES, trialBlurb, type StageId } from '../data/stages';
 import { CHAPTERS, type Chapter } from '../data/story';
 import type { ChestKind, Offer } from '../game/offers';
 import type { Banner, World } from '../game/world';
 import { drawEmperor, drawSprite } from '../render/atlas';
 import { bossSpriteName, enemySpriteName } from '../render/names';
-import { armoryRelics, nextCost, nextVerseCost, startOptions, upgradeLevel } from '../save/archives';
+import { armoryRelics, nextCost, nextVerseCost, startOptions, upgradeLevel, wonSpoils } from '../save/archives';
 import { almightyUnlocked, endlessOpen, rushOpen, stageUnlocked, trialsOpen, type DailyRecord, type SaveData, type Settings } from '../save/save';
 import { chapterUnlocked } from '../save/story';
 import { LOOKS, TRAILS, type LookId, type TrailId } from '../data/looks';
@@ -31,14 +32,27 @@ import { drawVista } from './vistas';
 
 export type Toggle = keyof Settings;
 
-export type CodexTab = 'schrift' | 'resonances' | 'relics' | 'enemies';
+export type CodexTab = 'schrift' | 'resonances' | 'relics' | 'spoils' | 'enemies';
 
 const CODEX_TABS: readonly [CodexTab, string][] = [
   ['schrift', 'Schrift'],
   ['resonances', 'Resonances'],
   ['relics', 'Relics'],
+  ['spoils', 'Spoils'],
   ['enemies', 'Enemies'],
 ];
+
+/** The boss a spoil of war comes from, for its portrait and its name. */
+function spoilBoss(r: RelicDef): { name: string; sprite: string } {
+  const e = CODEX_ENEMIES.find((x) => x.key === r.boss);
+  // The Codex names a knight with the bankai he stole; here the knight is enough.
+  return e ? { name: e.name.replace(/ \(.*\)$/, ''), sprite: enemySpriteName(e.type, e.variant) } : { name: 'a boss', sprite: '' };
+}
+
+/** A relic's colour: its rarity's, or a spoil's own. */
+function relicColor(r: RelicDef): string {
+  return r.color ?? RARITY_COLOR[r.rarity];
+}
 
 const POWER_SECTIONS: readonly [string, (d: PowerDef) => boolean, string][] = [
   ['Schrift', (d) => d.group === 'schrift' || d.group === 'art', 'Take it from a level-up board.'],
@@ -404,6 +418,7 @@ export class UI {
       evolve: 'The Emperor',
       fragment: 'Fragment of the Soul King',
       boss: 'Boss',
+      spoil: 'Spoils of war',
     };
     const kicker = KICKER[b.kind];
     this.bannerEl.replaceChildren(
@@ -686,6 +701,31 @@ export class UI {
       list.append(row);
     }
     p.append(list);
+    // Spoils of war: won from the bosses, never bought. Each can be equipped like a relic.
+    const won = wonSpoils(save);
+    p.append(el('h3', 'section-title', `Spoils of war · ${won.length} of ${SPOILS.length}`));
+    if (won.length === 0) {
+      p.append(el('p', 'archives-hint', 'Every boss leaves a spoil of its own when it falls. Win one and it waits here, ready to equip.'));
+      return;
+    }
+    const spoils = el('div', 'upgrades armory');
+    for (const r of won) {
+      const on = save.startRelic === r.id;
+      const from = spoilBoss(r);
+      const row = el('div', `upgrade armory-row spoil-row${on ? ' on' : ''}`);
+      row.style.setProperty('--accent', relicColor(r));
+      const icon = el('canvas', 'upgrade-icon');
+      if (!from.sprite || !drawSprite(icon, from.sprite, 40)) drawIcon(icon, r.icon, relicColor(r));
+      const body = el('div', 'upgrade-body');
+      body.append(el('div', 'upgrade-name', r.name), el('div', 'armory-rarity', `From ${from.name}`), el('p', 'upgrade-desc', r.desc));
+      const b = button(`upgrade-buy ${on ? 'equipped' : 'equip'}`, on ? 'Equipped' : 'Equip');
+      b.setAttribute('aria-pressed', String(on));
+      b.setAttribute('aria-label', on ? `${r.name}: equipped, tap to take it off` : `Equip ${r.name}`);
+      b.addEventListener('click', this.guard(() => h.onEquip(on ? null : r.id)));
+      row.append(icon, body, b);
+      spoils.append(row);
+    }
+    p.append(spoils);
   }
 
   /** The Kaiser Gesang: a hundred verses, each dearer than the last, each a little more strength in every run. */
@@ -754,7 +794,7 @@ export class UI {
     const build = el('div', 'build');
     for (const ps of w.powers) build.append(this.chip(ps.def.icon, ps.def.color, `${ps.def.name} ${ps.level}`, ps.def.letter, ps.def.group === 'bankai'));
     for (const id of w.resonances) build.append(this.resonanceChip(id));
-    for (const r of w.relics) build.append(this.chip(r.icon, RARITY_COLOR[r.rarity], r.name));
+    for (const r of w.relics) build.append(this.chip(r.icon, relicColor(r), r.name));
     for (const id of w.pacts) {
       const chip = this.pactChip(id);
       if (chip) build.append(chip);
@@ -1034,6 +1074,25 @@ export class UI {
                   : `A ${RARITY_LABEL[r.rarity].toLowerCase()} relic, found in chests.`,
               ),
         );
+      }
+    } else if (tab === 'spoils') {
+      for (const [section, title] of ENEMY_SECTIONS) {
+        const here = SPOILS.filter((r) => CODEX_ENEMIES.find((e) => e.key === r.boss)?.section === section);
+        if (here.length === 0) continue;
+        list.append(el('h3', 'section-title', title));
+        for (const r of here) {
+          const won = c.relics.includes(r.id);
+          const from = spoilBoss(r);
+          const row = el('div', `codex-entry spoil${won ? '' : ' locked'}`);
+          row.style.setProperty('--accent', relicColor(r));
+          const portrait = el('canvas', 'codex-portrait');
+          if (from.sprite) drawSprite(portrait, from.sprite, 44);
+          const body = el('div', 'codex-body');
+          body.append(el('div', 'codex-name', won ? r.name : '? ? ?'), el('div', 'codex-sub', `From ${from.name}`));
+          body.append(el('p', 'codex-text', won ? r.desc : `Defeat ${from.name} to win it.`));
+          row.append(portrait, body);
+          list.append(row);
+        }
       }
     } else {
       for (const [section, title] of ENEMY_SECTIONS) {

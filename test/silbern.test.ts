@@ -95,7 +95,7 @@ describe('Silbern', () => {
     expect(BOSS_LINES['boss:kyoraku']).toBeTruthy();
   });
 
-  it('a captain is named on the boss bar and leaves two black chests', () => {
+  it('a captain is named on the boss bar and leaves a black chest and his spoil of war', () => {
     const { w, i } = arena(ENEMY_INDEX.gotei, captain('mayuri'));
     // Spawned by hand here, so count it the way the timeline would.
     (w as unknown as { bossCount: number }).bossCount = 1;
@@ -103,7 +103,8 @@ describe('Silbern', () => {
     expect(w.boss.name).toBe('Mayuri Kurotsuchi');
     expect(w.boss.sub).toBe('Captain of the 12th Division');
     w.killEnemy(i);
-    expect(w.pickups.filter((q) => q.kind === 'chestBlack').length).toBe(2);
+    expect(w.pickups.filter((q) => q.kind === 'chestBlack').length).toBe(1);
+    expect(w.pickups.filter((q) => q.kind === 'spoil').map((q) => q.relic)).toEqual(['spoil-vial']);
   });
 
   it('Kenpachi: wild slashes and charges, then Kendō with both hands', () => {

@@ -9,6 +9,7 @@ import { ENEMY_INDEX, ENEMY_LIST } from '../data/enemies';
 import { TRAIL_BY_ID } from '../data/looks';
 import { GOTEI_IDS, GOTEI_INFO } from '../data/gotei';
 import { HERO_IDS, HERO_INFO } from '../data/heroes';
+import { RELIC_BY_ID } from '../data/relics';
 import { ROYAL_IDS, ROYAL_INFO } from '../data/royal';
 import { DOUBLE_RING, doubleCount } from '../game/casts/schrift2';
 import { COMMANDER_HEAT, HARRIBEL_RELEASED, ICHIGO_MASKED } from '../game/hostile';
@@ -211,6 +212,12 @@ const ZONE_TINT: Record<number, number> = {
 
 /** Why an enemy cannot move, by hold kind: freeze, fear, cage, stun. */
 const HOLD_TINT: Record<number, number> = { 0: 0x8fd0ff, [HOLD_FEAR]: 0xc9a8ff, [HOLD_JAIL]: 0xc8d8ff, [HOLD_STUN]: 0xffe9a0 };
+
+/** A spoil's colour (its boss's) as a tint, from its CSS hex. */
+function spoilTint(id: string | undefined): number {
+  const c = id ? RELIC_BY_ID.get(id)?.color : undefined;
+  return c ? parseInt(c.slice(1), 16) : 0xffd27a;
+}
 
 export class Renderer {
   readonly app = new Application();
@@ -684,6 +691,15 @@ export class Renderer {
           L.pickups.add(f.fragment, q.x, q.y + bob, 0.7, 0.7, Math.sin(now * 2) * 0.2, tint);
           break;
         }
+        case 'spoil': {
+          // A boss's spoil of war, in that boss's colour, turning slowly.
+          const tint = spoilTint(q.relic);
+          L.auras.add(f.glow, q.x, q.y, 2.4, 2.4, 0, tint, 0.55 + Math.sin(now * 5) * 0.2);
+          L.auras.add(f.ring, q.x, q.y, 0.52, 0.52, now, 0xffd27a, 0.6);
+          L.auras.add(f.ring, q.x, q.y, 0.4, 0.4, -now * 1.4, tint, 0.55);
+          L.pickups.add(f.spoil, q.x, q.y + bob, 0.66, 0.66, Math.sin(now * 2) * 0.15, tint);
+          break;
+        }
         case 'shrine':
           L.auras.add(f.glow, q.x, q.y - 6, 1.8, 2.2, 0, 0x59b8ff, 0.4 + Math.sin(now * 3) * 0.12);
           L.shadows.add(f.shadow, q.x, q.y + 14, 0.6, 0.6, 0, 0xffffff, 0.7);
@@ -825,6 +841,8 @@ export class Renderer {
       L.auras.add(f.ring, x, y + 4, 0.48, 0.48, -now * 3, 0xffb8e0, 0.6);
     }
     if (w.shieldCharges > 0) L.auras.add(f.ring, x, y - 2, 0.42, 0.42, 0, 0xdfe7f2, 0.35 + 0.1 * w.shieldCharges);
+    // Ryūjin Jakka's Ember: a faint ring of heat where things burn.
+    if (w.spoil.on && w.spoil.has.has('ember')) L.auras.add(f.ring, x, y, (95 * 2) / 110, (95 * 2) / 110, 0, 0xff7a3c, 0.22 + Math.sin(now * 6) * 0.06);
     // Suì-Fēng's Hōmonka: a dark crest on you, with a gold edge, until her second sting uses it.
     if (w.homonkaT > 0) {
       const pulse = 0.6 + Math.sin(now * 9) * 0.25;

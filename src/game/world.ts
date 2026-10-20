@@ -9,6 +9,7 @@ import { enemyKey } from '../data/codex';
 import { FRAGMENT_IDS } from '../data/fragments';
 import { POWER_BY_ID, POWERS, STARTABLE_IDS, STARTING_POWER, upgradeCap } from '../data/powers';
 import { RELIC_BY_ID, RELICS, type RelicDef } from '../data/relics';
+import { SPOIL_BY_BOSS } from '../data/spoils';
 import { PACT_BY_ID, PACTS, type PactDef } from '../data/shrines';
 import { GOTEI_BY_ID, GOTEI_IDS } from '../data/gotei';
 import { HERO_BY_ID, HERO_IDS } from '../data/heroes';
@@ -83,12 +84,25 @@ import {
 import { blinkAI, bossAI, casterAI, chargeAI, COMMANDER_HEAT, eliteAI, eventAI, HARRIBEL_RELEASED, ICHIGO_MASKED, updateEnemyBullets } from './hostile';
 import { generateOffers, rollRelics, type ChestKind, type Offer } from './offers';
 import { AYON_RAGE, NEL_RELEASED, OVERKILL_MAX } from './signatures';
+import {
+  gainSpoil,
+  SpoilState,
+  spoilAfterHurt,
+  spoilBeforeHurt,
+  spoilDamage,
+  spoilDamageMul,
+  spoilGreet,
+  spoilKill,
+  spoilLevelUp,
+  spoilMaxHp,
+  spoilTick,
+} from './spoils';
 import { EBulletPool, EnemyPool, FxPool, HITS, MarkPool, NumberRing, OrbPool, ProjPool, ZonePool } from './pools';
 import { newPowerState, refreshPowerStats, syncPower, updatePowers, type PowerState } from './powers';
-import { computeStats, damageMultiplier, scaleMods, type StatMods, type Stats } from './stats';
+import { BASE_HP, computeStats, damageMultiplier, scaleMods, type StatMods, type Stats } from './stats';
 import { xpToNext } from './xp';
 
-export type PickupKind = 'chest' | 'chestBlack' | 'heart' | 'magnet' | 'nuke' | 'medallion' | 'shrine' | 'fragment';
+export type PickupKind = 'chest' | 'chestBlack' | 'heart' | 'magnet' | 'nuke' | 'medallion' | 'shrine' | 'fragment' | 'spoil';
 
 export interface Pickup {
   kind: PickupKind;
@@ -99,6 +113,8 @@ export interface Pickup {
   bankai?: string;
   /** Fragments of the Soul King: which one. */
   fragment?: string;
+  /** A spoil of war: the relic inside. */
+  relic?: string;
 }
 
 export interface Message {
@@ -108,7 +124,7 @@ export interface Message {
 
 /** A title card: a boss arriving, a bankai taken back, a resonance, an event, or The Almighty awakening. */
 export interface Banner {
-  kind: 'bankai' | 'boss' | 'almighty' | 'resonance' | 'event' | 'evolve' | 'fragment';
+  kind: 'bankai' | 'boss' | 'almighty' | 'resonance' | 'event' | 'evolve' | 'fragment' | 'spoil';
   title: string;
   sub: string;
   /** What a boss says (or does) as it arrives. */
@@ -120,6 +136,8 @@ export interface BossMemo {
   move: number;
   phase: number;
   t: number;
+  /** When it first came into reach (BG9's Data Core counts from here). */
+  born: number;
   u: number;
   n: number;
   guard: number;
@@ -229,7 +247,7 @@ const RUSH_HP = [1, 0.8, 0.55, 0.36];
 const RUSH_DMG = [0.6, 0.75, 0.85, 0.9];
 
 /** Pickups you walk to rather than hoover up: never pulled by the magnet, never dropped for space. */
-const BIG_PICKUPS: ReadonlySet<PickupKind> = new Set<PickupKind>(['chest', 'chestBlack', 'medallion', 'shrine', 'fragment']);
+const BIG_PICKUPS: ReadonlySet<PickupKind> = new Set<PickupKind>(['chest', 'chestBlack', 'medallion', 'shrine', 'fragment', 'spoil']);
 
 /** Blut Rush: kills chained without being hit, each tier adding damage and speed while the chain holds. */
 export const RUSH_TIERS = [60, 200, 500] as const;
@@ -632,6 +650,7 @@ export class World {
       mul *= 1 + this.miracleAmt * lost;
     }
     if (this.rushTier > 0) mul *= 1 + RUSH_DAMAGE * this.rushTier;
+    if (this.spoil.on) mul *= spoilDamageMul(this);
     if (this.hasSanrei) {
       if (!this.sanreiOff && this.t >= 480) {
         this.sanreiOff = true;
@@ -907,6 +926,13 @@ export class World {
   overkillAt = -1;
   /** Suì-Fēng's Hōmonka: while it lasts, her next sting strikes three times as hard. */
   homonkaT = 0;
+  /** The spoils of war you hold this run, and what they keep track of. */
+  readonly spoil = new SpoilState();
+
+  /** Shinji's mask: nothing can slow you, root you or turn you around. */
+  get steady(): boolean {
+    return this.spoil.on && this.spoil.has.has('mask');
+  }
 
   /**
    * Which form a boss is in: 1 once it has shown what it was holding back at
@@ -927,10 +953,42 @@ export class World {
     const uid = this.en.uid[i];
     let m = this.memos.get(uid);
     if (!m) {
-      m = { move: 0, phase: 0, t: 0, u: 0, n: 0, guard: 0, guardMul: 1 };
+      m = { move: 0, phase: 0, t: 0, born: this.t, u: 0, n: 0, guard: 0, guardMul: 1 };
       this.memos.set(uid, m);
     }
     return m;
+  }
+
+  /** Who a boss is, for the boss bar and the message when it falls: its own name and title. */
+  private bossLabel(i: number): { name: string; sub: string } {
+    const E = this.en;
+    const def = ENEMY_LIST[E.type[i]];
+    const bankai = BANKAI_IDS[E.variant[i]];
+    if (def.id === 'bearer') {
+      const info = BANKAI_BY_ID.get(bankai);
+      return { name: info && info.thiefLetter ? info.thief : def.name, sub: `Sternritter ${info?.thiefLetter ?? ''} · ${POWER_BY_ID.get(bankai)?.name ?? ''}` };
+    }
+    if (def.id === 'captain') {
+      const info = BANKAI_BY_ID.get(bankai);
+      return { name: info?.owner ?? def.name, sub: info?.rank ?? '' };
+    }
+    const roster =
+      def.id === 'royal'
+        ? ROYAL_BY_ID.get(ROYAL_IDS[E.variant[i]])
+        : def.id === 'gotei'
+          ? GOTEI_BY_ID.get(GOTEI_IDS[E.variant[i]])
+          : def.id === 'defender'
+            ? HERO_BY_ID.get(HERO_IDS[E.variant[i]])
+            : undefined;
+    if (roster) return { name: roster.name, sub: roster.title };
+    const ev = this.stage.events.find((e): e is Extract<TimelineEvent, { kind: 'boss' }> => e.kind === 'boss' && e.enemy === def.id);
+    return { name: def.name, sub: ev?.sub ?? '' };
+  }
+
+  /** How long a boss has been fighting you, in seconds (0 if it has not come into reach yet). */
+  bossAge(i: number): number {
+    const m = this.memos.get(this.en.uid[i]);
+    return m ? this.t - m.born : 0;
   }
 
   /** A boss whose skin has turned to iron (or the like): your blows barely mark it for now. */
@@ -989,6 +1047,7 @@ export class World {
 
   /** Sakanade's mist: up is down and left is right for a while. */
   invert(secs: number): void {
+    if (this.steady) return;
     if (this.invertT <= 0) this.messages.push({ text: 'Sakanade: up is down, left is right', kind: 'boss' });
     this.invertT = Math.max(this.invertT, secs);
   }
@@ -1417,6 +1476,7 @@ export class World {
       const m = this.memos.get(E.uid[i]);
       if (m && m.guard > this.t) dmg *= m.guardMul;
     }
+    if (this.spoil.on) dmg = spoilDamage(this, i, dmg, crit);
     // Schutzstaffel: up to twice as hard the closer you are to falling.
     if (this.schutzBits !== 0 && this.dmgSlot < 31 && (this.schutzBits >>> this.dmgSlot) & 1) dmg *= 2 - Math.max(0, this.player.hp) / this.player.maxHp;
     this.dmgBy[this.dmgSlot] += Math.min(dmg, Math.max(0, E.hp[i]));
@@ -1558,6 +1618,7 @@ export class World {
     }
     this.spawnOrb(x, y, E.xp[i]);
     if (!(flags & FLAG_BOSS)) this.feedOverkill(x, y);
+    if (this.spoil.on) spoilKill(this, x, y, (flags & FLAG_BOSS) !== 0);
     if (E.volT[i] > 0) this.queueBurst(x, y, 44 * this.stats.size, E.volDmg[i]);
     if (flags & FLAG_BOSS) {
       this.bossCount = Math.max(0, this.bossCount - 1);
@@ -1570,12 +1631,12 @@ export class World {
         this.addPickup('chestBlack', x + 36, y + 12);
       }
       // The Royal Guard each leave a Fragment of the Soul King you do not have yet (gold once you hold all three).
-      // Silbern's captains and the Wahrwelt's defenders carry no bankai to take: two black chests instead.
+      // Silbern's captains and the Wahrwelt's defenders carry no bankai to take: a black chest beside their spoil.
       if (def.id === 'defender' && HERO_IDS[E.variant[i]] === 'aizen') this.clearMirages();
       if (def.id === 'gotei' || def.id === 'defender') {
-        this.addPickup('chestBlack', x - 36, y - 12);
         this.addPickup('chestBlack', x + 36, y + 12);
       }
+      this.dropSpoil(i, x, y);
       if (def.id === 'royal') {
         const fragment = this.fragmentToDrop();
         if (fragment) this.addPickup('fragment', x, y, undefined, fragment);
@@ -1595,12 +1656,8 @@ export class World {
         this.spawnOrb(x + Math.cos(a) * d, y + Math.sin(a) * d, E.xp[i] * 0.3);
       }
       this.shake = Math.max(this.shake, 14);
-      const fallen =
-        def.id === 'bearer'
-          ? `${BANKAI_BY_ID.get(BANKAI_IDS[E.variant[i]])?.thief ?? 'The Sternritter'} falls. Take back the medallion.`
-          : def.id === 'captain'
-            ? `${BANKAI_BY_ID.get(BANKAI_IDS[E.variant[i]])?.owner ?? 'The captain'} falls. Seize the bankai.`
-            : `${def.name} defeated`;
+      const who = this.bossLabel(i).name;
+      const fallen = def.id === 'bearer' ? `${who} falls. Take back the medallion.` : def.id === 'captain' ? `${who} falls. Seize the bankai.` : `${who} falls`;
       this.messages.push({ text: fallen, kind: 'info' });
       this.bigBurst(x, y, def.color);
       if (E.uid[i] === this.finalBossUid) {
@@ -1684,7 +1741,13 @@ export class World {
       return;
     }
     const hpBefore = p.hp;
-    p.hp -= amount * this.stats.dmgTaken * (1 - this.balanceCut) * this.tm.damageTaken * this.modTaken;
+    let dealt = amount * this.stats.dmgTaken * (1 - this.balanceCut) * this.tm.damageTaken * this.modTaken;
+    if (this.spoil.on) dealt = spoilBeforeHurt(this, dealt);
+    if (dealt <= 0) {
+      p.iframes = PLAYER.iframes;
+      return;
+    }
+    p.hp -= dealt;
     const lost = Math.max(0, hpBefore - Math.max(0, p.hp));
     this.takenSince += lost;
     // The Scales Turned: part of every wound turns straight back.
@@ -1697,6 +1760,7 @@ export class World {
     if (this.balanceDmg > 0) this.credit('balance', () => this.shockwave(this.balanceR, this.balanceDmg, 140));
     // Old Friends: the shared misfortune catches fire.
     if (this.balanceDmg > 0 && this.resonances.has('oldfriends')) this.credit('heat', () => this.oldFriends());
+    if (this.spoil.on) spoilAfterHurt(this, lost);
     if (p.hp > 0) return;
     if (p.revives > 0) {
       p.revives--;
@@ -1927,7 +1991,7 @@ export class World {
   }
 
   /** Volatile kills explode after the step's projectile pass, so chains never recurse. */
-  private queueBurst(x: number, y: number, r: number, dmg: number, slot = this.dmgSlot): void {
+  queueBurst(x: number, y: number, r: number, dmg: number, slot = this.dmgSlot): void {
     if (this.burstN >= MAX_BURSTS || dmg <= 0) return;
     const b = this.burstN++ * 5;
     this.bursts[b] = x;
@@ -2081,6 +2145,7 @@ export class World {
       this.xpNext = xpToNext(this.level);
       // Stress runs never open the level-up board: it would pause the very thing being measured.
       if (this.stress === 0) this.pendingLevelUps++;
+      if (this.spoil.on) spoilLevelUp(this);
       this.sound('level');
       this.spawnFx(FX_RING, 0, 0, 0, 0, 0.5, 20, 170, 0.9, 0, 0, 0x9fe8ff, LAYER_ADD, 0, 1);
     }
@@ -2088,13 +2153,13 @@ export class World {
 
   // ------------------------------------------------------------ pickups
 
-  addPickup(kind: PickupKind, x: number, y: number, bankai?: string, fragment?: string): void {
+  addPickup(kind: PickupKind, x: number, y: number, bankai?: string, fragment?: string, relic?: string): void {
     if (this.pickups.length >= CAP.pickups) {
       const idx = this.pickups.findIndex((q) => !BIG_PICKUPS.has(q.kind));
       if (idx < 0) return;
       this.pickups.splice(idx, 1);
     }
-    this.pickups.push({ kind, x, y, born: this.t, bankai, fragment });
+    this.pickups.push({ kind, x, y, born: this.t, bankai, fragment, relic });
   }
 
   private updatePickups(): void {
@@ -2134,6 +2199,9 @@ export class World {
         break;
       case 'fragment':
         if (q.fragment) this.grantFragment(q.fragment);
+        break;
+      case 'spoil':
+        if (q.relic) this.takeSpoil(q.relic);
         break;
       case 'heart':
         this.heal(0.3);
@@ -2332,6 +2400,7 @@ export class World {
     }
     if (this.surgeT > 0) this.surgeT -= DT;
     if (this.homonkaT > 0) this.homonkaT -= DT;
+    if (this.spoil.on) spoilTick(this, DT);
     if (this.sealT > 0) {
       this.sealT -= DT;
       if (this.sealT <= 0) {
@@ -2410,6 +2479,10 @@ export class World {
     }
     this.boss.active = false;
     this.boss.final = false;
+    // Sasakibe's teacup: a moment for tea whenever a boss you had not met comes.
+    if (this.bossCount > 0 && this.spoil.on) {
+      for (let i = 0; i < E.n; i++) if (E.flags[i] & FLAG_BOSS && !E.dead[i]) spoilGreet(this, E.uid[i]);
+    }
     if (this.bossCount > 0) {
       for (let i = 0; i < E.n; i++) {
         if (E.flags[i] & FLAG_BOSS) {
@@ -2423,33 +2496,9 @@ export class World {
             B.uid = E.uid[i];
             B.type = E.type[i];
             B.variant = E.variant[i];
-            const def = ENEMY_LIST[E.type[i]];
-            const bankai = BANKAI_IDS[E.variant[i]];
-            if (def.id === 'bearer') {
-              const info = BANKAI_BY_ID.get(bankai);
-              B.name = info && info.thiefLetter ? info.thief : def.name;
-              B.sub = `Sternritter ${info?.thiefLetter ?? ''} · ${POWER_BY_ID.get(bankai)?.name ?? ''}`;
-            } else if (def.id === 'captain') {
-              const info = BANKAI_BY_ID.get(bankai);
-              B.name = info?.owner ?? def.name;
-              B.sub = info?.rank ?? '';
-            } else if (def.id === 'royal') {
-              const info = ROYAL_BY_ID.get(ROYAL_IDS[E.variant[i]]);
-              B.name = info?.name ?? def.name;
-              B.sub = info?.title ?? '';
-            } else if (def.id === 'gotei') {
-              const info = GOTEI_BY_ID.get(GOTEI_IDS[E.variant[i]]);
-              B.name = info?.name ?? def.name;
-              B.sub = info?.title ?? '';
-            } else if (def.id === 'defender') {
-              const info = HERO_BY_ID.get(HERO_IDS[E.variant[i]]);
-              B.name = info?.name ?? def.name;
-              B.sub = info?.title ?? '';
-            } else {
-              const ev = this.stage.events.find((e): e is Extract<TimelineEvent, { kind: 'boss' }> => e.kind === 'boss' && e.enemy === def.id);
-              B.name = def.name;
-              B.sub = ev?.sub ?? '';
-            }
+            const label = this.bossLabel(i);
+            B.name = label.name;
+            B.sub = label.sub;
           }
           break;
         }
@@ -2480,8 +2529,38 @@ export class World {
   choices = 3;
 
   relicChoices(kind: ChestKind): RelicDef[] {
-    const pool = RELICS.filter((r) => !r.locked || this.relicsOpen.has(r.id));
+    const pool = RELICS.filter((r) => (!r.locked || this.relicsOpen.has(r.id)) && this.relicUseful(r.id));
     return rollRelics(pool, new Set(this.relics.map((r) => r.id)), kind, this.rng);
+  }
+
+  /**
+   * Chests only offer what this run can still use: no Founder's Medallion
+   * where no bankai is left to take, no Soul King's Seal where no Fragment
+   * can drop, no Silbern Key where no shrine will come, no Sanrei Glove in a
+   * Boss Rush that will be over before it comes off.
+   */
+  relicUseful(id: string): boolean {
+    switch (id) {
+      case 'founder':
+        return this.bankaiToCome();
+      case 'seal':
+        return this.stage.roster === 'royal' && FRAGMENT_IDS.some((f) => !this.dropped.has(f) && !this.powers.some((ps) => ps.def.id === f));
+      case 'key':
+        return !this.bossRush && (this.endless || this.t < this.stage.length - 40);
+      case 'sanrei':
+        return !this.bossRush || this.t >= 480;
+      default:
+        return true;
+    }
+  }
+
+  /** A bankai this run can still take back: Hueco Mundo's knights, the Seireitei's captains, Zanka no Tachi. */
+  private bankaiToCome(): boolean {
+    if (this.stage.roster) return false;
+    const held = new Set(this.powers.filter((ps) => ps.def.group === 'bankai').map((ps) => ps.def.id));
+    const coming = this.endless ? [...(this.stage.bearerPool ?? BANKAI_IDS)] : [...this.bearers];
+    if (this.stage.captains && !this.zankaStolen) coming.push('zanka');
+    return coming.some((id) => !held.has(id));
   }
 
   private hasRelic(id: string): boolean {
@@ -2854,7 +2933,8 @@ export class World {
     const ids = this.powers.map((ps) => ps.def.id);
     if (adding && !ids.includes(adding)) ids.push(adding);
     const groups = ids.map((id) => POWER_BY_ID.get(id)?.group);
-    return groups.filter((g) => g === 'bankai' || g === 'fragment').length + this.powers.filter((ps) => ps.attr !== null).length;
+    const arrowhead = this.spoil.on && this.spoil.has.has('arrowhead') ? 1 : 0;
+    return groups.filter((g) => g === 'bankai' || g === 'fragment').length + this.powers.filter((ps) => ps.attr !== null).length + arrowhead;
   }
 
   /** A · The Almighty joins your powers, with its own title card. Once per run. */
@@ -2931,7 +3011,33 @@ export class World {
     if (def.special === 'stopclock') this.hasClock = true;
     if (def.special === 'wildsigil') this.hasSigil = true;
     if (def.special === 'sanrei') this.hasSanrei = true;
+    if (def.boss && def.special) gainSpoil(this, def.special);
     this.recomputeStats();
+    // Uryū's arrowhead counts toward The Almighty.
+    if (def.special === 'arrowhead') this.checkEvolution();
+  }
+
+  /** A spoil of war is yours: it works from now on, with its own title card. */
+  takeSpoil(id: string): void {
+    const def = RELIC_BY_ID.get(id);
+    if (!def || !def.boss || this.hasRelic(id)) return;
+    this.addRelic(id);
+    this.banners.push({ kind: 'spoil', title: def.name, sub: def.desc });
+    this.sound('bankai');
+  }
+
+  /** Every boss leaves its own spoil of war; the last one's is yours at once, since the run ends with it. */
+  private dropSpoil(i: number, x: number, y: number): void {
+    const E = this.en;
+    const spoil = SPOIL_BY_BOSS.get(enemyKey(E.type[i], E.variant[i]));
+    if (!spoil || this.stress > 0) return;
+    if (this.hasRelic(spoil.id)) {
+      // Already yours (Endless brings them back, or the Armory sent it with you): a black chest instead.
+      this.addPickup('chestBlack', x - 36, y - 12);
+      return;
+    }
+    if (E.uid[i] === this.finalBossUid && !this.endless) this.takeSpoil(spoil.id);
+    else this.addPickup('spoil', x, y - 36, undefined, undefined, spoil.id);
   }
 
   recomputeStats(): void {
@@ -2946,6 +3052,9 @@ export class World {
     if (this.mods.has('frail')) mods.push({ maxHp: -0.4, regen: 1.5 });
     if (this.mods.has('barren')) mods.push({ xpGain: 0.3 });
     mods.push(...this.pactMods);
+    // Ayon's antler and Kirio's rice: flat health on top.
+    const extraHp = this.spoil.on ? spoilMaxHp(this) : 0;
+    if (extraHp > 0) mods.push({ maxHp: extraHp / BASE_HP });
     const p = this.player;
     const prevMax = p.maxHp;
     const prevCount = this.stats.count;

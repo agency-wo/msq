@@ -1,7 +1,43 @@
 import type { StatMods } from '../game/stats';
+import { SPOILS } from './spoils';
 
 export type Rarity = 'common' | 'rare' | 'legendary';
-export type RelicSpecial = 'stopclock' | 'wildsigil' | 'phoenix' | 'sanrei';
+export type RelicSpecial =
+  | 'stopclock'
+  | 'wildsigil'
+  | 'phoenix'
+  | 'sanrei'
+  // Spoils of war (data/spoils.ts, game/spoils.ts).
+  | 'fearthorn'
+  | 'ironscale'
+  | 'datacore'
+  | 'spark'
+  | 'tally'
+  | 'horn'
+  | 'cerodoble'
+  | 'lagota'
+  | 'scarf'
+  | 'iceflower'
+  | 'stinger'
+  | 'tengen'
+  | 'teacup'
+  | 'balm'
+  | 'ember'
+  | 'eyepatch'
+  | 'vial'
+  | 'mask'
+  | 'tachikaze'
+  | 'haori'
+  | 'spring'
+  | 'riceball'
+  | 'whetstone'
+  | 'robe'
+  | 'brush'
+  | 'taiho'
+  | 'tsukishiro'
+  | 'arrowhead'
+  | 'hogyoku'
+  | 'getsuga';
 
 export interface RelicDef {
   id: string;
@@ -13,6 +49,10 @@ export interface RelicDef {
   special?: RelicSpecial;
   /** Opened by a feat: never in a chest until then. */
   locked?: boolean;
+  /** A spoil of war: the Codex key of the boss that leaves it. Never in a chest. */
+  boss?: string;
+  /** A spoil's own colour (its boss's), in place of its rarity's. */
+  color?: string;
 }
 
 /** Quincy gear: global stats, trade-offs and rule-changers, as in the analysis. */
@@ -88,4 +128,5 @@ export const RELICS: readonly RelicDef[] = [
   { id: 'seal', name: "Soul King's Seal", rarity: 'legendary', icon: 'star', desc: 'Fragments of the Soul King arrive a level higher', locked: true },
 ];
 
-export const RELIC_BY_ID: ReadonlyMap<string, RelicDef> = new Map(RELICS.map((r) => [r.id, r]));
+/** Every relic by id, the spoils of war included (chests and the Armory's shelves use RELICS alone). */
+export const RELIC_BY_ID: ReadonlyMap<string, RelicDef> = new Map([...RELICS, ...SPOILS].map((r) => [r.id, r]));

@@ -228,8 +228,8 @@ function resolveMark(w: World, i: number): void {
       if (dmg > 0) w.hurtPlayer(kind === MK_STING ? dmg * w.sting() : dmg);
       // Unohana's cuts heal her when they wound you.
       if (M.drain[i] > 0 && p.hp < before) w.drainTo(M.owner[i], M.drain[i]);
-      if (flags & (MF_SLOW | MF_FREEZE)) p.slowT = Math.max(p.slowT, 1.5);
-      if (flags & MF_ROOT && w.vollT <= 0) p.rootT = Math.max(p.rootT, 1);
+      if (flags & (MF_SLOW | MF_FREEZE) && !w.steady) p.slowT = Math.max(p.slowT, 1.5);
+      if (flags & MF_ROOT && w.vollT <= 0 && !w.steady) p.rootT = Math.max(p.rootT, 1);
       if (flags & MF_INVERT) w.invert(3);
       if (kind === MK_SILVER) w.silver(8);
     }

@@ -4105,6 +4105,59 @@ const fragment: Draw = (g, w, h) => {
   g.fill();
 };
 
+/**
+ * A spoil of war on the ground: a pointed crest with a laurel and a jewel,
+ * drawn pale so the renderer can tint it in the colour of the boss it came from.
+ */
+const spoilCrest: Draw = (g, w, h) => {
+  const cx = w / 2;
+  const cy = h / 2 + 1;
+  aura(g, cx, cy, w * 0.46, 'rgba(255,255,255,0.3)');
+  const face = g.createLinearGradient(cx, cy - 18, cx, cy + 20);
+  face.addColorStop(0, '#ffffff');
+  face.addColorStop(1, '#c8c8c8');
+  g.fillStyle = face;
+  g.beginPath();
+  g.moveTo(cx - 14, cy - 16);
+  g.quadraticCurveTo(cx, cy - 21, cx + 14, cy - 16);
+  g.lineTo(cx + 13, cy + 2);
+  g.quadraticCurveTo(cx + 10, cy + 14, cx, cy + 20);
+  g.quadraticCurveTo(cx - 10, cy + 14, cx - 13, cy + 2);
+  g.closePath();
+  g.fill();
+  g.strokeStyle = 'rgba(40,40,40,0.75)';
+  g.lineWidth = 1.4;
+  g.stroke();
+  // A laurel down both sides
+  g.strokeStyle = 'rgba(60,60,60,0.65)';
+  g.lineWidth = 1;
+  for (const dir of [-1, 1]) {
+    g.beginPath();
+    g.moveTo(cx + dir * 3, cy + 15);
+    g.quadraticCurveTo(cx + dir * 11, cy + 6, cx + dir * 9, cy - 10);
+    g.stroke();
+    for (let k = 0; k < 4; k++) {
+      const y = cy + 10 - k * 6;
+      const x = cx + dir * (6 + k * 0.9);
+      g.beginPath();
+      g.ellipse(x + dir * 2, y, 2.6, 1.2, dir * -0.7, 0, TAU);
+      g.stroke();
+    }
+  }
+  // The jewel: a four-pointed star
+  g.fillStyle = '#ffffff';
+  g.strokeStyle = 'rgba(40,40,40,0.8)';
+  g.beginPath();
+  for (let k = 0; k < 8; k++) {
+    const a = (k / 8) * TAU - Math.PI / 2;
+    const r = k % 2 === 0 ? 7 : 2.4;
+    g.lineTo(cx + Math.cos(a) * r, cy - 2 + Math.sin(a) * r);
+  }
+  g.closePath();
+  g.fill();
+  g.stroke();
+};
+
 // ------------------------------------------------------------ Tier Harribel
 
 const HARRIBEL_SKIN = '#a8744e';
@@ -6351,6 +6404,7 @@ function specs(): Spec[] {
     { name: 'evo_wings', w: 120, h: 60, draw: evoWings },
     { name: 'shrine', w: 48, h: 64, draw: shrine },
     { name: 'fragment', w: 40, h: 40, draw: fragment },
+    { name: 'spoil', w: 44, h: 48, draw: spoilCrest },
     { name: 'evo_eyes', w: 60, h: 72, draw: evoEyes },
     { name: 'evo_shadow', w: 112, h: 112, draw: evoShadow },
     { name: 'glow', w: 64, h: 64, draw: glow },

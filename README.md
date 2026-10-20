@@ -33,12 +33,29 @@ a portrait and a title. The pause and results screens break down the **damage**
 each power dealt (total, share and damage per second), and **Share** on the
 results turns the run into a picture for the phone's share sheet.
 
-Thirty-two **Feats** give long goals (a hundred thousand kills, every letter
-awakened, Trial V, a Boss Rush under 4:00, all three fragments in one run...),
+Thirty-three **Feats** give long goals (a hundred thousand kills, every letter
+awakened, Trial V, a Boss Rush under 4:00, all three fragments in one run,
+every spoil of war...),
 each paying gold once; some open one of three new looks for the Emperor
 (Wandenreich White, Crimson, Gilded) or a relic that can then turn up in chests
 (Founder's Medallion: bankai arrive at Lv 2; Silbern Key: shrines offer four
-pacts; Soul King's Seal: fragments arrive a level up).
+pacts; Soul King's Seal: fragments arrive a level up). Chests only offer what
+the run can still use: no Founder's Medallion where no bankai is left to take
+(Silbern, the Palace, the Wahrwelt, or once you hold every bankai the run
+could give), the Soul King's Seal only in the Palace while a Fragment can
+still drop, no Silbern Key or Sanrei Glove in a Boss Rush.
+
+Every boss leaves a **spoil of war** of its own when it falls, thirty in all,
+and none of them does what another does: Äs Nödt's Thorn holds everything
+near you with fear when you are hit, Cang Du's Iron Scale hardens you after
+every hit, Neliel's Mask swallows one shot in six and spits it back as a
+Cero, Byakuya's Silver Scarf pays half again as much gold, Suzumebachi's
+Stinger kills outright on the Hōmonka, Kenpachi's Eyepatch is for boss fights,
+Kyōraku's Flowered Haori turns aside one big blow every 30 s, the Hōgyoku
+answers once at a quarter of your health, Zangetsu's Edge throws Getsuga
+Tenshō where you are heading, and so on. A spoil works for the rest of the
+run (the last boss's is yours at once); once won, it stays in the Codex and
+in the Armory, and any run but the Daily Trial can start with it.
 
 New players get a one-line **tip** the first time each system shows up (moving,
 level-ups and awakenings, resonances, chests, shrines, bosses, events, Blut
@@ -46,8 +63,9 @@ Rush, the Emperor's evolutions, fragments, Ichimonji), on the board itself or
 for a few seconds near the bottom. Settings turns them off or brings them back.
 
 The **Codex** fills in as you play: every Schrift with its three awakenings,
-the resonances (with a hint for the ones still hidden), the relics, and every
-enemy and named boss with how many times you have beaten it.
+the resonances (with a hint for the ones still hidden), the relics, the spoils
+of war (each with the portrait of the boss who leaves it), and every enemy and
+named boss with how many times you have beaten it.
 
 Powers can **resonate**: once both are strong enough a Resonance card joins
 the level-up board. Both keep working as before; the resonance ties them
@@ -207,6 +225,7 @@ Add these to the URL: `?debug` (FPS, CPU per frame and entity counts),
 `?stress=1500` (swarm plus every power maxed, no damage), `?god`, `?seed=123`,
 `?t=600` (start at 10:00), `?play` (skip the title), `?give=explode7,xaxis5`
 (own powers at those levels), `?bankai=zanka,tengen` (start with bankai),
+`?spoils=getsuga,haori` (hold those spoils of war),
 `?bearers=raikoben,gonryo` (choose which bankai the bosses carry; in Hueco Mundo that picks the Sternritter),
 `?stage=seireitei` (play a stage even if it is still locked), `?almighty`
 (start with A · The Almighty), `?start=xaxis` (open the run with that Schrift),

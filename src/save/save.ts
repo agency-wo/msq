@@ -263,6 +263,7 @@ export function migrate(raw: unknown): SaveData {
   const start = typeof r.start === 'string' && awakened.includes(r.start) ? r.start : STARTING_POWER;
   const chapters = Array.isArray(r.chapters) ? (r.chapters as unknown[]).filter((id): id is string => typeof id === 'string' && CHAPTER_BY_ID.has(id)) : [];
   const feats = migrateFeats(r);
+  const codex = migrateCodex(r.codex, awakened, taken);
   return {
     v: 1,
     best: { time: num(best.time, 0), level: num(best.level, 0), kills: num(best.kills, 0) },
@@ -298,10 +299,10 @@ export function migrate(raw: unknown): SaveData {
       cleared: bool(obj(r.daily).cleared, false),
     },
     evolution: Math.max(0, Math.min(3, Math.floor(num(r.evolution, 0)))),
-    codex: migrateCodex(r.codex, awakened, taken),
+    codex,
     ...feats,
     tips: Array.isArray(r.tips) ? [...new Set(r.tips.filter((id): id is string => typeof id === 'string' && (TIP_IDS as string[]).includes(id)))] : [],
-    ...migrateArmory(r, feats.relicsOpen),
+    ...migrateArmory(r, feats.relicsOpen, codex.relics),
     ...migrateTrails(r),
   };
 }
@@ -314,15 +315,20 @@ function migrateTrails(r: Record<string, unknown>): Pick<SaveData, 'trails' | 't
   return { trails, trail };
 }
 
-/** The Armory and the Kaiser Gesang: only relics that exist (and are open), a start relic that is in the Armory, a whole number of verses. */
-function migrateArmory(r: Record<string, unknown>, relicsOpen: readonly string[]): Pick<SaveData, 'armory' | 'startRelic' | 'gesang'> {
+/**
+ * The Armory and the Kaiser Gesang: only relics that exist (and are open) and
+ * were bought, a start relic that is in the Armory or a spoil of war already
+ * won, a whole number of verses.
+ */
+function migrateArmory(r: Record<string, unknown>, relicsOpen: readonly string[], found: readonly string[]): Pick<SaveData, 'armory' | 'startRelic' | 'gesang'> {
   const valid = (id: unknown): id is string => {
     if (typeof id !== 'string') return false;
     const relic = RELIC_BY_ID.get(id);
-    return !!relic && (!relic.locked || relicsOpen.includes(id));
+    return !!relic && !relic.boss && (!relic.locked || relicsOpen.includes(id));
   };
   const armory = Array.isArray(r.armory) ? [...new Set(r.armory.filter(valid))] : [];
-  const startRelic = typeof r.startRelic === 'string' && armory.includes(r.startRelic) ? r.startRelic : null;
+  const spoil = (id: string): boolean => !!RELIC_BY_ID.get(id)?.boss && found.includes(id);
+  const startRelic = typeof r.startRelic === 'string' && (armory.includes(r.startRelic) || spoil(r.startRelic)) ? r.startRelic : null;
   const gesang = Math.min(GESANG_VERSES, Math.floor(num(r.gesang, 0)));
   return { armory, startRelic, gesang };
 }

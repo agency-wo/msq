@@ -53,6 +53,7 @@ import {
   EB_ARROW,
 } from './constants';
 import { ayonAI, captainSignature, nelAI, thiefSchrift, unohanaAI } from './signatures';
+import { spoilSwallow } from './spoils';
 import type { World } from './world';
 
 /**
@@ -83,9 +84,14 @@ export function updateEnemyBullets(w: World): void {
     const dy = p.y - B.y[i];
     const rr = B.r[i] + PLAYER.radius;
     if (dx * dx + dy * dy > rr * rr) continue;
+    // Neliel's mask swallows one shot in six and spits it back as a Cero.
+    if (w.spoil.on && p.iframes <= 0 && spoilSwallow(w)) {
+      B.remove(i);
+      continue;
+    }
     w.hurtPlayer(B.dmg[i]);
-    if (B.flags[i] & EBF_SLOW) p.slowT = Math.max(p.slowT, 1.6);
-    if (B.flags[i] & EBF_ROOT && w.vollT <= 0) p.rootT = Math.max(p.rootT, 0.8);
+    if (B.flags[i] & EBF_SLOW && !w.steady) p.slowT = Math.max(p.slowT, 1.6);
+    if (B.flags[i] & EBF_ROOT && w.vollT <= 0 && !w.steady) p.rootT = Math.max(p.rootT, 0.8);
     w.spawnFx(FX_GLOW, B.x[i], B.y[i], 0, 0, 0.2, B.r[i] * 2, B.r[i] * 5, 0.9, 0, 0, BULLET_HIT[B.kind[i]] ?? 0xff4d6a, LAYER_ADD);
     B.remove(i);
   }

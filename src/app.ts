@@ -414,6 +414,8 @@ export class App {
       if (m) this.world.give(m[1], m[2] ? Number(m[2]) : 1);
     }
     for (const id of listParam(p, 'bankai')) this.world.grantBankai(id);
+    // Testing: ?spoils=getsuga,ember holds those spoils of war.
+    for (const id of listParam(p, 'spoils')) this.world.takeSpoil(id.startsWith('spoil-') ? id : `spoil-${id}`);
     for (const id of listParam(p, 'res')) this.world.addResonance(id);
     this.world.banners.length = 0;
     this.ui.hideScreen();

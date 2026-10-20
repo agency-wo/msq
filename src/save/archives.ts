@@ -1,6 +1,7 @@
 import { ARMORY_COST, GESANG_PER, UPGRADE_BY_ID, UPGRADES, verseCost, type UpgradeSpecial } from '../data/archives';
 import { STARTABLE_IDS, STARTING_POWER } from '../data/powers';
 import { RELIC_BY_ID, RELICS, type RelicDef } from '../data/relics';
+import { SPOILS } from '../data/spoils';
 import { scaleMods, type StatMods } from '../game/stats';
 import type { SaveData } from './save';
 
@@ -95,9 +96,14 @@ export function buyArmory(save: SaveData, id: string): boolean {
   return true;
 }
 
-/** Equip a relic from the Armory for every run, or null for none. */
+/** The spoils of war won so far (the Codex remembers them): each can be equipped without buying it. */
+export function wonSpoils(save: SaveData): RelicDef[] {
+  return SPOILS.filter((r) => save.codex.relics.includes(r.id));
+}
+
+/** Equip a relic from the Armory (or a spoil you have won) for every run, or null for none. */
 export function setStartRelic(save: SaveData, id: string | null): boolean {
-  if (id !== null && !save.armory.includes(id)) return false;
+  if (id !== null && !save.armory.includes(id) && !wonSpoils(save).some((r) => r.id === id)) return false;
   save.startRelic = id;
   return true;
 }

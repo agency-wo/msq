@@ -1,6 +1,7 @@
 import { CODEX_ENEMIES } from '../data/codex';
 import { POWERS, STARTABLE_IDS } from '../data/powers';
 import { RELICS } from '../data/relics';
+import { SPOILS } from '../data/spoils';
 import { RESONANCES } from '../data/resonances';
 import { STAGE_IDS, type StageId } from '../data/stages';
 import type { SaveData } from './save';
@@ -63,12 +64,13 @@ export function codexFound(s: SaveData): number {
     POWERS.filter((d) => c.powers.includes(d.id)).length +
     RESONANCES.filter((r) => c.resonances.includes(r.id)).length +
     RELICS.filter((r) => c.relics.includes(r.id)).length +
+    SPOILS.filter((r) => c.relics.includes(r.id)).length +
     CODEX_ENEMIES.filter((e) => (c.kills[e.key] ?? 0) > 0).length
   );
 }
 
 export function codexTotal(): number {
-  return POWERS.length + RESONANCES.length + RELICS.length + CODEX_ENEMIES.length;
+  return POWERS.length + RESONANCES.length + RELICS.length + SPOILS.length + CODEX_ENEMIES.length;
 }
 
 const highestTrial = (s: SaveData): number => Math.max(...STAGE_IDS.map((id) => (s.stages[id].cleared ? s.stages[id].clearTrial : -1)));
@@ -84,6 +86,15 @@ export const FEATS: readonly FeatDef[] = [
   { id: 'awaken-all', name: 'Every Letter', desc: 'Awaken every attack at least once.', group: 'Journey', goal: STARTABLE_IDS.length, gold: 600, save: (s) => s.awakened.length },
   { id: 'codex-half', name: 'Half the Book', desc: 'Discover half of the Codex.', group: 'Journey', goal: Math.floor(codexTotal() / 2), gold: 300, save: codexFound },
   { id: 'codex-all', name: 'The Whole Story', desc: 'Discover everything in the Codex.', group: 'Journey', goal: codexTotal(), gold: 1000, save: codexFound },
+  {
+    id: 'spoils-all',
+    name: 'Spoils of Every War',
+    desc: 'Win the spoil of every boss.',
+    group: 'Journey',
+    goal: SPOILS.length,
+    gold: 800,
+    save: (s) => SPOILS.filter((r) => s.codex.relics.includes(r.id)).length,
+  },
   { id: 'clear-hueco', name: 'Lord of the Desert', desc: 'Clear Hueco Mundo.', group: 'Stages', goal: 1, gold: 150, save: (s) => yes(s.stages.hueco.cleared) },
   { id: 'clear-seireitei', name: 'Ash on the Wind', desc: 'Clear the Seireitei.', group: 'Stages', goal: 1, gold: 300, save: (s) => yes(s.stages.seireitei.cleared) },
   { id: 'clear-silbern', name: 'The Silver City', desc: 'Clear Silbern.', group: 'Stages', goal: 1, gold: 500, save: (s) => yes(s.stages.silbern.cleared) },
