@@ -147,6 +147,78 @@ const log = (step, data = {}) => {
   console.log(step, JSON.stringify(data));
 };
 
+/**
+ * Runs in the page: whatever sticks out past the sides of the screen (outside
+ * a strip that scrolls sideways on purpose), and any label cut short.
+ */
+function overflowProbe() {
+  const out = [];
+  const s = document.querySelector('.screen');
+  const doc = document.documentElement;
+  if (doc.scrollWidth > window.innerWidth + 1) out.push(`page is ${doc.scrollWidth}px wide`);
+  if (!s) return out;
+  if (s.scrollWidth > s.clientWidth + 1) out.push(`screen scrolls sideways: ${s.scrollWidth} > ${s.clientWidth}`);
+  const edge = s.getBoundingClientRect();
+  const inScroller = (e) => {
+    for (let q = e.parentElement; q && q !== s; q = q.parentElement) {
+      const o = getComputedStyle(q).overflowX;
+      if (o === 'auto' || o === 'scroll' || o === 'hidden') return true;
+    }
+    return false;
+  };
+  const name = (e) => `${e.tagName.toLowerCase()}.${String(e.className).trim().split(/\s+/).join('.')}`;
+  for (const e of s.querySelectorAll('*')) {
+    const r = e.getBoundingClientRect();
+    if (r.width === 0 || r.height === 0) continue;
+    if ((r.right > edge.right + 1 || r.left < edge.left - 1) && !inScroller(e)) out.push(`${name(e)} spans ${Math.round(r.left)}..${Math.round(r.right)}`);
+  }
+  for (const e of s.querySelectorAll('.nav-label, .mode-opt, .codex-tab, .stage-sub, .daily-status, .upgrade-buy, .topbar-gold, .topbar-feats, .mode-label, .card-badge')) {
+    if (e.clientWidth > 0 && e.scrollWidth > e.clientWidth + 1) out.push(`cut ${name(e)}: "${e.textContent}"`);
+  }
+  for (const e of s.querySelectorAll('.stage-name')) {
+    if (e.clientHeight > 0 && e.scrollHeight > e.clientHeight + 1) out.push(`cut ${name(e)}: "${e.textContent}"`);
+  }
+  // The chosen tab of a track that scrolls must be in view.
+  for (const on of s.querySelectorAll('.codex-tab.on')) {
+    const a = on.getBoundingClientRect();
+    const r = on.parentElement.getBoundingClientRect();
+    if (a.left < r.left - 1 || a.right > r.right + 1) out.push(`${name(on)} "${on.textContent}" is scrolled out of view`);
+  }
+  return out.slice(0, 12);
+}
+
+/** A save well into the game, so every menu has plenty in it: all seven stages, some cleared. */
+const NARROW_SAVE = {
+  stage: 'hueco',
+  stages: {
+    hueco: { best: 1210, cleared: true },
+    seireitei: { best: 1210, cleared: true },
+    lasnoches: { best: 640, cleared: false },
+    palace: { best: 1210, cleared: true },
+    silbern: { best: 300, cleared: false },
+    wahrwelt: { best: 1210, cleared: true },
+    karakura: { best: 0, cleared: false },
+  },
+  taken: ['senbonzakura', 'hyorinmaru', 'zanka', 'tengen'],
+  gold: 12345,
+  meta: { arterie: 2, reroll: 1, size: 1 },
+  armory: ['crown'],
+  startRelic: 'crown',
+  gesang: 12,
+  awakened: ['xaxis', 'explode', 'fear'],
+  evolution: 2,
+  feats: ['kills-1k', 'clear-hueco', 'clear-palace'],
+  featBest: { 'level-100': 64, 'bankai-run': 2 },
+  looks: ['default', 'white'],
+  look: 'white',
+  codex: {
+    powers: ['heilig', 'xaxis', 'explode', 'fear', 'heat', 'wind', 'iron', 'senbonzakura', 'hyorinmaru', 'zanka', 'tengen'],
+    relics: ['crown', 'tube', 'sandals', 'spoil-haori', 'spoil-getsuga', 'spoil-eyepatch'],
+    resonances: ['firestorm'],
+    kills: { hollow: 420, hound: 80, brute: 30, volatile: 12, 'bearer:zanka': 2, 'bearer:tengen': 1, ayon: 1, nel: 1, rift: 2 },
+  },
+};
+
 try {
   // 1. Title screen, with the iPhone install hint.
   await page.goto(`${BASE}?debug&seed=7`);
@@ -333,6 +405,7 @@ try {
   await wait(250);
   log('modes', { label: await page.textContent('.mode-label'), endless: await page.isVisible('.mode-endless.on'), info: await page.textContent('.stage-info') });
   await shot('09a-modes');
+  for (const b of await page.evaluate(overflowProbe)) problems.push(`[390px modes] ${b}`);
   await page.tap('.mode-rush');
   await wait(250);
   log('rush mode', { on: await page.isVisible('.mode-rush.on'), info: await page.textContent('.stage-info') });
@@ -874,6 +947,113 @@ try {
   }
   log('stress palace', { samples: palSamples.map((s) => `${s.state} ${s.fps}fps cpu${s.cpu}ms ${s.enemies}e ${s.sprites}spr`) });
   await shot('13b-stress-palace');
+
+  // 12. Narrow phones (an SE, a mini, Display Zoom): every menu, a board, the pause screen and the
+  // results must fit at 320 and 375 points wide, with nothing pushed off the side or cut short.
+  for (const [vw, vh] of [
+    [320, 640],
+    [375, 667],
+  ]) {
+    const narrow = await browser.newContext({ viewport: { width: vw, height: vh }, deviceScaleFactor: 2, isMobile: true, hasTouch: true, userAgent: IPHONE_UA });
+    await narrow.addInitScript(() => {
+      window.__csp = [];
+      document.addEventListener('securitypolicyviolation', (e) => window.__csp.push(`${e.violatedDirective} -> ${e.blockedURI}`));
+    });
+    await narrow.addInitScript((s) => {
+      if (!localStorage.getItem('msq.save')) localStorage.setItem('msq.save', s);
+    }, JSON.stringify(NARROW_SAVE));
+    const np = await narrow.newPage();
+    np.on('console', (m) => {
+      if (m.type() === 'error') problems.push(`[${vw}px console.error] ${m.text()}`);
+    });
+    np.on('pageerror', (e) => problems.push(`[${vw}px pageerror] ${e.message}`));
+    const fit = {};
+    const check = async (name) => {
+      await np.waitForTimeout(300);
+      const bad = await np.evaluate(overflowProbe);
+      fit[name] = bad.length > 0 ? bad : 'ok';
+      for (const b of bad) problems.push(`[${vw}px ${name}] ${b}`);
+      await np.screenshot({ path: join(OUT, `20-${vw}-${name}.png`) });
+    };
+    const home = async (sel) => {
+      await np.tap(sel);
+      await np.waitForSelector('.screen.title .btn.primary');
+      await np.waitForTimeout(250);
+    };
+    await np.goto(`${BASE}?debug&seed=3`);
+    await np.waitForSelector('.screen.title .btn.primary');
+    await check('title');
+    await np.$eval('.stage-row', (r) => (r.scrollLeft = r.scrollWidth));
+    await check('title-strip-end');
+    await np.evaluate(() => document.querySelector('.screen')?.scrollTo(0, 1e6));
+    await check('title-bottom');
+
+    await np.tap('.archives-btn');
+    await np.waitForSelector('.screen.archives .upgrade');
+    await check('archives');
+    await np.tap('.archives-tab.tab-armory');
+    await np.waitForSelector('.screen.archives .armory-row');
+    await check('armory');
+    await np.tap('.archives-tab.tab-gesang');
+    await np.waitForSelector('.screen.archives .gesang');
+    await check('gesang');
+    await home('.screen.archives .btn.primary');
+
+    await np.tap('.codex-btn');
+    await np.waitForSelector('.screen.codex .codex-entry');
+    const tabs = await np.$$eval('.codex-tab', (t) => t.length);
+    for (let k = 1; k <= tabs; k++) {
+      await np.tap(`.codex-tab:nth-child(${k})`);
+      await check(`codex-${k}`);
+    }
+    await home('.screen.codex .btn.primary');
+
+    await np.tap('.feats-btn');
+    await np.waitForSelector('.screen.feats .feat');
+    await check('feats');
+    await home('.screen.feats .btn.primary');
+    await np.tap('.chronicle-btn');
+    await np.waitForSelector('.screen.chronicle .chapter');
+    await check('chronicle');
+    await home('.screen.chronicle .btn.primary');
+    await np.tap('.settings-btn');
+    await np.waitForSelector('.screen.settings .toggle');
+    await check('settings');
+    await home('.screen.settings .btn.primary');
+    await np.tap('.hero-btn');
+    await np.waitForSelector('.screen.wardrobe .look-chip');
+    await check('wardrobe');
+    await home('.screen.wardrobe .btn.primary');
+    await np.tap('.daily-btn');
+    await np.waitForSelector('.screen.daily .btn.primary');
+    await check('daily');
+
+    // In a run: an Auswählen board, the pause screen, then the results.
+    await np.goto(`${BASE}?debug&seed=3&play&god`);
+    await np.waitForFunction(() => window.__msq?.state === 'playing');
+    await np.waitForTimeout(1500);
+    await np.screenshot({ path: join(OUT, `20-${vw}-hud.png`) });
+    await np.evaluate(() => {
+      window.__msq.world.pendingLevelUps = 1;
+    });
+    await np.waitForFunction(() => window.__msq?.state === 'levelup');
+    await np.waitForTimeout(450);
+    await check('levelup');
+    await np.evaluate(() => window.__msq.pick(0));
+    await np.waitForFunction(() => window.__msq?.state === 'playing');
+    await np.tap('.icon-btn');
+    await np.waitForSelector('.screen.pause .btn.danger');
+    await check('pause');
+    await np.waitForTimeout(250);
+    await np.tap('.screen.pause .btn.danger');
+    await np.waitForSelector('.screen.results');
+    await np.waitForTimeout(800);
+    await check('results');
+    const csp = await np.evaluate(() => window.__csp);
+    for (const v of csp) problems.push(`[${vw}px csp] ${v}`);
+    log(`narrow ${vw}`, fit);
+    await narrow.close();
+  }
 
   // 11. Offline: the service worker serves the whole game with the network off.
   await page.goto(`${BASE}?debug`);

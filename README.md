@@ -233,7 +233,7 @@ npm run dev          # http://localhost:5173 (add --host to open it from your ph
 npm run typecheck
 npm test
 npm run build        # static site in dist/
-npm run smoke        # after a build: plays it in headless Edge under the studio's CSP, screenshots to .smoke/
+npm run smoke        # after a build: plays it in headless Edge under the studio's CSP, checks every menu fits at 320, 375 and 390 points wide, screenshots to .smoke/
 npm run icons        # redraws public/icons
 ```
 
@@ -263,7 +263,7 @@ Add `META=max` to the balance report for a player with every upgrade.
 - `src/game/` is the whole simulation in plain TypeScript with no rendering, so it runs headless in tests.
 - `src/data/` holds the content tables: powers with their Lv 7 attributes, passives, relics, enemies and the stages (spawn mixes, events, difficulty). New content goes here.
 - `src/render/` draws with PixiJS particle containers from one texture atlas generated in code at startup.
-- `src/ui/` is plain DOM with an external stylesheet.
+- `src/ui/` is plain DOM with an external stylesheet, laid out to fit any phone from 320 points wide; each row's colour reaches CSS through custom properties.
 - No inline scripts or styles and no `eval`, so it runs under the strict Content-Security-Policy that minarankstudio.com sends.
 - A service worker generated at build time precaches every file for offline play.
 

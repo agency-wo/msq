@@ -86,6 +86,23 @@ function button(cls: string, text: string): HTMLButtonElement {
   return b;
 }
 
+/** Scroll a sideways strip so `item` sits in its middle, when the strip scrolls at all. */
+function centerIn(strip: HTMLElement, item: HTMLElement | null): void {
+  if (!item || strip.scrollWidth <= strip.clientWidth) return;
+  const a = item.getBoundingClientRect();
+  const r = strip.getBoundingClientRect();
+  strip.scrollLeft += a.left - r.left - (r.width - a.width) / 2;
+}
+
+/** A row's own colour, plus a faint wash of it behind the panel and its icon tile. */
+function setAccent(e: HTMLElement, color: string): void {
+  e.style.setProperty('--accent', color);
+  const m = /^#([0-9a-f]{6})$/i.exec(color);
+  if (!m) return;
+  const n = parseInt(m[1], 16);
+  e.style.setProperty('--accent-soft', `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, 0.16)`);
+}
+
 const RARITY_COLOR: Readonly<Record<Rarity, string>> = { common: '#d8d2c4', rare: '#7cc4ff', legendary: '#ffcb5c' };
 
 /** The Archives' tabs. */
@@ -588,7 +605,7 @@ export class UI {
    * each purchase without the tap lock, so buying several in a row feels instant.
    */
   showArchives(save: SaveData, h: ArchivesHandlers, relock = true, tab: ArchivesTab = 'training'): void {
-    const p = this.open('archives');
+    const p = this.open('archives', !relock);
     p.append(el('div', 'board-kicker', 'Wandenreich'), el('h2', 'board-title', 'Archives'));
     const balance = el('p', 'gold-line');
     const coin = el('canvas', 'gold-icon');
@@ -623,7 +640,7 @@ export class UI {
       const max = u.costs.length;
       const cost = nextCost(save, u.id);
       const row = el('div', 'upgrade');
-      row.style.setProperty('--accent', u.color);
+      setAccent(row, u.color);
       const icon = el('canvas', 'upgrade-icon');
       drawIcon(icon, u.icon, u.color);
       const body = el('div', 'upgrade-body');
@@ -677,7 +694,7 @@ export class UI {
       const on = save.startRelic === r.id;
       const color = RARITY_COLOR[r.rarity];
       const row = el('div', `upgrade armory-row${on ? ' on' : ''}`);
-      row.style.setProperty('--accent', color);
+      setAccent(row, color);
       const icon = el('canvas', 'upgrade-icon');
       drawIcon(icon, r.icon, color);
       const body = el('div', 'upgrade-body');
@@ -715,7 +732,7 @@ export class UI {
       const on = save.startRelic === r.id;
       const from = spoilBoss(r);
       const row = el('div', `upgrade armory-row spoil-row${on ? ' on' : ''}`);
-      row.style.setProperty('--accent', relicColor(r));
+      setAccent(row, relicColor(r));
       const icon = el('canvas', 'upgrade-icon');
       if (!from.sprite || !drawSprite(icon, from.sprite, 40)) drawIcon(icon, r.icon, relicColor(r));
       const body = el('div', 'upgrade-body');
@@ -938,7 +955,7 @@ export class UI {
     const sum = rows.reduce((s, r) => s + r.total, 0);
     for (const r of rows.slice(0, 10)) {
       const row = el('div', 'dmg-row');
-      row.style.setProperty('--accent', r.color);
+      setAccent(row, r.color);
       const icon = el('canvas', 'dmg-icon');
       drawIcon(icon, r.icon, r.color, r.letter);
       const body = el('div', 'dmg-body');
@@ -1086,7 +1103,7 @@ export class UI {
           const won = c.relics.includes(r.id);
           const from = spoilBoss(r);
           const row = el('div', `codex-entry spoil${won ? '' : ' locked'}`);
-          row.style.setProperty('--accent', relicColor(r));
+          setAccent(row, relicColor(r));
           const portrait = el('canvas', 'codex-portrait');
           if (from.sprite) drawSprite(portrait, from.sprite, 44);
           const body = el('div', 'codex-body');
@@ -1101,7 +1118,7 @@ export class UI {
         list.append(el('h3', 'section-title', title));
         for (const e of CODEX_ENEMIES.filter((x) => x.section === section)) {
           const kills = c.kills[e.key] ?? 0;
-          const row = el('div', `codex-entry${kills > 0 ? '' : ' locked'}${e.boss ? ' boss' : ''}`);
+          const row = el('div', `codex-entry ${e.boss ? 'boss' : 'enemy'}${kills > 0 ? '' : ' locked'}`);
           const portrait = el('canvas', 'codex-portrait');
           drawSprite(portrait, enemySpriteName(e.type, e.variant), 44);
           const body = el('div', 'codex-body');
@@ -1114,12 +1131,15 @@ export class UI {
     const back = button('btn primary', 'Back');
     back.addEventListener('click', this.guard(h.onBack));
     p.append(tabs, list, back);
+    // Five tabs are more than most phones fit side by side: keep the chosen one in view.
+    requestAnimationFrame(() => centerIn(tabs, tabs.querySelector<HTMLElement>('.codex-tab.on')));
     this.lock(150);
   }
 
   /** One Codex line: an icon, a name (or ? ? ? while unknown), a small line above the text. */
   private codexEntry(icon: string, color: string, name: string | null, text: string, letter?: string, sub?: string): HTMLElement {
     const row = el('div', `codex-entry${name === null ? ' locked' : ''}`);
+    if (name !== null) setAccent(row, color);
     const c = el('canvas', 'codex-icon');
     drawIcon(c, icon, color, letter);
     const body = el('div', 'codex-body');
@@ -1146,7 +1166,7 @@ export class UI {
     },
     relock = true,
   ): void {
-    const p = this.open('wardrobe');
+    const p = this.open('wardrobe', !relock);
     p.append(el('div', 'board-kicker', 'The Emperor’s'), el('h2', 'board-title', 'Wardrobe'));
     const balance = el('p', 'gold-line');
     const coin = el('canvas', 'gold-icon');
@@ -1209,7 +1229,7 @@ export class UI {
    * the best single run), grouped. The looks they open are worn from the Wardrobe.
    */
   showFeats(save: SaveData, h: { onWardrobe: () => void; onBack: () => void }, relock = true): void {
-    const p = this.open('feats');
+    const p = this.open('feats', !relock);
     const toWardrobe = button('btn small feats-wardrobe', 'Looks: open the Wardrobe');
     toWardrobe.addEventListener('click', this.guard(h.onWardrobe));
     p.append(
@@ -1322,15 +1342,18 @@ export class UI {
 
   /**
    * One painted card per stage; locked ones say what opens them. Under a
-   * cleared stage, Standard or Endless and the trial stepper. The line
-   * underneath describes the pick.
+   * cleared stage, Standard, Endless or Boss Rush. The card underneath names
+   * the pick, with the trial stepper beside the name, and describes it.
    */
   private stagePicker(save: SaveData, onStage: (id: StageId) => void, onMode: () => void): HTMLElement {
     const box = el('div', 'stages');
-    const row = el('div', `stage-row n${STAGES.length}`);
+    const row = el('div', `stage-row n${STAGES.length}${STAGES.length > 3 ? ' strip' : ''}`);
     row.setAttribute('role', 'radiogroup');
     row.setAttribute('aria-label', 'Stage');
-    const info = el('p', 'stage-info');
+    const info = el('div', 'stage-info');
+    const infoHead = el('div', 'stage-info-head');
+    const infoName = el('strong', 'stage-info-name', '');
+    const infoText = el('p', 'stage-info-text', '');
     const buttons: HTMLButtonElement[] = [];
     const modes = el('div', 'mode-row');
     const seg = el('div', 'mode-seg');
@@ -1348,7 +1371,9 @@ export class UI {
     const next = button('mode-step mode-next', '›');
     next.setAttribute('aria-label', 'Harder trial');
     trialBox.append(prev, label, next);
-    modes.append(seg, trialBox);
+    modes.append(seg);
+    infoHead.append(infoName, trialBox);
+    info.append(infoHead, infoText);
     let current: StageId = 'hueco';
     const select = (id: StageId): void => {
       current = id;
@@ -1364,6 +1389,7 @@ export class UI {
       const isRush = save.rush && rushOpen(save, id);
       const isEndless = !isRush && save.endless && endlessOpen(save, id);
       modes.classList.toggle('hidden', !rec.cleared);
+      trialBox.classList.toggle('hidden', !rec.cleared);
       label.textContent = TRIAL_NAMES[trial];
       prev.disabled = trial <= 0;
       next.disabled = trial >= open || trial >= MAX_TRIAL;
@@ -1381,7 +1407,8 @@ export class UI {
       ]
         .filter(Boolean)
         .join(' ');
-      info.textContent = extra ? extra : `${def.blurb}${best}`;
+      infoName.textContent = def.name;
+      infoText.textContent = extra ? extra : `${def.blurb}${best}`;
     };
     prev.addEventListener('click', () => {
       save.trial = Math.max(0, Math.min(save.trial, trialsOpen(save, current)) - 1);
@@ -1408,7 +1435,7 @@ export class UI {
     for (const def of STAGES) {
       const open = stageUnlocked(save, def.id);
       const rec = save.stages[def.id];
-      const b = button(`stage-btn${open ? '' : ' locked'}`, '');
+      const b = button(`stage-btn${open ? (rec.cleared ? ' cleared' : '') : ' locked'}`, '');
       b.setAttribute('role', 'radio');
       const vista = el('canvas', 'stage-vista');
       drawVista(vista, def.id);
@@ -1446,10 +1473,12 @@ export class UI {
     return box;
   }
 
-  private open(cls: string): HTMLElement {
+  private open(cls: string, keepScroll = false): HTMLElement {
     this.screen.replaceChildren();
     // "scroll" exempts the screen from the page-wide touchmove block, so tall screens can scroll on iOS.
     this.screen.className = `screen scroll ${cls}`;
+    // The screen element is reused: a new screen opens at its top, one redrawn after a purchase keeps the player's place.
+    if (!keepScroll) this.screen.scrollTop = 0;
     const panel = el('div', 'panel');
     this.screen.append(panel);
     return panel;
@@ -1471,7 +1500,7 @@ export class UI {
 
   private card(spec: CardSpec, onPick: () => void): HTMLButtonElement {
     const b = button(`card${spec.tone ? ` tone-${spec.tone}` : ''}`, '');
-    b.style.setProperty('--accent', spec.color);
+    setAccent(b, spec.color);
     const icon = el('canvas', 'card-icon');
     drawIcon(icon, spec.icon, spec.color, spec.letter);
     const body = el('div', 'card-body');
