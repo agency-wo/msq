@@ -32,7 +32,12 @@ export type EnemyId =
   | 'jizo'
   | 'defender'
   | 'ichigo'
-  | 'mirage';
+  | 'mirage'
+  | 'numeros'
+  | 'exequias'
+  | 'gillian'
+  | 'arrancar'
+  | 'grimmjow';
 
 /**
  * chase: walks at you · blink: walks, and every few seconds flash-steps closer ·
@@ -134,6 +139,14 @@ export const ENEMY_LIST: readonly EnemyDef[] = [
   { id: 'ichigo', name: 'Ichigo Kurosaki', hp: 2600, speed: 52, radius: 31, damage: 40, xp: 200, behavior: 'chase', boss: true, shinigami: true, color: 0xff6a3c },
   // Kyōka Suigetsu's copies of Aizen: gone at a touch, and worth nothing.
   { id: 'mirage', name: 'Kyōka Suigetsu', hp: 1, speed: 48, radius: 28, damage: 8, xp: 0, behavior: 'chase', shinigami: true, color: 0xb89aff },
+  // Las Noches. Its soldiers are original designs; the Arrancar who lead them, and Grimmjow, are homages.
+  { id: 'numeros', name: 'Arrancar Soldier', hp: 13, speed: 54, radius: 11, damage: 9, xp: 1, behavior: 'chase', color: 0xe8e6de },
+  { id: 'exequias', name: 'Exequias Executioner', hp: 16, speed: 42, radius: 11, damage: 8, xp: 2, behavior: 'ranged', color: 0xd8d0b8 },
+  // The lowest of the Menos Grande, lumbering through the halls with a Cero ready.
+  { id: 'gillian', name: 'Menos Grande', hp: 110, speed: 24, radius: 24, damage: 16, xp: 6, behavior: 'ranged', color: 0x2c2238 },
+  // Las Noches' defenders (variant = which of them, see data/arrancar.ts) and Grimmjow, who ends the stage.
+  { id: 'arrancar', name: 'Arrancar', hp: 2600, speed: 48, radius: 30, damage: 27, xp: 75, behavior: 'chase', boss: true, color: 0xe8e6de },
+  { id: 'grimmjow', name: 'Grimmjow Jaegerjaquez', hp: 2600, speed: 56, radius: 31, damage: 38, xp: 190, behavior: 'chase', boss: true, color: 0x59b8ff },
 ];
 
 export const ENEMY_INDEX: Readonly<Record<EnemyId, number>> = {
@@ -171,4 +184,9 @@ export const ENEMY_INDEX: Readonly<Record<EnemyId, number>> = {
   defender: 31,
   ichigo: 32,
   mirage: 33,
+  numeros: 34,
+  exequias: 35,
+  gillian: 36,
+  arrancar: 37,
+  grimmjow: 38,
 };

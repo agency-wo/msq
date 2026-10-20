@@ -2,6 +2,7 @@ import { BANKAI_IDS } from '../data/bankai';
 import { ENEMY_LIST } from '../data/enemies';
 import { GOTEI_IDS } from '../data/gotei';
 import { HERO_IDS } from '../data/heroes';
+import { ARRANCAR_IDS } from '../data/arrancar';
 import { ROYAL_IDS } from '../data/royal';
 
 /** Enemies drawn with another enemy's sprite. */
@@ -27,6 +28,7 @@ export function enemySpriteName(type: number, variant = 0): string {
   }
   if (id === 'gotei') return `gotei_${GOTEI_IDS[variant] ?? 'kenpachi'}`;
   if (id === 'defender') return `heroes_${HERO_IDS[variant] ?? 'renji'}`;
+  if (id === 'arrancar') return `arrancar_${ARRANCAR_IDS[variant] ?? 'rudbornn'}`;
   return SPRITE_NAME[id] ?? id;
 }
 
@@ -43,6 +45,8 @@ export function bossSpriteName(type: number, variant: number, phase: number): st
   if (id === 'ayon') return 'ayon_rage';
   if (id === 'nel') return 'nel_gamuza';
   if (id === 'unohana') return 'unohana_kenpachi';
+  if (id === 'arrancar') return `${base}_late`;
+  if (id === 'grimmjow') return 'grimmjow_pantera';
   if (id === 'harribel') return 'harribel_tiburon';
   if (id === 'royal' && base === 'royal_kirio') return 'royal_kirio_slim';
   return base;

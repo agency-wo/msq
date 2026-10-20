@@ -37,7 +37,12 @@ export type RelicSpecial =
   | 'tsukishiro'
   | 'arrowhead'
   | 'hogyoku'
-  | 'getsuga';
+  | 'getsuga'
+  | 'calavera'
+  | 'giralda'
+  | 'golondrina'
+  | 'dragra'
+  | 'pantera';
 
 export interface RelicDef {
   id: string;

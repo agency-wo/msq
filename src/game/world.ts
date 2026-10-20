@@ -13,6 +13,7 @@ import { SPOIL_BY_BOSS } from '../data/spoils';
 import { PACT_BY_ID, PACTS, type PactDef } from '../data/shrines';
 import { GOTEI_BY_ID, GOTEI_IDS } from '../data/gotei';
 import { HERO_BY_ID, HERO_IDS } from '../data/heroes';
+import { ARRANCAR_BY_ID, ARRANCAR_IDS } from '../data/arrancar';
 import { ROYAL_BY_ID, ROYAL_IDS } from '../data/royal';
 import { RESONANCE_BY_ID, RESONANCES, resonanceParts } from '../data/resonances';
 import { BOSS_LINES } from '../data/story';
@@ -84,6 +85,7 @@ import {
 import { blinkAI, bossAI, casterAI, chargeAI, COMMANDER_HEAT, eliteAI, eventAI, HARRIBEL_RELEASED, ICHIGO_MASKED, updateEnemyBullets } from './hostile';
 import { generateOffers, rollRelics, type ChestKind, type Offer } from './offers';
 import { AYON_RAGE, NEL_RELEASED, OVERKILL_MAX } from './signatures';
+import { GRIMMJOW_RELEASED } from './lasnoches';
 import {
   gainSpoil,
   SpoilState,
@@ -239,6 +241,7 @@ const RUNNERS: Readonly<Record<string, { title: string; sub: string }>> = {
   silbern: { title: 'Ganju Shiba', sub: 'He and Bonnie are making off with the fireworks. Catch them.' },
   palace: { title: 'Kon', sub: 'A runaway mod soul, its pockets full. Catch it.' },
   wahrwelt: { title: 'Kon', sub: 'A runaway mod soul, its pockets full. Catch it.' },
+  lasnoches: { title: 'Pesche and Dondochakka', sub: 'Nel’s brothers are making off with the palace’s silver. Catch them.' },
 };
 
 /** Boss Rush: each wave's health against a full run's, wave by wave (you meet them with far fewer levels). */
@@ -793,7 +796,7 @@ export class World {
 
   /** Start one run event now. */
   startEvent(kind: 'rift' | 'golden' | 'storm' | 'ambush' | 'shrine'): void {
-    const hollowWorld = this.stage.id === 'hueco';
+    const hollowWorld = this.stage.id === 'hueco' || this.stage.id === 'lasnoches';
     const p = this.player;
     if (kind === 'rift') {
       const a = this.rng.next() * TAU;
@@ -821,7 +824,7 @@ export class World {
       this.addPickup('shrine', p.x + Math.cos(a) * 210, p.y + Math.sin(a) * 210);
       this.banners.push({ kind: 'event', title: 'Quincy Shrine', sub: 'Walk to it and make a pact, or pass it by.' });
     } else {
-      const heavy = ENEMY_INDEX[this.stage.id === 'hueco' ? 'brute' : this.stage.id === 'palace' ? 'sentinel' : 'guard'];
+      const heavy = ENEMY_INDEX[this.stage.id === 'hueco' ? 'brute' : this.stage.id === 'palace' ? 'sentinel' : this.stage.id === 'lasnoches' ? 'gillian' : 'guard'];
       this.spawnEnemy(heavy, p.x - 230, p.y, true);
       this.spawnEnemy(heavy, p.x + 230, p.y, true);
       for (let k = 0; k < 24; k++) {
@@ -839,6 +842,7 @@ export class World {
     if (this.stage.roster === 'royal') return this.spawnRoyal(id, hpMul);
     if (this.stage.roster === 'gotei') return this.spawnGotei(id, hpMul);
     if (this.stage.roster === 'heroes') return this.spawnDefender(id, hpMul);
+    if (this.stage.roster === 'arrancar') return this.spawnArrancar(id, hpMul);
     const captain = !!this.stage.captains;
     const i = this.spawnEnemy(captain ? ENEMY_INDEX.captain : ENEMY_INDEX.bearer, this.tx, this.ty, false, hpMul);
     if (i < 0) return -1;
@@ -862,6 +866,7 @@ export class World {
     if (roster === 'royal') return (id && ROYAL_BY_ID.get(id)?.warn) || 'A guardian of the palace approaches';
     if (roster === 'gotei') return (id && GOTEI_BY_ID.get(id)?.warn) || 'A captain approaches';
     if (roster === 'heroes') return (id && HERO_BY_ID.get(id)?.warn) || 'Someone climbs up to meet you';
+    if (roster === 'arrancar') return (id && ARRANCAR_BY_ID.get(id)?.warn) || 'An Arrancar comes down the hall';
     const info = id ? BANKAI_BY_ID.get(id) : undefined;
     if (this.stage.captains) return info?.ownerWarn || 'A captain approaches';
     return info?.thiefWarn || 'A Sternritter approaches';
@@ -872,6 +877,7 @@ export class World {
     if (this.stage.roster === 'royal') return ROYAL_IDS;
     if (this.stage.roster === 'gotei') return GOTEI_IDS;
     if (this.stage.roster === 'heroes') return HERO_IDS;
+    if (this.stage.roster === 'arrancar') return ARRANCAR_IDS;
     return BANKAI_IDS;
   }
 
@@ -883,6 +889,18 @@ export class World {
     this.bossCount++;
     const info = GOTEI_BY_ID.get(id);
     this.banners.push({ kind: 'boss', title: info?.name ?? 'Captain', sub: info?.title ?? '', quote: BOSS_LINES[`gotei:${id}`] });
+    this.shake = Math.max(this.shake, 8);
+    return i;
+  }
+
+  /** One of Las Noches' Arrancar comes down the hall to meet you. */
+  private spawnArrancar(id: string, hpMul: number): number {
+    const i = this.spawnEnemy(ENEMY_INDEX.arrancar, this.tx, this.ty, false, hpMul);
+    if (i < 0) return -1;
+    this.en.variant[i] = Math.max(0, ARRANCAR_IDS.indexOf(id));
+    this.bossCount++;
+    const info = ARRANCAR_BY_ID.get(id);
+    this.banners.push({ kind: 'boss', title: info?.name ?? 'Arrancar', sub: info?.title ?? '', quote: BOSS_LINES[`arrancar:${id}`] });
     this.shake = Math.max(this.shake, 8);
     return i;
   }
@@ -945,6 +963,7 @@ export class World {
     if (id === 'harribel') return E.r[i] >= HARRIBEL_RELEASED ? 1 : 0;
     if (id === 'ayon') return E.r[i] >= AYON_RAGE ? 1 : 0;
     if (id === 'nel') return E.r[i] >= NEL_RELEASED ? 1 : 0;
+    if (id === 'grimmjow') return E.r[i] >= GRIMMJOW_RELEASED ? 1 : 0;
     if (id === 'royal' && ROYAL_IDS[E.variant[i]] === 'kirio') return E.r[i] < 26 ? 1 : 0;
     return this.memos.get(E.uid[i])?.phase ?? 0;
   }
@@ -979,7 +998,9 @@ export class World {
           ? GOTEI_BY_ID.get(GOTEI_IDS[E.variant[i]])
           : def.id === 'defender'
             ? HERO_BY_ID.get(HERO_IDS[E.variant[i]])
-            : undefined;
+            : def.id === 'arrancar'
+              ? ARRANCAR_BY_ID.get(ARRANCAR_IDS[E.variant[i]])
+              : undefined;
     if (roster) return { name: roster.name, sub: roster.title };
     const ev = this.stage.events.find((e): e is Extract<TimelineEvent, { kind: 'boss' }> => e.kind === 'boss' && e.enemy === def.id);
     return { name: def.name, sub: ev?.sub ?? '' };
@@ -1633,7 +1654,7 @@ export class World {
       // The Royal Guard each leave a Fragment of the Soul King you do not have yet (gold once you hold all three).
       // Silbern's captains and the Wahrwelt's defenders carry no bankai to take: a black chest beside their spoil.
       if (def.id === 'defender' && HERO_IDS[E.variant[i]] === 'aizen') this.clearMirages();
-      if (def.id === 'gotei' || def.id === 'defender') {
+      if (def.id === 'gotei' || def.id === 'defender' || def.id === 'arrancar') {
         this.addPickup('chestBlack', x + 36, y + 12);
       }
       this.dropSpoil(i, x, y);

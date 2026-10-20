@@ -57,7 +57,7 @@ const bursts = (w: World): number => (w as unknown as { burstN: number }).burstN
 describe('spoils of war', () => {
   it('every boss has one, its own, and nothing else in the game does what it does', () => {
     const bosses = CODEX_ENEMIES.filter((e) => e.boss && e.key !== 'mirage');
-    expect(SPOILS).toHaveLength(30);
+    expect(SPOILS).toHaveLength(35);
     expect(new Set(SPOILS.map((s) => s.id)).size).toBe(SPOILS.length);
     expect(new Set(SPOILS.map((s) => s.name)).size).toBe(SPOILS.length);
     expect(new Set(SPOILS.map((s) => s.special)).size).toBe(SPOILS.length);

@@ -318,6 +318,12 @@ try {
     collection: await page.textContent('.collection-text'),
   });
   await shot('09-title-seireitei');
+  await page.tap('.stage-btn:nth-child(3)');
+  await wait(400);
+  log('title las noches', { selected: await page.textContent('.stage-btn.on'), info: await page.textContent('.stage-info') });
+  await shot('09-title-lasnoches');
+  await page.tap('.stage-btn:nth-child(2)');
+  await wait(300);
 
   // Hueco Mundo is cleared in this save: its trials and Endless are open.
   await page.tap('.stage-btn:nth-child(1)');
@@ -668,6 +674,39 @@ try {
   await steer(5000, { radius: 15 });
   log('hollow mask', { ...(await stats()), radius: await page.evaluate(() => { const w = window.__msq.world; for (let i = 0; i < w.en.n; i++) if (w.en.type[i] === 32 && !w.en.dead[i]) return w.en.r[i]; return 0; }) });
   await shot('12i-hollow-mask');
+
+  // Las Noches: its swarm, its four Arrancar sealed and released, then Grimmjow and Pantera.
+  await page.goto(`${BASE}?debug&seed=4&play&god&stage=lasnoches&t=420&give=xaxis3,explode2`);
+  await wait(400);
+  await steer(8000, { radius: 25 });
+  log('lasnoches mid', await stats());
+  await shot('12l-lasnoches');
+  for (const id of ['rudbornn', 'dordoni', 'cirucci', 'gantenbainne']) {
+    await page.goto(`${BASE}?debug&seed=3&play&god&stage=lasnoches&t=298&bearers=${id}`);
+    await wait(400);
+    await steer(6000, { radius: 20 });
+    log(`lasnoches ${id}`, { ...(await stats()), boss: (await page.isVisible('.bossbar')) ? await page.textContent('.boss-name') : null });
+    await shot(`12l-arrancar-${id}`);
+    await page.evaluate(() => {
+      const w = window.__msq.world;
+      for (let i = 0; i < w.en.n; i++) if (w.en.type[i] === 37 && !w.en.dead[i]) w.en.hp[i] = w.en.maxHp[i] * 0.45;
+    });
+    await steer(2500, { radius: 20 });
+    log(`lasnoches ${id} released`, { phase: await page.evaluate(() => window.__msq.world.boss.phase) });
+    await shot(`12l-arrancar-${id}-released`);
+  }
+  await page.goto(`${BASE}?debug&seed=7&play&god&stage=lasnoches&t=1196&give=xaxis6,explode6,heat6`);
+  await wait(400);
+  await steer(8000, { radius: 15 });
+  log('grimmjow', { ...(await stats()), boss: await page.textContent('.boss-name'), sub: await page.textContent('.boss-sub') });
+  await shot('12m-grimmjow');
+  await page.evaluate(() => {
+    const w = window.__msq.world;
+    for (let i = 0; i < w.en.n; i++) if (w.en.type[i] === 38 && !w.en.dead[i]) w.en.hp[i] = w.en.maxHp[i] * 0.45;
+  });
+  await steer(4000, { radius: 15 });
+  log('pantera', { phase: await page.evaluate(() => window.__msq.world.boss.phase) });
+  await shot('12m-pantera');
 
   // The captains defend their own bankai in Seireitei.
   for (const id of ['senbonzakura', 'hyorinmaru', 'raikoben', 'tengen', 'gonryo']) {

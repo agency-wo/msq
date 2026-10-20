@@ -2,6 +2,7 @@ import { BANKAI_BY_ID, BANKAI_IDS } from './bankai';
 import { ENEMY_INDEX, ENEMY_LIST, type EnemyId } from './enemies';
 import { GOTEI_BY_ID, GOTEI_IDS } from './gotei';
 import { HERO_BY_ID, HERO_IDS } from './heroes';
+import { ARRANCAR_BY_ID, ARRANCAR_IDS } from './arrancar';
 import { POWER_BY_ID } from './powers';
 import { ROYAL_BY_ID, ROYAL_IDS } from './royal';
 
@@ -11,7 +12,7 @@ import { ROYAL_BY_ID, ROYAL_IDS } from './royal';
  * An entry opens once you have defeated it.
  */
 
-export type CodexSection = 'hueco' | 'seireitei' | 'silbern' | 'palace' | 'wahrwelt' | 'events';
+export type CodexSection = 'hueco' | 'seireitei' | 'lasnoches' | 'silbern' | 'palace' | 'wahrwelt' | 'events';
 
 export interface CodexEnemy {
   /** Kill-count key: an enemy id, or `bearer:zanka`, `captain:tengen`, `royal:kirio`. */
@@ -31,6 +32,7 @@ export function enemyKey(type: number, variant: number): string {
   if (id === 'royal') return `royal:${ROYAL_IDS[variant] ?? ''}`;
   if (id === 'gotei') return `gotei:${GOTEI_IDS[variant] ?? ''}`;
   if (id === 'defender') return `defender:${HERO_IDS[variant] ?? ''}`;
+  if (id === 'arrancar') return `arrancar:${ARRANCAR_IDS[variant] ?? ''}`;
   return id;
 }
 
@@ -64,6 +66,16 @@ export const CODEX_ENEMIES: readonly CodexEnemy[] = [
   })),
   plain('unohana', 'seireitei'),
   plain('commander', 'seireitei'),
+  ...(['numeros', 'exequias', 'gillian'] as const).map((id) => plain(id, 'lasnoches')),
+  ...ARRANCAR_IDS.map((id, v) => ({
+    key: `arrancar:${id}`,
+    name: ARRANCAR_BY_ID.get(id)?.name ?? id,
+    section: 'lasnoches' as const,
+    type: ENEMY_INDEX.arrancar,
+    variant: v,
+    boss: true,
+  })),
+  plain('grimmjow', 'lasnoches'),
   ...(['brawler', 'specimen', 'jizo'] as const).map((id) => plain(id, 'silbern')),
   ...GOTEI_IDS.map((g, v) => ({
     key: `gotei:${g}`,

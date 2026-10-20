@@ -236,7 +236,7 @@ export class App {
 
   private todaysDaily(): DailySpec {
     const open = (id: StageId): boolean => stageUnlocked(this.save, id);
-    return dailyFor(dateKey(), open('seireitei'), open('palace'), open('silbern'), open('wahrwelt'));
+    return dailyFor(dateKey(), open('seireitei'), open('palace'), open('silbern'), open('wahrwelt'), open('lasnoches'));
   }
 
   private showDaily(): void {
@@ -485,7 +485,7 @@ export class App {
   private runTrack(w: World): TrackId {
     const id = w.stage.id;
     if (!w.boss.active) {
-      return id === 'seireitei' ? 'seireitei' : id === 'silbern' ? 'silbern' : id === 'palace' ? 'palace' : id === 'wahrwelt' ? 'wahrwelt' : 'hueco';
+      return id === 'seireitei' ? 'seireitei' : id === 'silbern' ? 'silbern' : id === 'palace' ? 'palace' : id === 'wahrwelt' ? 'wahrwelt' : id === 'lasnoches' ? 'lasnoches' : 'hueco';
     }
     if (w.boss.final) return 'final';
     return id === 'seireitei' || id === 'silbern' ? 'bossSei' : id === 'palace' || id === 'wahrwelt' ? 'bossPalace' : 'boss';

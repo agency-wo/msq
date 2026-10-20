@@ -207,6 +207,12 @@ export class Music {
       case 'taiko':
         this.taiko(ctx, bus, t, v);
         break;
+      case 'pluck':
+        this.pluck(ctx, bus, f, t, d, v);
+        break;
+      case 'clap':
+        this.clap(ctx, bus, t, v);
+        break;
     }
   }
 
@@ -364,6 +370,26 @@ export class Music {
     const body = this.env(ctx, bus, t, 0.002, 0.01, 0.08, v * 0.08);
     const o = this.osc(ctx, 'triangle', 190, t, t + 0.1, body);
     o.frequency.exponentialRampToValueAtTime(140, t + 0.08);
+  }
+
+  /** A plucked string: bright at the attack, dulling as it rings (the Arrancar's guitar in Las Noches). */
+  private pluck(ctx: AudioContext, bus: GainNode, f: number, t: number, d: number, v: number): void {
+    const ring = Math.min(1.2, 0.35 + d * 0.5);
+    const g = this.env(ctx, bus, t, 0.004, 0.02, ring, v * 0.12, true);
+    const lp = this.filter(ctx, 'lowpass', 3600, g);
+    lp.frequency.setValueAtTime(3600, t);
+    lp.frequency.exponentialRampToValueAtTime(700, t + ring * 0.8);
+    const end = t + ring + 0.1;
+    this.osc(ctx, 'sawtooth', f, t, end, lp);
+    this.osc(ctx, 'triangle', f * 2, t, end, lp, 4);
+  }
+
+  /** Palmas: a handclap, three quick bursts of filtered noise. */
+  private clap(ctx: AudioContext, bus: GainNode, t: number, v: number): void {
+    for (const dt of [0, 0.011, 0.023]) {
+      const g = this.env(ctx, bus, t + dt, 0.001, 0.004, 0.05, v * 0.12);
+      this.noise(ctx, t + dt, 0.06, this.filter(ctx, 'bandpass', 1400, g, 1.4));
+    }
   }
 
   private hat(ctx: AudioContext, bus: GainNode, t: number, v: number): void {

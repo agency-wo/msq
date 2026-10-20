@@ -53,7 +53,9 @@ import {
   EB_ARROW,
 } from './constants';
 import { ayonAI, captainSignature, nelAI, thiefSchrift, unohanaAI } from './signatures';
-import { spoilSwallow } from './spoils';
+import { arrancarAI, grimmjowAI } from './lasnoches';
+import { spoilShotTaken, spoilSwallow } from './spoils';
+import { ARRANCAR_IDS } from '../data/arrancar';
 import type { World } from './world';
 
 /**
@@ -89,7 +91,7 @@ export function updateEnemyBullets(w: World): void {
       B.remove(i);
       continue;
     }
-    w.hurtPlayer(B.dmg[i]);
+    w.hurtPlayer(B.dmg[i] * spoilShotTaken(w));
     if (B.flags[i] & EBF_SLOW && !w.steady) p.slowT = Math.max(p.slowT, 1.6);
     if (B.flags[i] & EBF_ROOT && w.vollT <= 0 && !w.steady) p.rootT = Math.max(p.rootT, 0.8);
     w.spawnFx(FX_GLOW, B.x[i], B.y[i], 0, 0, 0.2, B.r[i] * 2, B.r[i] * 5, 0.9, 0, 0, BULLET_HIT[B.kind[i]] ?? 0xff4d6a, LAYER_ADD);
@@ -202,6 +204,18 @@ export function casterAI(w: World, i: number, dist: number): void {
     w.spawnEnemyBullet(EB_THREAD, E.x[i], E.y[i], Math.cos(a) * 150, Math.sin(a) * 150, 6, 3.2, E.dmg[i] * 0.5, EBF_ROOT);
     return;
   }
+  if (E.type[i] === ENEMY_INDEX.exequias) {
+    // The Exequias fire Bala, quick and red.
+    w.spawnEnemyBullet(EB_BALA, E.x[i], E.y[i], Math.cos(a) * 170, Math.sin(a) * 170, 6, 3, E.dmg[i] * 0.6);
+    return;
+  }
+  if (E.type[i] === ENEMY_INDEX.gillian) {
+    // A Gillian's Cero, slow to come and warned in a long line.
+    E.atkT[i] = 6 + w.rng.next() * 2;
+    w.spawnMark(MK_CERO, MS_LINE, E.x[i], E.y[i], 34, 620, a, 1.2, E.dmg[i] * 1.1, MF_ENEMY);
+    w.sound('warn');
+    return;
+  }
   w.spawnEnemyBullet(EB_FIRE, E.x[i], E.y[i], Math.cos(a) * 135, Math.sin(a) * 135, 5, 3, E.dmg[i] * 0.6);
 }
 
@@ -279,6 +293,10 @@ export function bossAI(w: World, i: number, dist: number): void {
     defenderAI(w, i, HERO_IDS[E.variant[i]] ?? 'renji');
   } else if (def.id === 'ichigo') {
     ichigoAI(w, i);
+  } else if (def.id === 'arrancar') {
+    arrancarAI(w, i, ARRANCAR_IDS[E.variant[i]] ?? 'rudbornn');
+  } else if (def.id === 'grimmjow') {
+    grimmjowAI(w, i);
   }
 }
 

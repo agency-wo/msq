@@ -37,6 +37,14 @@ export const SPOILS: readonly RelicDef[] = [
   spoil('captain:gonryo', 'teacup', 'Sasakibe’s Teacup', '#fff3a0', 'cross', 'Whenever a boss arrives, a moment for tea: you heal a quarter of your health.'),
   spoil('unohana', 'balm', 'Minazuki’s Balm', '#9fe6c0', 'heart', 'Regenerate 1.5 health every second.', { mods: { regen: 1.5 } }),
   spoil('commander', 'ember', 'Ryūjin Jakka’s Ember', '#ff7a3c', 'flame', 'The heat clings to you: everything that comes close burns.'),
+  // Las Noches
+  spoil('arrancar:rudbornn', 'calavera', 'Rudbornn’s Skull Crest', '#d8d0b8', 'helm', 'Every 15 s, two Calaveras rise beside you and fight for you for 10 s.'),
+  spoil('arrancar:dordoni', 'giralda', 'Giralda’s Whirlwind', '#9fe0d0', 'gust', 'While you keep moving, a whirlwind at your feet throws back whatever comes close.'),
+  spoil('arrancar:cirucci', 'golondrina', 'Golondrina’s Feather', '#c8a0ff', 'feather', 'Your shots fly 25% faster and your powers last 15% longer.', {
+    mods: { projSpeed: 0.25, duration: 0.15 },
+  }),
+  spoil('arrancar:gantenbainne', 'dragra', 'Dragra’s Scale', '#ffb070', 'shield', 'Enemy shots, beams and blasts hurt you 30% less.'),
+  spoil('grimmjow', 'pantera', 'Grimmjow’s Jawbone', '#59b8ff', 'might', 'The more of them close around you, the harder you hit: +2% damage each, up to +30%.'),
   // Silbern
   spoil('gotei:kenpachi', 'eyepatch', 'Kenpachi’s Eyepatch', '#ffe08a', 'eye', 'Off for a real fight: +35% damage while a boss is out, 10% less while none is.'),
   spoil('gotei:mayuri', 'vial', 'Mayuri’s Vial', '#9dff8a', 'cloud', 'Ashisogi Jizō’s poison: one hit in ten leaves a common enemy unable to move for 2 s.'),

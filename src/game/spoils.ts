@@ -1,9 +1,11 @@
 import { TAU } from '../core/math';
 import { densestPoint, enemiesInCircle } from './casts/common';
+import { ENEMY_INDEX } from '../data/enemies';
 import {
   DOT_FIRE,
   FLAG_BOSS,
   FLAG_EVENT,
+  FLAG_ZOMBIE,
   FX_AVATAR,
   FX_CRESCENT,
   FX_GLOW,
@@ -55,6 +57,11 @@ export class SpoilState {
   tsukiT = 10;
   hogyoku = false;
   getsugaT = 8;
+  calaveraT = 15;
+  whirlT = 0;
+  crowdT = 0;
+  /** Grimmjow's jawbone: how many enemies stood close at the last count. */
+  crowd = 0;
   readonly greeted = new Set<number>();
 }
 
@@ -144,6 +151,43 @@ export function spoilTick(w: World, dt: number): void {
       if (densestPoint(w, 380)) {
         own(w, () => w.spawnMark(MK_ICE, MS_CIRCLE, w.tx, w.ty, 85, 0, 0, 0.45, power(w, 45, 4), MF_FREEZE));
       }
+    }
+  }
+  if (s.has.has('calavera')) {
+    s.calaveraT -= dt;
+    if (s.calaveraT <= 0) {
+      s.calaveraT = 15;
+      // Two of Rudbornn's Calaveras rise on your side, and crumble when their time is up.
+      for (const dir of [-1, 1]) {
+        const j = w.spawnEnemy(ENEMY_INDEX.exequias, p.x + dir * 40, p.y + 10);
+        if (j < 0) continue;
+        const E = w.en;
+        E.xp[j] = 0;
+        E.flags[j] |= FLAG_ZOMBIE;
+        E.charmT[j] = 10;
+        E.charmDmg[j] = power(w, 14, 1.4);
+        E.charmSrc[j] = 255;
+        w.spawnFx(FX_GLOW, E.x[j], E.y[j], 0, 0, 0.4, E.r[j] * 1.5, E.r[j] * 3.5, 0.8, 0, 0, 0xd8d0b8, LAYER_ADD);
+      }
+      w.sound('rise');
+    }
+  }
+  if (s.has.has('giralda') && moving) {
+    s.whirlT -= dt;
+    if (s.whirlT <= 0) {
+      s.whirlT = 0.35;
+      const n = enemiesInCircle(w, p.x, p.y, 80);
+      own(w, () => {
+        for (let k = 0; k < n; k++) w.damageEnemy(w.qout[k], power(w, 6, 0.6), 420, p.x, p.y);
+      });
+      if (n > 0) w.spawnFx(FX_RING, 0, 0, 0, 0, 0.3, 20, 170, 0.6, 0, 0, 0x9fe0d0, LAYER_ADD, 0, 1);
+    }
+  }
+  if (s.has.has('pantera')) {
+    s.crowdT -= dt;
+    if (s.crowdT <= 0) {
+      s.crowdT = 0.25;
+      s.crowd = enemiesInCircle(w, p.x, p.y, 150);
     }
   }
   if (s.has.has('getsuga')) {
@@ -298,7 +342,13 @@ export function spoilDamageMul(w: World): number {
   if (s.tally > 0) m *= 1 + 0.08 * s.tally;
   if (s.has.has('eyepatch')) m *= w.boss.active ? 1.35 : 0.9;
   if (s.hogyoku) m *= 1.15;
+  if (s.has.has('pantera')) m *= 1 + Math.min(0.3, 0.02 * s.crowd);
   return m;
+}
+
+/** What an enemy shot, beam or blast is cut to before it hurts you (Dragra's scale). */
+export function spoilShotTaken(w: World): number {
+  return w.spoil.on && w.spoil.has.has('dragra') ? 0.7 : 1;
 }
 
 /** An enemy shot is about to hit you: true if Neliel's mask swallows it instead (every sixth). */

@@ -9,11 +9,13 @@ import { ENEMY_INDEX, ENEMY_LIST } from '../data/enemies';
 import { TRAIL_BY_ID } from '../data/looks';
 import { GOTEI_IDS, GOTEI_INFO } from '../data/gotei';
 import { HERO_IDS, HERO_INFO } from '../data/heroes';
+import { ARRANCAR_IDS, ARRANCAR_INFO } from '../data/arrancar';
 import { RELIC_BY_ID } from '../data/relics';
 import { ROYAL_IDS, ROYAL_INFO } from '../data/royal';
 import { DOUBLE_RING, doubleCount } from '../game/casts/schrift2';
 import { COMMANDER_HEAT, HARRIBEL_RELEASED, ICHIGO_MASKED } from '../game/hostile';
 import { AYON_RAGE, NEL_RELEASED } from '../game/signatures';
+import { GRIMMJOW_RELEASED } from '../game/lasnoches';
 import { enemySpriteName } from './names';
 import {
   EB_FIRE,
@@ -246,6 +248,10 @@ export class Renderer {
   private heroSprites: EnemySprite[] = [];
   /** Renji's and Rukia's bankai forms, worn from half health on. */
   private heroBankai: (EnemySprite | null)[] = [];
+  /** Las Noches' Arrancar, sealed and released. */
+  private arrancarSprites: EnemySprite[] = [];
+  private arrancarLate: EnemySprite[] = [];
+  private grimmjowPantera: EnemySprite | null = null;
   /** Ichigo once his Hollow mask forms. */
   private ichigoMasked: EnemySprite | null = null;
   /** Ayon enraged, Neliel released, Unohana as the first Kenpachi. */
@@ -352,6 +358,10 @@ export class Renderer {
       jizo: 30,
       ichigo: 29,
       mirage: 28,
+      numeros: 11,
+      exequias: 11,
+      gillian: 23,
+      grimmjow: 29,
     };
     // Types drawn per variant (or per stage) fall back to one of their sprites here.
     this.enemySprites = ENEMY_LIST.map((d, t) => sprite(enemySpriteName(t), REF[d.id] ?? d.radius));
@@ -361,11 +371,15 @@ export class Renderer {
     this.goteiSprites = GOTEI_IDS.map((id, v) => sprite(enemySpriteName(ENEMY_INDEX.gotei, v), id === 'kenpachi' ? 30 : 28));
     this.thiefSprites = BANKAI_IDS.map((id, v) => sprite(enemySpriteName(ENEMY_INDEX.bearer, v), id === 'gonryo' ? 30 : 28));
     const kon = sprite('kon', 12);
-    this.runners = { hueco: sprite('adjuchas', 22), palace: kon, wahrwelt: kon };
+    this.runners = { hueco: sprite('adjuchas', 22), palace: kon, wahrwelt: kon, lasnoches: sprite('pesche', 13) };
     // Rukia is drawn small, Renji large: no two defenders read alike.
     const heroRef: Readonly<Record<string, number>> = { renji: 27, rukia: 31 };
     this.heroSprites = HERO_IDS.map((id, v) => sprite(enemySpriteName(ENEMY_INDEX.defender, v), heroRef[id] ?? 28));
     this.heroBankai = HERO_IDS.map((id, v) => (id === 'renji' || id === 'rukia' ? sprite(`${enemySpriteName(ENEMY_INDEX.defender, v)}_bankai`, heroRef[id] ?? 28) : null));
+    const arrancarRef: Readonly<Record<string, number>> = { cirucci: 30, gantenbainne: 27 };
+    this.arrancarSprites = ARRANCAR_IDS.map((id, v) => sprite(enemySpriteName(ENEMY_INDEX.arrancar, v), arrancarRef[id] ?? 28));
+    this.arrancarLate = ARRANCAR_IDS.map((id, v) => sprite(`${enemySpriteName(ENEMY_INDEX.arrancar, v)}_late`, arrancarRef[id] ?? 28));
+    this.grimmjowPantera = sprite('grimmjow_pantera', 33);
     this.ichigoMasked = sprite('ichigo_mask', 30);
     this.ayonRage = sprite('ayon_rage', 48.4);
     this.nelGamuza = sprite('nel_gamuza', 36);
@@ -759,6 +773,10 @@ export class Renderer {
               ? (this.goteiSprites[E.variant[i]] ?? this.enemySprites[type])
             : type === ENEMY_INDEX.defender
               ? ((w.phaseOf(i) > 0 && this.heroBankai[E.variant[i]]) || (this.heroSprites[E.variant[i]] ?? this.enemySprites[type]))
+            : type === ENEMY_INDEX.arrancar
+              ? ((w.phaseOf(i) > 0 ? this.arrancarLate[E.variant[i]] : this.arrancarSprites[E.variant[i]]) ?? this.enemySprites[type])
+            : type === ENEMY_INDEX.grimmjow && E.r[i] >= GRIMMJOW_RELEASED && this.grimmjowPantera
+              ? this.grimmjowPantera
             : type === ENEMY_INDEX.ichigo && E.r[i] >= ICHIGO_MASKED && this.ichigoMasked
               ? this.ichigoMasked
             : type === ENEMY_INDEX.ayon && E.r[i] >= AYON_RAGE && this.ayonRage
@@ -791,7 +809,9 @@ export class Renderer {
               ? (GOTEI_INFO[E.variant[i]]?.aura ?? 0xf4f6fb)
               : type === ENEMY_INDEX.defender
                 ? (HERO_INFO[E.variant[i]]?.aura ?? 0xf4f6fb)
-                : this.bossAura[type];
+                : type === ENEMY_INDEX.arrancar
+                  ? (ARRANCAR_INFO[E.variant[i]]?.aura ?? 0xe8e6de)
+                  : this.bossAura[type];
         L.auras.add(f.glow, x, y, (r * 3.6) / 64, (r * 3.6) / 64, 0, aura, 0.5 + Math.sin(now * 3) * 0.12);
         if (type === ENEMY_INDEX.commander && !w.zankaStolen) {
           // Zanka no Tachi's heat: anything inside this ring burns (until the bankai is taken from him).

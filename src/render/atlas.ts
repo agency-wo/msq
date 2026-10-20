@@ -6300,6 +6300,899 @@ const kon: Draw = (g, w, h) => {
 
 // ------------------------------------------------------------ packing
 
+// ------------------------------------------------------------ Las Noches
+
+interface UniformLook {
+  /** Sash colour. */
+  sash?: string;
+  /** Width factor for heavier builds. */
+  broad?: number;
+  /** The jacket hangs open over a bare chest, the Hollow hole showing. */
+  open?: boolean;
+  skin?: string;
+  /** Cuff colour. */
+  cuff?: string;
+}
+
+/** The Arrancar's white: a fitted jacket and hakama, black cuffs and sash, white tabi. Heads are drawn by each. */
+function arrancarUniform(g: Ctx, cx: number, cy: number, s: number, o: UniformLook = {}): void {
+  const b = o.broad ?? 1;
+  const skin = o.skin ?? SKIN;
+  const robe = g.createLinearGradient(0, cy - 6 * s, 0, cy + 20 * s);
+  robe.addColorStop(0, '#ffffff');
+  robe.addColorStop(1, '#cfd3dc');
+  g.fillStyle = robe;
+  g.beginPath();
+  g.moveTo(cx - 8 * s * b, cy - 6 * s);
+  g.lineTo(cx + 8 * s * b, cy - 6 * s);
+  g.lineTo(cx + 11 * s * b, cy + 20 * s);
+  g.lineTo(cx - 11 * s * b, cy + 20 * s);
+  g.closePath();
+  g.fill();
+  g.strokeStyle = 'rgba(30,36,50,0.45)';
+  g.lineWidth = 1;
+  g.stroke();
+  g.strokeStyle = 'rgba(30,36,50,0.2)';
+  g.beginPath();
+  g.moveTo(cx, cy + 7 * s);
+  g.lineTo(cx, cy + 20 * s);
+  g.stroke();
+  if (o.open) {
+    // A bare chest in the open jacket, the Hollow hole low on the stomach.
+    g.fillStyle = skin;
+    poly(g, [
+      [cx - 4 * s * b, cy - 6 * s],
+      [cx + 4 * s * b, cy - 6 * s],
+      [cx + 2.4 * s, cy + 4 * s],
+      [cx - 2.4 * s, cy + 4 * s],
+    ]);
+    g.fill();
+    g.fillStyle = '#05060a';
+    g.beginPath();
+    g.ellipse(cx, cy + 1.6 * s, 1.8 * s, 2 * s, 0, 0, TAU);
+    g.fill();
+  }
+  g.fillStyle = o.sash ?? '#14161f';
+  g.fillRect(cx - 9 * s * b, cy + 4 * s, 18 * s * b, 2.2 * s);
+  for (const dir of [-1, 1]) {
+    g.fillStyle = '#f4f6fa';
+    g.beginPath();
+    g.ellipse(cx + dir * 10.5 * s * b, cy + 1.5 * s, 4 * s, 7.4 * s, -dir * 0.25, 0, TAU);
+    g.fill();
+    g.strokeStyle = 'rgba(30,36,50,0.45)';
+    g.lineWidth = 0.8;
+    g.stroke();
+    g.strokeStyle = o.cuff ?? '#14161f';
+    g.lineWidth = 1.1 * s;
+    g.beginPath();
+    g.moveTo(cx + dir * 9.4 * s * b, cy + 7.6 * s);
+    g.lineTo(cx + dir * 13.4 * s * b, cy + 6.6 * s);
+    g.stroke();
+    g.fillStyle = skin;
+    g.beginPath();
+    g.arc(cx + dir * 11.6 * s * b, cy + 9.6 * s, 1.6 * s, 0, TAU);
+    g.fill();
+    g.fillStyle = '#f4f2ec';
+    g.beginPath();
+    g.ellipse(cx + dir * 4 * s * b, cy + 20.6 * s, 2.6 * s, 1.4 * s, 0, 0, TAU);
+    g.fill();
+  }
+}
+
+/** An Arrancar soldier (original): white uniform, dark hair, the jaw of his old mask still on his cheek. */
+const numeros: Draw = (g, w, h) => {
+  const s = 1;
+  const cx = w / 2;
+  const cy = h / 2 + 2;
+  aura(g, cx, cy + 2, 24, 'rgba(220,226,240,0.12)');
+  arrancarUniform(g, cx, cy, s);
+  heldSword(g, cx + 11.6 * s, cy + 9.6 * s, s, 12, -0.25);
+  g.fillStyle = SKIN;
+  g.beginPath();
+  g.arc(cx, cy - 12 * s, 6.2 * s, 0, TAU);
+  g.fill();
+  g.fillStyle = '#2a2430';
+  g.beginPath();
+  g.arc(cx, cy - 13 * s, 6.8 * s, Math.PI, TAU);
+  g.lineTo(cx + 6.8 * s, cy - 11 * s);
+  g.lineTo(cx - 6.8 * s, cy - 11 * s);
+  g.closePath();
+  g.fill();
+  g.fillStyle = '#0b0c12';
+  g.fillRect(cx - 3 * s, cy - 11 * s, 1.6 * s, 1.8 * s);
+  g.fillRect(cx + 1.4 * s, cy - 11 * s, 1.6 * s, 1.8 * s);
+  // The mask's broken jaw along one cheek
+  g.fillStyle = BONE;
+  poly(g, [
+    [cx + 1 * s, cy - 8.4 * s],
+    [cx + 6.6 * s, cy - 10.6 * s],
+    [cx + 6 * s, cy - 6.6 * s],
+    [cx + 1.6 * s, cy - 6 * s],
+  ]);
+  g.fill();
+  g.strokeStyle = '#3a3a3a';
+  g.lineWidth = 0.5;
+  g.beginPath();
+  for (let k = 0; k < 4; k++) {
+    g.moveTo(cx + (2.2 + k * 1.1) * s, cy - 7.4 * s);
+    g.lineTo(cx + (2.2 + k * 1.1) * s, cy - 6.2 * s);
+  }
+  g.stroke();
+};
+
+/** A skull mask that covers the whole face: dark eye holes, teeth, a crest along the top. */
+function skullMask(g: Ctx, cx: number, cy: number, s: number, crest: number): void {
+  g.fillStyle = BONE;
+  g.beginPath();
+  g.ellipse(cx, cy, 6.4 * s, 6.8 * s, 0, 0, TAU);
+  g.fill();
+  g.strokeStyle = 'rgba(60,50,40,0.5)';
+  g.lineWidth = 0.5 * s;
+  g.stroke();
+  if (crest > 0) {
+    poly(g, [
+      [cx - 1.6 * s, cy - 6 * s],
+      [cx, cy - (6 + crest) * s],
+      [cx + 1.6 * s, cy - 6 * s],
+    ]);
+    g.fill();
+  }
+  g.fillStyle = '#0b0c12';
+  for (const dir of [-1, 1]) {
+    g.beginPath();
+    g.ellipse(cx + dir * 2.6 * s, cy - 0.6 * s, 1.7 * s, 1.9 * s, dir * 0.3, 0, TAU);
+    g.fill();
+  }
+  poly(g, [
+    [cx - 0.6 * s, cy + 1.6 * s],
+    [cx + 0.6 * s, cy + 1.6 * s],
+    [cx, cy + 2.6 * s],
+  ]);
+  g.fill();
+  g.strokeStyle = '#2a2420';
+  g.lineWidth = 0.4 * s;
+  g.beginPath();
+  g.moveTo(cx - 3 * s, cy + 4 * s);
+  g.lineTo(cx + 3 * s, cy + 4 * s);
+  for (let k = -2; k <= 2; k++) {
+    g.moveTo(cx + k * 1.2 * s, cy + 3.4 * s);
+    g.lineTo(cx + k * 1.2 * s, cy + 4.8 * s);
+  }
+  g.stroke();
+}
+
+/** An executioner of the Exequias (original): white uniform, a dark cape, a skull for a face. */
+const exequias: Draw = (g, w, h) => {
+  const s = 1;
+  const cx = w / 2;
+  const cy = h / 2 + 2;
+  aura(g, cx, cy + 2, 24, 'rgba(216,208,184,0.14)');
+  g.fillStyle = '#2a2430';
+  g.beginPath();
+  g.moveTo(cx - 9 * s, cy - 6 * s);
+  g.quadraticCurveTo(cx - 14 * s, cy + 8 * s, cx - 12 * s, cy + 19 * s);
+  g.lineTo(cx + 12 * s, cy + 19 * s);
+  g.quadraticCurveTo(cx + 14 * s, cy + 8 * s, cx + 9 * s, cy - 6 * s);
+  g.closePath();
+  g.fill();
+  arrancarUniform(g, cx, cy, s, { sash: '#6a5a40' });
+  // A short gun of reishi in the hand
+  g.fillStyle = '#3a3440';
+  g.fillRect(cx + 10 * s, cy + 6.6 * s, 6 * s, 2.4 * s);
+  glowDot(g, cx + 16.4 * s, cy + 7.8 * s, 1.2 * s, 1.2 * s, '#ffd0d0', '#ff4d6a', 4);
+  skullMask(g, cx, cy - 12 * s, s, 2.6);
+};
+
+/** A Gillian, the lowest of the Menos Grande (original): a towering black shape with a long-nosed white mask. */
+const gillian: Draw = (g, w, h) => {
+  const cx = w / 2;
+  const cy = h / 2 + 6;
+  aura(g, cx, cy, 46, 'rgba(255,40,70,0.12)');
+  const body = g.createLinearGradient(0, cy - 30, 0, cy + 40);
+  body.addColorStop(0, '#2c2238');
+  body.addColorStop(1, '#05040a');
+  g.fillStyle = body;
+  g.beginPath();
+  g.moveTo(cx - 14, cy - 24);
+  g.lineTo(cx - 24, cy - 16);
+  g.lineTo(cx - 20, cy - 10);
+  g.lineTo(cx - 28, cy + 2);
+  g.lineTo(cx - 22, cy + 6);
+  g.lineTo(cx - 26, cy + 40);
+  g.lineTo(cx + 26, cy + 40);
+  g.lineTo(cx + 22, cy + 6);
+  g.lineTo(cx + 28, cy + 2);
+  g.lineTo(cx + 20, cy - 10);
+  g.lineTo(cx + 24, cy - 16);
+  g.lineTo(cx + 14, cy - 24);
+  g.closePath();
+  g.fill();
+  g.strokeStyle = 'rgba(200,180,230,0.25)';
+  g.lineWidth = 1;
+  g.stroke();
+  // The white mask, its long nose pointing down
+  g.fillStyle = BONE;
+  g.beginPath();
+  g.ellipse(cx, cy - 26, 13, 12, 0, 0, TAU);
+  g.fill();
+  poly(g, [
+    [cx - 4, cy - 22],
+    [cx + 4, cy - 22],
+    [cx, cy - 4],
+  ]);
+  g.fill();
+  g.strokeStyle = 'rgba(60,50,40,0.6)';
+  g.stroke();
+  g.fillStyle = '#05060a';
+  for (const dir of [-1, 1]) {
+    g.beginPath();
+    g.ellipse(cx + dir * 6, cy - 28, 3.4, 4.2, dir * 0.4, 0, TAU);
+    g.fill();
+  }
+  glowDot(g, cx - 6, cy - 28, 1.2, 1.2, '#ffd0d0', 'rgba(255,60,80,0.9)', 4);
+  glowDot(g, cx + 6, cy - 28, 1.2, 1.2, '#ffd0d0', 'rgba(255,60,80,0.9)', 4);
+  chestHole(g, cx, cy + 12, 5);
+};
+
+/** Rudbornn's mask: a skull with a tall crown of bone rising from it. */
+function rudbornnHead(g: Ctx, cx: number, hy: number, s: number): void {
+  g.fillStyle = BONE;
+  poly(g, [
+    [cx - 5 * s, hy - 4 * s],
+    [cx - 7 * s, hy - 12 * s],
+    [cx - 3 * s, hy - 8 * s],
+    [cx, hy - 15 * s],
+    [cx + 3 * s, hy - 8 * s],
+    [cx + 7 * s, hy - 12 * s],
+    [cx + 5 * s, hy - 4 * s],
+  ]);
+  g.fill();
+  g.strokeStyle = 'rgba(60,50,40,0.5)';
+  g.lineWidth = 0.5 * s;
+  g.stroke();
+  skullMask(g, cx, hy + 0.8 * s, s, 0);
+}
+
+/**
+ * Rudbornn Chelute (a chibi homage): commander of the Exequias, his face a
+ * skull under a tall crown of bone, white uniform and a long black cloak.
+ * Released, Árbol: branches grow from his back, a skull at every tip.
+ */
+function rudbornnDraw(g: Ctx, w: number, h: number, late: boolean): void {
+  const s = 2;
+  const cx = w / 2;
+  const cy = h / 2 + (late ? 14 : 8);
+  const hy = cy - 13 * s;
+  aura(g, cx, cy, late ? 62 : 54, 'rgba(216,208,184,0.18)');
+  if (late) {
+    // Árbol: the branches, and the skulls they bear
+    g.strokeStyle = '#5a4a3a';
+    g.lineCap = 'round';
+    const tips: [number, number][] = [];
+    for (const [a, len] of [
+      [-2.5, 26],
+      [-2.1, 30],
+      [-1.57, 32],
+      [-1.0, 30],
+      [-0.6, 26],
+    ] as const) {
+      const bx = cx + Math.cos(a) * 8 * s;
+      const by = cy - 4 * s + Math.sin(a) * 6 * s;
+      const ex = cx + Math.cos(a) * len * s;
+      const ey = cy - 4 * s + Math.sin(a) * len * s * 0.9;
+      g.lineWidth = 2.2 * s;
+      g.beginPath();
+      g.moveTo(bx, by);
+      g.quadraticCurveTo((bx + ex) / 2 + Math.cos(a + 1.2) * 4 * s, (by + ey) / 2, ex, ey);
+      g.stroke();
+      tips.push([ex, ey]);
+    }
+    for (const [x, y] of tips) skullMask(g, x, y, 0.55 * s, 0);
+  }
+  // The black cloak
+  g.fillStyle = '#16141c';
+  g.beginPath();
+  g.moveTo(cx - 9 * s, cy - 7 * s);
+  g.quadraticCurveTo(cx - 16 * s, cy + 6 * s, cx - 14.5 * s, cy + 19.5 * s);
+  g.lineTo(cx + 14.5 * s, cy + 19.5 * s);
+  g.quadraticCurveTo(cx + 16 * s, cy + 6 * s, cx + 9 * s, cy - 7 * s);
+  g.closePath();
+  g.fill();
+  g.strokeStyle = 'rgba(216,208,184,0.4)';
+  g.lineWidth = 1;
+  g.stroke();
+  arrancarUniform(g, cx, cy, s, { sash: '#6a5a40' });
+  heldSword(g, cx + 12 * s, cy + 9.6 * s, s, 14, -0.2);
+  rudbornnHead(g, cx, hy, s);
+}
+
+const rudbornn: Draw = (g, w, h) => rudbornnDraw(g, w, h, false);
+const rudbornnArbol: Draw = (g, w, h) => rudbornnDraw(g, w, h, true);
+
+/** Dordoni's head: slicked black hair, a thin moustache and beard, the crown of his old mask. */
+function dordoniHead(g: Ctx, cx: number, hy: number, s: number, bird: boolean): void {
+  faceAt(g, cx, hy + 0.8 * s, s, 5.4, 6.6);
+  g.fillStyle = '#14161f';
+  g.beginPath();
+  g.ellipse(cx, hy - 2.6 * s, 6.4 * s, 4.4 * s, 0, Math.PI * 0.95, Math.PI * 2.05);
+  g.fill();
+  // Moustache curling up, a little point of beard
+  g.strokeStyle = '#14161f';
+  g.lineWidth = 0.7 * s;
+  g.lineCap = 'round';
+  g.beginPath();
+  g.moveTo(cx, hy + 3.8 * s);
+  g.quadraticCurveTo(cx - 2.4 * s, hy + 4.6 * s, cx - 3.6 * s, hy + 3 * s);
+  g.moveTo(cx, hy + 3.8 * s);
+  g.quadraticCurveTo(cx + 2.4 * s, hy + 4.6 * s, cx + 3.6 * s, hy + 3 * s);
+  g.moveTo(cx, hy + 5.6 * s);
+  g.lineTo(cx, hy + 7.4 * s);
+  g.stroke();
+  eyesAt(g, cx, hy + 1.6 * s, s, '#f0e6d0', '#8a6a40', 2.4);
+  // The mask: a crown of bone, or, released, a bird's beaked head
+  g.fillStyle = BONE;
+  if (bird) {
+    poly(g, [
+      [cx - 6 * s, hy - 3 * s],
+      [cx - 4 * s, hy - 9 * s],
+      [cx + 3 * s, hy - 10 * s],
+      [cx + 12 * s, hy - 6 * s],
+      [cx + 4 * s, hy - 4 * s],
+      [cx + 6 * s, hy - 3 * s],
+    ]);
+  } else {
+    poly(g, [
+      [cx - 6 * s, hy - 3.4 * s],
+      [cx - 5 * s, hy - 8 * s],
+      [cx - 2.6 * s, hy - 5.6 * s],
+      [cx, hy - 9 * s],
+      [cx + 2.6 * s, hy - 5.6 * s],
+      [cx + 5 * s, hy - 8 * s],
+      [cx + 6 * s, hy - 3.4 * s],
+    ]);
+  }
+  g.fill();
+  g.strokeStyle = 'rgba(60,50,40,0.5)';
+  g.lineWidth = 0.5 * s;
+  g.stroke();
+}
+
+/**
+ * Dordoni Alessandro del Socaccio (a chibi homage): Privaron Espada 103,
+ * moustache, slicked hair, the crown of his mask, white suit and a long
+ * scarf. Released, Giralda: his legs become spinning whirlwinds.
+ */
+function dordoniDraw(g: Ctx, w: number, h: number, late: boolean): void {
+  const s = 2;
+  const cx = w / 2;
+  const cy = h / 2 + (late ? 2 : 8);
+  const hy = cy - 13 * s;
+  aura(g, cx, cy, 54, 'rgba(159,224,208,0.2)');
+  if (late) {
+    // Giralda: the legs are whirlwinds now, two spinning cones of wind
+    for (const dir of [-1, 1]) {
+      const bx = cx + dir * 6 * s;
+      const grad = g.createLinearGradient(bx, cy + 6 * s, bx, cy + 30 * s);
+      grad.addColorStop(0, 'rgba(230,250,245,0.95)');
+      grad.addColorStop(1, 'rgba(159,224,208,0.2)');
+      g.fillStyle = grad;
+      poly(g, [
+        [bx - 6 * s, cy + 6 * s],
+        [bx + 6 * s, cy + 6 * s],
+        [bx + dir * 2 * s, cy + 32 * s],
+      ]);
+      g.fill();
+      g.strokeStyle = 'rgba(80,150,140,0.6)';
+      g.lineWidth = 0.6 * s;
+      g.beginPath();
+      for (let k = 0; k < 4; k++) {
+        const y = cy + (9 + k * 5) * s;
+        const half = 5.4 * s * (1 - k * 0.2);
+        g.moveTo(bx - half, y);
+        g.quadraticCurveTo(bx, y + 2 * s, bx + half, y - 1 * s);
+      }
+      g.stroke();
+    }
+  }
+  // The scarf, trailing off to one side
+  g.fillStyle = '#9fe0d0';
+  g.beginPath();
+  g.moveTo(cx - 5 * s, cy - 6 * s);
+  g.quadraticCurveTo(cx - 14 * s, cy - 8 * s, cx - 19 * s, cy - 2 * s);
+  g.lineTo(cx - 16 * s, cy + 2 * s);
+  g.quadraticCurveTo(cx - 12 * s, cy - 3 * s, cx - 4 * s, cy - 3 * s);
+  g.closePath();
+  g.fill();
+  if (late) {
+    // Released, only the upper body stays: the jacket ends in the whirl
+    const robe = g.createLinearGradient(0, cy - 6 * s, 0, cy + 8 * s);
+    robe.addColorStop(0, '#ffffff');
+    robe.addColorStop(1, '#d6dce4');
+    g.fillStyle = robe;
+    g.beginPath();
+    g.moveTo(cx - 8 * s, cy - 6 * s);
+    g.lineTo(cx + 8 * s, cy - 6 * s);
+    g.lineTo(cx + 10 * s, cy + 8 * s);
+    g.lineTo(cx - 10 * s, cy + 8 * s);
+    g.closePath();
+    g.fill();
+    g.strokeStyle = 'rgba(30,36,50,0.45)';
+    g.lineWidth = 1;
+    g.stroke();
+    for (const dir of [-1, 1]) {
+      g.fillStyle = '#f4f6fa';
+      g.beginPath();
+      g.ellipse(cx + dir * 10.5 * s, cy + 1 * s, 3.6 * s, 6.6 * s, -dir * 0.5, 0, TAU);
+      g.fill();
+      g.fillStyle = SKIN;
+      g.beginPath();
+      g.arc(cx + dir * 13 * s, cy + 6.6 * s, 1.5 * s, 0, TAU);
+      g.fill();
+    }
+  } else {
+    arrancarUniform(g, cx, cy, s, { sash: '#2a7a6a' });
+    heldSword(g, cx + 12 * s, cy + 9.6 * s, s, 14, -0.3);
+  }
+  dordoniHead(g, cx, hy, s, late);
+}
+
+const dordoni: Draw = (g, w, h) => dordoniDraw(g, w, h, false);
+const dordoniGiralda: Draw = (g, w, h) => dordoniDraw(g, w, h, true);
+
+/** Cirucci's head: a great mass of dark violet hair, a tiara of bone, a sharp look. */
+function cirucciHead(g: Ctx, cx: number, hy: number, s: number): void {
+  g.fillStyle = '#3a2058';
+  g.beginPath();
+  g.ellipse(cx, hy - 1 * s, 9 * s, 7.4 * s, 0, 0, TAU);
+  g.fill();
+  for (const dir of [-1, 1]) {
+    g.beginPath();
+    g.ellipse(cx + dir * 8 * s, hy + 3 * s, 3.6 * s, 6 * s, dir * 0.3, 0, TAU);
+    g.fill();
+  }
+  faceAt(g, cx, hy + 0.8 * s, s, 5.2, 6.2);
+  g.fillStyle = '#3a2058';
+  g.beginPath();
+  g.ellipse(cx, hy - 2.6 * s, 6.4 * s, 4 * s, 0, Math.PI * 0.95, Math.PI * 2.05);
+  g.fill();
+  // The tiara of her mask
+  g.fillStyle = BONE;
+  poly(g, [
+    [cx - 5.6 * s, hy - 4 * s],
+    [cx - 3.4 * s, hy - 7.4 * s],
+    [cx - 1.4 * s, hy - 5.2 * s],
+    [cx, hy - 8.4 * s],
+    [cx + 1.4 * s, hy - 5.2 * s],
+    [cx + 3.4 * s, hy - 7.4 * s],
+    [cx + 5.6 * s, hy - 4 * s],
+  ]);
+  g.fill();
+  eyesAt(g, cx, hy + 1.8 * s, s, '#f4d8ff', '#a060d0', 2.5);
+  g.strokeStyle = '#7a2a4a';
+  g.lineWidth = 0.6 * s;
+  g.beginPath();
+  g.moveTo(cx - 1.4 * s, hy + 4.4 * s);
+  g.lineTo(cx + 1.4 * s, hy + 4.4 * s);
+  g.stroke();
+}
+
+/**
+ * Cirucci Sanderwicci (a chibi homage): Privaron Espada 105, a dark frilled
+ * dress, violet hair, and Golondrina sealed, a blade like a disc on a cord.
+ * Released: great wings of razor feathers.
+ */
+function cirucciDraw(g: Ctx, w: number, h: number, late: boolean): void {
+  const s = 1.9;
+  const cx = w / 2;
+  const cy = h / 2 + 9;
+  const hy = cy - 13 * s;
+  aura(g, cx, cy, late ? 62 : 52, 'rgba(200,160,255,0.22)');
+  if (late) {
+    // Golondrina's wings: rows of blade-feathers fanning out on both sides
+    for (const dir of [-1, 1]) {
+      for (let k = 0; k < 7; k++) {
+        const a = -Math.PI / 2 + dir * (0.5 + k * 0.22);
+        const len = (24 - Math.abs(k - 3) * 1.5) * s;
+        const bx = cx + dir * 4 * s;
+        const by = cy - 4 * s;
+        const ex = bx + Math.cos(a) * len;
+        const ey = by + Math.sin(a) * len;
+        const grad = g.createLinearGradient(bx, by, ex, ey);
+        grad.addColorStop(0, '#5a3a88');
+        grad.addColorStop(1, '#e8e0ff');
+        g.fillStyle = grad;
+        poly(g, [
+          [bx, by - 1.4 * s],
+          [ex, ey],
+          [bx + Math.cos(a + dir * 0.18) * len * 0.7, by + Math.sin(a + dir * 0.18) * len * 0.7],
+          [bx, by + 1.4 * s],
+        ]);
+        g.fill();
+      }
+    }
+  }
+  // The dress: dark, flaring, frilled at the hem
+  const dress = g.createLinearGradient(0, cy - 6 * s, 0, cy + 20 * s);
+  dress.addColorStop(0, '#2a1a3a');
+  dress.addColorStop(1, '#0c0814');
+  g.fillStyle = dress;
+  g.beginPath();
+  g.moveTo(cx - 7 * s, cy - 6 * s);
+  g.lineTo(cx + 7 * s, cy - 6 * s);
+  g.quadraticCurveTo(cx + 9 * s, cy + 8 * s, cx + 13 * s, cy + 18 * s);
+  g.lineTo(cx - 13 * s, cy + 18 * s);
+  g.quadraticCurveTo(cx - 9 * s, cy + 8 * s, cx - 7 * s, cy - 6 * s);
+  g.closePath();
+  g.fill();
+  g.strokeStyle = 'rgba(200,160,255,0.6)';
+  g.lineWidth = 1;
+  g.stroke();
+  g.fillStyle = '#e8e0f4';
+  for (let k = -6; k <= 6; k++) {
+    g.beginPath();
+    g.arc(cx + k * 2 * s, cy + 18.4 * s, 1.1 * s, 0, Math.PI);
+    g.fill();
+  }
+  g.fillStyle = '#c8a0ff';
+  g.fillRect(cx - 7.6 * s, cy + 3 * s, 15.2 * s, 1.6 * s);
+  for (const dir of [-1, 1]) {
+    g.fillStyle = '#1a1024';
+    g.beginPath();
+    g.ellipse(cx + dir * 9 * s, cy + 1.5 * s, 3 * s, 7 * s, -dir * 0.25, 0, TAU);
+    g.fill();
+    g.fillStyle = SKIN;
+    g.beginPath();
+    g.arc(cx + dir * 10.6 * s, cy + 8.6 * s, 1.5 * s, 0, TAU);
+    g.fill();
+    g.fillStyle = '#1a1024';
+    g.beginPath();
+    g.ellipse(cx + dir * 4 * s, cy + 19.4 * s, 2.4 * s, 1.3 * s, 0, 0, TAU);
+    g.fill();
+  }
+  if (!late) {
+    // Golondrina sealed: a disc of blades on a cord, swinging from her hand
+    g.strokeStyle = 'rgba(232,224,255,0.8)';
+    g.lineWidth = 0.5 * s;
+    g.beginPath();
+    g.moveTo(cx + 10.6 * s, cy + 8.6 * s);
+    g.quadraticCurveTo(cx + 16 * s, cy + 10 * s, cx + 18 * s, cy + 16 * s);
+    g.stroke();
+    g.fillStyle = '#e8e0ff';
+    g.beginPath();
+    for (let k = 0; k < 12; k++) {
+      const a = (k / 12) * TAU;
+      const r = k % 2 ? 2.2 * s : 3.6 * s;
+      g.lineTo(cx + 18 * s + Math.cos(a) * r, cy + 17 * s + Math.sin(a) * r);
+    }
+    g.closePath();
+    g.fill();
+    g.fillStyle = '#5a3a88';
+    g.beginPath();
+    g.arc(cx + 18 * s, cy + 17 * s, 1 * s, 0, TAU);
+    g.fill();
+  }
+  cirucciHead(g, cx, hy, s);
+}
+
+const cirucci: Draw = (g, w, h) => cirucciDraw(g, w, h, false);
+const cirucciGolondrina: Draw = (g, w, h) => cirucciDraw(g, w, h, true);
+
+/** Gantenbainne's head: dark skin, a great mane of locks, a short beard, his mask's jaw at his chin. */
+function gantenHead(g: Ctx, cx: number, hy: number, s: number, helm: boolean): void {
+  const skin = '#8a5a3a';
+  g.fillStyle = '#1a1210';
+  g.beginPath();
+  g.ellipse(cx, hy - 1 * s, 9.4 * s, 8 * s, 0, 0, TAU);
+  g.fill();
+  for (let k = 0; k < 9; k++) {
+    const a = Math.PI * (0.9 + k * 0.15);
+    g.beginPath();
+    g.ellipse(cx + Math.cos(a) * 8.6 * s, hy - 1 * s + Math.sin(a) * 7.6 * s, 2.2 * s, 2.8 * s, a, 0, TAU);
+    g.fill();
+  }
+  g.fillStyle = skin;
+  g.beginPath();
+  g.ellipse(cx, hy + 0.8 * s, 5.6 * s, 6.4 * s, 0, 0, TAU);
+  g.fill();
+  g.fillStyle = '#1a1210';
+  g.beginPath();
+  g.ellipse(cx, hy + 6 * s, 3.4 * s, 2 * s, 0, 0, TAU);
+  g.fill();
+  eyesAt(g, cx, hy + 1.6 * s, s, '#fff0d0', '#c08030', 2.4);
+  browsAt(g, cx, hy + 0.2 * s, s, '#1a1210', 1.2);
+  if (helm) {
+    // Dragra's helm: a dragon's head, horns sweeping back
+    g.fillStyle = '#c86a2a';
+    g.beginPath();
+    g.ellipse(cx, hy - 4 * s, 7.6 * s, 4.6 * s, 0, Math.PI, TAU);
+    g.fill();
+    g.fillStyle = BONE;
+    for (const dir of [-1, 1]) {
+      poly(g, [
+        [cx + dir * 5 * s, hy - 6 * s],
+        [cx + dir * 12 * s, hy - 12 * s],
+        [cx + dir * 7 * s, hy - 4 * s],
+      ]);
+      g.fill();
+    }
+  } else {
+    // The jaw of his mask around his chin
+    g.fillStyle = BONE;
+    g.beginPath();
+    g.moveTo(cx - 5 * s, hy + 4 * s);
+    g.quadraticCurveTo(cx, hy + 9.4 * s, cx + 5 * s, hy + 4 * s);
+    g.lineTo(cx + 3.6 * s, hy + 4.6 * s);
+    g.quadraticCurveTo(cx, hy + 7.6 * s, cx - 3.6 * s, hy + 4.6 * s);
+    g.closePath();
+    g.fill();
+  }
+}
+
+/**
+ * Gantenbainne Mosqueda (a chibi homage): Privaron Espada 107, broad, dark
+ * skinned, a mane of locks, his mask's jaw at his chin. Released, Dragra:
+ * scaled dragon armour over his arms and shoulders, claws, a horned helm.
+ */
+function gantenDraw(g: Ctx, w: number, h: number, late: boolean): void {
+  const s = 2;
+  const cx = w / 2;
+  const cy = h / 2 + 8;
+  const hy = cy - 13 * s;
+  aura(g, cx, cy, 56, late ? 'rgba(255,120,40,0.3)' : 'rgba(255,176,112,0.2)');
+  arrancarUniform(g, cx, cy, s, { broad: 1.15, skin: '#8a5a3a', sash: '#5a3a1a' });
+  if (late) {
+    // Dragra: scaled armour over the shoulders and arms, and claws
+    for (const dir of [-1, 1]) {
+      g.fillStyle = '#c86a2a';
+      g.beginPath();
+      g.ellipse(cx + dir * 11.6 * s, cy + 1 * s, 5 * s, 8.6 * s, -dir * 0.25, 0, TAU);
+      g.fill();
+      g.strokeStyle = '#6a2a10';
+      g.lineWidth = 0.5 * s;
+      g.beginPath();
+      for (let k = 0; k < 4; k++) {
+        const y = cy - 4 * s + k * 3.4 * s;
+        g.moveTo(cx + dir * 8.6 * s, y);
+        g.quadraticCurveTo(cx + dir * 11.6 * s, y + 1.6 * s, cx + dir * 14.6 * s, y);
+      }
+      g.stroke();
+      g.fillStyle = BONE;
+      for (let k = -1; k <= 1; k++) {
+        poly(g, [
+          [cx + dir * (12 + k * 1.4) * s, cy + 9 * s],
+          [cx + dir * (13 + k * 1.6) * s, cy + 14 * s],
+          [cx + dir * (13.4 + k * 1.4) * s, cy + 9 * s],
+        ]);
+        g.fill();
+      }
+    }
+    g.fillStyle = '#c86a2a';
+    poly(g, [
+      [cx - 9 * s, cy - 7 * s],
+      [cx + 9 * s, cy - 7 * s],
+      [cx + 6 * s, cy - 2 * s],
+      [cx - 6 * s, cy - 2 * s],
+    ]);
+    g.fill();
+  }
+  gantenHead(g, cx, hy, s, late);
+}
+
+const gantenbainne: Draw = (g, w, h) => gantenDraw(g, w, h, false);
+const gantenDragra: Draw = (g, w, h) => gantenDraw(g, w, h, true);
+
+/** Grimmjow's head: spiked blue hair, teal marks under his eyes, the jaw of his mask on his right cheek, a grin. */
+function grimmjowHead(g: Ctx, cx: number, hy: number, s: number, released: boolean): void {
+  faceAt(g, cx, hy + 0.8 * s, s, 5.6, 6.4);
+  g.fillStyle = '#59b8ff';
+  g.beginPath();
+  g.ellipse(cx, hy - 2.4 * s, 6.8 * s, 4.6 * s, 0, Math.PI * 0.95, Math.PI * 2.05);
+  g.fill();
+  for (let k = 0; k < 5; k++) {
+    const a = Math.PI * (1.08 + k * 0.21);
+    poly(g, [
+      [cx + Math.cos(a - 0.17) * 5.2 * s, hy - 2.4 * s + Math.sin(a - 0.17) * 5.2 * s],
+      [cx + Math.cos(a) * (released ? 9.6 : 8.8) * s, hy - 3.4 * s + Math.sin(a) * (released ? 9.6 : 8.8) * s],
+      [cx + Math.cos(a + 0.17) * 5.2 * s, hy - 2.4 * s + Math.sin(a + 0.17) * 5.2 * s],
+    ]);
+    g.fill();
+  }
+  if (released) {
+    // A panther's ears
+    for (const dir of [-1, 1]) {
+      poly(g, [
+        [cx + dir * 3 * s, hy - 6 * s],
+        [cx + dir * 6.6 * s, hy - 11 * s],
+        [cx + dir * 6.4 * s, hy - 4.6 * s],
+      ]);
+      g.fill();
+    }
+  }
+  // The teal marks under his eyes
+  g.strokeStyle = '#2ac8b0';
+  g.lineWidth = 0.6 * s;
+  g.beginPath();
+  for (const dir of [-1, 1]) {
+    g.moveTo(cx + dir * 1.6 * s, hy + 2.8 * s);
+    g.lineTo(cx + dir * 4.4 * s, hy + 3.4 * s);
+  }
+  g.stroke();
+  eyesAt(g, cx, hy + 1.8 * s, s, '#e0f4ff', '#3a8ae0', 2.5);
+  browsAt(g, cx, hy + 0.4 * s, s, '#2a6ac0', 1.6);
+  if (!released) {
+    // The jaw of his mask along his right cheek, teeth showing
+    g.fillStyle = BONE;
+    poly(g, [
+      [cx + 1 * s, hy + 4.6 * s],
+      [cx + 5.8 * s, hy + 1.2 * s],
+      [cx + 6 * s, hy + 6 * s],
+      [cx + 1.6 * s, hy + 7 * s],
+    ]);
+    g.fill();
+    g.strokeStyle = '#3a3a3a';
+    g.lineWidth = 0.35 * s;
+    g.beginPath();
+    for (let k = 0; k < 4; k++) {
+      g.moveTo(cx + (2.2 + k * 1) * s, hy + 5.2 * s);
+      g.lineTo(cx + (2.2 + k * 1) * s, hy + 6.4 * s);
+    }
+    g.stroke();
+  }
+  // The grin
+  g.fillStyle = '#ffffff';
+  g.beginPath();
+  g.moveTo(cx - 2.6 * s, hy + 4.2 * s);
+  g.quadraticCurveTo(cx - 0.4 * s, hy + 6 * s, cx + 1.4 * s, hy + 4.6 * s);
+  g.closePath();
+  g.fill();
+}
+
+/**
+ * Grimmjow Jaegerjaquez (a chibi homage): the Sexta Espada. Spiked blue hair,
+ * teal marks under his eyes, the jaw of his mask on his cheek, an open white
+ * jacket over the Hollow hole, hands in his pockets. Released, Pantera:
+ * long wild hair, a panther's ears and tail, white armour and claws.
+ */
+function grimmjowDraw(g: Ctx, w: number, h: number, released: boolean): void {
+  const s = 2;
+  const cx = w / 2;
+  const cy = h / 2 + 9;
+  const hy = cy - 13 * s;
+  aura(g, cx, cy, released ? 64 : 56, released ? 'rgba(89,184,255,0.34)' : 'rgba(89,184,255,0.22)');
+  if (released) {
+    // Released, his hair grows long and wild down his back, behind everything else
+    g.fillStyle = '#3a8ae0';
+    g.beginPath();
+    g.moveTo(cx - 6 * s, hy - 2 * s);
+    g.quadraticCurveTo(cx - 15 * s, hy + 14 * s, cx - 10 * s, hy + 30 * s);
+    g.lineTo(cx - 4 * s, hy + 24 * s);
+    g.lineTo(cx, hy + 31 * s);
+    g.lineTo(cx + 4 * s, hy + 24 * s);
+    g.lineTo(cx + 10 * s, hy + 30 * s);
+    g.quadraticCurveTo(cx + 15 * s, hy + 14 * s, cx + 6 * s, hy - 2 * s);
+    g.closePath();
+    g.fill();
+    // Pantera's tail, curling up behind him
+    g.strokeStyle = '#eef2f8';
+    g.lineWidth = 2.4 * s;
+    g.lineCap = 'round';
+    g.beginPath();
+    g.moveTo(cx + 6 * s, cy + 14 * s);
+    g.bezierCurveTo(cx + 22 * s, cy + 18 * s, cx + 24 * s, cy - 2 * s, cx + 17 * s, cy - 8 * s);
+    g.stroke();
+    // White armour: a fitted body with plates down the front
+    const plate = g.createLinearGradient(0, cy - 6 * s, 0, cy + 20 * s);
+    plate.addColorStop(0, '#ffffff');
+    plate.addColorStop(1, '#c9d6e6');
+    g.fillStyle = plate;
+    g.beginPath();
+    g.moveTo(cx - 7.6 * s, cy - 6 * s);
+    g.lineTo(cx + 7.6 * s, cy - 6 * s);
+    g.lineTo(cx + 9 * s, cy + 20 * s);
+    g.lineTo(cx - 9 * s, cy + 20 * s);
+    g.closePath();
+    g.fill();
+    g.strokeStyle = 'rgba(40,70,110,0.5)';
+    g.lineWidth = 1;
+    g.stroke();
+    g.beginPath();
+    for (let k = 0; k < 4; k++) {
+      const y = cy - 2 * s + k * 5 * s;
+      g.moveTo(cx - 6 * s, y);
+      g.quadraticCurveTo(cx, y + 2 * s, cx + 6 * s, y);
+    }
+    g.stroke();
+    for (const dir of [-1, 1]) {
+      g.fillStyle = '#eef2f8';
+      g.beginPath();
+      g.ellipse(cx + dir * 10 * s, cy + 2 * s, 3.4 * s, 8 * s, -dir * 0.4, 0, TAU);
+      g.fill();
+      g.fillStyle = '#59b8ff';
+      for (let k = -1; k <= 1; k++) {
+        poly(g, [
+          [cx + dir * (11.6 + k * 1.2) * s, cy + 9.4 * s],
+          [cx + dir * (13 + k * 1.6) * s, cy + 14.6 * s],
+          [cx + dir * (12.6 + k * 1.2) * s, cy + 9.4 * s],
+        ]);
+        g.fill();
+      }
+    }
+  } else {
+    arrancarUniform(g, cx, cy, s, { open: true });
+    // Hands in his pockets: the sleeves end at the hakama
+    for (const dir of [-1, 1]) {
+      g.fillStyle = '#f4f6fa';
+      g.beginPath();
+      g.ellipse(cx + dir * 9.4 * s, cy + 3 * s, 3.4 * s, 6.6 * s, -dir * 0.1, 0, TAU);
+      g.fill();
+    }
+    g.fillStyle = '#2a2f3a';
+    g.fillRect(cx + 8 * s, cy + 5 * s, 2 * s, 9 * s);
+  }
+  grimmjowHead(g, cx, hy, s, released);
+}
+
+const grimmjow: Draw = (g, w, h) => grimmjowDraw(g, w, h, false);
+const grimmjowPantera: Draw = (g, w, h) => grimmjowDraw(g, w, h, true);
+
+/**
+ * Pesche and Dondochakka (a chibi homage), Las Noches' runaways: the
+ * round, masked Dondochakka at a run, the thin, bug-masked Pesche on his
+ * shoulders, a sack of the palace's silver between them.
+ */
+const pescheDondochakka: Draw = (g, w, h) => {
+  const cx = w / 2;
+  const cy = h / 2 + 6;
+  aura(g, cx, cy, 30, 'rgba(255,210,122,0.25)');
+  // Dondochakka: a big round body, little legs
+  g.fillStyle = '#e8e2d6';
+  g.beginPath();
+  g.ellipse(cx, cy + 6, 14, 12, 0, 0, TAU);
+  g.fill();
+  g.strokeStyle = 'rgba(60,50,40,0.5)';
+  g.lineWidth = 1;
+  g.stroke();
+  g.fillStyle = '#4a3a2a';
+  for (const dir of [-1, 1]) {
+    g.beginPath();
+    g.ellipse(cx + dir * 6, cy + 18, 3, 3.6, 0, 0, TAU);
+    g.fill();
+  }
+  // His mask: a white face with a striped band
+  g.fillStyle = BONE;
+  g.beginPath();
+  g.ellipse(cx, cy - 4, 8, 7, 0, 0, TAU);
+  g.fill();
+  g.fillStyle = '#c84a2a';
+  g.fillRect(cx - 8, cy - 5, 16, 2.4);
+  g.fillStyle = '#0b0c12';
+  g.beginPath();
+  g.arc(cx - 3, cy - 1, 1.2, 0, TAU);
+  g.arc(cx + 3, cy - 1, 1.2, 0, TAU);
+  g.fill();
+  // Pesche on his shoulders: thin, a bug's mask with two antennae
+  g.fillStyle = '#2a2430';
+  g.fillRect(cx - 2.4, cy - 20, 4.8, 9);
+  g.fillStyle = BONE;
+  g.beginPath();
+  g.ellipse(cx, cy - 23, 4.4, 4, 0, 0, TAU);
+  g.fill();
+  g.strokeStyle = BONE;
+  g.lineWidth = 1;
+  g.beginPath();
+  g.moveTo(cx - 1.6, cy - 26);
+  g.quadraticCurveTo(cx - 6, cy - 32, cx - 8, cy - 30);
+  g.moveTo(cx + 1.6, cy - 26);
+  g.quadraticCurveTo(cx + 6, cy - 32, cx + 8, cy - 30);
+  g.stroke();
+  // The sack of silver
+  g.fillStyle = '#c8a050';
+  g.beginPath();
+  g.ellipse(cx + 14, cy + 2, 6, 7, 0.3, 0, TAU);
+  g.fill();
+  glowDot(g, cx + 14, cy - 3, 2, 2, '#fff6c8', 'rgba(255,210,122,0.9)', 5);
+};
+
 const ENEMY_DRAW: readonly [string, number, Draw][] = [
   ['ayon', 184, ayon],
   ['ayon_rage', 200, ayonRage],
@@ -6355,6 +7248,20 @@ const ENEMY_DRAW: readonly [string, number, Draw][] = [
   ['heroes_uryu', 112, uryu],
   ['heroes_aizen', 112, aizen],
   ['ichigo', 120, ichigo],
+  ['numeros', 52, numeros],
+  ['exequias', 52, exequias],
+  ['gillian', 96, gillian],
+  ['arrancar_rudbornn', 112, rudbornn],
+  ['arrancar_rudbornn_late', 136, rudbornnArbol],
+  ['arrancar_dordoni', 112, dordoni],
+  ['arrancar_dordoni_late', 128, dordoniGiralda],
+  ['arrancar_cirucci', 104, cirucci],
+  ['arrancar_cirucci_late', 132, cirucciGolondrina],
+  ['arrancar_gantenbainne', 116, gantenbainne],
+  ['arrancar_gantenbainne_late', 116, gantenDragra],
+  ['grimmjow', 116, grimmjow],
+  ['grimmjow_pantera', 132, grimmjowPantera],
+  ['pesche', 68, pescheDondochakka],
   ['ichigo_mask', 128, ichigoMask],
   ['thief_senbonzakura', 112, thiefFear],
   ['thief_hyorinmaru', 112, thiefIron],
@@ -6561,10 +7468,80 @@ export function buildGroundTile(stage: string): Texture {
   else if (stage === 'palace') palaceGround(g, S);
   else if (stage === 'silbern') silbernGround(g, S);
   else if (stage === 'wahrwelt') wahrweltGround(g, S);
+  else if (stage === 'lasnoches') lasnochesGround(g, S);
   else huecoGround(g, S);
   const tex = Texture.from(c);
   tex.source.addressMode = 'repeat';
   return tex;
+}
+
+/**
+ * Las Noches: the polished floors of Aizen's palace with white sand drifted
+ * over them, lit blue by the sky painted on the dome, crossed by the long
+ * shadows of its pillars.
+ */
+function lasnochesGround(g: Ctx, S: number): void {
+  g.fillStyle = '#1c2230';
+  g.fillRect(0, 0, S, S);
+  const rnd = seeded(7070);
+  const tile = 128;
+  for (let ty = 0; ty < S; ty += tile) {
+    for (let tx = 0; tx < S; tx += tile) {
+      const v = Math.floor(rnd() * 8);
+      g.fillStyle = `rgb(${44 + v},${52 + v},${70 + v})`;
+      g.fillRect(tx + 1, ty + 1, tile - 2, tile - 2);
+      const sheen = g.createLinearGradient(tx, ty, tx + tile, ty + tile);
+      sheen.addColorStop(0, 'rgba(160,200,255,0.08)');
+      sheen.addColorStop(1, 'rgba(160,200,255,0)');
+      g.fillStyle = sheen;
+      g.fillRect(tx + 1, ty + 1, tile - 2, tile - 2);
+    }
+  }
+  g.strokeStyle = 'rgba(220,232,252,0.13)';
+  g.lineWidth = 1.5;
+  for (let k = 0; k <= S; k += tile) {
+    g.beginPath();
+    g.moveTo(k, 0);
+    g.lineTo(k, S);
+    g.moveTo(0, k);
+    g.lineTo(S, k);
+    g.stroke();
+  }
+  // The pillars' long shadows, slanting the same way across every tile (their period divides the tile, so it repeats cleanly)
+  g.fillStyle = 'rgba(6,8,16,0.26)';
+  const period = S / 4;
+  for (let k = -4; k < 8; k++) {
+    const x0 = k * period;
+    g.beginPath();
+    g.moveTo(x0, 0);
+    g.lineTo(x0 + 30, 0);
+    g.lineTo(x0 + 30 + S / 2, S);
+    g.lineTo(x0 + S / 2, S);
+    g.closePath();
+    g.fill();
+  }
+  // White sand drifted across the floor
+  for (let k = 0; k < 10; k++) {
+    const x = rnd() * S;
+    const y = rnd() * S;
+    const rx = 50 + rnd() * 90;
+    const ry = 10 + rnd() * 16;
+    for (const [ox, oy] of [
+      [0, 0],
+      [S, 0],
+      [-S, 0],
+      [0, S],
+      [0, -S],
+    ] as const) {
+      const grad = g.createRadialGradient(x + ox, y + oy, 2, x + ox, y + oy, rx);
+      grad.addColorStop(0, 'rgba(232,236,244,0.13)');
+      grad.addColorStop(1, 'rgba(232,236,244,0)');
+      g.fillStyle = grad;
+      g.beginPath();
+      g.ellipse(x + ox, y + oy, rx, ry, 0.2, 0, TAU);
+      g.fill();
+    }
+  }
 }
 
 /**

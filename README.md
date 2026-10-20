@@ -33,7 +33,7 @@ a portrait and a title. The pause and results screens break down the **damage**
 each power dealt (total, share and damage per second), and **Share** on the
 results turns the run into a picture for the phone's share sheet.
 
-Thirty-three **Feats** give long goals (a hundred thousand kills, every letter
+Thirty-four **Feats** give long goals (a hundred thousand kills, every letter
 awakened, Trial V, a Boss Rush under 4:00, all three fragments in one run,
 every spoil of war...),
 each paying gold once; some open one of three new looks for the Emperor
@@ -45,7 +45,7 @@ the run can still use: no Founder's Medallion where no bankai is left to take
 could give), the Soul King's Seal only in the Palace while a Fragment can
 still drop, no Silbern Key or Sanrei Glove in a Boss Rush.
 
-Every boss leaves a **spoil of war** of its own when it falls, thirty in all,
+Every boss leaves a **spoil of war** of its own when it falls, thirty-five in all,
 and none of them does what another does: Äs Nödt's Thorn holds everything
 near you with fear when you are hit, Cang Du's Iron Scale hardens you after
 every hit, Neliel's Mask swallows one shot in six and spits it back as a
@@ -96,8 +96,9 @@ stage once before any of them returns.
 
 Music is composed note by note and synthesized live with Web Audio (nothing to
 download): a regal title theme, the eerie "White Moon" for Hueco Mundo, taiko
-and flute for Seireitei, a driving boss theme with a Seireitei version and a
-finale, and victory and defeat stingers. It can be turned off in Settings.
+and flute for Seireitei, a plucked guitar and palmas for Las Noches, themes of
+their own for Silbern, the Palace and the Wahrwelt, a driving boss theme with
+a Seireitei version and a finale, and victory and defeat stingers. It can be turned off in Settings.
 
 Between the bosses, **events** break the rhythm: a Garganta (a Senkaimon
 outside Hueco Mundo) pours out enemies until you destroy it, a runaway flees
@@ -160,6 +161,18 @@ Stages, 20 minutes each:
   with Zanka no Tachi's fire and the ashen dead. Bring him below half health
   and the Emperor takes his bankai, as he did in the story: Yamamoto fights on
   with Ennetsu Jigoku's pillars of flame and his fists (Ikkotsu, Sōkotsu).
+- **Las Noches** (unlocked by clearing Hueco Mundo, with the Seireitei): inside
+  the palace Aizen raised in the desert, white halls under the false sky he
+  painted on its dome. Arrancar soldiers, the skull-masked Exequias firing
+  Bala, and Menos Grande lumbering in with a warned Cero. Three of four
+  Arrancar bar the way, each releasing at half health: Rudbornn Chelute
+  (Árbol's Calaveras rise around you, and while they stand by him they take
+  half of every blow), Dordoni (Giralda's whirlwinds and a drilling kick),
+  Cirucci (Golondrina's blade on its cord, then wings of razor feathers) and
+  Gantenbainne (Dragon Rugir, then Dragra's armour). Grimmjow Jaegerjaquez,
+  the Sexta Espada, ends it with Desgarrón, Garra de la Pantera, Sonído and
+  Gran Rey Cero, and at half health releases Pantera. Pesche and Dondochakka
+  are the runaways.
 - **Silbern** (unlocked by clearing Seireitei, with the Palace): the second
   invasion. The Wandenreich's city has risen out of the Seireitei's shadow and
   taken its place, and the Gotei 13 fights back in it: Eleventh Division

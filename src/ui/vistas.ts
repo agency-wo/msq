@@ -373,7 +373,51 @@ const wahrwelt: Paint = (g, w, h) => {
   clouds(g, w, h * 0.96, 'rgba(30,8,14,0.95)', 20, rnd);
 };
 
-const VISTAS: Readonly<Partial<Record<StageId, Paint>>> = { hueco, seireitei, silbern, palace, wahrwelt };
+/** Las Noches: inside the dome, Aizen's painted day. White towers, a white wall, white sand, a sun that never sets. */
+const lasnoches: Paint = (g, w, h) => {
+  const rnd = seeded(61);
+  const sky = g.createLinearGradient(0, 0, 0, h);
+  sky.addColorStop(0, '#173c78');
+  sky.addColorStop(0.6, '#5a98d6');
+  sky.addColorStop(1, '#bfdcf0');
+  g.fillStyle = sky;
+  g.fillRect(0, 0, w, h);
+  // The curve of the dome, high overhead: the sky is painted on it.
+  g.strokeStyle = 'rgba(255,255,255,0.2)';
+  g.lineWidth = 1.5;
+  g.beginPath();
+  g.ellipse(w * 0.5, h * 1.15, w * 0.95, h * 1.08, 0, Math.PI, TAU);
+  g.stroke();
+  halo(g, w * 0.74, h * 0.22, h * 0.32, '255,250,230', 0.55);
+  g.fillStyle = '#fffaf0';
+  g.beginPath();
+  g.arc(w * 0.74, h * 0.22, h * 0.06, 0, TAU);
+  g.fill();
+  for (const [x, top, tw] of [
+    [0.12, 0.36, 8],
+    [0.22, 0.22, 12],
+    [0.34, 0.42, 7],
+    [0.6, 0.3, 11],
+    [0.86, 0.4, 9],
+  ] as const) {
+    const px = w * x;
+    const grad = g.createLinearGradient(px - tw / 2, 0, px + tw / 2, 0);
+    grad.addColorStop(0, '#f4f6fa');
+    grad.addColorStop(1, '#aebccf');
+    g.fillStyle = grad;
+    g.fillRect(px - tw / 2, h * top, tw, h * 0.66 - h * top);
+    g.fillStyle = 'rgba(40,60,90,0.35)';
+    g.fillRect(px - tw / 2, h * top, tw, 2);
+  }
+  g.fillStyle = '#e8ecf2';
+  g.fillRect(0, h * 0.62, w, h * 0.07);
+  g.fillStyle = 'rgba(60,80,110,0.28)';
+  for (let k = 0; k < 10; k++) g.fillRect(w * (0.04 + k * 0.1) + rnd() * 3, h * 0.635, 2, h * 0.045);
+  ridge(g, w, h, h * 0.74, h * 0.03, 62, '#e6e2d6', 'rgba(255,255,255,0.6)');
+  ridge(g, w, h, h * 0.85, h * 0.04, 63, '#cbc4b2', 'rgba(255,255,255,0.45)');
+};
+
+const VISTAS: Readonly<Partial<Record<StageId, Paint>>> = { hueco, seireitei, lasnoches, silbern, palace, wahrwelt };
 
 /** Paint a stage's vista into a canvas; `w` and `h` are its CSS size (CSS covers the card with it). */
 export function drawVista(canvas: HTMLCanvasElement, stage: StageId, w = 200, h = 104, ratio = Math.min(window.devicePixelRatio || 1, 3)): void {

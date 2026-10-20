@@ -65,6 +65,7 @@ import {
   MK_SILVER,
   MK_STING,
 } from './constants';
+import { spoilShotTaken } from './spoils';
 import type { World } from './world';
 
 // ------------------------------------------------------------------ zones
@@ -225,7 +226,7 @@ function resolveMark(w: World, i: number): void {
     else hit = inArc(p.x, p.y, x, y, ang, r, len, PLAYER.radius);
     if (hit) {
       const before = p.hp;
-      if (dmg > 0) w.hurtPlayer(kind === MK_STING ? dmg * w.sting() : dmg);
+      if (dmg > 0) w.hurtPlayer((kind === MK_STING ? dmg * w.sting() : dmg) * spoilShotTaken(w));
       // Unohana's cuts heal her when they wound you.
       if (M.drain[i] > 0 && p.hp < before) w.drainTo(M.owner[i], M.drain[i]);
       if (flags & (MF_SLOW | MF_FREEZE) && !w.steady) p.slowT = Math.max(p.slowT, 1.5);

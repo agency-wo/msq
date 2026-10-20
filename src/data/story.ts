@@ -6,7 +6,7 @@
 /** When a chapter is shown: before a run (on a given stage) or after one, once its condition holds. */
 export type ChapterTrigger =
   | { when: 'before'; stage?: string }
-  | { when: 'after'; condition: 'bankai' | 'hueco' | 'seireitei' | 'almighty' | 'palace' | 'heir' | 'silbern' | 'wahrwelt' };
+  | { when: 'after'; condition: 'bankai' | 'hueco' | 'seireitei' | 'almighty' | 'palace' | 'heir' | 'silbern' | 'wahrwelt' | 'lasnoches' };
 
 export interface Chapter {
   id: string;
@@ -56,6 +56,28 @@ export const CHAPTERS: readonly Chapter[] = [
       'She met the Emperor in front of her own palace, and the sea she carried in her blade could not reach him. He leaves her in chains in her own halls. A queen is worth more alive.',
       'Beyond the dunes the sky tears open onto a wall of white stone: the Seireitei, city of the Soul Reapers. Every bankai his knights stole belonged to a captain who waits there.',
       'They will want their bankai back. The Emperor intends to take the rest.',
+    ],
+  },
+  {
+    id: 'lasnoches',
+    kicker: 'Interlude',
+    title: 'The Painted Sky',
+    hint: 'Set foot in Las Noches.',
+    trigger: { when: 'before', stage: 'lasnoches' },
+    text: [
+      'Harribel fell at the doors of Las Noches, and the doors stayed open. Inside is the palace Aizen raised out of the sand: white hall after white hall, under a blue sky he painted on the inside of its dome so that his Espada would never see the night.',
+      'Aizen is gone and the queen is beaten. The Arrancar who are left have no one to hold the palace for, and they hold it anyway: the Exequias in their skull masks, three of the Privaron who were once Espada, and a Sexta Espada who has been waiting a long time for someone worth fighting.',
+    ],
+  },
+  {
+    id: 'sexta',
+    kicker: 'Interlude',
+    title: 'The Sexta',
+    hint: 'Clear Las Noches.',
+    trigger: { when: 'after', condition: 'lasnoches' },
+    text: [
+      'Grimmjow lies in the sand of a day that never ends, still grinning. He would rather lose to a king, he says, than kneel to one.',
+      'The Emperor leaves him there. Nothing in Las Noches was worth taking. He came so that no throne in Hueco Mundo would be left standing but his.',
     ],
   },
   {
@@ -211,6 +233,11 @@ export const BOSS_LINES: Readonly<Record<string, string>> = {
   'heroes:uryu': '“You named me your heir. I came all this way to give it back.”',
   'heroes:aizen': '“I never meant this throne for you. Look closely: am I even here?”',
   'boss:ichigo': '“I don’t care whose blood is in me. You’re not taking anyone else.”',
+  'arrancar:rudbornn': '“The Exequias carry out sentences. Yours was passed the moment you walked in.”',
+  'arrancar:dordoni': '“A king, here, in my halls? Then dance with me, señor, until one of us cannot.”',
+  'arrancar:cirucci': '“The Privaron were thrown away once already. I will not be thrown away by you.”',
+  'arrancar:gantenbainne': '“I fight for the ones who cannot. Come, then. I will not step aside.”',
+  'boss:grimmjow': '“Finally, something worth tearing apart. Try not to bore me, king.”',
   'boss:unohana': '“Please hold still. I would hate to make your wounds worse than they need to be.”',
   'boss:commander': '“I have burned for a thousand years. Tonight, so will you.”',
   'royal:tenjiro': '“Nobody leaves my springs the way they came in.”',

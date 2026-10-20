@@ -76,7 +76,7 @@ const captain = (id: string): number => GOTEI_IDS.indexOf(id);
 describe('Silbern', () => {
   it('opens with the Palace once the Seireitei is cleared, and sits after it', () => {
     const ids = STAGES.map((s) => s.id);
-    expect(ids.indexOf('silbern')).toBe(ids.indexOf('seireitei') + 1);
+    expect(ids.indexOf('silbern')).toBeGreaterThan(ids.indexOf('seireitei'));
     const s = defaultSave();
     expect(stageUnlocked(s, 'silbern')).toBe(false);
     s.stages.seireitei.cleared = true;

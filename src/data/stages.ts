@@ -7,7 +7,7 @@ import { FIRST_SHRINE_AT } from './shrines';
  * boss at 20:00 to clear it. Swarm rings, elites, chests and runes in between.
  */
 
-export type StageId = 'hueco' | 'seireitei' | 'silbern' | 'palace' | 'wahrwelt';
+export type StageId = 'hueco' | 'seireitei' | 'lasnoches' | 'silbern' | 'palace' | 'wahrwelt';
 
 export interface SpawnPhase {
   from: number;
@@ -52,7 +52,7 @@ export interface StageDef {
    * bearers: the Royal Guard (who leave Fragments of the Soul King),
    * Silbern's captains or the Wahrwelt's defenders (who leave black chests).
    */
-  roster?: 'royal' | 'gotei' | 'heroes';
+  roster?: 'royal' | 'gotei' | 'heroes' | 'arrancar';
   /**
    * A roster member who is never left out and always takes the last slot
    * (Aizen: Kyōraku lets him out of Muken, and he is the last before Ichigo).
@@ -177,6 +177,53 @@ const SEIREITEI: StageDef = {
   captains: true,
   // Zanka no Tachi belongs to the Captain-Commander, who only fights at the end.
   bearerPool: ['senbonzakura', 'hyorinmaru', 'raikoben', 'tengen', 'gonryo'],
+  unlockedBy: 'hueco',
+};
+
+/**
+ * Las Noches: the palace Aizen raised in the middle of Hueco Mundo, white
+ * halls under the false sky he painted on the inside of its dome. Arrancar
+ * soldiers, the skull-masked Exequias, Gillian lumbering through the halls;
+ * three of Rudbornn, Dordoni, Cirucci and Gantenbainne bar the way, and
+ * Grimmjow Jaegerjaquez, the Sexta Espada, waits at 20:00. Opened, with the
+ * Seireitei, by clearing Hueco Mundo.
+ */
+const LASNOCHES: StageDef = {
+  id: 'lasnoches',
+  name: 'Las Noches',
+  blurb: 'Aizen’s white palace, under the false sky he painted on its dome.',
+  length: LENGTH,
+  phases: [
+    { from: 0, mix: [['numeros', 2], ['hollow', 1]] },
+    { from: 45, mix: [['numeros', 3], ['hollow', 1], ['hound', 1]] },
+    { from: 150, mix: [['numeros', 3], ['hound', 2], ['exequias', 1]] },
+    { from: 300, mix: [['numeros', 3], ['hound', 2], ['exequias', 2], ['brute', 1]] },
+    { from: 600, mix: [['numeros', 3], ['hound', 3], ['exequias', 2], ['brute', 2]] },
+    { from: 900, mix: [['numeros', 3], ['hound', 3], ['exequias', 3], ['brute', 3]] },
+  ],
+  events: sorted([
+    ...skeleton(
+      (t) => (t < 400 ? 'numeros' : 'hound'),
+      (t) => (t < 300 ? 'numeros' : 'gillian'),
+      [1.15, 4.2, 16],
+    ),
+    // A Gillian lumbers in after the third Arrancar.
+    { at: 906, kind: 'elite', enemy: 'gillian' },
+    {
+      at: LENGTH,
+      kind: 'boss',
+      enemy: 'grimmjow',
+      hpMul: 50,
+      final: true,
+      warn: 'Grimmjow Jaegerjaquez is grinning at you',
+      sub: 'Sexta Espada',
+    },
+  ]),
+  hp: 1.15,
+  spawn: 1.05,
+  xp: 1.2,
+  gold: 1.35,
+  roster: 'arrancar',
   unlockedBy: 'hueco',
 };
 
@@ -319,7 +366,7 @@ const WAHRWELT: StageDef = {
   unlockedBy: 'palace',
 };
 
-export const STAGES: readonly StageDef[] = [HUECO, SEIREITEI, SILBERN, PALACE, WAHRWELT];
+export const STAGES: readonly StageDef[] = [HUECO, SEIREITEI, LASNOCHES, SILBERN, PALACE, WAHRWELT];
 
 /**
  * Trials: harder runs of a stage, unlocked one at a time by clearing the one

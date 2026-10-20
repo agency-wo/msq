@@ -5,9 +5,22 @@
  * check every bar without an AudioContext.
  */
 
-export type TrackId = 'title' | 'hueco' | 'seireitei' | 'silbern' | 'palace' | 'wahrwelt' | 'boss' | 'bossSei' | 'bossPalace' | 'final' | 'victory' | 'defeat';
+export type TrackId =
+  | 'title'
+  | 'hueco'
+  | 'seireitei'
+  | 'lasnoches'
+  | 'silbern'
+  | 'palace'
+  | 'wahrwelt'
+  | 'boss'
+  | 'bossSei'
+  | 'bossPalace'
+  | 'final'
+  | 'victory'
+  | 'defeat';
 
-export type Inst = 'pad' | 'choir' | 'bass' | 'lead' | 'flute' | 'bell' | 'stab' | 'kick' | 'snare' | 'hat' | 'taiko';
+export type Inst = 'pad' | 'choir' | 'bass' | 'lead' | 'flute' | 'bell' | 'stab' | 'kick' | 'snare' | 'hat' | 'taiko' | 'pluck' | 'clap';
 
 export interface NoteEvent {
   inst: Inst;
@@ -558,6 +571,102 @@ const wahrwelt: Track = {
   },
 };
 
+// ------------------------------------------------------------- las noches
+
+/**
+ * "Las Noches": Aizen's white palace under its painted sky. A minor with the
+ * raised seventh of the Arrancar's Spanish airs: a guitar's arpeggios over
+ * the falling A, G, F, E of the cadence, palmas, a dry box drum and a lead
+ * that leans on the semitone above E.
+ */
+const LN_CHORDS: readonly (readonly string[])[] = [
+  ['A2', 'E3', 'A3', 'C4'],
+  ['G2', 'D3', 'G3', 'B3'],
+  ['F2', 'C3', 'F3', 'A3'],
+  ['E2', 'B2', 'E3', 'G#3'],
+  ['A2', 'E3', 'A3', 'C4'],
+  ['G2', 'D3', 'G3', 'B3'],
+  ['F2', 'C3', 'F3', 'A3'],
+  ['E2', 'B2', 'E3', 'G#3'],
+];
+const LN_LEAD: readonly Line[] = [
+  [
+    [0, 'E5', 4],
+    [4, 'F5', 2],
+    [6, 'E5', 2],
+    [8, 'D5', 4],
+    [12, 'C5', 4],
+  ],
+  [
+    [0, 'D5', 4],
+    [4, 'C5', 2],
+    [6, 'B4', 2],
+    [8, 'C5', 8],
+  ],
+  [
+    [0, 'C5', 4],
+    [4, 'B4', 2],
+    [6, 'A4', 2],
+    [8, 'B4', 4],
+    [12, 'C5', 4],
+  ],
+  [
+    [0, 'B4', 6],
+    [6, 'G#4', 2],
+    [8, 'A4', 8],
+  ],
+  [
+    [0, 'A5', 4],
+    [4, 'G5', 2],
+    [6, 'F5', 2],
+    [8, 'E5', 8],
+  ],
+  [
+    [0, 'F5', 4],
+    [4, 'E5', 2],
+    [6, 'D5', 2],
+    [8, 'E5', 8],
+  ],
+  [
+    [0, 'D5', 4],
+    [4, 'C5', 4],
+    [8, 'B4', 4],
+    [12, 'A4', 4],
+  ],
+  [
+    [0, 'G#4', 8],
+    [8, 'B4', 4],
+    [12, 'E5', 4],
+  ],
+];
+
+const lasnoches: Track = {
+  id: 'lasnoches',
+  bpm: 96,
+  bars: 8,
+  loop: true,
+  scale: [9, 11, 0, 2, 4, 5, 7, 8],
+  bar(i) {
+    const c = LN_CHORDS[i % 8];
+    const cadence = i % 4 === 3;
+    // The guitar: arpeggios up and down the chord, and on the E chord a strum.
+    const order = [0, 1, 2, 3, 2, 1, 2, 3];
+    const guitar: NoteEvent[] = cadence
+      ? [0, 1, 2, 3].map((k) => ({ inst: 'pluck' as const, step: k, midi: midi(c[k]) + 12, len: 8, vel: 0.5 }))
+      : order.map((k, n) => ({ inst: 'pluck' as const, step: n * 2, midi: midi(c[k]) + 12, len: 3, vel: n % 4 === 0 ? 0.48 : 0.36 }));
+    return [
+      ...chord('pad', c.slice(1), 0, 16, 0.22),
+      { inst: 'bass', step: 0, midi: midi(c[0]), len: 6, vel: 0.42 },
+      { inst: 'bass', step: 8, midi: midi(c[0]), len: 6, vel: 0.36 },
+      ...guitar,
+      ...hits('clap', cadence ? [0, 3, 6, 8, 10, 12, 14] : [4, 10, 12], 0.32, [12]),
+      ...hits('kick', [0, 7, 10], 0.24),
+      ...hits('hat', [2, 6, 10, 14], 0.08),
+      ...(i % 2 === 1 || i >= 4 ? line('lead', LN_LEAD[i % 8], 0.34) : []),
+    ];
+  },
+};
+
 // ------------------------------------------------------------------ bosses
 
 /** "Medallion": the boss theme. A minor, driving: an eighth-note bass, brass stabs, choir and a fast lead. */
@@ -691,6 +800,7 @@ export const TRACKS: Readonly<Record<TrackId, Track>> = {
   title,
   hueco,
   seireitei,
+  lasnoches,
   silbern,
   palace,
   wahrwelt,
@@ -703,4 +813,4 @@ export const TRACKS: Readonly<Record<TrackId, Track>> = {
 };
 
 /** Melodic instruments, whose notes the tests hold to each track's scale. */
-export const MELODIC: ReadonlySet<Inst> = new Set<Inst>(['lead', 'flute', 'bell']);
+export const MELODIC: ReadonlySet<Inst> = new Set<Inst>(['lead', 'flute', 'bell', 'pluck']);

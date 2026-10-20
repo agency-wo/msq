@@ -65,6 +65,7 @@ const POWER_SECTIONS: readonly [string, (d: PowerDef) => boolean, string][] = [
 const ENEMY_SECTIONS: readonly [CodexSection, string][] = [
   ['hueco', 'Hueco Mundo'],
   ['seireitei', 'Seireitei'],
+  ['lasnoches', 'Las Noches'],
   ['silbern', 'Silbern'],
   ['palace', 'Soul King Palace'],
   ['wahrwelt', 'Wahrwelt'],
