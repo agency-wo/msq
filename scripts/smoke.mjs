@@ -708,6 +708,39 @@ try {
   log('pantera', { phase: await page.evaluate(() => window.__msq.world.boss.phase) });
   await shot('12m-pantera');
 
+  // Karakura Town: its streets, its four defenders and what each shows at half health, then Urahara's bankai.
+  await page.goto(`${BASE}?debug&seed=4&play&god&stage=karakura&t=420&give=xaxis3,explode2`);
+  await wait(400);
+  await steer(8000, { radius: 25 });
+  log('karakura mid', await stats());
+  await shot('12n-karakura');
+  for (const id of ['chad', 'orihime', 'yoruichi', 'isshin']) {
+    await page.goto(`${BASE}?debug&seed=3&play&god&stage=karakura&t=298&bearers=${id}`);
+    await wait(400);
+    await steer(6000, { radius: 20 });
+    log(`karakura ${id}`, { ...(await stats()), boss: (await page.isVisible('.bossbar')) ? await page.textContent('.boss-name') : null });
+    await shot(`12n-karakura-${id}`);
+    await page.evaluate(() => {
+      const w = window.__msq.world;
+      for (let i = 0; i < w.en.n; i++) if (w.en.type[i] === 41 && !w.en.dead[i]) w.en.hp[i] = w.en.maxHp[i] * 0.45;
+    });
+    await steer(2500, { radius: 20 });
+    log(`karakura ${id} late`, { phase: await page.evaluate(() => window.__msq.world.boss.phase) });
+    await shot(`12n-karakura-${id}-late`);
+  }
+  await page.goto(`${BASE}?debug&seed=7&play&god&stage=karakura&t=1196&give=xaxis6,explode6,heat6`);
+  await wait(400);
+  await steer(8000, { radius: 15 });
+  log('urahara', { ...(await stats()), boss: await page.textContent('.boss-name'), sub: await page.textContent('.boss-sub') });
+  await shot('12o-urahara');
+  await page.evaluate(() => {
+    const w = window.__msq.world;
+    for (let i = 0; i < w.en.n; i++) if (w.en.type[i] === 42 && !w.en.dead[i]) w.en.hp[i] = w.en.maxHp[i] * 0.45;
+  });
+  await steer(4000, { radius: 15 });
+  log('benihime aratame', { phase: await page.evaluate(() => window.__msq.world.boss.phase) });
+  await shot('12o-urahara-bankai');
+
   // The captains defend their own bankai in Seireitei.
   for (const id of ['senbonzakura', 'hyorinmaru', 'raikoben', 'tengen', 'gonryo']) {
     await page.goto(`${BASE}?debug&seed=3&play&god&stage=seireitei&t=298&bearers=${id}`);

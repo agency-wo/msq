@@ -100,6 +100,7 @@ export const FEATS: readonly FeatDef[] = [
   { id: 'clear-silbern', name: 'The Silver City', desc: 'Clear Silbern.', group: 'Stages', goal: 1, gold: 500, save: (s) => yes(s.stages.silbern.cleared) },
   { id: 'clear-wahrwelt', name: 'One World', desc: 'Clear the Wahrwelt.', group: 'Stages', goal: 1, gold: 800, save: (s) => yes(s.stages.wahrwelt.cleared) },
   { id: 'clear-lasnoches', name: 'The Painted Sky', desc: 'Clear Las Noches.', group: 'Stages', goal: 1, gold: 500, save: (s) => yes(s.stages.lasnoches.cleared) },
+  { id: 'clear-karakura', name: 'Very Quiet', desc: 'Clear Karakura Town.', group: 'Stages', goal: 1, gold: 1000, save: (s) => yes(s.stages.karakura.cleared) },
   { id: 'clear-palace', name: 'Above the Clouds', desc: 'Clear the Soul King Palace.', group: 'Stages', goal: 1, gold: 500, look: 'white', save: (s) => yes(s.stages.palace.cleared) },
   { id: 'trial-3', name: 'Trial by Fire', desc: 'Clear any stage on Trial III.', group: 'Stages', goal: 3, gold: 400, save: (s) => Math.max(0, highestTrial(s)) },
   { id: 'trial-5', name: 'Beyond Every Trial', desc: 'Clear any stage on Trial V.', group: 'Stages', goal: 5, gold: 800, look: 'crimson', save: (s) => Math.max(0, highestTrial(s)) },

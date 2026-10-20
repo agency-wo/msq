@@ -64,6 +64,12 @@ export const SPOILS: readonly RelicDef[] = [
   spoil('defender:rukia', 'tsukishiro', 'Sode no Shirayuki’s Ribbon', '#cfeeff', 'snow', 'Tsukishiro: every 10 s, the ground under the thickest crowd freezes and cuts.'),
   spoil('defender:uryu', 'arrowhead', 'Uryū’s Silver Arrowhead', '#e8eef8', 'arrow', 'Counts as one more toward The Almighty, and cooldowns -5%.', { mods: { cdr: 0.05 } }),
   spoil('defender:aizen', 'hogyoku', 'The Hōgyoku', '#b89aff', 'star', 'Once a run, when you fall to a quarter of your health, it answers: you heal fully and strike 15% harder from then on.'),
+  // Karakura Town
+  spoil('karakura:chad', 'gigante', 'Brazo Derecha de Gigante', '#ff7a6a', 'shield', 'The Giant’s arm: enemies that touch you hurt you 25% less.'),
+  spoil('karakura:orihime', 'rikka', 'Orihime’s Hairpins', '#ffc878', 'heart', 'Sōten Kisshun: a third of every wound you take is rejected, healing back over 4 s.'),
+  spoil('karakura:yoruichi', 'shunko', 'Yoruichi’s Shunkō', '#c8a8ff', 'wing', 'Flash steps: move 25% faster, and cooldowns -8%.', { mods: { moveSpeed: 0.25, cdr: 0.08 } }),
+  spoil('karakura:isshin', 'engetsu', 'Engetsu’s Guard', '#ffaa64', 'flame', 'Whatever you set burning burns twice as long and 30% hotter.'),
+  spoil('urahara', 'hat', 'Urahara’s Striped Hat', '#7ac88a', 'crown', 'The shopkeeper’s eye: every chest offers one more relic to choose from.'),
   spoil('ichigo', 'getsuga', 'Zangetsu’s Edge', '#ff6a3c', 'blade', 'Every 8 s, Getsuga Tenshō: a crescent of black power flies where you are heading.'),
 ];
 

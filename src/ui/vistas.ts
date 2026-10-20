@@ -417,7 +417,65 @@ const lasnoches: Paint = (g, w, h) => {
   ridge(g, w, h, h * 0.85, h * 0.04, 63, '#cbc4b2', 'rgba(255,255,255,0.45)');
 };
 
-const VISTAS: Readonly<Partial<Record<StageId, Paint>>> = { hueco, seireitei, lasnoches, silbern, palace, wahrwelt };
+/** Karakura Town at dusk: rooftops and telephone poles against an orange sky, the river below. */
+const karakura: Paint = (g, w, h) => {
+  const rnd = seeded(73);
+  const sky = g.createLinearGradient(0, 0, 0, h);
+  sky.addColorStop(0, '#2a1a3a');
+  sky.addColorStop(0.55, '#c85a3a');
+  sky.addColorStop(1, '#ffb070');
+  g.fillStyle = sky;
+  g.fillRect(0, 0, w, h);
+  halo(g, w * 0.3, h * 0.62, h * 0.4, '255,200,120', 0.5);
+  g.fillStyle = '#ffe0a0';
+  g.beginPath();
+  g.arc(w * 0.3, h * 0.62, h * 0.07, 0, TAU);
+  g.fill();
+  // Rooftops
+  g.fillStyle = '#1a1220';
+  g.beginPath();
+  g.moveTo(0, h);
+  let x = 0;
+  while (x < w) {
+    const bw = 14 + rnd() * 22;
+    const top = h * (0.55 + rnd() * 0.12);
+    g.lineTo(x, top + 6);
+    g.lineTo(x + bw / 2, top);
+    g.lineTo(x + bw, top + 6);
+    x += bw;
+  }
+  g.lineTo(w, h);
+  g.closePath();
+  g.fill();
+  // Telephone poles and their wires
+  g.strokeStyle = '#120c16';
+  g.lineWidth = 2;
+  const poles = [0.12, 0.46, 0.8];
+  for (const px of poles) {
+    g.beginPath();
+    g.moveTo(w * px, h * 0.8);
+    g.lineTo(w * px, h * 0.3);
+    g.moveTo(w * px - 6, h * 0.34);
+    g.lineTo(w * px + 6, h * 0.34);
+    g.stroke();
+  }
+  g.lineWidth = 0.8;
+  for (let k = 0; k < poles.length - 1; k++) {
+    for (const dy of [0, 4]) {
+      g.beginPath();
+      g.moveTo(w * poles[k], h * 0.34 + dy);
+      g.quadraticCurveTo(w * (poles[k] + poles[k + 1]) * 0.5, h * 0.42 + dy, w * poles[k + 1], h * 0.34 + dy);
+      g.stroke();
+    }
+  }
+  // The river, catching the last light
+  g.fillStyle = '#2a1a30';
+  g.fillRect(0, h * 0.82, w, h * 0.18);
+  g.fillStyle = 'rgba(255,180,110,0.4)';
+  for (let k = 0; k < 6; k++) g.fillRect(w * (0.2 + rnd() * 0.25), h * (0.85 + rnd() * 0.12), 8 + rnd() * 10, 1.5);
+};
+
+const VISTAS: Readonly<Partial<Record<StageId, Paint>>> = { hueco, seireitei, lasnoches, silbern, palace, wahrwelt, karakura };
 
 /** Paint a stage's vista into a canvas; `w` and `h` are its CSS size (CSS covers the card with it). */
 export function drawVista(canvas: HTMLCanvasElement, stage: StageId, w = 200, h = 104, ratio = Math.min(window.devicePixelRatio || 1, 3)): void {

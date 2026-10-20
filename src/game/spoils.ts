@@ -62,6 +62,9 @@ export class SpoilState {
   crowdT = 0;
   /** Grimmjow's jawbone: how many enemies stood close at the last count. */
   crowd = 0;
+  /** Orihime's hairpins: health still to come back, and how fast. */
+  rikkaPool = 0;
+  rikkaRate = 0;
   readonly greeted = new Set<number>();
 }
 
@@ -183,6 +186,11 @@ export function spoilTick(w: World, dt: number): void {
       if (n > 0) w.spawnFx(FX_RING, 0, 0, 0, 0, 0.3, 20, 170, 0.6, 0, 0, 0x9fe0d0, LAYER_ADD, 0, 1);
     }
   }
+  if (s.rikkaPool > 0) {
+    const back = Math.min(s.rikkaPool, s.rikkaRate * dt);
+    s.rikkaPool -= back;
+    w.healFlat(back);
+  }
   if (s.has.has('pantera')) {
     s.crowdT -= dt;
     if (s.crowdT <= 0) {
@@ -243,6 +251,11 @@ export function spoilAfterHurt(w: World, lost: number): void {
   const s = w.spoil;
   const p = w.player;
   if (s.has.has('ironscale')) s.ironT = w.t + 2;
+  if (s.has.has('rikka')) {
+    // Sōten Kisshun rejects a third of the wound: it heals back over the next 4 s.
+    s.rikkaPool += lost / 3;
+    s.rikkaRate = s.rikkaPool / 4;
+  }
   if (s.has.has('fearthorn')) {
     const n = enemiesInCircle(w, p.x, p.y, 150);
     for (let k = 0; k < n; k++) w.applyHold(w.qout[k], 1.5, HOLD_FEAR);
@@ -344,6 +357,21 @@ export function spoilDamageMul(w: World): number {
   if (s.hogyoku) m *= 1.15;
   if (s.has.has('pantera')) m *= 1 + Math.min(0.3, 0.02 * s.crowd);
   return m;
+}
+
+/** What an enemy's touch is cut to before it hurts you (the Giant's arm). */
+export function spoilContactTaken(w: World): number {
+  return w.spoil.on && w.spoil.has.has('gigante') ? 0.75 : 1;
+}
+
+/** How much longer, and hotter, your fire burns (Engetsu). */
+export function spoilFire(w: World): { secs: number; dps: number } {
+  return w.spoil.on && w.spoil.has.has('engetsu') ? { secs: 2, dps: 1.3 } : { secs: 1, dps: 1 };
+}
+
+/** How many relics a chest offers (Urahara's hat adds one). */
+export function spoilChestChoices(w: World): number {
+  return w.spoil.on && w.spoil.has.has('hat') ? 4 : 3;
 }
 
 /** What an enemy shot, beam or blast is cut to before it hurts you (Dragra's scale). */

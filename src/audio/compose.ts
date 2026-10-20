@@ -13,6 +13,7 @@ export type TrackId =
   | 'silbern'
   | 'palace'
   | 'wahrwelt'
+  | 'karakura'
   | 'boss'
   | 'bossSei'
   | 'bossPalace'
@@ -667,6 +668,89 @@ const lasnoches: Track = {
   },
 };
 
+// --------------------------------------------------------------- karakura
+
+/**
+ * "Karakura": the world of the living, and it sounds like it: E minor rock,
+ * a backbeat on the kick and snare, eighth-note bass, power chords and a
+ * lead that keeps climbing.
+ */
+const KK_ROOTS: readonly string[] = ['E2', 'C3', 'D3', 'B2', 'E2', 'C3', 'G2', 'D3'];
+const KK_LEAD: readonly Line[] = [
+  [
+    [0, 'E5', 2],
+    [2, 'G5', 2],
+    [4, 'B5', 4],
+    [8, 'A5', 2],
+    [10, 'G5', 2],
+    [12, 'E5', 4],
+  ],
+  [
+    [0, 'E5', 2],
+    [2, 'G5', 2],
+    [4, 'A5', 4],
+    [8, 'G5', 4],
+    [12, 'C6', 4],
+  ],
+  [
+    [0, 'D6', 4],
+    [4, 'B5', 2],
+    [6, 'A5', 2],
+    [8, 'F#5', 8],
+  ],
+  [
+    [0, 'B5', 4],
+    [4, 'A5', 4],
+    [8, 'F#5', 4],
+    [12, 'D#5', 4],
+  ],
+  [
+    [0, 'E5', 2],
+    [2, 'G5', 2],
+    [4, 'B5', 4],
+    [8, 'D6', 4],
+    [12, 'E6', 4],
+  ],
+  [
+    [0, 'E6', 4],
+    [4, 'D6', 2],
+    [6, 'C6', 2],
+    [8, 'B5', 8],
+  ],
+  [
+    [0, 'G5', 4],
+    [4, 'A5', 4],
+    [8, 'B5', 4],
+    [12, 'D6', 4],
+  ],
+  [
+    [0, 'F#5', 8],
+    [8, 'A5', 4],
+    [12, 'B5', 4],
+  ],
+];
+
+const karakura: Track = {
+  id: 'karakura',
+  bpm: 138,
+  bars: 8,
+  loop: true,
+  scale: [4, 6, 7, 9, 11, 0, 2, 3],
+  bar(i) {
+    const root = midi(KK_ROOTS[i % 8]);
+    const power = [root + 12, root + 19, root + 24];
+    return [
+      ...power.map((m) => ({ inst: 'stab' as const, step: 0, midi: m, len: 6, vel: 0.5 })),
+      ...power.map((m) => ({ inst: 'stab' as const, step: 8, midi: m, len: 6, vel: 0.42 })),
+      ...[0, 2, 4, 6, 8, 10, 12, 14].map((step) => ({ inst: 'bass' as const, step, midi: root, len: 2, vel: step % 4 === 0 ? 0.5 : 0.38 })),
+      ...hits('kick', [0, 6, 8, 10], 0.5, [0, 8]),
+      ...hits('snare', [4, 12], 0.5),
+      ...hits('hat', [0, 2, 4, 6, 8, 10, 12, 14], 0.12, [4, 12]),
+      ...line('lead', KK_LEAD[i % 8], 0.36),
+    ];
+  },
+};
+
 // ------------------------------------------------------------------ bosses
 
 /** "Medallion": the boss theme. A minor, driving: an eighth-note bass, brass stabs, choir and a fast lead. */
@@ -804,6 +888,7 @@ export const TRACKS: Readonly<Record<TrackId, Track>> = {
   silbern,
   palace,
   wahrwelt,
+  karakura,
   boss,
   bossSei,
   bossPalace,

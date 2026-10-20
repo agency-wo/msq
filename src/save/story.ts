@@ -27,6 +27,8 @@ function conditionMet(save: SaveData, c: Chapter): boolean {
       return save.stages.wahrwelt.cleared;
     case 'lasnoches':
       return save.stages.lasnoches.cleared;
+    case 'karakura':
+      return save.stages.karakura.cleared;
   }
 }
 

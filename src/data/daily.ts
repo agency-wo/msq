@@ -95,7 +95,15 @@ const DAILY_SCHRIFT: readonly string[] = [
 ];
 
 /** Today's (or any date's) trial. Players who have not reached a stage yet are sent to one they have. */
-export function dailyFor(date: string, seireiteiOpen: boolean, palaceOpen = false, silbernOpen = false, wahrweltOpen = false, lasnochesOpen = false): DailySpec {
+export function dailyFor(
+  date: string,
+  seireiteiOpen: boolean,
+  palaceOpen = false,
+  silbernOpen = false,
+  wahrweltOpen = false,
+  lasnochesOpen = false,
+  karakuraOpen = false,
+): DailySpec {
   const seed = hash(`quincy-daily-${date}`);
   const rng = new Rng(seed);
   // Always roll for the stage, so the Schrift and modifiers are the same for everyone that day.
@@ -114,5 +122,6 @@ export function dailyFor(date: string, seireiteiOpen: boolean, palaceOpen = fals
   if (silbernOpen && rng.next() < 1 / 4) stage = 'silbern';
   if (wahrweltOpen && rng.next() < 1 / 5) stage = 'wahrwelt';
   if (lasnochesOpen && rng.next() < 1 / 6) stage = 'lasnoches';
+  if (karakuraOpen && rng.next() < 1 / 7) stage = 'karakura';
   return { date, seed, stage, schrift, mods };
 }

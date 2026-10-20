@@ -33,7 +33,7 @@ a portrait and a title. The pause and results screens break down the **damage**
 each power dealt (total, share and damage per second), and **Share** on the
 results turns the run into a picture for the phone's share sheet.
 
-Thirty-four **Feats** give long goals (a hundred thousand kills, every letter
+Thirty-five **Feats** give long goals (a hundred thousand kills, every letter
 awakened, Trial V, a Boss Rush under 4:00, all three fragments in one run,
 every spoil of war...),
 each paying gold once; some open one of three new looks for the Emperor
@@ -45,7 +45,7 @@ the run can still use: no Founder's Medallion where no bankai is left to take
 could give), the Soul King's Seal only in the Palace while a Fragment can
 still drop, no Silbern Key or Sanrei Glove in a Boss Rush.
 
-Every boss leaves a **spoil of war** of its own when it falls, thirty-five in all,
+Every boss leaves a **spoil of war** of its own when it falls, forty in all,
 and none of them does what another does: Äs Nödt's Thorn holds everything
 near you with fear when you are hit, Cang Du's Iron Scale hardens you after
 every hit, Neliel's Mask swallows one shot in six and spits it back as a
@@ -97,7 +97,7 @@ stage once before any of them returns.
 Music is composed note by note and synthesized live with Web Audio (nothing to
 download): a regal title theme, the eerie "White Moon" for Hueco Mundo, taiko
 and flute for Seireitei, a plucked guitar and palmas for Las Noches, themes of
-their own for Silbern, the Palace and the Wahrwelt, a driving boss theme with
+their own for Silbern, the Palace and the Wahrwelt, rock for Karakura Town, a driving boss theme with
 a Seireitei version and a finale, and victory and defeat stingers. It can be turned off in Settings.
 
 Between the bosses, **events** break the rhythm: a Garganta (a Senkaimon
@@ -205,6 +205,19 @@ Stages, 20 minutes each:
   Sōsuke Aizen at 18:00, let out of Muken (Kyōka Suigetsu's copies, only one
   of them real, and Kurohitsugi). Ichigo Kurosaki ends it with Getsuga
   Tenshō, and at half health his Hollow mask.
+- **Karakura Town** (unlocked by clearing the Wahrwelt): the world of the
+  living, the last of the three that will not fold into the One World, and the
+  hardest stage. Hollows come through Garganta into its streets, Urahara's
+  empty gigai shuffle at you and his kidō sentries fire from the corners.
+  Three of four defenders stand in the way, each showing more at half health:
+  Yasutora Sado (El Directo, La Muerte, the Giant's arm as a shield), Orihime
+  Inoue (Koten Zanshun, Santen Kesshun, and Sōten Kisshun, which raises the
+  fallen around her), Yoruichi Shihōin (she flash-steps to your side and
+  strikes, then Shunkō) and Isshin Kurosaki (Getsuga Tenshō and walls of
+  Engetsu's fire, then a captain's haori again). Kisuke Urahara ends it:
+  Nake, Shibari Benihime, Raikōhō and Danku, and at half health Kannonbiraki
+  Benihime Aratame, which remakes his wounds once. Don Kanonji is the
+  runaway; the music is rock.
 
 ## Play on iPhone
 

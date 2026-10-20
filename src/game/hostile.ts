@@ -54,6 +54,8 @@ import {
 } from './constants';
 import { ayonAI, captainSignature, nelAI, thiefSchrift, unohanaAI } from './signatures';
 import { arrancarAI, grimmjowAI } from './lasnoches';
+import { karakuraAI, uraharaAI } from './karakura';
+import { KARAKURA_IDS } from '../data/karakura';
 import { spoilShotTaken, spoilSwallow } from './spoils';
 import { ARRANCAR_IDS } from '../data/arrancar';
 import type { World } from './world';
@@ -204,6 +206,11 @@ export function casterAI(w: World, i: number, dist: number): void {
     w.spawnEnemyBullet(EB_THREAD, E.x[i], E.y[i], Math.cos(a) * 150, Math.sin(a) * 150, 6, 3.2, E.dmg[i] * 0.5, EBF_ROOT);
     return;
   }
+  if (E.type[i] === ENEMY_INDEX.sentry) {
+    // A kidō sentry fires a bolt of Hadō, gold and quick.
+    w.spawnEnemyBullet(EB_FIRE, E.x[i], E.y[i], Math.cos(a) * 180, Math.sin(a) * 180, 5, 3, E.dmg[i] * 0.6);
+    return;
+  }
   if (E.type[i] === ENEMY_INDEX.exequias) {
     // The Exequias fire Bala, quick and red.
     w.spawnEnemyBullet(EB_BALA, E.x[i], E.y[i], Math.cos(a) * 170, Math.sin(a) * 170, 6, 3, E.dmg[i] * 0.6);
@@ -297,6 +304,10 @@ export function bossAI(w: World, i: number, dist: number): void {
     arrancarAI(w, i, ARRANCAR_IDS[E.variant[i]] ?? 'rudbornn');
   } else if (def.id === 'grimmjow') {
     grimmjowAI(w, i);
+  } else if (def.id === 'karakura') {
+    karakuraAI(w, i, KARAKURA_IDS[E.variant[i]] ?? 'chad');
+  } else if (def.id === 'urahara') {
+    uraharaAI(w, i);
   }
 }
 

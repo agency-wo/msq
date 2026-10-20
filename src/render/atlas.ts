@@ -7193,6 +7193,684 @@ const pescheDondochakka: Draw = (g, w, h) => {
   glowDot(g, cx + 14, cy - 3, 2, 2, '#fff6c8', 'rgba(255,210,122,0.9)', 5);
 };
 
+// ------------------------------------------------------------ Karakura Town
+
+/** An empty gigai (original): one of Urahara's spare bodies, pale and stitched, shuffling at you with no one inside. */
+const gigai: Draw = (g, w, h) => {
+  const cx = w / 2;
+  const cy = h / 2 + 2;
+  aura(g, cx, cy + 2, 22, 'rgba(232,220,200,0.1)');
+  const body = g.createLinearGradient(0, cy - 8, 0, cy + 20);
+  body.addColorStop(0, '#e8dcc8');
+  body.addColorStop(1, '#b8a890');
+  g.fillStyle = body;
+  g.beginPath();
+  g.moveTo(cx - 7, cy - 6);
+  g.lineTo(cx + 7, cy - 6);
+  g.lineTo(cx + 8, cy + 12);
+  g.lineTo(cx + 5, cy + 20);
+  g.lineTo(cx - 5, cy + 20);
+  g.lineTo(cx - 8, cy + 12);
+  g.closePath();
+  g.fill();
+  g.strokeStyle = 'rgba(90,70,50,0.6)';
+  g.lineWidth = 0.8;
+  g.stroke();
+  // Arms reaching forward
+  for (const dir of [-1, 1]) {
+    g.beginPath();
+    g.ellipse(cx + dir * 9, cy + 2, 2.6, 7, -dir * 0.6, 0, TAU);
+    g.fill();
+  }
+  // Stitches down the middle and across the shoulders
+  g.strokeStyle = '#6a5040';
+  g.lineWidth = 0.6;
+  g.beginPath();
+  g.moveTo(cx, cy - 6);
+  g.lineTo(cx, cy + 18);
+  for (let k = 0; k < 6; k++) {
+    g.moveTo(cx - 1.4, cy - 4 + k * 4);
+    g.lineTo(cx + 1.4, cy - 4 + k * 4);
+  }
+  g.moveTo(cx - 7, cy - 5);
+  g.lineTo(cx + 7, cy - 5);
+  g.stroke();
+  // A blank face
+  g.fillStyle = '#f0e6d4';
+  g.beginPath();
+  g.arc(cx, cy - 12, 6.2, 0, TAU);
+  g.fill();
+  g.strokeStyle = 'rgba(90,70,50,0.6)';
+  g.stroke();
+  g.fillStyle = 'rgba(60,40,30,0.5)';
+  g.fillRect(cx - 3, cy - 12.6, 1.6, 0.8);
+  g.fillRect(cx + 1.4, cy - 12.6, 1.6, 0.8);
+};
+
+/** A kidō sentry (original): a seal of light hung in the air, tassels beneath, an eye that tracks you. */
+const sentry: Draw = (g, w, h) => {
+  const cx = w / 2;
+  const cy = h / 2;
+  aura(g, cx, cy, 24, 'rgba(255,214,120,0.2)');
+  g.save();
+  g.strokeStyle = '#ffd27a';
+  g.shadowColor = 'rgba(255,190,80,0.9)';
+  g.shadowBlur = 6;
+  g.lineWidth = 1.6;
+  g.beginPath();
+  g.arc(cx, cy, 13, 0, TAU);
+  g.stroke();
+  g.beginPath();
+  for (let k = 0; k < 6; k++) {
+    const a = (k / 6) * TAU - Math.PI / 2;
+    const x = cx + Math.cos(a) * 13;
+    const y = cy + Math.sin(a) * 13;
+    if (k % 2 === 0) g.moveTo(x, y);
+    else g.lineTo(x, y);
+    const b = ((k + 2) / 6) * TAU - Math.PI / 2;
+    g.lineTo(cx + Math.cos(b) * 13, cy + Math.sin(b) * 13);
+  }
+  g.stroke();
+  g.restore();
+  g.strokeStyle = 'rgba(255,214,120,0.7)';
+  g.lineWidth = 1;
+  for (const dx of [-6, 0, 6]) {
+    g.beginPath();
+    g.moveTo(cx + dx, cy + 13);
+    g.lineTo(cx + dx * 1.2, cy + 22);
+    g.stroke();
+  }
+  glowDot(g, cx, cy, 4, 3, '#fff6d8', 'rgba(255,190,80,0.95)', 8);
+  g.fillStyle = '#3a2a10';
+  g.beginPath();
+  g.arc(cx, cy, 1.6, 0, TAU);
+  g.fill();
+};
+
+/** Chad's head: dark skin, wavy brown hair falling over his eyes, a short goatee. */
+function chadHead(g: Ctx, cx: number, hy: number, s: number): void {
+  g.fillStyle = '#8a5a3a';
+  g.beginPath();
+  g.ellipse(cx, hy + 0.8 * s, 5.8 * s, 6.6 * s, 0, 0, TAU);
+  g.fill();
+  g.fillStyle = '#3a2416';
+  g.beginPath();
+  g.ellipse(cx, hy - 2 * s, 7.4 * s, 5.4 * s, 0, Math.PI * 0.9, Math.PI * 2.1);
+  g.fill();
+  // The fringe that hides his eyes
+  for (let k = -3; k <= 3; k++) {
+    g.beginPath();
+    g.ellipse(cx + k * 1.9 * s, hy + 0.6 * s, 1.4 * s, 3.2 * s, k * 0.1, 0, TAU);
+    g.fill();
+  }
+  g.fillStyle = '#2a180e';
+  g.beginPath();
+  g.ellipse(cx, hy + 6.2 * s, 1.8 * s, 1.4 * s, 0, 0, TAU);
+  g.fill();
+}
+
+/**
+ * Yasutora Sado (a chibi homage): tall and broad, his eyes hidden by his
+ * hair, and his Fullbring on both arms: the Giant's right, black with a
+ * shield at the shoulder, and the Devil's left, white and red. Later the
+ * two together, burning.
+ */
+function chadDraw(g: Ctx, w: number, h: number, late: boolean): void {
+  const s = 2;
+  const cx = w / 2;
+  const cy = h / 2 + 8;
+  const hy = cy - 13 * s;
+  aura(g, cx, cy, 60, late ? 'rgba(255,60,60,0.3)' : 'rgba(255,120,120,0.18)');
+  // Shirt and trousers
+  const shirt = g.createLinearGradient(0, cy - 6 * s, 0, cy + 20 * s);
+  shirt.addColorStop(0, '#5a4a6a');
+  shirt.addColorStop(1, '#1a1622');
+  g.fillStyle = shirt;
+  g.beginPath();
+  g.moveTo(cx - 9 * s, cy - 6 * s);
+  g.lineTo(cx + 9 * s, cy - 6 * s);
+  g.lineTo(cx + 11 * s, cy + 20 * s);
+  g.lineTo(cx - 11 * s, cy + 20 * s);
+  g.closePath();
+  g.fill();
+  g.strokeStyle = 'rgba(200,190,220,0.4)';
+  g.lineWidth = 1;
+  g.stroke();
+  for (const dir of [-1, 1]) {
+    g.fillStyle = '#2a2420';
+    g.beginPath();
+    g.ellipse(cx + dir * 4.4 * s, cy + 20.6 * s, 3 * s, 1.5 * s, 0, 0, TAU);
+    g.fill();
+  }
+  // Brazo Derecha de Gigante: black, a shield rising over the shoulder, red lines
+  g.fillStyle = '#16141c';
+  g.beginPath();
+  g.ellipse(cx + 12 * s, cy + 2 * s, 5.6 * s, 9.6 * s, -0.2, 0, TAU);
+  g.fill();
+  g.fillStyle = '#22202a';
+  poly(g, [
+    [cx + 7 * s, cy - 9 * s],
+    [cx + 19 * s, cy - 11 * s],
+    [cx + 18 * s, cy - 2 * s],
+    [cx + 9 * s, cy - 3 * s],
+  ]);
+  g.fill();
+  g.strokeStyle = late ? '#ff5a4a' : '#c8303c';
+  g.lineWidth = 0.9 * s;
+  g.beginPath();
+  g.moveTo(cx + 9 * s, cy - 6 * s);
+  g.lineTo(cx + 17 * s, cy - 8 * s);
+  g.moveTo(cx + 11 * s, cy);
+  g.lineTo(cx + 14 * s, cy + 8 * s);
+  g.stroke();
+  // Brazo Izquierda del Diablo: white with red, claws at the fingers
+  g.fillStyle = '#f2ece4';
+  g.beginPath();
+  g.ellipse(cx - 12 * s, cy + 2 * s, 5 * s, 9.6 * s, 0.2, 0, TAU);
+  g.fill();
+  g.strokeStyle = late ? '#ff5a4a' : '#c8303c';
+  g.beginPath();
+  for (let k = 0; k < 3; k++) {
+    g.moveTo(cx - 16 * s, cy - 4 * s + k * 4 * s);
+    g.lineTo(cx - 8.6 * s, cy - 2.6 * s + k * 4 * s);
+  }
+  g.stroke();
+  g.fillStyle = '#f2ece4';
+  for (let k = -1; k <= 1; k++) {
+    poly(g, [
+      [cx - (12 + k * 1.6) * s, cy + 10.6 * s],
+      [cx - (13 + k * 2) * s, cy + 15 * s],
+      [cx - (11.4 + k * 1.6) * s, cy + 10.6 * s],
+    ]);
+    g.fill();
+  }
+  if (late) {
+    glowDot(g, cx + 13 * s, cy + 10 * s, 3.4 * s, 3.4 * s, '#ffd0c0', 'rgba(255,60,40,1)', 12);
+    glowDot(g, cx - 12 * s, cy + 12 * s, 3 * s, 3 * s, '#ffe0d0', 'rgba(255,60,40,1)', 12);
+  }
+  chadHead(g, cx, hy, s);
+}
+
+const chad: Draw = (g, w, h) => chadDraw(g, w, h, false);
+const chadLate: Draw = (g, w, h) => chadDraw(g, w, h, true);
+
+/**
+ * Orihime Inoue (a chibi homage): long orange hair, the two blue flower pins
+ * that hold Shun Shun Rikka, a school blazer. Later all six fairies circle
+ * her inside the golden oval of Sōten Kisshun.
+ */
+function orihimeDraw(g: Ctx, w: number, h: number, late: boolean): void {
+  const s = 1.8;
+  const cx = w / 2;
+  const cy = h / 2 + 10;
+  const hy = cy - 13 * s;
+  aura(g, cx, cy, 52, 'rgba(255,200,120,0.24)');
+  if (late) {
+    g.save();
+    g.strokeStyle = 'rgba(255,214,120,0.85)';
+    g.shadowColor = 'rgba(255,200,90,0.9)';
+    g.shadowBlur = 8;
+    g.lineWidth = 1.4 * s;
+    g.beginPath();
+    g.ellipse(cx, cy - 2 * s, 17 * s, 23 * s, 0, 0, TAU);
+    g.stroke();
+    g.restore();
+  }
+  // Long orange hair down her back
+  g.fillStyle = '#e8803a';
+  g.beginPath();
+  g.moveTo(cx - 7 * s, hy - 2 * s);
+  g.quadraticCurveTo(cx - 11 * s, cy + 4 * s, cx - 9 * s, cy + 12 * s);
+  g.lineTo(cx + 9 * s, cy + 12 * s);
+  g.quadraticCurveTo(cx + 11 * s, cy + 4 * s, cx + 7 * s, hy - 2 * s);
+  g.closePath();
+  g.fill();
+  // Blazer, shirt, skirt
+  g.fillStyle = '#3a4a6a';
+  g.beginPath();
+  g.moveTo(cx - 7.6 * s, cy - 6 * s);
+  g.lineTo(cx + 7.6 * s, cy - 6 * s);
+  g.lineTo(cx + 9 * s, cy + 8 * s);
+  g.lineTo(cx - 9 * s, cy + 8 * s);
+  g.closePath();
+  g.fill();
+  g.fillStyle = '#f4f2ec';
+  poly(g, [
+    [cx - 3.4 * s, cy - 6 * s],
+    [cx + 3.4 * s, cy - 6 * s],
+    [cx, cy + 2 * s],
+  ]);
+  g.fill();
+  g.fillStyle = '#c8303c';
+  g.fillRect(cx - 1 * s, cy - 4 * s, 2 * s, 4 * s);
+  g.fillStyle = '#2a3048';
+  poly(g, [
+    [cx - 9 * s, cy + 8 * s],
+    [cx + 9 * s, cy + 8 * s],
+    [cx + 11 * s, cy + 16 * s],
+    [cx - 11 * s, cy + 16 * s],
+  ]);
+  g.fill();
+  for (const dir of [-1, 1]) {
+    g.fillStyle = '#3a4a6a';
+    g.beginPath();
+    g.ellipse(cx + dir * 9.4 * s, cy + 1 * s, 3.2 * s, 7 * s, -dir * 0.25, 0, TAU);
+    g.fill();
+    g.fillStyle = SKIN;
+    g.beginPath();
+    g.arc(cx + dir * 10.6 * s, cy + 8 * s, 1.5 * s, 0, TAU);
+    g.fill();
+    g.fillRect(cx + dir * 4 * s - 1.2 * s, cy + 16 * s, 2.4 * s, 4 * s);
+    g.fillStyle = '#2a2430';
+    g.beginPath();
+    g.ellipse(cx + dir * 4 * s, cy + 20.4 * s, 2.4 * s, 1.3 * s, 0, 0, TAU);
+    g.fill();
+  }
+  faceAt(g, cx, hy + 0.8 * s, s, 5.4, 6.2);
+  g.fillStyle = '#e8803a';
+  g.beginPath();
+  g.ellipse(cx, hy - 2 * s, 6.8 * s, 5 * s, 0, Math.PI * 0.95, Math.PI * 2.05);
+  g.fill();
+  for (const dir of [-1, 1]) {
+    poly(g, [
+      [cx + dir * 4.6 * s, hy - 2.8 * s],
+      [cx + dir * 7 * s, hy - 0.4 * s],
+      [cx + dir * 6.4 * s, hy + 6 * s],
+      [cx + dir * 4.6 * s, hy + 1.4 * s],
+    ]);
+    g.fill();
+    // The flower pins
+    g.fillStyle = '#7ac8ff';
+    for (let k = 0; k < 6; k++) {
+      const a = (k / 6) * TAU;
+      g.beginPath();
+      g.ellipse(cx + dir * 5.4 * s + Math.cos(a) * 1.1 * s, hy - 1 * s + Math.sin(a) * 1.1 * s, 0.7 * s, 0.7 * s, 0, 0, TAU);
+      g.fill();
+    }
+    g.fillStyle = '#e8803a';
+  }
+  eyesAt(g, cx, hy + 1.8 * s, s, '#f0e0d0', '#9a6a40', 2.6);
+  // The fairies of Shun Shun Rikka
+  const n = late ? 6 : 2;
+  for (let k = 0; k < n; k++) {
+    const a = (k / n) * TAU - Math.PI / 2;
+    const x = cx + Math.cos(a) * (late ? 15 : 12) * s;
+    const y = cy - 4 * s + Math.sin(a) * (late ? 19 : 8) * s;
+    glowDot(g, x, y, 1.6 * s, 1.6 * s, '#fff6d8', 'rgba(255,200,90,0.95)', 6);
+  }
+}
+
+const orihime: Draw = (g, w, h) => orihimeDraw(g, w, h, false);
+const orihimeLate: Draw = (g, w, h) => orihimeDraw(g, w, h, true);
+
+/**
+ * Yoruichi Shihōin (a chibi homage): the Flash Goddess. Dark skin, violet
+ * hair tied back, gold eyes, the backless black of the Onmitsukidō with an
+ * orange sash. Later Shunkō: lightning all over her, her hair standing up.
+ */
+function yoruichiDraw(g: Ctx, w: number, h: number, late: boolean): void {
+  const s = 1.9;
+  const cx = w / 2;
+  const cy = h / 2 + 9;
+  const hy = cy - 13 * s;
+  const skin = '#9a6a48';
+  aura(g, cx, cy, 54, late ? 'rgba(200,220,255,0.36)' : 'rgba(200,170,255,0.2)');
+  // The ponytail behind
+  g.fillStyle = '#5a3a8a';
+  g.beginPath();
+  g.moveTo(cx + 2 * s, hy - 4 * s);
+  g.quadraticCurveTo(cx + 12 * s, hy - (late ? 12 : 4) * s, cx + (late ? 10 : 9) * s, hy + (late ? -12 : 12) * s);
+  g.lineTo(cx + 6 * s, hy + (late ? -8 : 10) * s);
+  g.quadraticCurveTo(cx + 6 * s, hy - 2 * s, cx + 1 * s, hy - 2 * s);
+  g.closePath();
+  g.fill();
+  // The black uniform, sleeveless; an orange sash
+  g.fillStyle = '#16141c';
+  g.beginPath();
+  g.moveTo(cx - 7 * s, cy - 6 * s);
+  g.lineTo(cx + 7 * s, cy - 6 * s);
+  g.lineTo(cx + 9 * s, cy + 20 * s);
+  g.lineTo(cx - 9 * s, cy + 20 * s);
+  g.closePath();
+  g.fill();
+  g.strokeStyle = 'rgba(220,200,255,0.45)';
+  g.lineWidth = 1;
+  g.stroke();
+  g.fillStyle = '#e88a3a';
+  g.fillRect(cx - 8 * s, cy + 3.6 * s, 16 * s, 2.2 * s);
+  for (const dir of [-1, 1]) {
+    g.fillStyle = skin;
+    g.beginPath();
+    g.ellipse(cx + dir * 9.4 * s, cy + 2 * s, 2.6 * s, 7 * s, -dir * 0.25, 0, TAU);
+    g.fill();
+    g.beginPath();
+    g.arc(cx + dir * 10.6 * s, cy + 9 * s, 1.6 * s, 0, TAU);
+    g.fill();
+    g.fillStyle = '#16141c';
+    g.beginPath();
+    g.ellipse(cx + dir * 4 * s, cy + 20.6 * s, 2.4 * s, 1.3 * s, 0, 0, TAU);
+    g.fill();
+  }
+  g.fillStyle = skin;
+  g.beginPath();
+  g.ellipse(cx, hy + 0.8 * s, 5.4 * s, 6.2 * s, 0, 0, TAU);
+  g.fill();
+  g.fillStyle = '#5a3a8a';
+  g.beginPath();
+  g.ellipse(cx, hy - 2.2 * s, 6.6 * s, 4.6 * s, 0, Math.PI * 0.95, Math.PI * 2.05);
+  g.fill();
+  for (const dir of [-1, 1]) {
+    poly(g, [
+      [cx + dir * 4.6 * s, hy - 2.8 * s],
+      [cx + dir * 6.8 * s, hy - 0.2 * s],
+      [cx + dir * 6 * s, hy + 4.6 * s],
+      [cx + dir * 4.4 * s, hy + 1 * s],
+    ]);
+    g.fill();
+  }
+  eyesAt(g, cx, hy + 1.8 * s, s, '#fff2b0', '#d8a020', 2.5);
+  g.strokeStyle = '#3a2416';
+  g.lineWidth = 0.55 * s;
+  g.beginPath();
+  g.moveTo(cx - 1.6 * s, hy + 4.4 * s);
+  g.quadraticCurveTo(cx, hy + 5.2 * s, cx + 1.8 * s, hy + 4.2 * s);
+  g.stroke();
+  if (late) {
+    // Shunkō: lightning crawling over her back and arms
+    g.save();
+    g.strokeStyle = '#e8f0ff';
+    g.shadowColor = 'rgba(160,200,255,1)';
+    g.shadowBlur = 8;
+    g.lineWidth = 0.8 * s;
+    for (const [x0, y0, dx, dy] of [
+      [-12, -6, 6, 5],
+      [12, -6, -6, 5],
+      [-13, 6, 5, 4],
+      [13, 6, -5, 4],
+      [-4, -10, 3, -6],
+      [5, -10, -2, -7],
+    ] as const) {
+      g.beginPath();
+      let x = cx + x0 * s;
+      let y = cy + y0 * s;
+      g.moveTo(x, y);
+      for (let k = 0; k < 3; k++) {
+        x += (dx / 3) * s + (k % 2 ? 2 : -2) * s;
+        y += (dy / 3) * s;
+        g.lineTo(x, y);
+      }
+      g.stroke();
+    }
+    g.restore();
+  }
+}
+
+const yoruichi: Draw = (g, w, h) => yoruichiDraw(g, w, h, false);
+const yoruichiLate: Draw = (g, w, h) => yoruichiDraw(g, w, h, true);
+
+/**
+ * Isshin Kurosaki (a chibi homage): a doctor who was once Captain Isshin
+ * Shiba of the 10th Division. Short black hair, stubble, a grin, a Soul
+ * Reaper's black and Engetsu, broad and heavy, in his hand. Later the
+ * captain's haori on his shoulders again.
+ */
+function isshinDraw(g: Ctx, w: number, h: number, late: boolean): void {
+  const s = 2;
+  const cx = w / 2;
+  const cy = h / 2 + 8;
+  const hy = cy - 13 * s;
+  aura(g, cx, cy, 56, late ? 'rgba(255,140,60,0.3)' : 'rgba(255,170,100,0.18)');
+  captainBody(g, cx, cy, s, { haori: late ? 'sleeved' : 'none', broad: 1.08 });
+  // Engetsu: a broad blade with a heavy guard
+  g.save();
+  g.translate(cx + 12.4 * s, cy + 9.6 * s);
+  g.rotate(-0.3);
+  g.fillStyle = '#2a2f3a';
+  g.fillRect(-1 * s, -5.6 * s, 2 * s, 5.6 * s);
+  g.fillStyle = '#c9a040';
+  g.fillRect(-3 * s, -0.8 * s, 6 * s, 1.6 * s);
+  g.fillStyle = '#e8eef8';
+  poly(g, [
+    [-1.8 * s, 0.8 * s],
+    [2.2 * s, 0.8 * s],
+    [2.2 * s, 15 * s],
+    [0, 17.6 * s],
+    [-1.8 * s, 15 * s],
+  ]);
+  g.fill();
+  g.strokeStyle = 'rgba(40,46,60,0.6)';
+  g.lineWidth = 0.5 * s;
+  g.stroke();
+  g.restore();
+  faceAt(g, cx, hy + 0.8 * s, s, 5.6, 6.4);
+  g.fillStyle = '#14161f';
+  g.beginPath();
+  g.ellipse(cx, hy - 2.6 * s, 6.6 * s, 4.4 * s, 0, Math.PI * 0.95, Math.PI * 2.05);
+  g.fill();
+  for (let k = 0; k < 4; k++) {
+    const a = Math.PI * (1.15 + k * 0.23);
+    poly(g, [
+      [cx + Math.cos(a - 0.2) * 5.4 * s, hy - 2.6 * s + Math.sin(a - 0.2) * 5.4 * s],
+      [cx + Math.cos(a) * 7.6 * s, hy - 2.6 * s + Math.sin(a) * 7.6 * s],
+      [cx + Math.cos(a + 0.2) * 5.4 * s, hy - 2.6 * s + Math.sin(a + 0.2) * 5.4 * s],
+    ]);
+    g.fill();
+  }
+  // Stubble along the jaw
+  g.fillStyle = 'rgba(30,30,40,0.45)';
+  g.beginPath();
+  g.ellipse(cx, hy + 5 * s, 4.4 * s, 2.2 * s, 0, 0, Math.PI);
+  g.fill();
+  eyesAt(g, cx, hy + 1.8 * s, s, '#f0e6d0', '#7a5a3a', 2.5);
+  browsAt(g, cx, hy + 0.4 * s, s, '#14161f', 1.2);
+  g.fillStyle = '#ffffff';
+  g.beginPath();
+  g.moveTo(cx - 2.2 * s, hy + 4 * s);
+  g.quadraticCurveTo(cx, hy + 5.8 * s, cx + 2.2 * s, hy + 4 * s);
+  g.closePath();
+  g.fill();
+}
+
+const isshin: Draw = (g, w, h) => isshinDraw(g, w, h, false);
+const isshinLate: Draw = (g, w, h) => isshinDraw(g, w, h, true);
+
+/** Urahara's striped hat: a soft bucket brim, green and white bands. */
+function uraharaHat(g: Ctx, cx: number, hy: number, s: number): void {
+  g.fillStyle = '#2a6a3a';
+  g.beginPath();
+  g.ellipse(cx, hy - 3 * s, 10 * s, 2.6 * s, 0, 0, TAU);
+  g.fill();
+  g.beginPath();
+  g.moveTo(cx - 6.4 * s, hy - 3 * s);
+  g.quadraticCurveTo(cx - 6 * s, hy - 10 * s, cx, hy - 10.4 * s);
+  g.quadraticCurveTo(cx + 6 * s, hy - 10 * s, cx + 6.4 * s, hy - 3 * s);
+  g.closePath();
+  g.fill();
+  g.fillStyle = '#f2f4ec';
+  for (let k = 0; k < 3; k++) {
+    const y = hy - 4.4 * s - k * 2 * s;
+    g.fillRect(cx - (6.2 - k * 0.8) * s, y, (12.4 - k * 1.6) * s, 0.9 * s);
+  }
+}
+
+/**
+ * Kisuke Urahara (a chibi homage): the shopkeeper of Karakura, once Captain
+ * of the 12th Division. A striped bucket hat over his eyes, a dark green
+ * haori with a diamond pattern at the hem, wooden sandals, a cane that is
+ * Benihime. In his bankai, Kannonbiraki Benihime Aratame stands behind him,
+ * a great figure in red with a needle to remake whatever it touches.
+ */
+function uraharaDraw(g: Ctx, w: number, h: number, bankai: boolean): void {
+  const s = 2;
+  const cx = w / 2;
+  const cy = h / 2 + (bankai ? 14 : 8);
+  const hy = cy - 13 * s;
+  aura(g, cx, cy, 58, bankai ? 'rgba(200,40,60,0.3)' : 'rgba(120,200,140,0.18)');
+  if (bankai) {
+    // Benihime Aratame: a giant figure in red robes, a pale masked face, a needle in her hand
+    g.fillStyle = '#a01828';
+    g.beginPath();
+    g.moveTo(cx - 20 * s, cy + 18 * s);
+    g.quadraticCurveTo(cx - 22 * s, cy - 14 * s, cx, cy - 30 * s);
+    g.quadraticCurveTo(cx + 22 * s, cy - 14 * s, cx + 20 * s, cy + 18 * s);
+    g.closePath();
+    g.fill();
+    g.fillStyle = '#f2e6e0';
+    g.beginPath();
+    g.ellipse(cx, cy - 30 * s, 7 * s, 8 * s, 0, 0, TAU);
+    g.fill();
+    g.fillStyle = '#14161f';
+    g.fillRect(cx - 4 * s, cy - 31 * s, 2.4 * s, 0.8 * s);
+    g.fillRect(cx + 1.6 * s, cy - 31 * s, 2.4 * s, 0.8 * s);
+    g.fillStyle = '#c8303c';
+    g.beginPath();
+    g.ellipse(cx, cy - 26.4 * s, 1.6 * s, 0.9 * s, 0, 0, TAU);
+    g.fill();
+    g.strokeStyle = '#e8eef8';
+    g.lineWidth = 1 * s;
+    g.beginPath();
+    g.moveTo(cx + 16 * s, cy - 20 * s);
+    g.lineTo(cx + 26 * s, cy + 4 * s);
+    g.stroke();
+  }
+  // The haori: dark green, the diamond pattern at the hem
+  g.fillStyle = '#1e3a2a';
+  g.beginPath();
+  g.moveTo(cx - 9 * s, cy - 7 * s);
+  g.quadraticCurveTo(cx - 15 * s, cy + 6 * s, cx - 13.5 * s, cy + 19 * s);
+  g.lineTo(cx + 13.5 * s, cy + 19 * s);
+  g.quadraticCurveTo(cx + 15 * s, cy + 6 * s, cx + 9 * s, cy - 7 * s);
+  g.closePath();
+  g.fill();
+  g.strokeStyle = 'rgba(200,230,210,0.35)';
+  g.lineWidth = 1;
+  g.stroke();
+  g.fillStyle = '#f2f4ec';
+  for (let k = -5; k <= 5; k++) {
+    poly(g, [
+      [cx + k * 2.4 * s, cy + 15.6 * s],
+      [cx + k * 2.4 * s + 1 * s, cy + 16.8 * s],
+      [cx + k * 2.4 * s, cy + 18 * s],
+      [cx + k * 2.4 * s - 1 * s, cy + 16.8 * s],
+    ]);
+    g.fill();
+  }
+  // Dark clothes beneath
+  g.fillStyle = '#16141c';
+  poly(g, [
+    [cx - 5 * s, cy - 6 * s],
+    [cx + 5 * s, cy - 6 * s],
+    [cx + 6 * s, cy + 18 * s],
+    [cx - 6 * s, cy + 18 * s],
+  ]);
+  g.fill();
+  for (const dir of [-1, 1]) {
+    // Wooden geta
+    g.fillStyle = '#8a6a40';
+    g.fillRect(cx + dir * 4 * s - 2.6 * s, cy + 19.4 * s, 5.2 * s, 1.6 * s);
+    g.fillStyle = SKIN;
+    g.beginPath();
+    g.arc(cx + dir * 11 * s, cy + 9 * s, 1.6 * s, 0, TAU);
+    g.fill();
+  }
+  // Benihime, as a cane
+  g.fillStyle = '#3a2a1a';
+  g.fillRect(cx + 11 * s - 0.8 * s, cy + 3 * s, 1.6 * s, 17 * s);
+  g.fillStyle = '#c8a050';
+  g.fillRect(cx + 11 * s - 1.4 * s, cy + 2 * s, 2.8 * s, 1.6 * s);
+  faceAt(g, cx, hy + 0.8 * s, s, 5.6, 6.4);
+  g.fillStyle = '#e8d890';
+  for (const dir of [-1, 1]) {
+    poly(g, [
+      [cx + dir * 3 * s, hy - 2 * s],
+      [cx + dir * 6.6 * s, hy - 0.6 * s],
+      [cx + dir * 6 * s, hy + 5 * s],
+      [cx + dir * 4.2 * s, hy + 1 * s],
+    ]);
+    g.fill();
+  }
+  // Eyes shadowed under the brim, a sly smile, stubble
+  g.fillStyle = 'rgba(20,20,30,0.45)';
+  g.fillRect(cx - 5.4 * s, hy - 2.6 * s, 10.8 * s, 3.6 * s);
+  glowDot(g, cx - 2.4 * s, hy + 0.6 * s, 0.9 * s, 0.5 * s, '#d8f0e0', 'rgba(120,220,160,0.8)', 3);
+  glowDot(g, cx + 2.4 * s, hy + 0.6 * s, 0.9 * s, 0.5 * s, '#d8f0e0', 'rgba(120,220,160,0.8)', 3);
+  g.strokeStyle = '#5a3a30';
+  g.lineWidth = 0.55 * s;
+  g.beginPath();
+  g.moveTo(cx - 1.4 * s, hy + 4.4 * s);
+  g.quadraticCurveTo(cx + 0.6 * s, hy + 5.4 * s, cx + 2.2 * s, hy + 4 * s);
+  g.stroke();
+  g.fillStyle = 'rgba(40,40,30,0.3)';
+  g.beginPath();
+  g.ellipse(cx, hy + 5.6 * s, 3.6 * s, 1.6 * s, 0, 0, Math.PI);
+  g.fill();
+  uraharaHat(g, cx, hy, s);
+}
+
+const urahara: Draw = (g, w, h) => uraharaDraw(g, w, h, false);
+const uraharaBankai: Draw = (g, w, h) => uraharaDraw(g, w, h, true);
+
+/**
+ * Don Kanonji (a chibi homage), Karakura's runaway: the television
+ * spiritualist in his dark glasses and caped coat, a skull-topped cane in
+ * one hand and the show's prize money in the other.
+ */
+const kanonji: Draw = (g, w, h) => {
+  const cx = w / 2;
+  const cy = h / 2 + 6;
+  aura(g, cx, cy, 30, 'rgba(255,210,122,0.25)');
+  // The cape, black outside and red inside, flaring as he runs
+  g.fillStyle = '#c8303c';
+  poly(g, [
+    [cx - 6, cy - 10],
+    [cx - 20, cy + 14],
+    [cx + 18, cy + 16],
+    [cx + 6, cy - 10],
+  ]);
+  g.fill();
+  g.fillStyle = '#16141c';
+  poly(g, [
+    [cx - 6, cy - 10],
+    [cx - 16, cy + 12],
+    [cx + 14, cy + 14],
+    [cx + 6, cy - 10],
+  ]);
+  g.fill();
+  g.fillStyle = '#e8e2d6';
+  g.fillRect(cx - 4, cy - 8, 8, 14);
+  g.fillStyle = '#2a2430';
+  for (const dir of [-1, 1]) g.fillRect(cx + dir * 3 - 1.4, cy + 6, 2.8, 10);
+  // Head: a swept-up wave of hair, dark glasses, a bold moustache
+  g.fillStyle = SKIN;
+  g.beginPath();
+  g.arc(cx, cy - 14, 6, 0, TAU);
+  g.fill();
+  g.fillStyle = '#2a1a10';
+  g.beginPath();
+  g.ellipse(cx + 1, cy - 20, 7, 3.6, -0.2, 0, TAU);
+  g.fill();
+  g.fillStyle = '#0b0c12';
+  g.fillRect(cx - 5, cy - 15.4, 10, 2.6);
+  g.fillStyle = '#2a1a10';
+  g.beginPath();
+  g.ellipse(cx, cy - 10.6, 3.6, 1.2, 0, 0, TAU);
+  g.fill();
+  // The cane and the cash
+  g.strokeStyle = '#2a2430';
+  g.lineWidth = 1.4;
+  g.beginPath();
+  g.moveTo(cx + 9, cy - 4);
+  g.lineTo(cx + 13, cy + 16);
+  g.stroke();
+  g.fillStyle = BONE;
+  g.beginPath();
+  g.arc(cx + 9, cy - 5, 2.4, 0, TAU);
+  g.fill();
+  g.fillStyle = '#9ad87a';
+  g.fillRect(cx - 14, cy - 2, 7, 5);
+  glowDot(g, cx - 10.5, cy + 0.5, 2, 2, '#fff6c8', 'rgba(255,210,122,0.9)', 5);
+};
+
 const ENEMY_DRAW: readonly [string, number, Draw][] = [
   ['ayon', 184, ayon],
   ['ayon_rage', 200, ayonRage],
@@ -7262,6 +7940,19 @@ const ENEMY_DRAW: readonly [string, number, Draw][] = [
   ['grimmjow', 116, grimmjow],
   ['grimmjow_pantera', 132, grimmjowPantera],
   ['pesche', 68, pescheDondochakka],
+  ['gigai', 52, gigai],
+  ['sentry', 52, sentry],
+  ['karakura_chad', 124, chad],
+  ['karakura_chad_late', 124, chadLate],
+  ['karakura_orihime', 104, orihime],
+  ['karakura_orihime_late', 112, orihimeLate],
+  ['karakura_yoruichi', 108, yoruichi],
+  ['karakura_yoruichi_late', 108, yoruichiLate],
+  ['karakura_isshin', 116, isshin],
+  ['karakura_isshin_late', 116, isshinLate],
+  ['urahara', 116, urahara],
+  ['urahara_bankai', 140, uraharaBankai],
+  ['kanonji', 68, kanonji],
   ['ichigo_mask', 128, ichigoMask],
   ['thief_senbonzakura', 112, thiefFear],
   ['thief_hyorinmaru', 112, thiefIron],
@@ -7469,6 +8160,7 @@ export function buildGroundTile(stage: string): Texture {
   else if (stage === 'silbern') silbernGround(g, S);
   else if (stage === 'wahrwelt') wahrweltGround(g, S);
   else if (stage === 'lasnoches') lasnochesGround(g, S);
+  else if (stage === 'karakura') karakuraGround(g, S);
   else huecoGround(g, S);
   const tex = Texture.from(c);
   tex.source.addressMode = 'repeat';
@@ -7541,6 +8233,75 @@ function lasnochesGround(g: Ctx, S: number): void {
       g.ellipse(x + ox, y + oy, rx, ry, 0.2, 0, TAU);
       g.fill();
     }
+  }
+}
+
+/**
+ * Karakura Town at night: asphalt, the dashed white line down the middle of
+ * the road, a crossing, manhole covers and the cracks of an old street.
+ */
+function karakuraGround(g: Ctx, S: number): void {
+  g.fillStyle = '#1e2026';
+  g.fillRect(0, 0, S, S);
+  const rnd = seeded(8080);
+  // The grain of the asphalt
+  for (let k = 0; k < 2600; k++) {
+    const v = rnd();
+    g.fillStyle = v < 0.5 ? 'rgba(255,255,255,0.035)' : 'rgba(0,0,0,0.12)';
+    g.fillRect(rnd() * S, rnd() * S, 2, 2);
+  }
+  // Two roads crossing: kerbs, the dashed centre lines, and a zebra crossing where they meet
+  const road = S / 2;
+  g.fillStyle = 'rgba(140,146,160,0.18)';
+  for (const off of [road - 120, road + 120]) {
+    g.fillRect(0, off - 3, S, 6);
+    g.fillRect(off - 3, 0, 6, S);
+  }
+  g.fillStyle = 'rgba(236,236,226,0.26)';
+  for (let k = 0; k < S; k += 64) {
+    if (Math.abs(k + 16 - road) > 140) {
+      g.fillRect(k, road - 2, 32, 4);
+      g.fillRect(road - 2, k, 4, 32);
+    }
+  }
+  g.fillStyle = 'rgba(236,236,226,0.2)';
+  for (let k = 0; k < 7; k++) {
+    g.fillRect(road - 104 + k * 30, road - 150, 16, 40);
+    g.fillRect(road - 150, road - 104 + k * 30, 40, 16);
+  }
+  // Manhole covers
+  for (const [x, y] of [
+    [road + 200, road - 260],
+    [road - 280, road + 220],
+  ] as const) {
+    g.fillStyle = 'rgba(70,74,84,0.6)';
+    g.beginPath();
+    g.arc(x, y, 18, 0, TAU);
+    g.fill();
+    g.strokeStyle = 'rgba(150,156,170,0.25)';
+    g.lineWidth = 1.5;
+    g.beginPath();
+    g.arc(x, y, 14, 0, TAU);
+    g.moveTo(x - 10, y);
+    g.lineTo(x + 10, y);
+    g.moveTo(x, y - 10);
+    g.lineTo(x, y + 10);
+    g.stroke();
+  }
+  // Cracks
+  g.strokeStyle = 'rgba(0,0,0,0.4)';
+  g.lineWidth = 1.2;
+  for (let k = 0; k < 9; k++) {
+    let x = rnd() * S;
+    let y = rnd() * S;
+    g.beginPath();
+    g.moveTo(x, y);
+    for (let q = 0; q < 4; q++) {
+      x += (rnd() - 0.5) * 50;
+      y += (rnd() - 0.5) * 50;
+      g.lineTo(x, y);
+    }
+    g.stroke();
   }
 }
 

@@ -6,7 +6,7 @@
 /** When a chapter is shown: before a run (on a given stage) or after one, once its condition holds. */
 export type ChapterTrigger =
   | { when: 'before'; stage?: string }
-  | { when: 'after'; condition: 'bankai' | 'hueco' | 'seireitei' | 'almighty' | 'palace' | 'heir' | 'silbern' | 'wahrwelt' | 'lasnoches' };
+  | { when: 'after'; condition: 'bankai' | 'hueco' | 'seireitei' | 'almighty' | 'palace' | 'heir' | 'silbern' | 'wahrwelt' | 'lasnoches' | 'karakura' };
 
 export interface Chapter {
   id: string;
@@ -200,6 +200,28 @@ export const CHAPTERS: readonly Chapter[] = [
       'Not in this one.',
     ],
   },
+  {
+    id: 'karakura',
+    kicker: 'Chapter XII',
+    title: 'The World of the Living',
+    hint: 'Set foot in Karakura Town.',
+    trigger: { when: 'before', stage: 'karakura' },
+    text: [
+      'One world, he promised, with no death anywhere in it. The world of the living is the last part that will not fold into it: a town by a river, where spirits have always gathered as thick as fog.',
+      'A shopkeeper in a striped hat has been ready for this for a hundred years. Beside him stand a quiet giant who only fights for others, a girl who can reject what has happened, the Flash Goddess, and a town doctor who was once a captain.',
+    ],
+  },
+  {
+    id: 'lastlight',
+    kicker: 'Epilogue',
+    title: 'Karakura',
+    hint: 'Clear Karakura Town.',
+    trigger: { when: 'after', condition: 'karakura' },
+    text: [
+      'The striped hat lies in the street. Every plan the shopkeeper made had another plan behind it, and the Emperor saw every one of them coming.',
+      'The river runs on through a town where no one will ever die again, and nothing will ever change. It is very quiet in the One World.',
+    ],
+  },
 ];
 
 export const CHAPTER_BY_ID: ReadonlyMap<string, Chapter> = new Map(CHAPTERS.map((c) => [c.id, c]));
@@ -238,6 +260,11 @@ export const BOSS_LINES: Readonly<Record<string, string>> = {
   'arrancar:cirucci': '“The Privaron were thrown away once already. I will not be thrown away by you.”',
   'arrancar:gantenbainne': '“I fight for the ones who cannot. Come, then. I will not step aside.”',
   'boss:grimmjow': '“Finally, something worth tearing apart. Try not to bore me, king.”',
+  'karakura:chad': '“I promised to fight only for other people. That is why you will not get past me.”',
+  'karakura:orihime': '“I reject it. All of it. This is not how the world ends.”',
+  'karakura:yoruichi': '“Keep up, if you can. They did not call me the Flash Goddess for nothing.”',
+  'karakura:isshin': '“A father looks after his kids’ town. Turns out a captain never really stops.”',
+  'boss:urahara': '“I planned for this a very long time ago. Welcome to my shop, Your Majesty.”',
   'boss:unohana': '“Please hold still. I would hate to make your wounds worse than they need to be.”',
   'boss:commander': '“I have burned for a thousand years. Tonight, so will you.”',
   'royal:tenjiro': '“Nobody leaves my springs the way they came in.”',

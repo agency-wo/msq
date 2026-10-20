@@ -37,7 +37,11 @@ export type EnemyId =
   | 'exequias'
   | 'gillian'
   | 'arrancar'
-  | 'grimmjow';
+  | 'grimmjow'
+  | 'gigai'
+  | 'sentry'
+  | 'karakura'
+  | 'urahara';
 
 /**
  * chase: walks at you · blink: walks, and every few seconds flash-steps closer ·
@@ -147,6 +151,12 @@ export const ENEMY_LIST: readonly EnemyDef[] = [
   // Las Noches' defenders (variant = which of them, see data/arrancar.ts) and Grimmjow, who ends the stage.
   { id: 'arrancar', name: 'Arrancar', hp: 2600, speed: 48, radius: 30, damage: 27, xp: 75, behavior: 'chase', boss: true, color: 0xe8e6de },
   { id: 'grimmjow', name: 'Grimmjow Jaegerjaquez', hp: 2600, speed: 56, radius: 31, damage: 38, xp: 190, behavior: 'chase', boss: true, color: 0x59b8ff },
+  // Karakura Town. Its gigai and sentries are original designs; its defenders and Urahara are homages.
+  { id: 'gigai', name: 'Empty Gigai', hp: 15, speed: 50, radius: 11, damage: 10, xp: 1, behavior: 'chase', color: 0xe8dcc8 },
+  { id: 'sentry', name: 'Kidō Sentry', hp: 18, speed: 30, radius: 11, damage: 9, xp: 2, behavior: 'ranged', color: 0xffd27a },
+  // Karakura's defenders (variant = which of them, see data/karakura.ts) and Urahara, who ends the stage.
+  { id: 'karakura', name: 'Defender', hp: 2600, speed: 50, radius: 30, damage: 30, xp: 85, behavior: 'chase', boss: true, color: 0xffc878 },
+  { id: 'urahara', name: 'Kisuke Urahara', hp: 2600, speed: 48, radius: 31, damage: 40, xp: 220, behavior: 'chase', boss: true, shinigami: true, color: 0x7ac88a },
 ];
 
 export const ENEMY_INDEX: Readonly<Record<EnemyId, number>> = {
@@ -189,4 +199,8 @@ export const ENEMY_INDEX: Readonly<Record<EnemyId, number>> = {
   gillian: 36,
   arrancar: 37,
   grimmjow: 38,
+  gigai: 39,
+  sentry: 40,
+  karakura: 41,
+  urahara: 42,
 };

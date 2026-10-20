@@ -42,7 +42,12 @@ export type RelicSpecial =
   | 'giralda'
   | 'golondrina'
   | 'dragra'
-  | 'pantera';
+  | 'pantera'
+  | 'gigante'
+  | 'rikka'
+  | 'shunko'
+  | 'engetsu'
+  | 'hat';
 
 export interface RelicDef {
   id: string;

@@ -7,7 +7,7 @@ import { FIRST_SHRINE_AT } from './shrines';
  * boss at 20:00 to clear it. Swarm rings, elites, chests and runes in between.
  */
 
-export type StageId = 'hueco' | 'seireitei' | 'lasnoches' | 'silbern' | 'palace' | 'wahrwelt';
+export type StageId = 'hueco' | 'seireitei' | 'lasnoches' | 'silbern' | 'palace' | 'wahrwelt' | 'karakura';
 
 export interface SpawnPhase {
   from: number;
@@ -52,7 +52,7 @@ export interface StageDef {
    * bearers: the Royal Guard (who leave Fragments of the Soul King),
    * Silbern's captains or the Wahrwelt's defenders (who leave black chests).
    */
-  roster?: 'royal' | 'gotei' | 'heroes' | 'arrancar';
+  roster?: 'royal' | 'gotei' | 'heroes' | 'arrancar' | 'karakura';
   /**
    * A roster member who is never left out and always takes the last slot
    * (Aizen: Kyōraku lets him out of Muken, and he is the last before Ichigo).
@@ -366,7 +366,54 @@ const WAHRWELT: StageDef = {
   unlockedBy: 'palace',
 };
 
-export const STAGES: readonly StageDef[] = [HUECO, SEIREITEI, LASNOCHES, SILBERN, PALACE, WAHRWELT];
+/**
+ * Karakura Town: the world of the living, the last part of the three worlds
+ * that will not fold into the One World. Hollows pour into its streets
+ * through Garganta, Urahara's empty gigai shuffle at you and his kidō
+ * sentries fire from the corners; three of Chad, Orihime, Yoruichi and Isshin
+ * stand in the way, and Kisuke Urahara, who planned for this a century ago,
+ * waits at 20:00. Opened by clearing the Wahrwelt: the hardest stage.
+ */
+const KARAKURA: StageDef = {
+  id: 'karakura',
+  name: 'Karakura Town',
+  blurb: 'The world of the living, the last of the three that will not fold.',
+  length: LENGTH,
+  phases: [
+    { from: 0, mix: [['hollow', 2], ['gigai', 2]] },
+    { from: 45, mix: [['hollow', 2], ['gigai', 2], ['hound', 1]] },
+    { from: 150, mix: [['gigai', 2], ['hound', 2], ['sentry', 1], ['brute', 1]] },
+    { from: 300, mix: [['gigai', 3], ['hound', 2], ['sentry', 2], ['brute', 1], ['volatile', 1]] },
+    { from: 600, mix: [['gigai', 3], ['hound', 3], ['sentry', 2], ['brute', 2], ['volatile', 1]] },
+    { from: 900, mix: [['gigai', 3], ['hound', 3], ['sentry', 3], ['brute', 3], ['volatile', 2]] },
+  ],
+  events: sorted([
+    ...skeleton(
+      (t) => (t < 400 ? 'gigai' : 'hound'),
+      (t) => (t < 300 ? 'brute' : 'gillian'),
+      [1.4, 5, 19],
+    ),
+    // A Menos Grande comes through after the third defender, as one did in Karakura before.
+    { at: 906, kind: 'elite', enemy: 'gillian' },
+    {
+      at: LENGTH,
+      kind: 'boss',
+      enemy: 'urahara',
+      hpMul: 46,
+      final: true,
+      warn: 'Kisuke Urahara tips his hat to you',
+      sub: 'Once Captain of the 12th Division',
+    },
+  ]),
+  hp: 1.45,
+  spawn: 1.12,
+  xp: 1.35,
+  gold: 2,
+  roster: 'karakura',
+  unlockedBy: 'wahrwelt',
+};
+
+export const STAGES: readonly StageDef[] = [HUECO, SEIREITEI, LASNOCHES, SILBERN, PALACE, WAHRWELT, KARAKURA];
 
 /**
  * Trials: harder runs of a stage, unlocked one at a time by clearing the one

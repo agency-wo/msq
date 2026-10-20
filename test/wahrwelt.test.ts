@@ -68,8 +68,9 @@ const hero = (id: string): number => HERO_IDS.indexOf(id);
 const w0 = (): World => new World({ seed: 1, stage: 'wahrwelt' });
 
 describe('Wahrwelt', () => {
-  it('is the last stage, opened by clearing the Soul King Palace', () => {
-    expect(STAGES[STAGES.length - 1].id).toBe('wahrwelt');
+  it('is opened by clearing the Soul King Palace, and opens Karakura Town after it', () => {
+    expect(STAGES[STAGES.length - 2].id).toBe('wahrwelt');
+    expect(STAGES.find((x) => x.id === 'karakura')?.unlockedBy).toBe('wahrwelt');
     const s = defaultSave();
     s.stages.seireitei.cleared = true;
     expect(stageUnlocked(s, 'wahrwelt')).toBe(false);

@@ -14,6 +14,7 @@ import { PACT_BY_ID, PACTS, type PactDef } from '../data/shrines';
 import { GOTEI_BY_ID, GOTEI_IDS } from '../data/gotei';
 import { HERO_BY_ID, HERO_IDS } from '../data/heroes';
 import { ARRANCAR_BY_ID, ARRANCAR_IDS } from '../data/arrancar';
+import { KARAKURA_BY_ID, KARAKURA_IDS } from '../data/karakura';
 import { ROYAL_BY_ID, ROYAL_IDS } from '../data/royal';
 import { RESONANCE_BY_ID, RESONANCES, resonanceParts } from '../data/resonances';
 import { BOSS_LINES } from '../data/story';
@@ -91,6 +92,9 @@ import {
   SpoilState,
   spoilAfterHurt,
   spoilBeforeHurt,
+  spoilChestChoices,
+  spoilContactTaken,
+  spoilFire,
   spoilDamage,
   spoilDamageMul,
   spoilGreet,
@@ -242,6 +246,7 @@ const RUNNERS: Readonly<Record<string, { title: string; sub: string }>> = {
   palace: { title: 'Kon', sub: 'A runaway mod soul, its pockets full. Catch it.' },
   wahrwelt: { title: 'Kon', sub: 'A runaway mod soul, its pockets full. Catch it.' },
   lasnoches: { title: 'Pesche and Dondochakka', sub: 'Nel’s brothers are making off with the palace’s silver. Catch them.' },
+  karakura: { title: 'Don Kanonji', sub: 'The television spiritualist is running off with the show’s prize money. Catch him.' },
 };
 
 /** Boss Rush: each wave's health against a full run's, wave by wave (you meet them with far fewer levels). */
@@ -796,7 +801,8 @@ export class World {
 
   /** Start one run event now. */
   startEvent(kind: 'rift' | 'golden' | 'storm' | 'ambush' | 'shrine'): void {
-    const hollowWorld = this.stage.id === 'hueco' || this.stage.id === 'lasnoches';
+    // Hollows come through a Garganta (into the world of the living as well); Soul Reapers through a Senkaimon.
+    const hollowWorld = this.stage.id === 'hueco' || this.stage.id === 'lasnoches' || this.stage.id === 'karakura';
     const p = this.player;
     if (kind === 'rift') {
       const a = this.rng.next() * TAU;
@@ -824,7 +830,7 @@ export class World {
       this.addPickup('shrine', p.x + Math.cos(a) * 210, p.y + Math.sin(a) * 210);
       this.banners.push({ kind: 'event', title: 'Quincy Shrine', sub: 'Walk to it and make a pact, or pass it by.' });
     } else {
-      const heavy = ENEMY_INDEX[this.stage.id === 'hueco' ? 'brute' : this.stage.id === 'palace' ? 'sentinel' : this.stage.id === 'lasnoches' ? 'gillian' : 'guard'];
+      const heavy = ENEMY_INDEX[this.stage.id === 'hueco' ? 'brute' : this.stage.id === 'palace' ? 'sentinel' : this.stage.id === 'lasnoches' || this.stage.id === 'karakura' ? 'gillian' : 'guard'];
       this.spawnEnemy(heavy, p.x - 230, p.y, true);
       this.spawnEnemy(heavy, p.x + 230, p.y, true);
       for (let k = 0; k < 24; k++) {
@@ -843,6 +849,7 @@ export class World {
     if (this.stage.roster === 'gotei') return this.spawnGotei(id, hpMul);
     if (this.stage.roster === 'heroes') return this.spawnDefender(id, hpMul);
     if (this.stage.roster === 'arrancar') return this.spawnArrancar(id, hpMul);
+    if (this.stage.roster === 'karakura') return this.spawnKarakura(id, hpMul);
     const captain = !!this.stage.captains;
     const i = this.spawnEnemy(captain ? ENEMY_INDEX.captain : ENEMY_INDEX.bearer, this.tx, this.ty, false, hpMul);
     if (i < 0) return -1;
@@ -867,6 +874,7 @@ export class World {
     if (roster === 'gotei') return (id && GOTEI_BY_ID.get(id)?.warn) || 'A captain approaches';
     if (roster === 'heroes') return (id && HERO_BY_ID.get(id)?.warn) || 'Someone climbs up to meet you';
     if (roster === 'arrancar') return (id && ARRANCAR_BY_ID.get(id)?.warn) || 'An Arrancar comes down the hall';
+    if (roster === 'karakura') return (id && KARAKURA_BY_ID.get(id)?.warn) || 'Someone steps into the street';
     const info = id ? BANKAI_BY_ID.get(id) : undefined;
     if (this.stage.captains) return info?.ownerWarn || 'A captain approaches';
     return info?.thiefWarn || 'A Sternritter approaches';
@@ -878,6 +886,7 @@ export class World {
     if (this.stage.roster === 'gotei') return GOTEI_IDS;
     if (this.stage.roster === 'heroes') return HERO_IDS;
     if (this.stage.roster === 'arrancar') return ARRANCAR_IDS;
+    if (this.stage.roster === 'karakura') return KARAKURA_IDS;
     return BANKAI_IDS;
   }
 
@@ -901,6 +910,18 @@ export class World {
     this.bossCount++;
     const info = ARRANCAR_BY_ID.get(id);
     this.banners.push({ kind: 'boss', title: info?.name ?? 'Arrancar', sub: info?.title ?? '', quote: BOSS_LINES[`arrancar:${id}`] });
+    this.shake = Math.max(this.shake, 8);
+    return i;
+  }
+
+  /** One of Karakura's defenders steps into the street to meet you. */
+  private spawnKarakura(id: string, hpMul: number): number {
+    const i = this.spawnEnemy(ENEMY_INDEX.karakura, this.tx, this.ty, false, hpMul);
+    if (i < 0) return -1;
+    this.en.variant[i] = Math.max(0, KARAKURA_IDS.indexOf(id));
+    this.bossCount++;
+    const info = KARAKURA_BY_ID.get(id);
+    this.banners.push({ kind: 'boss', title: info?.name ?? 'Defender', sub: info?.title ?? '', quote: BOSS_LINES[`karakura:${id}`] });
     this.shake = Math.max(this.shake, 8);
     return i;
   }
@@ -1000,7 +1021,9 @@ export class World {
             ? HERO_BY_ID.get(HERO_IDS[E.variant[i]])
             : def.id === 'arrancar'
               ? ARRANCAR_BY_ID.get(ARRANCAR_IDS[E.variant[i]])
-              : undefined;
+              : def.id === 'karakura'
+                ? KARAKURA_BY_ID.get(KARAKURA_IDS[E.variant[i]])
+                : undefined;
     if (roster) return { name: roster.name, sub: roster.title };
     const ev = this.stage.events.find((e): e is Extract<TimelineEvent, { kind: 'boss' }> => e.kind === 'boss' && e.enemy === def.id);
     return { name: def.name, sub: ev?.sub ?? '' };
@@ -1468,7 +1491,7 @@ export class World {
 
   private contact(i: number): void {
     const E = this.en;
-    this.hurtPlayer(E.dmg[i]);
+    this.hurtPlayer(E.dmg[i] * spoilContactTaken(this));
     if (ENEMY_LIST[E.type[i]].bomber) {
       this.explosionFx(E.x[i], E.y[i]);
       this.killEnemy(i);
@@ -1547,6 +1570,12 @@ export class World {
   applyDot(i: number, secs: number, dps: number, kind: number): void {
     const E = this.en;
     if (E.dead[i]) return;
+    if (kind === DOT_FIRE && this.spoil.on) {
+      // Engetsu: your fire burns longer and hotter.
+      const f = spoilFire(this);
+      secs *= f.secs;
+      dps *= f.dps;
+    }
     if (E.dotT[i] <= 0) E.dotTick[i] = 0.5;
     E.dotT[i] = Math.max(E.dotT[i], secs);
     // The strongest burn sets the rate, so it is the one credited.
@@ -1654,7 +1683,7 @@ export class World {
       // The Royal Guard each leave a Fragment of the Soul King you do not have yet (gold once you hold all three).
       // Silbern's captains and the Wahrwelt's defenders carry no bankai to take: a black chest beside their spoil.
       if (def.id === 'defender' && HERO_IDS[E.variant[i]] === 'aizen') this.clearMirages();
-      if (def.id === 'gotei' || def.id === 'defender' || def.id === 'arrancar') {
+      if (def.id === 'gotei' || def.id === 'defender' || def.id === 'arrancar' || def.id === 'karakura') {
         this.addPickup('chestBlack', x + 36, y + 12);
       }
       this.dropSpoil(i, x, y);
@@ -2551,7 +2580,7 @@ export class World {
 
   relicChoices(kind: ChestKind): RelicDef[] {
     const pool = RELICS.filter((r) => (!r.locked || this.relicsOpen.has(r.id)) && this.relicUseful(r.id));
-    return rollRelics(pool, new Set(this.relics.map((r) => r.id)), kind, this.rng);
+    return rollRelics(pool, new Set(this.relics.map((r) => r.id)), kind, this.rng, spoilChestChoices(this));
   }
 
   /**
