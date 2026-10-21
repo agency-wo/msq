@@ -1,5 +1,6 @@
 import { GESANG_VERSES, UPGRADES } from '../data/archives';
 import { MISSION_BY_ID, MISSIONS } from '../data/missions';
+import { GIFT_CODES, normalizeGiftCode } from '../data/gifts';
 import { BANKAI_IDS } from '../data/bankai';
 import { RESONANCE_BY_ID } from '../data/resonances';
 import { TRAIL_BY_ID, type TrailId } from '../data/looks';
@@ -96,6 +97,8 @@ export interface SaveData {
   trail: TrailId;
   /** Story Mode: each mission played, whether it was cleared and its fastest clear. */
   missions: Record<string, MissionRecord>;
+  /** Gift codes already redeemed on this save. */
+  gifts: string[];
 }
 
 export interface MissionRecord {
@@ -180,7 +183,20 @@ export function defaultSave(): SaveData {
     trails: ['none'],
     trail: 'none',
     missions: {},
+    gifts: [],
   };
+}
+
+/** Redeem a typed gift code once: its gold, or why not (unknown, or redeemed already). */
+export function redeemGift(save: SaveData, raw: string): { ok: true; gold: number; note: string } | { ok: false; reason: 'unknown' | 'used' } {
+  const code = normalizeGiftCode(raw);
+  const gift = GIFT_CODES[code];
+  if (!gift) return { ok: false, reason: 'unknown' };
+  if (save.gifts.includes(code)) return { ok: false, reason: 'used' };
+  save.gifts.push(code);
+  save.gold += gift.gold;
+  save.totals.gold += gift.gold;
+  return { ok: true, gold: gift.gold, note: gift.note };
 }
 
 /**
@@ -346,6 +362,7 @@ export function migrate(raw: unknown): SaveData {
     ...migrateArmory(r, feats.relicsOpen, codex.relics),
     ...migrateTrails(r),
     missions: migrateMissions(r.missions),
+    gifts: Array.isArray(r.gifts) ? [...new Set(r.gifts.filter((c): c is string => typeof c === 'string' && c in GIFT_CODES))] : [],
   };
 }
 

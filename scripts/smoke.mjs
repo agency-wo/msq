@@ -956,6 +956,23 @@ try {
   log('stress palace', { samples: palSamples.map((s) => `${s.state} ${s.fps}fps cpu${s.cpu}ms ${s.enemies}e ${s.sprites}spr`) });
   await shot('13b-stress-palace');
 
+  // A gift code typed in Settings pays its gold once.
+  await go(`${BASE}?debug&seed=3`);
+  await page.waitForSelector('.screen.title .btn.primary');
+  await page.tap('.settings-btn');
+  await page.waitForSelector('.screen.settings .gift-btn');
+  const giftBefore = await page.evaluate(() => JSON.parse(localStorage.getItem('msq.save') ?? '{}').gold ?? 0);
+  page.once('dialog', (d) => d.accept('kaiser900k'));
+  await page.tap('.gift-btn');
+  await wait(400);
+  const gift = { toast: await page.textContent('.toast'), gold: await page.evaluate(() => JSON.parse(localStorage.getItem('msq.save') ?? '{}').gold) };
+  page.once('dialog', (d) => d.accept('KAISER900K'));
+  await page.tap('.gift-btn');
+  await wait(400);
+  log('gift code', { ...gift, paid: gift.gold - giftBefore, again: await page.textContent('.toast') });
+  if (gift.gold - giftBefore !== 900000) problems.push(`[smoke] gift code paid ${gift.gold - giftBefore}`);
+  await shot('15-gift-code');
+
   // Story Mode: a mission is won on its goal (here, holding out to the end) and told to its end before the results.
   await go(`${BASE}?debug&seed=3&play&god&mission=jagdarmee&t=474`);
   log('mission', await page.evaluate(() => ({ mission: window.__msq.world.mission?.id, length: window.__msq.world.stage.length })));

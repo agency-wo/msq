@@ -54,10 +54,11 @@ describe('the Wandenreich Archives', () => {
     expect(nextCost(s, 'arterie')).toBe(240);
     expect(buyUpgrade(s, 'arterie')).toBe(false); // 180 < 240
     expect(s.gold).toBe(180);
+    // A one-level upgrade is maxed at once.
     const r = rich(5000);
-    expect(buyUpgrade(r, 'ransotengai')).toBe(true);
-    expect(nextCost(r, 'ransotengai')).toBeNull();
-    expect(buyUpgrade(r, 'ransotengai')).toBe(false);
+    expect(buyUpgrade(r, 'foresight')).toBe(true);
+    expect(nextCost(r, 'foresight')).toBeNull();
+    expect(buyUpgrade(r, 'foresight')).toBe(false);
     expect(buyUpgrade(r, 'nope')).toBe(false);
   });
 
@@ -73,7 +74,7 @@ describe('the Wandenreich Archives', () => {
     expect(m.cdr).toBeCloseTo(0.02);
     expect(m.moveSpeed).toBeUndefined();
     const full = maxed();
-    expect(metaRevives(full)).toBe(1);
+    expect(metaRevives(full)).toBe(2);
     expect(metaRerolls(full)).toBe(3);
     expect(goldMul(full)).toBeCloseTo(1.3);
     expect(metaMods(full).atk).toBe(20);
@@ -132,13 +133,13 @@ describe('the Wandenreich Archives', () => {
     expect(runGold({ ...clear, pickupGold: 75 })).toBe(runGold(clear) + 75);
   });
 
-  it('the world applies the upgrades: health, attack, a revive, rerolls and the starting Schrift', () => {
+  it('the world applies the upgrades: health, attack, revives, rerolls and the starting Schrift', () => {
     const s = maxed();
     const w = new World({ seed: 1, meta: metaMods(s), revives: metaRevives(s), rerolls: metaRerolls(s), start: 'xaxis' });
     expect(w.player.maxHp).toBeCloseTo(130);
     expect(w.player.hp).toBeCloseTo(130);
     expect(w.stats.atk).toBe(120);
-    expect(w.player.revives).toBe(1);
+    expect(w.player.revives).toBe(2);
     expect(w.rerolls).toBe(3);
     expect(w.powers.map((p) => p.def.id)).toEqual(['xaxis']);
     // Utilities, bankai and The Almighty cannot open a run.

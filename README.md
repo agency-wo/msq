@@ -160,9 +160,11 @@ fastest clear. Missions count for totals, the Codex and feats, never for a
 stage's own records.
 
 Every run pays gold. Spend it in the **Wandenreich Archives** on permanent
-upgrades (attack, health, speed, pickup range, cooldowns, faster level-ups,
-more gold, a revive, level-up rerolls), and pick which awakened Schrift a run
-opens with.
+upgrades (attack, health, damage taken, health regeneration, speed, pickup
+range, cooldowns, power size and duration, projectile speed, critical chance
+and damage, one more of everything, faster level-ups, more gold, two revives,
+level-up rerolls), and pick which awakened Schrift a run opens with. A gift
+code typed under Settings (Redeem a gift code) pays its gold once per save.
 
 Stages, 20 minutes each:
 

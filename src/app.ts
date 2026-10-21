@@ -38,6 +38,7 @@ import {
   recordDaily,
   recordMission,
   recordRun,
+  redeemGift,
   rushOpen,
   type SaveData,
   stageUnlocked,
@@ -344,6 +345,7 @@ export class App {
       onBack: () => this.showTitle(),
       onExport: () => this.exportSave(),
       onImport: () => this.importSave(),
+      onGift: () => this.redeemGift(),
       onResetTips: () => {
         resetTips(this.save);
         writeSave(this.save);
@@ -825,6 +827,20 @@ export class App {
     this.applySettings();
     this.ui.toast('Save loaded');
     this.showSettings();
+  }
+
+  /** A gift code typed in Settings: its gold goes straight into the save. */
+  private redeemGift(): void {
+    const code = window.prompt('Enter a gift code:');
+    if (!code) return;
+    const out = redeemGift(this.save, code);
+    if (!out.ok) {
+      this.ui.toast(out.reason === 'used' ? 'That code has already been redeemed' : 'That is not a gift code');
+      return;
+    }
+    writeSave(this.save);
+    this.sfx.play('chest');
+    this.ui.toast(`${out.note}: +${out.gold.toLocaleString('en-US')} gold`);
   }
 
   // ------------------------------------------------------- lifecycle

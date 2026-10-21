@@ -573,7 +573,7 @@ export class UI {
 
   showSettings(
     settings: Settings,
-    h: { onToggle: (k: Toggle) => boolean; onBack: () => void; onExport: () => void; onImport: () => void; onResetTips: () => void },
+    h: { onToggle: (k: Toggle) => boolean; onBack: () => void; onExport: () => void; onImport: () => void; onGift: () => void; onResetTips: () => void },
   ): void {
     const p = this.open('settings');
     p.append(el('h2', 'board-title', 'Settings'), this.toggles(settings, h.onToggle));
@@ -589,9 +589,11 @@ export class UI {
     const imp = button('btn small', 'Load save code');
     imp.addEventListener('click', h.onImport);
     save.append(exp, imp);
+    const gift = button('btn small gift-btn', 'Redeem a gift code');
+    gift.addEventListener('click', h.onGift);
     const back = button('btn primary', 'Back');
     back.addEventListener('click', this.guard(h.onBack));
-    p.append(save, back);
+    p.append(save, gift, back);
     this.lock(150);
   }
 
