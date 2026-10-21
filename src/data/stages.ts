@@ -64,11 +64,52 @@ export interface StageDef {
 
 const LENGTH = 20 * 60;
 
+/**
+ * How hard the game is, in one place: the swarm's curves below, the rings and
+ * elites on every timeline, and the world's multipliers on bosses, elites and
+ * every hit all read from here.
+ */
+export const DIFFICULTY = {
+  /** Swarm health over time: 1 + hpLinear·m + hpSquare·m² + hpCube·m³ (m in minutes). Near the old curve early, far past it late. */
+  hpLinear: 0.06,
+  hpSquare: 0.08,
+  hpCube: 0.0015,
+  /** Regular spawns per second: spawnBase + spawnLinear·m + spawnSquare·m², capped. */
+  spawnBase: 0.9,
+  spawnLinear: 0.55,
+  spawnSquare: 0.14,
+  spawnCap: 65,
+  /** Swarm speed gained per minute. */
+  speedPerMinute: 0.025,
+  /** Every swarm hit: damage + damagePerMinute·m, so the late swarm hurts far more than the early one. */
+  damage: 0.9,
+  damagePerMinute: 0.035,
+  /**
+   * Boss health and hits, on top of each boss's own multiplier, growing with
+   * that multiplier: the first boss of a stage is close to how it always was,
+   * the last ones are far tougher. Health: bossHpBase + bossHpPerMul·hpMul, at
+   * most bossHpMax. Hits: up to bossDamage, reached at hpMul bossDamageAt.
+   */
+  bossHpBase: 1.2,
+  bossHpPerMul: 0.04,
+  bossHpMax: 2.6,
+  bossDamage: 1.35,
+  bossDamageAt: 14,
+  /** An elite's health and hits against a regular enemy's. */
+  eliteHp: 16,
+  eliteDamage: 1.6,
+  /** Rings: ringBase enemies, one more every ringEvery seconds of the run. Elites from firstElite, every eliteEvery seconds. */
+  ringBase: 36,
+  ringEvery: 12,
+  firstElite: 150,
+  eliteEvery: 75,
+} as const;
+
 /** Rings, elites, chests, runes and the three bearers: the skeleton every stage shares. */
 function skeleton(ring: (t: number) => EnemyId, elite: (t: number) => EnemyId, bearerHp: readonly [number, number, number]): TimelineEvent[] {
   const events: TimelineEvent[] = [];
-  for (let t = 90; t < LENGTH; t += 120) events.push({ at: t, kind: 'ring', enemy: ring(t), count: 36 + Math.floor(t / 15) });
-  for (let t = 150; t < LENGTH; t += 120) events.push({ at: t, kind: 'elite', enemy: elite(t) });
+  for (let t = 90; t < LENGTH; t += 120) events.push({ at: t, kind: 'ring', enemy: ring(t), count: DIFFICULTY.ringBase + Math.floor(t / DIFFICULTY.ringEvery) });
+  for (let t = DIFFICULTY.firstElite; t < LENGTH; t += DIFFICULTY.eliteEvery) events.push({ at: t, kind: 'elite', enemy: elite(t) });
   for (let t = 170; t < LENGTH; t += 150) events.push({ at: t, kind: 'chest' });
   for (let t = 240; t < LENGTH; t += 180) events.push({ at: t, kind: 'rune', rune: 'magnet' });
   // Bearer health comes from here, not from the swarm's time curve.
@@ -103,7 +144,8 @@ const HUECO: StageDef = {
     { from: 180, mix: [['hollow', 3], ['hound', 2], ['brute', 1]] },
     { from: 360, mix: [['hollow', 3], ['hound', 2], ['brute', 1], ['volatile', 1]] },
     { from: 600, mix: [['hollow', 2], ['hound', 3], ['brute', 2], ['volatile', 2]] },
-    { from: 900, mix: [['hollow', 2], ['hound', 3], ['brute', 3], ['volatile', 2]] },
+    { from: 720, mix: [['hollow', 2], ['hound', 3], ['brute', 2], ['volatile', 2], ['gillian', 1]] },
+    { from: 900, mix: [['hollow', 2], ['hound', 3], ['brute', 3], ['volatile', 2], ['gillian', 1]] },
   ],
   events: sorted([
     ...skeleton(
@@ -436,14 +478,14 @@ export interface TrialMods {
 export function trialMods(trial: number): TrialMods {
   const t = Math.max(0, Math.min(MAX_TRIAL, Math.floor(trial)));
   return {
-    hp: 1 + 0.3 * t,
-    speed: 1 + 0.04 * t,
-    spawn: 1 + 0.08 * t,
-    bossHp: 1 + 0.25 * t,
-    damage: 1 + 0.05 * t,
-    bossDamage: 1 + 0.08 * t,
-    damageTaken: 1 + 0.06 * t,
-    gold: 1 + 0.5 * t,
+    hp: 1 + 0.4 * t,
+    speed: 1 + 0.05 * t,
+    spawn: 1 + 0.1 * t,
+    bossHp: 1 + 0.35 * t,
+    damage: 1 + 0.08 * t,
+    bossDamage: 1 + 0.1 * t,
+    damageTaken: 1 + 0.1 * t,
+    gold: 1 + 0.6 * t,
   };
 }
 
@@ -469,12 +511,12 @@ export function phaseAt(stage: StageDef, t: number): SpawnPhase {
 /** Regular spawns per second: a trickle at 0:00, a flood by the end. */
 export function spawnRate(t: number): number {
   const m = t / 60;
-  return Math.min(45, 0.9 + 0.6 * m + 0.09 * m * m);
+  return Math.min(DIFFICULTY.spawnCap, DIFFICULTY.spawnBase + DIFFICULTY.spawnLinear * m + DIFFICULTY.spawnSquare * m * m);
 }
 
 /** Enemies get a little faster as the run goes on. */
 export function speedScale(t: number): number {
-  return 1 + 0.012 * (t / 60);
+  return 1 + DIFFICULTY.speedPerMinute * (t / 60);
 }
 
 /** Mana per kill grows with time, so level-ups keep coming as the curve steepens. */
@@ -485,5 +527,13 @@ export function xpScale(t: number): number {
 /** Enemy health multiplier over time. */
 export function hpScale(t: number): number {
   const m = t / 60;
-  return 1 + 0.1 * m + 0.035 * m * m;
+  return 1 + DIFFICULTY.hpLinear * m + DIFFICULTY.hpSquare * m * m + DIFFICULTY.hpCube * m * m * m;
+}
+
+/** How much tougher and harder-hitting a boss is than its timeline multiplier alone says (see DIFFICULTY). */
+export function bossToughness(hpMul: number): { hp: number; damage: number } {
+  return {
+    hp: Math.min(DIFFICULTY.bossHpMax, DIFFICULTY.bossHpBase + DIFFICULTY.bossHpPerMul * hpMul),
+    damage: 1 + (DIFFICULTY.bossDamage - 1) * Math.min(1, hpMul / DIFFICULTY.bossDamageAt),
+  };
 }

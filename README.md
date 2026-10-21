@@ -117,8 +117,15 @@ more), or walk away. Each pact can be made once a run.
 Chain kills without being hit for **Blut Rush**: three tiers of extra damage and
 speed, shown by the counter beside your kills.
 
+It is meant to be hard. The first minutes are fair to a new build, but the
+swarm's health, numbers, speed and bite all climb steeply as the run goes on,
+elites come every 75 s, and every boss is tougher the higher it stands on the
+stage (the first close to an even fight, the last up to 2.6 times its old
+health); late in Hueco Mundo the Menos Grande join in with their Ceros. Every
+number lives in one place, `DIFFICULTY` in `src/data/stages.ts`.
+
 Clear a stage and its **Trials** open one at a time (I to V: tougher enemies
-and bosses, harder hits, 50% more gold per tier), along with **Endless**: the
+and bosses, harder hits, 60% more gold per tier), along with **Endless**: the
 final boss no longer ends the run, boss waves keep coming and the swarm keeps
 growing until you fall. Each stage keeps its best Endless time. **Boss Rush**
 opens with the first clear too: the stage's bosses back to back with their

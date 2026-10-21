@@ -19,6 +19,8 @@ import { ROYAL_BY_ID, ROYAL_IDS } from '../data/royal';
 import { RESONANCE_BY_ID, RESONANCES, resonanceParts } from '../data/resonances';
 import { BOSS_LINES } from '../data/story';
 import {
+  DIFFICULTY,
+  bossToughness,
   hpScale,
   phaseAt,
   spawnRate,
@@ -1238,20 +1240,22 @@ export class World {
     const def = ENEMY_LIST[type];
     const i = E.n++;
     // Bosses get their health from the timeline alone; everything else also scales with time.
-    let hp = def.hp * hpMul * (def.boss ? this.tm.bossHp : hpScale(this.t) * this.stage.hp * this.tm.hp);
+    const tough = def.boss ? bossToughness(hpMul) : null;
+    let hp = def.hp * hpMul * (tough ? this.tm.bossHp * tough.hp : hpScale(this.t) * this.stage.hp * this.tm.hp);
     // Endless pressure: every minute past the stage's end, the swarm gets sturdier (faster and faster) and hits harder.
     const over = this.endless ? Math.max(0, this.t - this.stage.length) / 60 : 0;
     if (over > 0 && !def.boss) hp *= 1 + 0.15 * over + 0.02 * over * over;
     if (!def.boss) hp *= this.modHp * this.pactHp;
     let r = def.radius * (def.boss ? 1 : this.modRadius);
     // Boss hits scale with the boss's tier: the first bearer is an introduction, the last boss hits hard.
-    let dmg = def.damage * (def.boss ? Math.min(1.6, 0.65 + 0.06 * hpMul) * this.tm.bossDamage : this.tm.damage) * (1 + 0.1 * over);
+    const swarmDmg = DIFFICULTY.damage + DIFFICULTY.damagePerMinute * (Math.min(this.t, this.stage.length) / 60);
+    let dmg = def.damage * (tough ? Math.min(1.6, 0.65 + 0.06 * hpMul) * this.tm.bossDamage * tough.damage : this.tm.damage * swarmDmg) * (1 + 0.1 * over);
     let xp = def.xp * xpScale(this.t) * this.stage.xp;
     let flags = 0;
     if (elite) {
-      hp *= 12;
+      hp *= DIFFICULTY.eliteHp;
       r *= 1.45;
-      dmg *= 1.5;
+      dmg *= DIFFICULTY.eliteDamage;
       xp *= 10;
       flags |= FLAG_ELITE;
     }
