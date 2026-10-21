@@ -1,4 +1,5 @@
 import type { StageId } from '../data/stages';
+import { inkCanvas } from '../render/ink';
 
 /**
  * Small painted views of each stage for the stage cards on the title screen:
@@ -485,4 +486,5 @@ export function drawVista(canvas: HTMLCanvasElement, stage: StageId, w = 200, h 
   if (!g) return;
   g.scale(ratio, ratio);
   (VISTAS[stage] ?? hueco)(g, w, h);
+  inkCanvas(canvas, 'paint', 0, Math.round(3 * ratio));
 }

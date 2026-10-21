@@ -1,4 +1,6 @@
 import { Rectangle, Texture } from 'pixi.js';
+import { huecoGround, karakuraGround, lasnochesGround, palaceGround, seireiteiGround, silbernGround, wahrweltGround } from './grounds';
+import { DISPLAY_FONT, type InkKind, type InkRect, inkCanvas, inkRects } from './ink';
 
 /**
  * All game art is drawn here with Canvas 2D at startup and packed into one
@@ -6,10 +8,14 @@ import { Rectangle, Texture } from 'pixi.js';
  * what lets Pixi's ParticleContainer batch thousands of sprites) and nothing
  * is downloaded. Bleach's look (ink black, bone white, Quincy blue, Hollow
  * red); the Emperor is a chibi homage to Yhwach, every other design is original.
+ * Every sprite then goes through the ink pass (ink.ts): flat tones, hard
+ * shadows, an ink line round each figure, effects in hard-edged bands.
  */
 
 /** Atlas pixels per world unit at scale 1: sprites are drawn at 2x for sharp phones. */
 export const ATLAS_SCALE = 2;
+
+export { DISPLAY_FONT };
 
 type Ctx = CanvasRenderingContext2D;
 type Draw = (g: Ctx, w: number, h: number) => void;
@@ -21,6 +27,24 @@ interface Spec {
   draw: Draw;
   /** Shrink the frame by this many pixels per side (solid fills, to avoid edge bleed). */
   inset?: number;
+}
+
+/** Effects: drawn additively in a run, so they get hard-edged bands and no outline. */
+const FX_SPRITES = new Set([
+  'beam', 'crescent', 'avatar', 'wings', 'wedge', 'ring', 'wfill', 'cloud', 'firezone', 'gust', 'frost', 'cage', 'maw', 'fist',
+  'loveheart', 'eye', 'lightning', 'shock', 'trail', 'smoke', 'beamh', 'flame', 'dragon', 'meteor', 'evo_wings', 'evo_shadow',
+  'glow', 'disc', 'ash', 'bolt', 'arrow', 'blade', 'missile', 'thorn', 'petal', 'spark', 'star', 'snow', 'mask', 'bala',
+  'icebolt', 'dot', 'shard',
+]);
+
+/** Drawn flat already (solid fills and the ground shadow): left as they are. */
+const PLAIN_SPRITES = new Set(['square', 'shadow']);
+
+/** How the ink pass treats a sprite, and how wide its ink line is in atlas pixels (bigger figures, bolder line). */
+function inkOf(name: string, w: number): { kind: InkKind; line: number } {
+  if (PLAIN_SPRITES.has(name)) return { kind: 'none', line: 0 };
+  if (FX_SPRITES.has(name)) return { kind: 'fx', line: 0 };
+  return { kind: 'figure', line: w >= 110 ? 3 : w >= 40 ? 2.5 : 2 };
 }
 
 export interface Atlas {
@@ -95,98 +119,6 @@ function seeded(seed: number): () => number {
   return () => (s = (s * 16807) % 2147483647) / 2147483647;
 }
 
-/** A bone mask: rounded plate, eye holes, a row of teeth. Original Hollow-style design. */
-function mask(g: Ctx, cx: number, cy: number, w: number, h: number, eyes: number, teeth: boolean): void {
-  const grad = g.createLinearGradient(0, cy - h / 2, 0, cy + h / 2);
-  grad.addColorStop(0, '#ffffff');
-  grad.addColorStop(1, '#cfc8ba');
-  g.fillStyle = grad;
-  g.beginPath();
-  g.moveTo(cx - w / 2, cy - h * 0.15);
-  g.quadraticCurveTo(cx - w / 2, cy - h / 2, cx, cy - h / 2);
-  g.quadraticCurveTo(cx + w / 2, cy - h / 2, cx + w / 2, cy - h * 0.15);
-  g.lineTo(cx + w * 0.34, cy + h / 2);
-  g.lineTo(cx - w * 0.34, cy + h / 2);
-  g.closePath();
-  g.fill();
-  g.strokeStyle = 'rgba(0,0,0,0.35)';
-  g.lineWidth = 1;
-  g.stroke();
-  g.fillStyle = INK;
-  const ew = w * 0.16;
-  const eh = h * 0.2;
-  const ey = cy - h * 0.08;
-  if (eyes === 3) {
-    g.beginPath();
-    g.ellipse(cx, ey - eh * 1.1, ew * 0.8, eh * 0.75, 0, 0, TAU);
-    g.fill();
-  }
-  g.beginPath();
-  g.ellipse(cx - w * 0.2, ey, ew, eh, 0.35, 0, TAU);
-  g.fill();
-  g.beginPath();
-  g.ellipse(cx + w * 0.2, ey, ew, eh, -0.35, 0, TAU);
-  g.fill();
-  // A red glint deep in each eye: Hollows watch you from the dark.
-  g.save();
-  g.fillStyle = '#ff4a66';
-  g.shadowColor = '#ff2d4a';
-  g.shadowBlur = Math.max(2, w * 0.12);
-  const glint = Math.max(0.9, ew * 0.36);
-  for (const [gx, gy] of eyes === 3
-    ? [
-        [cx - w * 0.2, ey],
-        [cx + w * 0.2, ey],
-        [cx, ey - eh * 1.1],
-      ]
-    : [
-        [cx - w * 0.2, ey],
-        [cx + w * 0.2, ey],
-      ]) {
-    g.beginPath();
-    g.arc(gx, gy + eh * 0.15, glint, 0, TAU);
-    g.fill();
-  }
-  g.restore();
-  if (teeth) {
-    const ty = cy + h * 0.3;
-    g.fillStyle = INK;
-    g.fillRect(cx - w * 0.24, ty - h * 0.06, w * 0.48, h * 0.12);
-    g.fillStyle = '#e9e3d6';
-    const n = 5;
-    for (let k = 0; k < n; k++) {
-      const x = cx - w * 0.24 + (k + 0.5) * ((w * 0.48) / n);
-      poly(g, [
-        [x - w * 0.035, ty - h * 0.06],
-        [x + w * 0.035, ty - h * 0.06],
-        [x, ty + h * 0.03],
-      ]);
-      g.fill();
-    }
-  }
-}
-
-/** Shadow body with a ragged rim, the base of every Hollow. */
-function shadowBody(g: Ctx, cx: number, cy: number, r: number, lobes: number, seed: number, tint: string): void {
-  const rnd = seeded(seed);
-  const grad = g.createRadialGradient(cx - r * 0.3, cy - r * 0.4, r * 0.1, cx, cy, r * 1.1);
-  grad.addColorStop(0, tint);
-  grad.addColorStop(0.6, '#15111f');
-  grad.addColorStop(1, '#05040a');
-  g.fillStyle = grad;
-  g.beginPath();
-  for (let k = 0; k <= lobes * 2; k++) {
-    const a = (k / (lobes * 2)) * TAU;
-    const rr = k % 2 === 0 ? r * (0.92 + rnd() * 0.12) : r * (0.78 + rnd() * 0.1);
-    const x = cx + Math.cos(a) * rr;
-    const y = cy + Math.sin(a) * rr;
-    if (k === 0) g.moveTo(x, y);
-    else g.lineTo(x, y);
-  }
-  g.closePath();
-  g.fill();
-}
-
 /** The hole in a Hollow's chest. */
 function chestHole(g: Ctx, cx: number, cy: number, r: number): void {
   g.save();
@@ -204,38 +136,69 @@ function chestHole(g: Ctx, cx: number, cy: number, r: number): void {
 
 // ------------------------------------------------------- generic shapes
 
+/** A jagged star of `spikes` points between radius r and r·(1 − jag): one band of a reiatsu flare. */
+function flare(g: Ctx, c: number, r: number, spikes: number, jag: number, rnd: () => number): void {
+  g.beginPath();
+  for (let k = 0; k <= spikes * 2; k++) {
+    const a = (k / (spikes * 2)) * TAU + 0.2;
+    const rr = k % 2 === 0 ? r * (0.9 + rnd() * 0.1) : r * (1 - jag * (0.55 + rnd() * 0.45));
+    const x = c + Math.cos(a) * rr;
+    const y = c + Math.sin(a) * rr;
+    if (k === 0) g.moveTo(x, y);
+    else g.lineTo(x, y);
+  }
+  g.closePath();
+  g.fill();
+}
+
+/**
+ * Spiritual pressure as Bleach inks it: a jagged flare in three hard bands
+ * around a solid core, never an airbrushed blob. Tinted in a run.
+ */
 const glow: Draw = (g, w) => {
-  const r = w / 2;
-  const grad = g.createRadialGradient(r, r, 0, r, r, r);
-  grad.addColorStop(0, 'rgba(255,255,255,1)');
-  grad.addColorStop(0.25, 'rgba(255,255,255,0.55)');
-  grad.addColorStop(1, 'rgba(255,255,255,0)');
-  g.fillStyle = grad;
-  g.fillRect(0, 0, w, w);
+  const c = w / 2;
+  const rnd = seeded(5);
+  g.fillStyle = 'rgba(255,255,255,0.3)';
+  flare(g, c, c - 1, 13, 0.34, rnd);
+  g.fillStyle = 'rgba(255,255,255,0.42)';
+  flare(g, c, c * 0.66, 10, 0.3, rnd);
+  g.fillStyle = '#ffffff';
+  flare(g, c, c * 0.34, 7, 0.22, rnd);
 };
 
+/** A ring as one stroke of the brush (an ensō): thick where the brush lands, thinning to a gap where it lifts. */
 const ring: Draw = (g, w) => {
   const c = w / 2;
-  g.strokeStyle = 'rgba(255,255,255,0.3)';
-  g.lineWidth = 10;
-  g.beginPath();
-  g.arc(c, c, c - 9, 0, TAU);
-  g.stroke();
-  g.strokeStyle = 'rgba(255,255,255,0.95)';
-  g.lineWidth = 3;
-  g.beginPath();
-  g.arc(c, c, c - 9, 0, TAU);
-  g.stroke();
+  const R = c - 9;
+  const n = 96;
+  const start = -0.35;
+  const sweep = TAU * 0.94;
+  const outer: [number, number][] = [];
+  const inner: [number, number][] = [];
+  for (let k = 0; k <= n; k++) {
+    const t = k / n;
+    const a = start + t * sweep;
+    // Heavy at the start, a long taper toward the lift.
+    const thick = 1.5 + 6.5 * Math.sin(Math.PI * Math.min(1, t * 1.15)) ** 0.6 * (1 - t * 0.55);
+    const wob = Math.sin(t * 23) * 0.6;
+    outer.push([c + Math.cos(a) * (R + thick / 2 + wob), c + Math.sin(a) * (R + thick / 2 + wob)]);
+    inner.push([c + Math.cos(a) * (R - thick / 2 + wob), c + Math.sin(a) * (R - thick / 2 + wob)]);
+  }
+  g.fillStyle = '#ffffff';
+  poly(g, [...outer, ...inner.reverse()]);
+  g.fill();
 };
 
+/** A hard white disc: the solid core of shots and motes. */
 const disc: Draw = (g, w) => {
   const c = w / 2;
-  const grad = g.createRadialGradient(c, c, c * 0.55, c, c, c);
-  grad.addColorStop(0, 'rgba(255,255,255,1)');
-  grad.addColorStop(1, 'rgba(255,255,255,0)');
-  g.fillStyle = grad;
+  g.fillStyle = 'rgba(255,255,255,0.45)';
   g.beginPath();
-  g.arc(c, c, c, 0, TAU);
+  g.arc(c, c, c - 1, 0, TAU);
+  g.fill();
+  g.fillStyle = '#ffffff';
+  g.beginPath();
+  g.arc(c, c, c * 0.72, 0, TAU);
   g.fill();
 };
 
@@ -1014,18 +977,22 @@ const cage: Draw = (g, w) => {
   }
 };
 
+/** The ground shadow: a flat blot of ink with a brushed, ragged rim, not an airbrushed fade. */
 const shadow: Draw = (g, w, h) => {
-  g.save();
-  g.translate(w / 2, h / 2);
-  g.scale(1, h / w);
-  const grad = g.createRadialGradient(0, 0, 0, 0, 0, w / 2);
-  grad.addColorStop(0, 'rgba(0,0,0,0.75)');
-  grad.addColorStop(1, 'rgba(0,0,0,0)');
-  g.fillStyle = grad;
+  const rnd = seeded(41);
+  g.fillStyle = 'rgba(4,4,6,0.62)';
   g.beginPath();
-  g.arc(0, 0, w / 2, 0, TAU);
+  const n = 22;
+  for (let k = 0; k <= n; k++) {
+    const a = (k / n) * TAU;
+    const j = 0.86 + rnd() * 0.12;
+    const x = w / 2 + Math.cos(a) * (w / 2 - 2) * j;
+    const y = h / 2 + Math.sin(a) * (h / 2 - 2) * j;
+    if (k === 0) g.moveTo(x, y);
+    else g.lineTo(x, y);
+  }
+  g.closePath();
   g.fill();
-  g.restore();
 };
 
 const pointer: Draw = (g, w, h) => {
@@ -1071,17 +1038,22 @@ function gem(top: string, bottom: string): Draw {
   };
 }
 
+/** Damage numerals as a manga letters them: heavy, condensed, slanted, paper white in a thick ink line. */
 function digit(ch: string): Draw {
   return (g, w, h) => {
-    g.font = 'bold 26px system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
+    g.save();
+    g.translate(w / 2, h / 2 + 1);
+    g.transform(1, 0, -0.16, 1, 0, 0);
+    g.font = `28px ${DISPLAY_FONT}`;
     g.textAlign = 'center';
     g.textBaseline = 'middle';
-    g.lineJoin = 'round';
-    g.lineWidth = 5;
-    g.strokeStyle = 'rgba(0,0,0,0.85)';
-    g.strokeText(ch, w / 2, h / 2 + 1);
+    g.lineJoin = 'miter';
+    g.lineWidth = 6;
+    g.strokeStyle = '#000000';
+    g.strokeText(ch, 0, 0);
     g.fillStyle = '#ffffff';
-    g.fillText(ch, w / 2, h / 2 + 1);
+    g.fillText(ch, 0, 0);
+    g.restore();
   };
 }
 
@@ -1702,133 +1674,449 @@ const hero = heroBody(HERO_LOOKS.default);
 
 // -------------------------------------------------------------- enemies
 
-const hollow: Draw = (g, w, h) => {
-  const cx = w / 2;
-  const cy = h / 2 + 3;
-  aura(g, cx, cy, 25, 'rgba(255,40,80,0.16)');
-  shadowBody(g, cx, cy + 3, 18, 7, 3, '#3a2f52');
-  chestHole(g, cx, cy + 9, 3.2);
-  mask(g, cx, cy - 6, 22, 18, 2, true);
-};
+// ---------------------------------------------------- the Hollow swarm
+// Grotesque, the way Bleach inks its Hollows: black bodies that are all limbs
+// and spines, bone masks that are mostly teeth, a hole where the heart was.
+// Every one an original design. Colours sit on the ink pass's tone levels.
 
-const hound: Draw = (g, w, h) => {
-  const cx = w / 2;
-  const cy = h / 2 + 2;
-  aura(g, cx, cy, 22, 'rgba(255,40,80,0.16)');
-  // Low, spiky body
-  const rnd = seeded(9);
-  g.fillStyle = '#100c18';
-  g.beginPath();
-  for (let k = 0; k <= 16; k++) {
-    const a = (k / 16) * TAU;
-    const rr = k % 2 === 0 ? 17 + rnd() * 3 : 10;
-    const x = cx + Math.cos(a) * rr;
-    const y = cy + 4 + Math.sin(a) * rr * 0.7;
-    if (k === 0) g.moveTo(x, y);
-    else g.lineTo(x, y);
-  }
-  g.closePath();
-  g.fill();
-  // Narrow beak-like mask
-  g.fillStyle = BONE;
-  poly(g, [
-    [cx - 8, cy - 8],
-    [cx + 8, cy - 8],
-    [cx + 3, cy + 6],
-    [cx, cy + 10],
-    [cx - 3, cy + 6],
-  ]);
-  g.fill();
-  g.fillStyle = INK;
-  g.beginPath();
-  g.ellipse(cx - 3.5, cy - 3, 2, 3, 0.4, 0, TAU);
-  g.fill();
-  g.beginPath();
-  g.ellipse(cx + 3.5, cy - 3, 2, 3, -0.4, 0, TAU);
-  g.fill();
-  g.strokeStyle = 'rgba(255,45,74,0.85)';
-  g.lineWidth = 1.2;
-  g.beginPath();
-  g.moveTo(cx - 6, cy - 7);
-  g.lineTo(cx - 1, cy + 4);
-  g.stroke();
-};
+const H_INK = '#0c0a10';
+const H_SHADE = '#3c3a4a';
+const H_BONE = '#ece6d6';
+const H_BONE_SHADE = '#a99f8b';
+const H_MAW = '#4a0a16';
+const H_EYE = '#ff3050';
 
-function horn(g: Ctx, x: number, y: number, dir: number, s: number): void {
-  g.beginPath();
-  g.moveTo(x - 6 * dir * s, y + 8 * s);
-  g.quadraticCurveTo(x + 2 * dir * s, y - 4 * s, x + 10 * dir * s, y - 12 * s);
-  g.quadraticCurveTo(x + 5 * dir * s, y + 2 * s, x + 6 * dir * s, y + 10 * s);
-  g.closePath();
-  g.fill();
+interface GrinOpts {
+  /** Teeth along the top of the grin. */
+  teeth: number;
+  /** Red war paint down through the eyes. */
+  stripes?: boolean;
+  /** Bone horns from the brow, this long relative to the mask's width. */
+  horns?: number;
+  /** Blood and drool running off the teeth. */
+  drool?: boolean;
 }
 
-const brute: Draw = (g, w, h) => {
-  const cx = w / 2;
-  const cy = h / 2 + 4;
-  aura(g, cx, cy, 36, 'rgba(255,40,80,0.18)');
-  shadowBody(g, cx, cy + 4, 30, 9, 17, '#47263a');
-  chestHole(g, cx, cy + 14, 5);
-  g.fillStyle = BONE;
-  horn(g, cx - 13, cy - 16, -1, 1);
-  horn(g, cx + 13, cy - 16, 1, 1);
-  mask(g, cx, cy - 7, 32, 24, 2, true);
-};
-
-/** Shrieker's leech: a fat black leech with a little white mask, its belly glowing as it swells to burst. */
-const volatile: Draw = (g, w, h) => {
-  const cx = w / 2;
-  const cy = h / 2 + 3;
-  aura(g, cx, cy, 25, 'rgba(255,110,40,0.3)');
-  // Segmented body, thickest at the middle
-  for (let k = 4; k >= 0; k--) {
-    const x = cx + 10 - k * 5;
-    const r = 6 + Math.sin(((k + 0.5) / 5) * Math.PI) * 6;
-    const grad = g.createRadialGradient(x - 2, cy - 3, 1, x, cy, r);
-    grad.addColorStop(0, '#3a2440');
-    grad.addColorStop(1, '#0d070e');
-    g.fillStyle = grad;
-    g.beginPath();
-    g.ellipse(x, cy, r * 0.8, r, 0, 0, TAU);
-    g.fill();
+/** A Hollow's mask: a cracked bone plate, slanted black sockets each with a red glint, and a grin packed with teeth. */
+function grinMask(g: Ctx, cx: number, cy: number, mw: number, mh: number, seed: number, o: GrinOpts): void {
+  const rnd = seeded(seed);
+  const hw = mw / 2;
+  if (o.horns) {
+    g.fillStyle = H_BONE;
+    for (const s of [-1, 1]) {
+      const L = mw * o.horns;
+      g.beginPath();
+      g.moveTo(cx + s * hw * 0.45, cy - mh * 0.3);
+      g.quadraticCurveTo(cx + s * (hw + L * 0.45), cy - mh * 0.4, cx + s * (hw + L * 0.6), cy - mh * 0.5 - L * 0.7);
+      g.quadraticCurveTo(cx + s * (hw + L * 0.15), cy - mh * 0.42, cx + s * hw * 0.85, cy - mh * 0.06);
+      g.closePath();
+      g.fill();
+    }
   }
-  // The glowing belly about to go
+  // The plate: a domed brow with a notched rim, cheekbones, a heavy jaw.
+  const pts: [number, number][] = [];
+  const n = 14;
+  for (let k = 0; k <= n; k++) {
+    const a = Math.PI + (k / n) * Math.PI;
+    const notch = k > 0 && k < n && k % 4 === 2 ? 0.82 : 1;
+    pts.push([cx + Math.cos(a) * hw * (0.95 + rnd() * 0.06), cy - mh * 0.06 + Math.sin(a) * mh * 0.46 * notch]);
+  }
+  pts.push(
+    [cx + hw * 0.98, cy + mh * 0.14],
+    [cx + hw * 0.8, cy + mh * 0.36],
+    [cx + hw * 0.5, cy + mh * 0.5],
+    [cx, cy + mh * 0.56],
+    [cx - hw * 0.5, cy + mh * 0.5],
+    [cx - hw * 0.8, cy + mh * 0.36],
+    [cx - hw * 0.98, cy + mh * 0.14],
+  );
+  g.fillStyle = H_BONE;
+  poly(g, pts);
+  g.fill();
+  // One hard shadow down the right of the face: cel shading, never a gradient.
   g.save();
-  g.fillStyle = '#ff7a3c';
-  g.shadowColor = '#ff3d1f';
-  g.shadowBlur = 10;
-  g.beginPath();
-  g.ellipse(cx, cy + 3, 6, 4, 0, 0, TAU);
+  poly(g, pts);
+  g.clip();
+  g.fillStyle = H_BONE_SHADE;
+  poly(g, [
+    [cx + hw * 0.34, cy - mh],
+    [cx + hw * 1.3, cy - mh],
+    [cx + hw * 1.3, cy + mh],
+    [cx + hw * 0.1, cy + mh],
+    [cx + hw * 0.3, cy + mh * 0.12],
+  ]);
   g.fill();
   g.restore();
-  mask(g, cx + 12, cy - 4, 10, 8, 2, false);
-};
-
-/** Elite: armored, with red war markings on the mask. */
-const adjuchas: Draw = (g, w, h) => {
-  const cx = w / 2;
-  const cy = h / 2 + 3;
-  aura(g, cx, cy, 34, 'rgba(255,30,70,0.32)');
-  shadowBody(g, cx, cy + 4, 26, 6, 29, '#5a2034');
-  // Armor plates
-  g.fillStyle = '#d9d2c4';
-  for (let k = 0; k < 3; k++) {
+  // Sockets slanted down to the nose, black, each with a red glint.
+  g.fillStyle = H_INK;
+  for (const s of [-1, 1]) {
     poly(g, [
-      [cx - 20 + k * 14, cy + 6],
-      [cx - 14 + k * 14, cy - 2],
-      [cx - 8 + k * 14, cy + 6],
+      [cx + s * hw * 0.84, cy - mh * 0.2],
+      [cx + s * hw * 0.12, cy - mh * 0.02],
+      [cx + s * hw * 0.16, cy + mh * 0.12],
+      [cx + s * hw * 0.7, cy + mh * 0.06],
     ]);
     g.fill();
   }
-  mask(g, cx, cy - 10, 28, 22, 2, true);
-  g.strokeStyle = '#ff2d4a';
-  g.lineWidth = 2;
+  g.fillStyle = H_EYE;
+  for (const s of [-1, 1]) {
+    g.beginPath();
+    g.arc(cx + s * hw * 0.42, cy + mh * 0.03, Math.max(1.1, mw * 0.05), 0, TAU);
+    g.fill();
+  }
+  if (o.stripes) {
+    g.fillStyle = H_EYE;
+    for (const s of [-1, 1]) {
+      poly(g, [
+        [cx + s * hw * 0.38, cy - mh * 0.5],
+        [cx + s * hw * 0.5, cy - mh * 0.5],
+        [cx + s * hw * 0.46, cy - mh * 0.2],
+        [cx + s * hw * 0.36, cy - mh * 0.2],
+      ]);
+      g.fill();
+    }
+  }
+  // The grin: a dark-red slit across the jaw, teeth top and bottom, longer at the corners.
+  const my = cy + mh * 0.3;
+  const half = hw * 0.86;
+  const mh2 = mh * 0.15;
+  g.fillStyle = H_MAW;
+  poly(g, [
+    [cx - half, my - mh2 * 0.4],
+    [cx, my - mh2 * 1.1],
+    [cx + half, my - mh2 * 0.4],
+    [cx + half * 0.8, my + mh2],
+    [cx, my + mh2 * 1.3],
+    [cx - half * 0.8, my + mh2],
+  ]);
+  g.fill();
+  g.fillStyle = H_BONE;
+  const t = o.teeth;
+  const step = (half * 2) / t;
+  for (let k = 0; k < t; k++) {
+    const x0 = cx - half + (k + 0.5) * step;
+    const tw = step * 0.42;
+    const long = k === 0 || k === t - 1 ? 1.7 : 1;
+    poly(g, [
+      [x0 - tw, my - mh2 * 0.9],
+      [x0 + tw, my - mh2 * 0.9],
+      [x0, my + mh2 * 0.55 * long],
+    ]);
+    g.fill();
+    if (k < t - 1) {
+      const x1 = x0 + step / 2;
+      poly(g, [
+        [x1 - tw, my + mh2 * 1.1],
+        [x1 + tw, my + mh2 * 1.1],
+        [x1, my - mh2 * 0.25],
+      ]);
+      g.fill();
+    }
+  }
+  if (o.drool) {
+    g.fillStyle = '#c41430';
+    for (const [dx, len] of [[-0.42, 0.34], [0.18, 0.5], [0.5, 0.24]] as const) {
+      const x = cx + dx * half;
+      g.beginPath();
+      g.moveTo(x - mw * 0.03, my + mh2 * 0.6);
+      g.lineTo(x + mw * 0.03, my + mh2 * 0.6);
+      g.lineTo(x + mw * 0.02, my + mh2 + mh * len * 0.5);
+      g.arc(x, my + mh2 + mh * len * 0.5, mw * 0.026, 0, Math.PI);
+      g.closePath();
+      g.fill();
+    }
+  }
+  // A crack down from the brow.
+  g.strokeStyle = H_INK;
+  g.lineWidth = Math.max(0.9, mw * 0.035);
+  g.lineJoin = 'miter';
+  const c0 = cx - hw * 0.35 + rnd() * hw * 0.25;
   g.beginPath();
-  g.moveTo(cx - 10, cy - 20);
-  g.lineTo(cx - 4, cy - 2);
-  g.moveTo(cx + 10, cy - 20);
-  g.lineTo(cx + 4, cy - 2);
+  g.moveTo(c0, cy - mh * 0.5);
+  g.lineTo(c0 + mw * 0.05, cy - mh * 0.36);
+  g.lineTo(c0 - mw * 0.02, cy - mh * 0.24);
   g.stroke();
+}
+
+/** A limb as one tapering brush stroke through `pts`, from width w0 to w1. */
+function limb(g: Ctx, pts: readonly (readonly [number, number])[], w0: number, w1: number, color = H_INK): void {
+  g.strokeStyle = color;
+  g.lineCap = 'round';
+  g.lineJoin = 'round';
+  for (let k = 0; k < pts.length - 1; k++) {
+    g.lineWidth = w0 + (w1 - w0) * (k / Math.max(1, pts.length - 2));
+    g.beginPath();
+    g.moveTo(pts[k][0], pts[k][1]);
+    g.lineTo(pts[k + 1][0], pts[k + 1][1]);
+    g.stroke();
+  }
+}
+
+/** Bone claws fanned out from (x, y), pointing along `angle`. */
+function claws(g: Ctx, x: number, y: number, angle: number, len: number, count = 3): void {
+  g.fillStyle = H_BONE;
+  for (let k = 0; k < count; k++) {
+    const a = angle + (k - (count - 1) / 2) * 0.45;
+    const tx = x + Math.cos(a) * len;
+    const ty = y + Math.sin(a) * len;
+    const nx = Math.cos(a + Math.PI / 2) * len * 0.22;
+    const ny = Math.sin(a + Math.PI / 2) * len * 0.22;
+    poly(g, [
+      [x + nx, y + ny],
+      [tx + nx * 0.6, ty + ny * 0.6],
+      [x - nx, y - ny],
+    ]);
+    g.fill();
+  }
+}
+
+/** Punch the hole where the heart was right through the body, rimmed in raw red so it reads on any ground. */
+function heartHole(g: Ctx, cx: number, cy: number, r: number): void {
+  g.strokeStyle = '#c41430';
+  g.lineWidth = Math.max(1.4, r * 0.32);
+  g.beginPath();
+  g.ellipse(cx, cy, r + g.lineWidth * 0.4, (r + g.lineWidth * 0.4) * 1.08, 0, 0, TAU);
+  g.stroke();
+  g.save();
+  g.globalCompositeOperation = 'destination-out';
+  g.beginPath();
+  g.ellipse(cx, cy, r, r * 1.08, 0, 0, TAU);
+  g.fill();
+  g.restore();
+}
+
+/** Lesser Hollow: a hunched ghoul, arms dragging to the ground, spines along its back, a mask that is all grin. */
+const hollow: Draw = (g) => {
+  // Arms first, behind the body: shoulder, knobbed elbow, clawed hand on the ground.
+  limb(g, [[14, 23], [7, 32], [6, 43]], 4.6, 2.8);
+  limb(g, [[38, 23], [45, 32], [46, 43]], 4.6, 2.8);
+  claws(g, 6, 44, Math.PI * 0.55, 5);
+  claws(g, 46, 44, Math.PI * 0.45, 5);
+  // Bent legs, clawed feet.
+  limb(g, [[21, 38], [16, 44], [19, 48]], 4.2, 3);
+  limb(g, [[31, 38], [36, 44], [33, 48]], 4.2, 3);
+  // Hunched torso with a ridge of spines.
+  g.fillStyle = H_INK;
+  poly(g, [
+    [12, 24], [9, 13], [17, 18], [17, 9], [23, 15], [26, 12], [29, 15], [35, 9], [35, 18], [43, 13], [40, 24],
+    [37, 35], [33, 42], [19, 42], [15, 35],
+  ]);
+  g.fill();
+  // A hard rim of light down its right flank.
+  limb(g, [[39, 25], [36, 34], [32, 40]], 1.6, 1.2, H_SHADE);
+  heartHole(g, 26, 32, 3.6);
+  grinMask(g, 26, 16, 22, 18, 3, { teeth: 5, drool: true });
+};
+
+/** Hound: a crouching beast seen head-on, a mane of black spines, a long narrow snout mask and fangs past the jaw. */
+const hound: Draw = (g) => {
+  const rnd = seeded(9);
+  // The mane: long spines fanning up and out behind the head.
+  g.fillStyle = H_INK;
+  g.beginPath();
+  for (let k = 0; k <= 20; k++) {
+    const a = Math.PI * (1 + (k / 20));
+    const rr = k % 2 === 0 ? 20 + rnd() * 3 : 10;
+    const x = 24 + Math.cos(a) * rr;
+    const y = 26 + Math.sin(a) * rr * 0.9;
+    if (k === 0) g.moveTo(x, y);
+    else g.lineTo(x, y);
+  }
+  g.lineTo(38, 38);
+  g.lineTo(10, 38);
+  g.closePath();
+  g.fill();
+  // Splayed front legs, bent like a spider's, claws dug in.
+  limb(g, [[15, 30], [5, 34], [6, 43]], 3.8, 2.4);
+  limb(g, [[33, 30], [43, 34], [42, 43]], 3.8, 2.4);
+  claws(g, 6, 44, Math.PI * 0.6, 4);
+  claws(g, 42, 44, Math.PI * 0.4, 4);
+  g.fillStyle = H_INK;
+  g.beginPath();
+  g.ellipse(24, 33, 12, 8, 0, 0, TAU);
+  g.fill();
+  limb(g, [[33, 28], [35, 34]], 1.4, 1.2, H_SHADE);
+  // Fangs first, so the snout overlaps their roots.
+  g.fillStyle = H_BONE;
+  poly(g, [[19, 30], [14, 44], [21.5, 34]]);
+  g.fill();
+  poly(g, [[29, 30], [34, 44], [26.5, 34]]);
+  g.fill();
+  // The snout mask, foreshortened toward you: long, narrow and pointed, two short horns.
+  const snout: [number, number][] = [[17, 14], [20, 11], [24, 10], [28, 11], [31, 14], [30, 24], [27, 36], [24, 42], [21, 36], [18, 24]];
+  poly(g, [[18, 13], [14, 5], [21, 11]]);
+  g.fill();
+  poly(g, [[30, 13], [34, 5], [27, 11]]);
+  g.fill();
+  poly(g, snout);
+  g.fill();
+  g.save();
+  poly(g, snout);
+  g.clip();
+  g.fillStyle = H_BONE_SHADE;
+  g.fillRect(25, 8, 10, 36);
+  g.restore();
+  // Sockets with glints, nostril slits, a row of small teeth at the tip.
+  g.fillStyle = H_INK;
+  poly(g, [[17.6, 15.5], [22.6, 18.5], [22.4, 22], [18.4, 20]]);
+  g.fill();
+  poly(g, [[30.4, 15.5], [25.4, 18.5], [25.6, 22], [29.6, 20]]);
+  g.fill();
+  g.fillRect(22.6, 30, 1.1, 3.2);
+  g.fillRect(24.4, 30, 1.1, 3.2);
+  g.fillStyle = H_EYE;
+  g.beginPath();
+  g.arc(20.2, 19.2, 1.2, 0, TAU);
+  g.arc(27.8, 19.2, 1.2, 0, TAU);
+  g.fill();
+  g.fillStyle = '#c41430';
+  poly(g, [[23, 40], [25, 40], [24.6, 45], [23.4, 45]]);
+  g.fill();
+};
+
+/** Brute: a horned gorilla of a Hollow, knuckles on the ground, ribs of bone round the hole in its chest. */
+const brute: Draw = (g) => {
+  // Pillar arms to fists on the ground, behind the hump.
+  limb(g, [[17, 30], [9, 46], [11, 62]], 10, 8);
+  limb(g, [[59, 30], [67, 46], [65, 62]], 10, 8);
+  // Fists with bone knuckle plates.
+  g.fillStyle = H_INK;
+  g.beginPath();
+  g.ellipse(11, 66, 7.5, 6, 0, 0, TAU);
+  g.ellipse(65, 66, 7.5, 6, 0, 0, TAU);
+  g.fill();
+  g.fillStyle = H_BONE;
+  for (const x of [6, 10, 14, 61, 65, 69]) {
+    poly(g, [[x - 2, 62], [x + 2, 62], [x + 1.5, 66], [x - 1.5, 66]]);
+    g.fill();
+  }
+  // Stumpy legs.
+  limb(g, [[30, 56], [28, 68]], 9, 8);
+  limb(g, [[46, 56], [48, 68]], 9, 8);
+  // The hump: massive shoulders with a ridge of spines.
+  g.fillStyle = H_INK;
+  poly(g, [
+    [10, 32], [12, 20], [20, 22], [22, 12], [30, 18], [38, 14], [46, 18], [54, 12], [56, 22], [64, 20], [66, 32],
+    [60, 48], [52, 58], [24, 58], [16, 48],
+  ]);
+  g.fill();
+  limb(g, [[63, 33], [58, 47], [51, 56]], 2, 1.6, H_SHADE);
+  // Bone ribs curving round the chest hole.
+  g.strokeStyle = H_BONE;
+  g.lineCap = 'butt';
+  g.lineWidth = 2.6;
+  for (const s of [-1, 1]) {
+    for (let k = 0; k < 3; k++) {
+      g.beginPath();
+      g.arc(38, 44, 9 + k * 4, s < 0 ? Math.PI * 0.62 : Math.PI * 0.08, s < 0 ? Math.PI * 0.92 : Math.PI * 0.38);
+      g.stroke();
+    }
+  }
+  heartHole(g, 38, 44, 6);
+  grinMask(g, 38, 23, 28, 22, 17, { teeth: 6, horns: 0.55, drool: true });
+};
+
+/** Shrieker's leech: a bloated black grub, its back blistered with sacs about to burst, a lamprey mouth of teeth. */
+const volatile: Draw = (g) => {
+  // Segments, tail to head, swelling in the middle.
+  g.fillStyle = H_INK;
+  for (let k = 0; k < 6; k++) {
+    const x = 9 + k * 6.4;
+    const r = 6 + Math.sin(((k + 0.5) / 6) * Math.PI) * 7;
+    g.beginPath();
+    g.ellipse(x, 29, r * 0.78, r, 0, 0, TAU);
+    g.fill();
+  }
+  // A hard rim of light along the top of each segment.
+  g.strokeStyle = H_SHADE;
+  g.lineWidth = 1.4;
+  for (let k = 1; k < 5; k++) {
+    const x = 9 + k * 6.4;
+    const r = 6 + Math.sin(((k + 0.5) / 6) * Math.PI) * 7;
+    g.beginPath();
+    g.ellipse(x, 29, r * 0.78, r, 0, Math.PI * 1.2, Math.PI * 1.55);
+    g.stroke();
+  }
+  // Blisters full of fire.
+  for (const [x, y, r] of [[18, 22, 3.6], [26, 19, 4.4], [34, 23, 3.4], [23, 31, 2.6]] as const) {
+    g.fillStyle = '#ff7a2c';
+    g.beginPath();
+    g.arc(x, y, r, 0, TAU);
+    g.fill();
+    g.fillStyle = '#ffd49a';
+    g.beginPath();
+    g.arc(x - r * 0.25, y - r * 0.25, r * 0.45, 0, TAU);
+    g.fill();
+  }
+  // The head: a round mouth ringed with teeth pointing in, a scrap of mask above.
+  const hx = 43;
+  const hy = 30;
+  g.fillStyle = H_BONE;
+  g.beginPath();
+  g.arc(hx, hy, 7, 0, TAU);
+  g.fill();
+  g.fillStyle = H_MAW;
+  g.beginPath();
+  g.arc(hx, hy, 4.6, 0, TAU);
+  g.fill();
+  g.fillStyle = H_BONE;
+  for (let k = 0; k < 9; k++) {
+    const a = (k / 9) * TAU;
+    poly(g, [
+      [hx + Math.cos(a - 0.3) * 4.8, hy + Math.sin(a - 0.3) * 4.8],
+      [hx + Math.cos(a + 0.3) * 4.8, hy + Math.sin(a + 0.3) * 4.8],
+      [hx + Math.cos(a) * 1.8, hy + Math.sin(a) * 1.8],
+    ]);
+    g.fill();
+  }
+  g.fillStyle = H_BONE_SHADE;
+  poly(g, [[37, 22], [44, 18], [49, 22], [46, 24], [40, 24]]);
+  g.fill();
+  g.fillStyle = H_EYE;
+  g.beginPath();
+  g.arc(42, 21.5, 1.1, 0, TAU);
+  g.fill();
+};
+
+/** Adjuchas: a mantis-backed elite, bone armour over black, scythes of bone raised, red war paint on a horned mask. */
+const adjuchas: Draw = (g) => {
+  // Scythe arms raised behind the body.
+  for (const s of [-1, 1]) {
+    limb(g, [[36 + s * 10, 32], [36 + s * 22, 22], [36 + s * 25, 12]], 4.4, 3);
+    g.fillStyle = H_BONE;
+    g.beginPath();
+    g.moveTo(36 + s * 25, 12);
+    g.quadraticCurveTo(36 + s * 33, 18, 36 + s * 31, 38);
+    g.quadraticCurveTo(36 + s * 28, 24, 36 + s * 21, 16);
+    g.closePath();
+    g.fill();
+  }
+  // Long digitigrade legs.
+  limb(g, [[30, 52], [22, 60], [27, 69]], 5, 3);
+  limb(g, [[42, 52], [50, 60], [45, 69]], 5, 3);
+  claws(g, 27, 69, Math.PI * 0.75, 3.5);
+  claws(g, 45, 69, Math.PI * 0.25, 3.5);
+  // Narrow torso.
+  g.fillStyle = H_INK;
+  poly(g, [[24, 30], [36, 24], [48, 30], [46, 46], [41, 56], [31, 56], [26, 46]]);
+  g.fill();
+  // Bone armour: a breastplate and segmented belly plates.
+  g.fillStyle = H_BONE;
+  poly(g, [[27, 31], [36, 27], [45, 31], [43, 39], [36, 42], [29, 39]]);
+  g.fill();
+  g.fillStyle = H_BONE_SHADE;
+  poly(g, [[36, 27], [45, 31], [43, 39], [36, 42]]);
+  g.fill();
+  g.fillStyle = H_BONE;
+  for (let k = 0; k < 3; k++) {
+    g.fillRect(30 + k * 0.6, 44 + k * 4, 12 - k * 1.2, 2.2);
+  }
+  heartHole(g, 36, 35, 2.8);
+  // A crest of three spikes over the mask.
+  g.fillStyle = H_BONE;
+  poly(g, [[31, 13], [33, 2], [36, 11], [39, 2], [41, 13]]);
+  g.fill();
+  grinMask(g, 36, 18, 22, 20, 29, { teeth: 5, stripes: true, horns: 0.4 });
 };
 
 /** Medallion bearer: a black-armored knight in a white cloak, face hidden, medallion glowing. Original design. */
@@ -2406,177 +2694,243 @@ interface ReaperLook {
   sword?: 'hip' | 'raised' | 'back';
   /** A glowing Kidō orb in the off hand. */
   orb?: string;
+  /** The Arrancar's white uniform instead of the Soul Reaper's black. */
+  white?: boolean;
 }
 
 /**
- * A generic Soul Reaper in chibi proportions: black robe and hakama, white
- * collar, dark hair, a sword. Deliberately plain: an anonymous soldier, not
- * any character from the series.
+ * A generic Soul Reaper as Bleach draws its rank and file: lanky, a small
+ * head of spiky black hair with the eyes lost in shadow but for two hard
+ * white slits, the black kosode with its square hanging sleeves, hakama
+ * flaring and split at the legs, the white collar, a sword. An anonymous
+ * soldier, not any character from the series.
  */
 function reaper(g: Ctx, cx: number, cy: number, s: number, o: ReaperLook): void {
   const b = o.broad ?? 1;
+  const w = o.white === true;
+  const HAKAMA = w ? '#e2ded3' : '#0d0e13';
+  const KOSODE = w ? '#ebe7dc' : '#121319';
+  const SLEEVE = w ? '#dedacf' : '#16171e';
+  const PLEAT = w ? '#a39d8f' : '#3a3d48';
+  const COLLAR = w ? '#15161c' : '#eceae2';
+  const X = (x: number): number => cx + x * s;
+  const Y = (y: number): number => cy + y * s;
   if (o.sword === 'back') {
     // A long blade slung across the back, drawn first so the body covers it.
     g.save();
-    g.translate(cx, cy - 2 * s);
+    g.translate(X(0), Y(-6));
     g.rotate(-0.75);
     g.fillStyle = '#1a1c24';
-    g.fillRect(-1.6 * s, -22 * s, 3.2 * s, 40 * s);
+    g.fillRect(-1.5 * s, -24 * s, 3 * s, 44 * s);
     g.fillStyle = BONE;
-    g.fillRect(-1.6 * s, -26 * s, 3.2 * s, 6 * s);
+    g.fillRect(-1.5 * s, -28 * s, 3 * s, 6 * s);
     g.restore();
   }
-  // Robe and hakama
-  const robe = g.createLinearGradient(0, cy - 6 * s, 0, cy + 20 * s);
-  robe.addColorStop(0, '#262935');
-  robe.addColorStop(1, '#07080c');
-  g.fillStyle = robe;
-  g.beginPath();
-  g.moveTo(cx - 8 * s * b, cy - 6 * s);
-  g.lineTo(cx + 8 * s * b, cy - 6 * s);
-  g.lineTo(cx + 11 * s * b, cy + 20 * s);
-  g.lineTo(cx - 11 * s * b, cy + 20 * s);
-  g.closePath();
-  g.fill();
-  // A pale rim so a black robe still reads on a dark floor.
-  g.strokeStyle = 'rgba(214,222,240,0.6)';
-  g.lineWidth = 1;
-  g.stroke();
-  g.strokeStyle = 'rgba(255,255,255,0.12)';
-  g.beginPath();
-  g.moveTo(cx, cy + 8 * s);
-  g.lineTo(cx, cy + 20 * s);
-  g.stroke();
-  // White collar
-  g.fillStyle = '#eceff6';
+  // Hakama: flaring from the waist, split between the legs, sandals and white tabi below.
+  g.fillStyle = HAKAMA;
   poly(g, [
-    [cx - 5 * s, cy - 6 * s],
-    [cx, cy + 2 * s],
-    [cx + 5 * s, cy - 6 * s],
-    [cx + 3 * s, cy - 6 * s],
-    [cx, cy - 1 * s],
-    [cx - 3 * s, cy - 6 * s],
+    [X(-7 * b), Y(0)],
+    [X(7 * b), Y(0)],
+    [X(11 * b), Y(19)],
+    [X(2), Y(19)],
+    [X(0), Y(10)],
+    [X(-2), Y(19)],
+    [X(-11 * b), Y(19)],
   ]);
   g.fill();
-  // Sash
-  g.fillStyle = o.sash ?? '#eceff6';
-  g.fillRect(cx - 9 * s * b, cy + 4 * s, 18 * s * b, 2.2 * s);
-  // Wide sleeves
-  g.fillStyle = '#161820';
+  g.strokeStyle = PLEAT;
+  g.lineWidth = 1 * s;
   g.beginPath();
-  g.ellipse(cx - 10 * s * b, cy + 1 * s, 4 * s, 7 * s, 0.25, 0, TAU);
+  g.moveTo(X(-4 * b), Y(3));
+  g.lineTo(X(-7.5 * b), Y(18));
+  g.moveTo(X(4 * b), Y(3));
+  g.lineTo(X(7.5 * b), Y(18));
+  g.stroke();
+  g.fillStyle = w ? '#2a2b31' : '#ece8de';
+  g.fillRect(X(-8.5 * b), Y(19), 5 * s, 2.4 * s);
+  g.fillRect(X(3.5 * b), Y(19), 5 * s, 2.4 * s);
+  // Kosode: shoulders to waist.
+  g.fillStyle = KOSODE;
+  poly(g, [
+    [X(-8 * b), Y(-14)],
+    [X(8 * b), Y(-14)],
+    [X(7.5 * b), Y(1)],
+    [X(-7.5 * b), Y(1)],
+  ]);
   g.fill();
-  g.beginPath();
-  g.ellipse(cx + 10 * s * b, cy + 1 * s, 4 * s, 7 * s, -0.25, 0, TAU);
-  g.fill();
+  // The square sleeves, hanging straight from the shoulders with a sharp hem.
+  g.fillStyle = SLEEVE;
+  for (const d of [-1, 1]) {
+    poly(g, [
+      [X(d * 6 * b), Y(-14)],
+      [X(d * 11.5 * b), Y(-12)],
+      [X(d * 13 * b), Y(3)],
+      [X(d * 7.5 * b), Y(5)],
+      [X(d * 6.5 * b), Y(-4)],
+    ]);
+    g.fill();
+  }
+  g.strokeStyle = PLEAT;
+  g.lineWidth = 1 * s;
+  for (const d of [-1, 1]) {
+    g.beginPath();
+    g.moveTo(X(d * 7 * b), Y(-10));
+    g.lineTo(X(d * 8.5 * b), Y(4));
+    g.stroke();
+  }
   if (b > 1.2) {
-    // Plain shoulder guards on heavy builds.
-    g.fillStyle = '#5a6070';
-    g.beginPath();
-    g.ellipse(cx - 9 * s * b, cy - 5 * s, 5 * s, 3.2 * s, -0.3, 0, TAU);
-    g.fill();
-    g.beginPath();
-    g.ellipse(cx + 9 * s * b, cy - 5 * s, 5 * s, 3.2 * s, 0.3, 0, TAU);
-    g.fill();
+    // Plain iron shoulder guards on heavy builds.
+    g.fillStyle = '#5d636f';
+    for (const d of [-1, 1]) {
+      poly(g, [
+        [X(d * 5 * b), Y(-15)],
+        [X(d * 12 * b), Y(-14)],
+        [X(d * 13 * b), Y(-9)],
+        [X(d * 6 * b), Y(-10)],
+      ]);
+      g.fill();
+    }
   }
-  // White tabi
-  g.fillStyle = '#f4f2ec';
-  for (const dir of [-1, 1]) {
-    g.beginPath();
-    g.ellipse(cx + dir * 4 * s * b, cy + 20.6 * s, 2.4 * s, 1.3 * s, 0, 0, TAU);
-    g.fill();
-  }
+  // The shitagi collar in a sharp V (black under the Arrancar's white).
+  g.fillStyle = COLLAR;
+  poly(g, [
+    [X(-4), Y(-14)],
+    [X(0), Y(-5)],
+    [X(4), Y(-14)],
+    [X(2.4), Y(-14)],
+    [X(0), Y(-8.5)],
+    [X(-2.4), Y(-14)],
+  ]);
+  g.fill();
+  // Obi.
+  g.fillStyle = o.sash ?? (w ? '#15161c' : '#e6e2d8');
+  g.fillRect(X(-7.6 * b), Y(-1), 15.2 * s * b, 2.2 * s);
   if (o.sword === 'hip') {
-    // Worn at the left hip: hilt forward, blade sloping back and down, a round guard between.
+    // Worn at the left hip: hilt forward, the sheathed blade sloping back and down.
     g.save();
-    g.translate(cx + 7 * s * b, cy + 5 * s);
-    g.rotate(0.9);
+    g.translate(X(6 * b), Y(0.5));
+    g.rotate(0.85);
     g.fillStyle = '#2b2e38';
-    g.fillRect(0, -1.2 * s, 15 * s, 2.4 * s);
+    g.fillRect(0, -1.1 * s, 16 * s, 2.2 * s);
     g.fillStyle = BONE;
-    g.fillRect(-5 * s, -1.2 * s, 5 * s, 2.4 * s);
-    g.fillStyle = '#c9a24a';
-    g.beginPath();
-    g.ellipse(0, 0, 0.9 * s, 2.2 * s, 0, 0, TAU);
-    g.fill();
+    g.fillRect(-5.5 * s, -1.1 * s, 5.5 * s, 2.2 * s);
+    g.fillStyle = '#b8923e';
+    g.fillRect(-0.6 * s, -2 * s, 1.4 * s, 4 * s);
     g.restore();
   }
   if (o.sword === 'raised') {
-    g.save();
-    g.shadowColor = 'rgba(220,235,255,0.9)';
-    g.shadowBlur = 6;
-    g.strokeStyle = '#eef3fb';
-    g.lineWidth = 2 * s;
-    g.lineCap = 'round';
-    g.beginPath();
-    g.moveTo(cx + 11 * s * b, cy + 1 * s);
-    g.lineTo(cx + 21 * s * b, cy - 19 * s);
-    g.stroke();
-    g.restore();
+    // Blade drawn high in the right hand.
+    g.fillStyle = '#e8ecf2';
+    poly(g, [
+      [X(11 * b), Y(-3)],
+      [X(13 * b), Y(-3)],
+      [X(23 * b), Y(-26)],
+      [X(21.5 * b), Y(-26.5)],
+    ]);
+    g.fill();
+    g.fillStyle = '#b8923e';
+    g.fillRect(X(10 * b), Y(-4), 4.6 * s, 1.6 * s);
     g.fillStyle = BONE;
-    g.fillRect(cx + 9.5 * s * b, cy + 0.5 * s, 3 * s, 4 * s);
+    poly(g, [
+      [X(10.4 * b), Y(-3)],
+      [X(12.4 * b), Y(-3)],
+      [X(11.6 * b), Y(2)],
+      [X(9.6 * b), Y(2)],
+    ]);
+    g.fill();
   }
-  if (o.orb) glowDot(g, cx + 11 * s * b, cy - 4 * s, 3.6 * s, 3.6 * s, '#fff1d6', o.orb, 10 * s);
-  // Head: pale face, dark hair, two small eyes.
-  g.fillStyle = '#efdcc6';
-  g.beginPath();
-  g.arc(cx, cy - 12 * s, 6.2 * s, 0, TAU);
-  g.fill();
-  g.fillStyle = '#12131a';
-  g.beginPath();
-  g.arc(cx, cy - 13 * s, 6.8 * s, Math.PI, TAU);
-  g.lineTo(cx + 6.8 * s, cy - 11 * s);
-  g.lineTo(cx + 3 * s, cy - 13.5 * s);
-  g.lineTo(cx, cy - 11.5 * s);
-  g.lineTo(cx - 3 * s, cy - 13.5 * s);
-  g.lineTo(cx - 6.8 * s, cy - 11 * s);
-  g.closePath();
-  g.fill();
-  g.fillStyle = '#0b0c12';
-  g.fillRect(cx - 3 * s, cy - 11 * s, 1.6 * s, 1.8 * s);
-  g.fillRect(cx + 1.4 * s, cy - 11 * s, 1.6 * s, 1.8 * s);
-  if (o.scarf) {
-    g.fillStyle = '#2a2140';
-    g.fillRect(cx - 6 * s, cy - 9 * s, 12 * s, 4 * s);
+  if (o.orb) {
+    // Kidō in the off hand: a hard white core in a band of its colour.
+    g.fillStyle = o.orb;
     g.beginPath();
-    g.moveTo(cx + 5 * s, cy - 8 * s);
-    g.quadraticCurveTo(cx + 14 * s, cy - 9 * s, cx + 16 * s, cy - 2 * s);
-    g.lineTo(cx + 12 * s, cy - 4 * s);
-    g.closePath();
+    g.arc(X(-13 * b), Y(-2), 4.2 * s, 0, TAU);
+    g.fill();
+    g.fillStyle = '#fff4dc';
+    g.beginPath();
+    g.arc(X(-13 * b), Y(-2), 2 * s, 0, TAU);
+    g.fill();
+  }
+  // Head: small, pale, under spiky black hair; the eyes in shadow but for two white slits.
+  g.fillStyle = '#e6d6c2';
+  g.beginPath();
+  g.ellipse(X(0), Y(-18.5), 3.6 * s, 4.3 * s, 0, 0, TAU);
+  g.fill();
+  g.fillStyle = '#0d0e13';
+  poly(g, [
+    [X(-4.6), Y(-17)],
+    [X(-5.6), Y(-21)],
+    [X(-7), Y(-23.5)],
+    [X(-3.6), Y(-23)],
+    [X(-2.6), Y(-26)],
+    [X(0), Y(-23.6)],
+    [X(2.6), Y(-26.2)],
+    [X(3.6), Y(-23)],
+    [X(7), Y(-23.4)],
+    [X(5.6), Y(-20.6)],
+    [X(4.6), Y(-17)],
+    [X(2.8), Y(-19.6)],
+    [X(0.6), Y(-18.4)],
+    [X(-1.6), Y(-19.8)],
+    [X(-3.4), Y(-18.6)],
+  ]);
+  g.fill();
+  // The shadow the fringe throws over the eyes, and the eyes themselves.
+  g.fillStyle = '#2a2730';
+  g.fillRect(X(-3.4), Y(-19), 6.8 * s, 2.2 * s);
+  g.fillStyle = '#f4f2ea';
+  poly(g, [
+    [X(-2.8), Y(-18.6)],
+    [X(-0.8), Y(-18.2)],
+    [X(-1), Y(-17.5)],
+    [X(-2.6), Y(-17.8)],
+  ]);
+  g.fill();
+  poly(g, [
+    [X(2.8), Y(-18.6)],
+    [X(0.8), Y(-18.2)],
+    [X(1), Y(-17.5)],
+    [X(2.6), Y(-17.8)],
+  ]);
+  g.fill();
+  if (o.scarf) {
+    // Scouts: cloth wound over the lower face, its tail streaming back.
+    g.fillStyle = '#2a2140';
+    g.fillRect(X(-4), Y(-17), 8 * s, 3.4 * s);
+    poly(g, [
+      [X(3.4), Y(-16.4)],
+      [X(13), Y(-18)],
+      [X(16), Y(-12)],
+      [X(10), Y(-13.6)],
+    ]);
     g.fill();
   }
 }
 
 const officer: Draw = (g, w, h) => {
-  aura(g, w / 2, h / 2 + 4, 24, 'rgba(160,190,255,0.12)');
-  reaper(g, w / 2, h / 2 + 2, 1, { sword: 'hip' });
+  reaper(g, w / 2 - 1, h / 2 + 2, 1, { sword: 'hip' });
 };
 
 const flashScout: Draw = (g, w, h) => {
-  aura(g, w / 2, h / 2 + 4, 22, 'rgba(180,150,255,0.2)');
-  reaper(g, w / 2, h / 2 + 2, 0.92, { scarf: true, sash: '#7a68b8', sword: 'hip' });
+  reaper(g, w / 2 - 2, h / 2 + 2, 0.92, { scarf: true, sash: '#7a68b8', sword: 'hip' });
 };
 
 const caster: Draw = (g, w, h) => {
-  aura(g, w / 2, h / 2 + 4, 24, 'rgba(255,150,80,0.16)');
-  reaper(g, w / 2 - 2, h / 2 + 2, 1, { sash: '#d8794a', orb: '#ff8a3c' });
+  reaper(g, w / 2 + 3, h / 2 + 2, 1, { sash: '#d8794a', orb: '#ff8a3c' });
 };
 
 const guard: Draw = (g, w, h) => {
-  aura(g, w / 2, h / 2 + 4, 38, 'rgba(160,190,255,0.12)');
-  reaper(g, w / 2, h / 2 + 4, 1.45, { broad: 1.35, sash: '#8a8f9c', sword: 'back' });
+  reaper(g, w / 2, h / 2 + 6, 1.45, { broad: 1.35, sash: '#8a8f9c', sword: 'back' });
 };
 
 /** Elite: a lieutenant, the white armband on the left arm, blade drawn. */
 const seated: Draw = (g, w, h) => {
-  aura(g, w / 2, h / 2 + 4, 34, 'rgba(255,60,90,0.22)');
   const s = 1.32;
-  const cx = w / 2 - 3;
-  const cy = h / 2 + 5;
+  const cx = w / 2 - 5;
+  const cy = h / 2 + 7;
   reaper(g, cx, cy, s, { sash: '#c23a4a', sword: 'raised' });
   g.save();
-  g.translate(cx - 10 * s, cy + 0.5 * s);
-  g.rotate(0.25);
+  g.translate(cx - 10 * s, cy - 6 * s);
+  g.rotate(0.12);
   g.fillStyle = '#f2f2ee';
   g.fillRect(-4 * s, -1.6 * s, 8 * s, 3.2 * s);
   g.fillStyle = '#20232e';
@@ -3909,92 +4263,153 @@ const sentinel: Draw = (g, w, h) => {
   g.fillRect(cx - 5, cy - 12.6, 10, 2);
 };
 
-/** An ink wisp (original): a blob of living ink with pale eyes, dripping as it drifts. */
-const inkWisp: Draw = (g, w, h) => {
+/** An ink wisp (original): a heap of living ink, a cluster of pale eyes, a ragged mouth, dripping as it drifts. */
+const inkWisp: Draw = (g, w) => {
   const cx = w / 2;
-  const cy = h / 2;
-  aura(g, cx, cy, 22, 'rgba(154,122,255,0.18)');
-  const body = g.createRadialGradient(cx - 4, cy - 6, 2, cx, cy, 20);
-  body.addColorStop(0, '#3a3050');
-  body.addColorStop(1, '#0b0812');
-  g.fillStyle = body;
+  const rnd = seeded(4352);
+  g.fillStyle = '#0b0b10';
+  // The heap: a ragged dome, drips running off its lower rim.
   g.beginPath();
-  g.moveTo(cx - 15, cy + 4);
-  g.quadraticCurveTo(cx - 16, cy - 16, cx, cy - 17);
-  g.quadraticCurveTo(cx + 16, cy - 16, cx + 15, cy + 4);
-  // A wavy dripping hem
-  for (let k = 0; k <= 5; k++) {
-    const x = cx + 15 - k * 6;
-    g.quadraticCurveTo(x - 1.5, cy + (k % 2 ? 16 : 9), x - 3, cy + 5);
+  for (let k = 0; k <= 20; k++) {
+    const a = Math.PI + (k / 20) * Math.PI;
+    const r = 18 * (0.88 + rnd() * 0.16);
+    const x = cx + Math.cos(a) * r;
+    const y = 30 + Math.sin(a) * r;
+    if (k === 0) g.moveTo(x, y);
+    else g.lineTo(x, y);
+  }
+  for (let k = 0; k <= 8; k++) {
+    const x = cx + 18 - k * 4.5;
+    const drip = k % 2 === 0 ? 6 + rnd() * 10 : 1;
+    g.lineTo(x + 1, 30 + drip);
+    g.lineTo(x - 1.2, 30 + drip);
   }
   g.closePath();
   g.fill();
-  g.strokeStyle = 'rgba(200,180,255,0.4)';
-  g.lineWidth = 1;
-  g.stroke();
-  glowDot(g, cx - 5, cy - 4, 2.6, 3.4, '#f2eeff', 'rgba(200,180,255,0.8)', 4);
-  glowDot(g, cx + 5, cy - 4, 2.6, 3.4, '#f2eeff', 'rgba(200,180,255,0.8)', 4);
-};
-
-/** An inkling (original): what an ink wisp splits into, one eye and a tail. */
-const inkling: Draw = (g, w, h) => {
-  const cx = w / 2;
-  const cy = h / 2;
-  const body = g.createRadialGradient(cx - 2, cy - 4, 1, cx, cy, 13);
-  body.addColorStop(0, '#3a3050');
-  body.addColorStop(1, '#0b0812');
-  g.fillStyle = body;
-  g.beginPath();
-  g.moveTo(cx, cy + 14);
-  g.quadraticCurveTo(cx - 13, cy + 2, cx - 9, cy - 8);
-  g.quadraticCurveTo(cx, cy - 15, cx + 9, cy - 8);
-  g.quadraticCurveTo(cx + 13, cy + 2, cx, cy + 14);
-  g.fill();
-  g.strokeStyle = 'rgba(200,180,255,0.4)';
-  g.lineWidth = 1;
-  g.stroke();
-  glowDot(g, cx, cy - 3, 2.6, 3, '#f2eeff', 'rgba(200,180,255,0.8)', 4);
-};
-
-/** A spirit weaver (original): a pale hooded figure with glowing eyes, threads trailing from its hands. */
-const weaver: Draw = (g, w, h) => {
-  const cx = w / 2;
-  const cy = h / 2 + 2;
-  aura(g, cx, cy, 22, 'rgba(216,184,255,0.2)');
-  g.strokeStyle = 'rgba(230,210,255,0.75)';
-  g.lineWidth = 0.8;
-  for (const dir of [-1, 1]) {
+  for (const [x, len] of [
+    [cx - 9, 9],
+    [cx + 4, 14],
+    [cx + 12, 7],
+  ] as const) {
     g.beginPath();
-    g.moveTo(cx + dir * 10, cy + 4);
-    g.quadraticCurveTo(cx + dir * 22, cy + 10, cx + dir * 20, cy + 22);
-    g.moveTo(cx + dir * 10, cy + 4);
-    g.quadraticCurveTo(cx + dir * 18, cy - 2, cx + dir * 24, cy + 6);
-    g.stroke();
+    g.arc(x, 31 + len, 1.6, 0, TAU);
+    g.fill();
   }
-  const cloak = g.createLinearGradient(0, cy - 18, 0, cy + 18);
-  cloak.addColorStop(0, '#efe6ff');
-  cloak.addColorStop(1, '#9a86c8');
-  g.fillStyle = cloak;
+  // A cluster of pale eyes, no two the same size.
+  for (const [x, y, r] of [
+    [cx - 6, 21, 3],
+    [cx + 3, 18, 3.6],
+    [cx + 10, 23, 2],
+    [cx - 11, 26, 1.6],
+    [cx + 1, 25, 1.4],
+  ] as const) {
+    g.fillStyle = '#e8e4f0';
+    g.beginPath();
+    g.ellipse(x, y, r, r * 0.8, 0, 0, TAU);
+    g.fill();
+    g.fillStyle = '#0b0b10';
+    g.beginPath();
+    g.arc(x, y + r * 0.1, r * 0.4, 0, TAU);
+    g.fill();
+  }
+  // A ragged mouth of white teeth.
+  g.fillStyle = '#e8e4f0';
+  for (let k = 0; k < 6; k++) {
+    const x = cx - 7 + k * 2.8;
+    poly(g, [
+      [x - 1.1, 29],
+      [x + 1.1, 29],
+      [x, 32 + (k % 2) * 1.4],
+    ]);
+    g.fill();
+  }
+};
+
+/** An inkling (original): what an ink wisp splits into, a drop of ink with one eye, fangs and a whip of a tail. */
+const inkling: Draw = (g, w) => {
+  const cx = w / 2;
+  g.fillStyle = '#0b0b10';
   g.beginPath();
-  g.moveTo(cx, cy - 20);
-  g.quadraticCurveTo(cx - 12, cy - 16, cx - 13, cy + 18);
-  g.lineTo(cx + 13, cy + 18);
-  g.quadraticCurveTo(cx + 12, cy - 16, cx, cy - 20);
+  g.moveTo(cx, 4);
+  g.quadraticCurveTo(cx + 12, 16, cx + 9, 23);
+  g.quadraticCurveTo(cx, 30, cx - 9, 23);
+  g.quadraticCurveTo(cx - 12, 16, cx, 4);
   g.fill();
-  g.strokeStyle = 'rgba(60,40,90,0.55)';
-  g.lineWidth = 1;
+  limb(g, [[cx + 5, 26], [cx + 9, 31], [cx + 14, 31]], 2.6, 1, '#0b0b10');
+  g.fillStyle = '#e8e4f0';
+  g.beginPath();
+  g.ellipse(cx, 16, 4.4, 3.6, 0, 0, TAU);
+  g.fill();
+  g.fillStyle = H_EYE;
+  g.beginPath();
+  g.arc(cx, 16.4, 1.8, 0, TAU);
+  g.fill();
+  g.fillStyle = '#e8e4f0';
+  for (const x of [cx - 3, cx, cx + 3]) {
+    poly(g, [
+      [x - 1, 21.5],
+      [x + 1, 21.5],
+      [x, 24.6],
+    ]);
+    g.fill();
+  }
+};
+
+/** A spirit weaver (original): a tall pale hood with nothing in it but two eyes, long spider fingers trailing threads. */
+const weaver: Draw = (g, w) => {
+  const cx = w / 2;
+  // Threads first, from the fingertips down to the ground.
+  g.strokeStyle = '#cfc8e8';
+  g.lineWidth = 0.8;
+  g.beginPath();
+  for (const [x0, x1] of [
+    [cx - 17, cx - 22],
+    [cx - 15, cx - 13],
+    [cx + 17, cx + 22],
+    [cx + 15, cx + 13],
+  ] as const) {
+    g.moveTo(x0, 30);
+    g.lineTo(x1, 50);
+  }
   g.stroke();
-  g.fillStyle = '#140f22';
-  g.beginPath();
-  g.ellipse(cx, cy - 9, 6, 7, 0, 0, TAU);
+  // Long thin arms and spider fingers.
+  for (const d of [-1, 1]) {
+    limb(g, [[cx + d * 7, 18], [cx + d * 14, 24], [cx + d * 16, 29]], 2.4, 1.6, '#bdb4d8');
+    for (const a of [-0.5, 0, 0.5]) {
+      limb(g, [[cx + d * 16, 29], [cx + d * (16 + Math.sin(a) * 3), 29 + Math.cos(a) * 5]], 1.1, 0.8, '#bdb4d8');
+    }
+  }
+  // The robe: a tall hood falling to a ragged hem.
+  const robe: [number, number][] = [
+    [cx, 3],
+    [cx + 7, 12],
+    [cx + 10, 30],
+    [cx + 12, 46],
+    [cx + 6, 43],
+    [cx + 2, 47],
+    [cx - 3, 43],
+    [cx - 8, 47],
+    [cx - 12, 45],
+    [cx - 10, 30],
+    [cx - 7, 12],
+  ];
+  g.fillStyle = '#c9c1e2';
+  poly(g, robe);
   g.fill();
-  glowDot(g, cx - 2.4, cy - 9, 1.3, 1.3, '#e2ccff', 'rgba(216,184,255,0.9)', 4);
-  glowDot(g, cx + 2.4, cy - 9, 1.3, 1.3, '#e2ccff', 'rgba(216,184,255,0.9)', 4);
-  g.fillStyle = SKIN;
+  g.save();
+  poly(g, robe);
+  g.clip();
+  g.fillStyle = '#8f86ad';
+  g.fillRect(cx + 2, 0, 14, 50);
+  g.restore();
+  // The empty hood, two eyes in the dark of it.
+  g.fillStyle = '#0b0b10';
   g.beginPath();
-  g.arc(cx - 10, cy + 4, 1.8, 0, TAU);
-  g.arc(cx + 10, cy + 4, 1.8, 0, TAU);
+  g.ellipse(cx, 14, 4.4, 5.6, 0, 0, TAU);
   g.fill();
+  g.fillStyle = '#fff4c8';
+  g.fillRect(cx - 2.6, 13, 1.6, 1.2);
+  g.fillRect(cx + 1, 13, 1.6, 1.2);
 };
 
 /** An asauchi blade (original): an unnamed sword flying on its own, pale and humming. */
@@ -4996,53 +5411,82 @@ const brawler: Draw = (g, w, h) => {
   g.fillRect(w / 2 - 6, h / 2 - 19, 12, 2);
 };
 
-/** A Twelfth Division specimen (original): a bloated thing of stitched green flesh, one great eye, a vial on its back. */
-const specimen: Draw = (g, w, h) => {
+/** A Twelfth Division specimen (original): a bloated thing of stitched green flesh, too many eyes, a fanged slit, a vial on its back. */
+const specimen: Draw = (g, w) => {
   const cx = w / 2;
-  const cy = h / 2 + 4;
-  aura(g, cx, cy, 30, 'rgba(157,255,138,0.16)');
-  // The vial on its back, bubbling
-  g.fillStyle = 'rgba(200,255,200,0.55)';
-  roundRect(g, cx + 4, cy - 22, 7, 14, 3);
-  g.fill();
-  g.fillStyle = '#9dff8a';
-  roundRect(g, cx + 5, cy - 15, 5, 6, 2);
-  g.fill();
-  // The body
-  const body = g.createRadialGradient(cx - 4, cy - 6, 3, cx, cy, 17);
-  body.addColorStop(0, '#c8ff9a');
-  body.addColorStop(0.7, '#6ac85a');
-  body.addColorStop(1, '#2e6a2a');
-  g.fillStyle = body;
+  // The vial on its back, glowing green.
+  g.fillStyle = '#2b3a2e';
+  g.fillRect(cx + 6, 4, 8, 16);
+  g.fillStyle = '#8ef07a';
+  g.fillRect(cx + 7.5, 9, 5, 10);
+  g.fillStyle = '#d8ffc8';
+  g.fillRect(cx + 8.5, 10, 1.6, 7);
+  // Stubby clawed legs.
+  limb(g, [[cx - 9, 40], [cx - 12, 48]], 4.6, 3.6, '#4d6644');
+  limb(g, [[cx + 9, 40], [cx + 12, 48]], 4.6, 3.6, '#4d6644');
+  claws(g, cx - 12, 49, Math.PI * 0.6, 3.5);
+  claws(g, cx + 12, 49, Math.PI * 0.4, 3.5);
+  // The bloated body, lit from one side only.
+  g.fillStyle = '#6f8f62';
   g.beginPath();
-  g.ellipse(cx, cy, 16, 14, 0, 0, TAU);
+  g.ellipse(cx, 30, 17, 16, 0, 0, TAU);
   g.fill();
-  // Stitches across it
-  g.strokeStyle = '#1e3a1a';
-  g.lineWidth = 1.2;
+  g.fillStyle = '#4d6644';
   g.beginPath();
-  g.moveTo(cx - 12, cy + 4);
-  g.quadraticCurveTo(cx, cy + 9, cx + 12, cy + 3);
-  g.stroke();
-  for (let k = -4; k <= 4; k++) {
-    const x = cx + k * 2.6;
-    const y = cy + 6 - Math.abs(k) * 0.5;
-    g.beginPath();
-    g.moveTo(x, y - 2);
-    g.lineTo(x, y + 2);
-    g.stroke();
+  g.ellipse(cx + 6, 32, 11, 14, 0, -Math.PI * 0.5, Math.PI * 0.5);
+  g.fill();
+  // Stitched seams across the flesh.
+  g.strokeStyle = H_INK;
+  g.lineWidth = 0.9;
+  g.beginPath();
+  g.moveTo(cx - 15, 26);
+  g.quadraticCurveTo(cx - 2, 20, cx + 14, 25);
+  for (let k = 0; k < 7; k++) {
+    const x = cx - 13 + k * 4.2;
+    const y = 24.6 - Math.sin((k / 6) * Math.PI) * 3;
+    g.moveTo(x, y - 1.6);
+    g.lineTo(x + 0.8, y + 1.6);
   }
-  // One great eye
-  g.fillStyle = '#fff6c8';
-  g.beginPath();
-  g.ellipse(cx - 1, cy - 4, 5.4, 4.4, 0, 0, TAU);
-  g.fill();
-  glowDot(g, cx - 1, cy - 4, 2.2, 2.2, '#2a1a08', 'rgba(255,220,80,0.8)', 4);
-  // Stubby legs
-  g.fillStyle = '#3e7a34';
-  for (const dx of [-9, -3, 3, 9]) {
+  g.moveTo(cx - 6, 44);
+  g.lineTo(cx - 2, 34);
+  g.stroke();
+  // Eyes: one great one and three small, red irises on yellowed white.
+  for (const [x, y, r] of [
+    [cx - 4, 30, 5.4],
+    [cx + 7, 27, 2.4],
+    [cx + 9, 33, 1.8],
+    [cx - 11, 33, 2],
+  ] as const) {
+    g.fillStyle = '#efe9d6';
     g.beginPath();
-    g.ellipse(cx + dx, cy + 14, 2.4, 3, 0, 0, TAU);
+    g.arc(x, y, r, 0, TAU);
+    g.fill();
+    g.fillStyle = H_EYE;
+    g.beginPath();
+    g.arc(x + r * 0.15, y, r * 0.5, 0, TAU);
+    g.fill();
+    g.fillStyle = H_INK;
+    g.beginPath();
+    g.arc(x + r * 0.15, y, r * 0.22, 0, TAU);
+    g.fill();
+  }
+  // A fanged slit of a mouth.
+  g.fillStyle = H_MAW;
+  poly(g, [
+    [cx - 10, 39],
+    [cx + 9, 38],
+    [cx + 6, 42],
+    [cx - 7, 42.5],
+  ]);
+  g.fill();
+  g.fillStyle = H_BONE;
+  for (let k = 0; k < 6; k++) {
+    const x = cx - 8.5 + k * 3.2;
+    poly(g, [
+      [x - 1, 38.8],
+      [x + 1, 38.7],
+      [x, 41.4],
+    ]);
     g.fill();
   }
 };
@@ -6379,45 +6823,27 @@ function arrancarUniform(g: Ctx, cx: number, cy: number, s: number, o: UniformLo
   }
 }
 
-/** An Arrancar soldier (original): white uniform, dark hair, the jaw of his old mask still on his cheek. */
+/** An Arrancar soldier (original): lanky in the white uniform, dark hair, the jaw of his old mask still on his cheek. */
 const numeros: Draw = (g, w, h) => {
-  const s = 1;
-  const cx = w / 2;
+  const cx = w / 2 - 1;
   const cy = h / 2 + 2;
-  aura(g, cx, cy + 2, 24, 'rgba(220,226,240,0.12)');
-  arrancarUniform(g, cx, cy, s);
-  heldSword(g, cx + 11.6 * s, cy + 9.6 * s, s, 12, -0.25);
-  g.fillStyle = SKIN;
-  g.beginPath();
-  g.arc(cx, cy - 12 * s, 6.2 * s, 0, TAU);
-  g.fill();
-  g.fillStyle = '#2a2430';
-  g.beginPath();
-  g.arc(cx, cy - 13 * s, 6.8 * s, Math.PI, TAU);
-  g.lineTo(cx + 6.8 * s, cy - 11 * s);
-  g.lineTo(cx - 6.8 * s, cy - 11 * s);
-  g.closePath();
-  g.fill();
-  g.fillStyle = '#0b0c12';
-  g.fillRect(cx - 3 * s, cy - 11 * s, 1.6 * s, 1.8 * s);
-  g.fillRect(cx + 1.4 * s, cy - 11 * s, 1.6 * s, 1.8 * s);
-  // The mask's broken jaw along one cheek
-  g.fillStyle = BONE;
+  reaper(g, cx, cy, 1, { white: true, sword: 'hip' });
+  // What is left of the mask: a jawbone along the left cheek, teeth bared.
+  g.fillStyle = H_BONE;
   poly(g, [
-    [cx + 1 * s, cy - 8.4 * s],
-    [cx + 6.6 * s, cy - 10.6 * s],
-    [cx + 6 * s, cy - 6.6 * s],
-    [cx + 1.6 * s, cy - 6 * s],
+    [cx - 4.6, cy - 19.5],
+    [cx - 0.4, cy - 16.4],
+    [cx + 1.2, cy - 14.2],
+    [cx - 3.6, cy - 14],
+    [cx - 5.4, cy - 16.4],
   ]);
   g.fill();
-  g.strokeStyle = '#3a3a3a';
-  g.lineWidth = 0.5;
-  g.beginPath();
-  for (let k = 0; k < 4; k++) {
-    g.moveTo(cx + (2.2 + k * 1.1) * s, cy - 7.4 * s);
-    g.lineTo(cx + (2.2 + k * 1.1) * s, cy - 6.2 * s);
-  }
-  g.stroke();
+  g.fillStyle = H_MAW;
+  g.fillRect(cx - 4, cy - 16.2, 4.4, 1);
+  g.fillStyle = H_INK;
+  for (let k = 0; k < 4; k++) g.fillRect(cx - 3.8 + k * 1.1, cy - 16.6, 0.5, 1.8);
+  // The hole, through the chest.
+  heartHole(g, cx + 2, cy - 7, 1.3);
 };
 
 /** A skull mask that covers the whole face: dark eye holes, teeth, a crest along the top. */
@@ -6461,26 +6887,60 @@ function skullMask(g: Ctx, cx: number, cy: number, s: number, crest: number): vo
   g.stroke();
 }
 
-/** An executioner of the Exequias (original): white uniform, a dark cape, a skull for a face. */
+/** An executioner of the Exequias (original): lanky in the white uniform under a black hood, a skull for a face. */
 const exequias: Draw = (g, w, h) => {
-  const s = 1;
   const cx = w / 2;
   const cy = h / 2 + 2;
-  aura(g, cx, cy + 2, 24, 'rgba(216,208,184,0.14)');
-  g.fillStyle = '#2a2430';
-  g.beginPath();
-  g.moveTo(cx - 9 * s, cy - 6 * s);
-  g.quadraticCurveTo(cx - 14 * s, cy + 8 * s, cx - 12 * s, cy + 19 * s);
-  g.lineTo(cx + 12 * s, cy + 19 * s);
-  g.quadraticCurveTo(cx + 14 * s, cy + 8 * s, cx + 9 * s, cy - 6 * s);
-  g.closePath();
+  // The black hooded cape behind the body.
+  g.fillStyle = '#0d0e13';
+  poly(g, [
+    [cx - 6, cy - 24],
+    [cx + 6, cy - 24],
+    [cx + 10, cy - 14],
+    [cx + 15, cy + 16],
+    [cx - 15, cy + 16],
+    [cx - 10, cy - 14],
+  ]);
   g.fill();
-  arrancarUniform(g, cx, cy, s, { sash: '#6a5a40' });
-  // A short gun of reishi in the hand
-  g.fillStyle = '#3a3440';
-  g.fillRect(cx + 10 * s, cy + 6.6 * s, 6 * s, 2.4 * s);
-  glowDot(g, cx + 16.4 * s, cy + 7.8 * s, 1.2 * s, 1.2 * s, '#ffd0d0', '#ff4d6a', 4);
-  skullMask(g, cx, cy - 12 * s, s, 2.6);
+  reaper(g, cx, cy, 1, { white: true, sash: '#6a5a40', sword: 'hip' });
+  // The hood over the head, and the skull inside it.
+  g.fillStyle = '#0d0e13';
+  poly(g, [
+    [cx - 6.6, cy - 13],
+    [cx - 7, cy - 21],
+    [cx - 3, cy - 27],
+    [cx + 3, cy - 27],
+    [cx + 7, cy - 21],
+    [cx + 6.6, cy - 13],
+  ]);
+  g.fill();
+  g.fillStyle = H_BONE;
+  g.beginPath();
+  g.ellipse(cx, cy - 19, 4.4, 5, 0, 0, TAU);
+  g.fill();
+  g.fillStyle = H_BONE_SHADE;
+  g.fillRect(cx + 1.2, cy - 24, 3.4, 10);
+  g.fillStyle = H_INK;
+  poly(g, [
+    [cx - 3.6, cy - 21],
+    [cx - 0.6, cy - 19.6],
+    [cx - 1, cy - 18],
+    [cx - 3.4, cy - 18.6],
+  ]);
+  g.fill();
+  poly(g, [
+    [cx + 3.6, cy - 21],
+    [cx + 0.6, cy - 19.6],
+    [cx + 1, cy - 18],
+    [cx + 3.4, cy - 18.6],
+  ]);
+  g.fill();
+  g.fillRect(cx - 2.6, cy - 16, 5.2, 1.2);
+  g.fillStyle = H_BONE;
+  for (let k = 0; k < 4; k++) g.fillRect(cx - 2.3 + k * 1.3, cy - 16.2, 0.7, 1.6);
+  g.fillStyle = H_EYE;
+  g.fillRect(cx - 2.4, cy - 19.6, 1, 1);
+  g.fillRect(cx + 1.4, cy - 19.6, 1, 1);
 };
 
 /** A Gillian, the lowest of the Menos Grande (original): a towering black shape with a long-nosed white mask. */
@@ -7195,56 +7655,84 @@ const pescheDondochakka: Draw = (g, w, h) => {
 
 // ------------------------------------------------------------ Karakura Town
 
-/** An empty gigai (original): one of Urahara's spare bodies, pale and stitched, shuffling at you with no one inside. */
-const gigai: Draw = (g, w, h) => {
+/** An empty gigai (original): one of Urahara's spare bodies, a jointed mannequin stitched at every seam, nobody inside, reaching for you. */
+const gigai: Draw = (g, w) => {
   const cx = w / 2;
-  const cy = h / 2 + 2;
-  aura(g, cx, cy + 2, 22, 'rgba(232,220,200,0.1)');
-  const body = g.createLinearGradient(0, cy - 8, 0, cy + 20);
-  body.addColorStop(0, '#e8dcc8');
-  body.addColorStop(1, '#b8a890');
-  g.fillStyle = body;
-  g.beginPath();
-  g.moveTo(cx - 7, cy - 6);
-  g.lineTo(cx + 7, cy - 6);
-  g.lineTo(cx + 8, cy + 12);
-  g.lineTo(cx + 5, cy + 20);
-  g.lineTo(cx - 5, cy + 20);
-  g.lineTo(cx - 8, cy + 12);
-  g.closePath();
+  const PALE = '#d9d0c0';
+  const SHADE = '#b7ae9e';
+  const JOINT = '#8f877a';
+  // Legs, knock-kneed, jointed.
+  limb(g, [[cx - 3, 30], [cx - 5, 39], [cx - 3, 48]], 3.6, 3, PALE);
+  limb(g, [[cx + 3, 30], [cx + 6, 39], [cx + 5, 48]], 3.6, 3, PALE);
+  // One arm hanging, one reaching out with its fingers spread.
+  limb(g, [[cx - 6, 16], [cx - 10, 25], [cx - 9, 33]], 3.2, 2.6, PALE);
+  limb(g, [[cx + 6, 16], [cx + 13, 18], [cx + 20, 15]], 3.2, 2.6, PALE);
+  for (const a of [-0.7, -0.2, 0.3]) {
+    limb(g, [[cx + 20, 15], [cx + 20 + Math.cos(a) * 4, 15 + Math.sin(a) * 4]], 1.2, 1, PALE);
+  }
+  // Torso, narrow, a seam stitched down it.
+  g.fillStyle = PALE;
+  poly(g, [
+    [cx - 7, 14],
+    [cx + 7, 14],
+    [cx + 5, 31],
+    [cx - 5, 31],
+  ]);
   g.fill();
-  g.strokeStyle = 'rgba(90,70,50,0.6)';
+  g.fillStyle = SHADE;
+  poly(g, [
+    [cx + 1, 14],
+    [cx + 7, 14],
+    [cx + 5, 31],
+    [cx + 1, 31],
+  ]);
+  g.fill();
+  g.strokeStyle = H_INK;
   g.lineWidth = 0.8;
+  g.beginPath();
+  g.moveTo(cx, 15);
+  g.lineTo(cx, 30);
+  for (let y = 16; y < 30; y += 3) {
+    g.moveTo(cx - 1.4, y);
+    g.lineTo(cx + 1.4, y + 1.2);
+  }
   g.stroke();
-  // Arms reaching forward
-  for (const dir of [-1, 1]) {
+  // Ball joints.
+  g.fillStyle = JOINT;
+  for (const [x, y, r] of [
+    [cx - 6, 16, 2],
+    [cx + 6, 16, 2],
+    [cx - 10, 25, 1.6],
+    [cx + 13, 18, 1.6],
+    [cx - 5, 39, 1.8],
+    [cx + 6, 39, 1.8],
+  ] as const) {
     g.beginPath();
-    g.ellipse(cx + dir * 9, cy + 2, 2.6, 7, -dir * 0.6, 0, TAU);
+    g.arc(x, y, r, 0, TAU);
     g.fill();
   }
-  // Stitches down the middle and across the shoulders
-  g.strokeStyle = '#6a5040';
-  g.lineWidth = 0.6;
+  // The head: a blank egg, two holes for eyes, a seam stitched across where a mouth should be.
+  g.fillStyle = PALE;
   g.beginPath();
-  g.moveTo(cx, cy - 6);
-  g.lineTo(cx, cy + 18);
-  for (let k = 0; k < 6; k++) {
-    g.moveTo(cx - 1.4, cy - 4 + k * 4);
-    g.lineTo(cx + 1.4, cy - 4 + k * 4);
-  }
-  g.moveTo(cx - 7, cy - 5);
-  g.lineTo(cx + 7, cy - 5);
-  g.stroke();
-  // A blank face
-  g.fillStyle = '#f0e6d4';
-  g.beginPath();
-  g.arc(cx, cy - 12, 6.2, 0, TAU);
+  g.ellipse(cx, 8, 4.6, 5.6, 0, 0, TAU);
   g.fill();
-  g.strokeStyle = 'rgba(90,70,50,0.6)';
+  g.fillStyle = SHADE;
+  g.fillRect(cx + 1.6, 3, 3.4, 11);
+  g.fillStyle = H_INK;
+  g.beginPath();
+  g.ellipse(cx - 1.8, 7.4, 1.1, 1.5, 0, 0, TAU);
+  g.ellipse(cx + 1.8, 7.4, 1.1, 1.5, 0, 0, TAU);
+  g.fill();
+  g.strokeStyle = H_INK;
+  g.lineWidth = 0.7;
+  g.beginPath();
+  g.moveTo(cx - 2.6, 11);
+  g.lineTo(cx + 2.6, 11);
+  for (let k = -2; k <= 2; k++) {
+    g.moveTo(cx + k * 1.1, 10.2);
+    g.lineTo(cx + k * 1.1, 11.8);
+  }
   g.stroke();
-  g.fillStyle = 'rgba(60,40,30,0.5)';
-  g.fillRect(cx - 3, cy - 12.6, 1.6, 0.8);
-  g.fillRect(cx + 1.4, cy - 12.6, 1.6, 0.8);
 };
 
 /** A kidō sentry (original): a seal of light hung in the air, tassels beneath, an eye that tracks you. */
@@ -8069,8 +8557,9 @@ export function buildAtlas(): Atlas {
   const canvas = document.createElement('canvas');
   canvas.width = W;
   canvas.height = H;
-  const g = canvas.getContext('2d');
+  const g = canvas.getContext('2d', { willReadFrequently: true });
   if (!g) throw new Error('Canvas 2D is not available');
+  const rects: InkRect[] = [];
   list.forEach((s, i) => {
     g.save();
     g.translate(pos[i].x, pos[i].y);
@@ -8079,7 +8568,9 @@ export function buildAtlas(): Atlas {
     g.clip();
     s.draw(g, s.w, s.h);
     g.restore();
+    rects.push({ x: pos[i].x, y: pos[i].y, w: s.w, h: s.h, ...inkOf(s.name, s.w) });
   });
+  inkRects(g, W, Math.min(H, y + rowH + pad), rects);
   const base = Texture.from(canvas);
   const frames: Record<string, Texture> = {};
   const px: Record<string, { w: number; h: number }> = {};
@@ -8107,6 +8598,8 @@ export function drawSprite(canvas: HTMLCanvasElement, name: string, cssWidth: nu
   canvas.height = Math.round(spec.h * k);
   g.scale(k, k);
   spec.draw(g, spec.w, spec.h);
+  const ink = inkOf(spec.name, spec.w);
+  inkCanvas(canvas, ink.kind, ink.line * k);
   return true;
 }
 
@@ -8134,17 +8627,28 @@ export function drawEmperor(
   g.scale(k, k);
   const hx = (W - 60) / 2;
   const hy = H - 72 - 2;
-  const layer = (draw: Draw, x: number, y: number, w: number, h: number): void => {
-    g.save();
-    g.translate(x, y);
-    draw(g, w, h);
-    g.restore();
+  const layer = (c: Ctx, draw: Draw, x: number, y: number, w: number, h: number): void => {
+    c.save();
+    c.translate(x, y);
+    draw(c, w, h);
+    c.restore();
   };
-  if (tier >= 3) layer(evoShadow, hx + 30 - 56, hy + 40 - 56, 112, 112);
-  if (tier >= 1) layer(evoWings, hx + 30 - 60, hy + 30 - 30, 120, 60);
-  layer(heroDraw(HERO_LOOKS[look] ?? HERO_LOOKS.default), hx, hy, 60, 72);
-  if (tier >= 2) layer(evoEyes, hx, hy, 60, 72);
-  if (tier >= 3) layer(evoPupils, hx, hy, 60, 72);
+  // Shadow and wings are effects (hard bands); the Emperor himself is a figure with an ink line, inked on his own layer.
+  if (tier >= 3) layer(g, evoShadow, hx + 30 - 56, hy + 40 - 56, 112, 112);
+  if (tier >= 1) layer(g, evoWings, hx + 30 - 60, hy + 30 - 30, 120, 60);
+  if (tier >= 1) inkCanvas(canvas, 'fx');
+  const body = document.createElement('canvas');
+  body.width = canvas.width;
+  body.height = canvas.height;
+  const b = body.getContext('2d', { willReadFrequently: true });
+  if (!b) return;
+  b.scale(k, k);
+  layer(b, heroDraw(HERO_LOOKS[look] ?? HERO_LOOKS.default), hx, hy, 60, 72);
+  if (tier >= 2) layer(b, evoEyes, hx, hy, 60, 72);
+  if (tier >= 3) layer(b, evoPupils, hx, hy, 60, 72);
+  inkCanvas(body, 'figure', 2.5 * k);
+  g.setTransform(1, 0, 0, 1, 0, 0);
+  g.drawImage(body, 0, 0);
 }
 
 /** A 1024 px tile covering 512 world units, one per stage. */
@@ -8165,556 +8669,4 @@ export function buildGroundTile(stage: string): Texture {
   const tex = Texture.from(c);
   tex.source.addressMode = 'repeat';
   return tex;
-}
-
-/**
- * Las Noches: the polished floors of Aizen's palace with white sand drifted
- * over them, lit blue by the sky painted on the dome, crossed by the long
- * shadows of its pillars.
- */
-function lasnochesGround(g: Ctx, S: number): void {
-  g.fillStyle = '#1c2230';
-  g.fillRect(0, 0, S, S);
-  const rnd = seeded(7070);
-  const tile = 128;
-  for (let ty = 0; ty < S; ty += tile) {
-    for (let tx = 0; tx < S; tx += tile) {
-      const v = Math.floor(rnd() * 8);
-      g.fillStyle = `rgb(${44 + v},${52 + v},${70 + v})`;
-      g.fillRect(tx + 1, ty + 1, tile - 2, tile - 2);
-      const sheen = g.createLinearGradient(tx, ty, tx + tile, ty + tile);
-      sheen.addColorStop(0, 'rgba(160,200,255,0.08)');
-      sheen.addColorStop(1, 'rgba(160,200,255,0)');
-      g.fillStyle = sheen;
-      g.fillRect(tx + 1, ty + 1, tile - 2, tile - 2);
-    }
-  }
-  g.strokeStyle = 'rgba(220,232,252,0.13)';
-  g.lineWidth = 1.5;
-  for (let k = 0; k <= S; k += tile) {
-    g.beginPath();
-    g.moveTo(k, 0);
-    g.lineTo(k, S);
-    g.moveTo(0, k);
-    g.lineTo(S, k);
-    g.stroke();
-  }
-  // The pillars' long shadows, slanting the same way across every tile (their period divides the tile, so it repeats cleanly)
-  g.fillStyle = 'rgba(6,8,16,0.26)';
-  const period = S / 4;
-  for (let k = -4; k < 8; k++) {
-    const x0 = k * period;
-    g.beginPath();
-    g.moveTo(x0, 0);
-    g.lineTo(x0 + 30, 0);
-    g.lineTo(x0 + 30 + S / 2, S);
-    g.lineTo(x0 + S / 2, S);
-    g.closePath();
-    g.fill();
-  }
-  // White sand drifted across the floor
-  for (let k = 0; k < 10; k++) {
-    const x = rnd() * S;
-    const y = rnd() * S;
-    const rx = 50 + rnd() * 90;
-    const ry = 10 + rnd() * 16;
-    for (const [ox, oy] of [
-      [0, 0],
-      [S, 0],
-      [-S, 0],
-      [0, S],
-      [0, -S],
-    ] as const) {
-      const grad = g.createRadialGradient(x + ox, y + oy, 2, x + ox, y + oy, rx);
-      grad.addColorStop(0, 'rgba(232,236,244,0.13)');
-      grad.addColorStop(1, 'rgba(232,236,244,0)');
-      g.fillStyle = grad;
-      g.beginPath();
-      g.ellipse(x + ox, y + oy, rx, ry, 0.2, 0, TAU);
-      g.fill();
-    }
-  }
-}
-
-/**
- * Karakura Town at night: asphalt, the dashed white line down the middle of
- * the road, a crossing, manhole covers and the cracks of an old street.
- */
-function karakuraGround(g: Ctx, S: number): void {
-  g.fillStyle = '#1e2026';
-  g.fillRect(0, 0, S, S);
-  const rnd = seeded(8080);
-  // The grain of the asphalt
-  for (let k = 0; k < 2600; k++) {
-    const v = rnd();
-    g.fillStyle = v < 0.5 ? 'rgba(255,255,255,0.035)' : 'rgba(0,0,0,0.12)';
-    g.fillRect(rnd() * S, rnd() * S, 2, 2);
-  }
-  // Two roads crossing: kerbs, the dashed centre lines, and a zebra crossing where they meet
-  const road = S / 2;
-  g.fillStyle = 'rgba(140,146,160,0.18)';
-  for (const off of [road - 120, road + 120]) {
-    g.fillRect(0, off - 3, S, 6);
-    g.fillRect(off - 3, 0, 6, S);
-  }
-  g.fillStyle = 'rgba(236,236,226,0.26)';
-  for (let k = 0; k < S; k += 64) {
-    if (Math.abs(k + 16 - road) > 140) {
-      g.fillRect(k, road - 2, 32, 4);
-      g.fillRect(road - 2, k, 4, 32);
-    }
-  }
-  g.fillStyle = 'rgba(236,236,226,0.2)';
-  for (let k = 0; k < 7; k++) {
-    g.fillRect(road - 104 + k * 30, road - 150, 16, 40);
-    g.fillRect(road - 150, road - 104 + k * 30, 40, 16);
-  }
-  // Manhole covers
-  for (const [x, y] of [
-    [road + 200, road - 260],
-    [road - 280, road + 220],
-  ] as const) {
-    g.fillStyle = 'rgba(70,74,84,0.6)';
-    g.beginPath();
-    g.arc(x, y, 18, 0, TAU);
-    g.fill();
-    g.strokeStyle = 'rgba(150,156,170,0.25)';
-    g.lineWidth = 1.5;
-    g.beginPath();
-    g.arc(x, y, 14, 0, TAU);
-    g.moveTo(x - 10, y);
-    g.lineTo(x + 10, y);
-    g.moveTo(x, y - 10);
-    g.lineTo(x, y + 10);
-    g.stroke();
-  }
-  // Cracks
-  g.strokeStyle = 'rgba(0,0,0,0.4)';
-  g.lineWidth = 1.2;
-  for (let k = 0; k < 9; k++) {
-    let x = rnd() * S;
-    let y = rnd() * S;
-    g.beginPath();
-    g.moveTo(x, y);
-    for (let q = 0; q < 4; q++) {
-      x += (rnd() - 0.5) * 50;
-      y += (rnd() - 0.5) * 50;
-      g.lineTo(x, y);
-    }
-    g.stroke();
-  }
-}
-
-/**
- * Silbern: the Wandenreich's city laid over the Seireitei. Pale slate flagstones
- * with silver seams, the Quincy cross set into the stone, and pools of the
- * shadow it rose from.
- */
-function silbernGround(g: Ctx, S: number): void {
-  g.fillStyle = '#1a1f2c';
-  g.fillRect(0, 0, S, S);
-  const rnd = seeded(5150);
-  const tile = 128;
-  for (let ty = 0; ty < S; ty += tile) {
-    for (let tx = 0; tx < S; tx += tile) {
-      const v = Math.floor(rnd() * 10);
-      g.fillStyle = `rgb(${40 + v},${46 + v},${62 + v})`;
-      g.fillRect(tx + 2, ty + 2, tile - 4, tile - 4);
-      // A lighter band along the top of each stone, as if lit from above.
-      g.fillStyle = 'rgba(214,226,250,0.04)';
-      g.fillRect(tx + 2, ty + 2, tile - 4, 10);
-      if (rnd() < 0.2) {
-        // The Quincy cross, inlaid: a five-pointed star in a ring.
-        const cx = tx + tile / 2;
-        const cy = ty + tile / 2;
-        g.strokeStyle = 'rgba(160,200,255,0.14)';
-        g.lineWidth = 2;
-        g.beginPath();
-        g.arc(cx, cy, 38, 0, TAU);
-        g.stroke();
-        g.beginPath();
-        for (let k = 0; k <= 5; k++) {
-          const a = ((k * 2) / 5) * TAU - Math.PI / 2;
-          const x = cx + Math.cos(a) * 34;
-          const y = cy + Math.sin(a) * 34;
-          if (k === 0) g.moveTo(x, y);
-          else g.lineTo(x, y);
-        }
-        g.stroke();
-      }
-    }
-  }
-  // Silver seams between the stones
-  g.strokeStyle = 'rgba(200,214,240,0.16)';
-  g.lineWidth = 2;
-  for (let k = 0; k <= S; k += tile) {
-    g.beginPath();
-    g.moveTo(k, 0);
-    g.lineTo(k, S);
-    g.moveTo(0, k);
-    g.lineTo(S, k);
-    g.stroke();
-  }
-  // Pools of shadow, the Schatten Bereich showing through
-  for (let k = 0; k < 7; k++) {
-    const x = rnd() * S;
-    const y = rnd() * S;
-    const r = 60 + rnd() * 110;
-    for (const [ox, oy] of [
-      [0, 0],
-      [S, 0],
-      [-S, 0],
-      [0, S],
-      [0, -S],
-    ] as const) {
-      const grad = g.createRadialGradient(x + ox, y + oy, 4, x + ox, y + oy, r);
-      grad.addColorStop(0, 'rgba(4,5,12,0.42)');
-      grad.addColorStop(1, 'rgba(4,5,12,0)');
-      g.fillStyle = grad;
-      g.fillRect(x + ox - r, y + oy - r, r * 2, r * 2);
-    }
-  }
-  // A few glints of reishi in the seams
-  for (let k = 0; k < 40; k++) {
-    const x = Math.round((rnd() * S) / tile) * tile + (rnd() - 0.5) * 6;
-    const y = rnd() * S;
-    g.fillStyle = `rgba(160,210,255,${0.12 + rnd() * 0.2})`;
-    g.fillRect(x - 1, y, 2, 2 + rnd() * 6);
-  }
-}
-
-/**
- * The Wahrwelt: black stone the Emperor raised from the Soul King's palace,
- * cracked with red reiatsu, silver stars set in it, and here and there an eye
- * of The Almighty half open in the rock.
- */
-function wahrweltGround(g: Ctx, S: number): void {
-  g.fillStyle = '#100e16';
-  g.fillRect(0, 0, S, S);
-  const rnd = seeded(9091);
-  const tile = 128;
-  for (let ty = 0; ty < S; ty += tile) {
-    for (let tx = 0; tx < S; tx += tile) {
-      const v = Math.floor(rnd() * 8);
-      g.fillStyle = `rgb(${22 + v},${19 + v},${30 + v})`;
-      g.fillRect(tx + 2, ty + 2, tile - 4, tile - 4);
-      if (rnd() < 0.16) {
-        // A silver star, the Wandenreich's mark
-        const cx = tx + tile / 2;
-        const cy = ty + tile / 2;
-        g.fillStyle = 'rgba(200,214,240,0.1)';
-        g.beginPath();
-        for (let k = 0; k < 10; k++) {
-          const a = (k / 10) * TAU - Math.PI / 2;
-          const r = k % 2 === 0 ? 30 : 12;
-          g.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r);
-        }
-        g.closePath();
-        g.fill();
-      }
-    }
-  }
-  // Red reiatsu running through the cracks
-  g.lineCap = 'round';
-  for (let k = 0; k < 14; k++) {
-    let x = rnd() * S;
-    let y = rnd() * S;
-    g.strokeStyle = `rgba(255,45,74,${0.12 + rnd() * 0.14})`;
-    g.lineWidth = 1.5 + rnd() * 1.5;
-    g.beginPath();
-    g.moveTo(x, y);
-    for (let q = 0; q < 5; q++) {
-      x += (rnd() - 0.5) * 90;
-      y += (rnd() - 0.5) * 90;
-      g.lineTo(x, y);
-    }
-    g.stroke();
-  }
-  // Seams between the stones
-  g.strokeStyle = 'rgba(160,140,200,0.1)';
-  g.lineWidth = 2;
-  for (let k = 0; k <= S; k += tile) {
-    g.beginPath();
-    g.moveTo(k, 0);
-    g.lineTo(k, S);
-    g.moveTo(0, k);
-    g.lineTo(S, k);
-    g.stroke();
-  }
-  // A few eyes in the stone
-  for (let k = 0; k < 5; k++) {
-    g.save();
-    g.globalAlpha = 0.28;
-    crimsonEye(g, 60 + rnd() * (S - 120), 60 + rnd() * (S - 120), 2.2 + rnd() * 1.5);
-    g.restore();
-  }
-}
-
-/** Hueco Mundo at night: moonlit sand, pale ripples, bone, dead white trees. */
-function huecoGround(g: Ctx, S: number): void {
-  g.fillStyle = '#121827';
-  g.fillRect(0, 0, S, S);
-  const rnd = seeded(1234);
-  // Broad dune crests catching the moon: wide soft bands that wrap across the tile's edges.
-  g.lineCap = 'round';
-  for (let k = 0; k < 6; k++) {
-    const y0 = (k / 6) * S + rnd() * 60;
-    const amp = 30 + rnd() * 40;
-    const freq = (1 + Math.floor(rnd() * 2)) * (TAU / S);
-    const phase = rnd() * TAU;
-    g.strokeStyle = `rgba(150,170,215,${(0.035 + rnd() * 0.03).toFixed(3)})`;
-    g.lineWidth = 70 + rnd() * 60;
-    for (const off of [-S, 0, S]) {
-      g.beginPath();
-      for (let x = 0; x <= S; x += 16) {
-        const y = y0 + off + Math.sin(x * freq + phase) * amp;
-        if (x === 0) g.moveTo(x, y);
-        else g.lineTo(x, y);
-      }
-      g.stroke();
-    }
-  }
-  // Fine sand grain
-  for (let i = 0; i < 2600; i++) {
-    g.fillStyle = `rgba(160,170,200,${(0.015 + rnd() * 0.04).toFixed(3)})`;
-    const s = 1 + rnd() * 2.5;
-    g.fillRect(rnd() * S, rnd() * S, s, s);
-  }
-  // Wind ripples: long gentle waves; drawn on a wrapped tile so they continue across edges
-  g.lineCap = 'round';
-  for (let k = 0; k < 26; k++) {
-    const y0 = rnd() * S;
-    const amp = 6 + rnd() * 14;
-    const freq = (1 + Math.floor(rnd() * 3)) * (TAU / S);
-    const phase = rnd() * TAU;
-    g.strokeStyle = `rgba(215,222,240,${(0.045 + rnd() * 0.06).toFixed(3)})`;
-    g.lineWidth = 1.5 + rnd() * 2;
-    for (const off of [-S, 0, S]) {
-      g.beginPath();
-      for (let x = 0; x <= S; x += 16) {
-        const y = y0 + off + Math.sin(x * freq + phase) * amp;
-        if (x === 0) g.moveTo(x, y);
-        else g.lineTo(x, y);
-      }
-      g.stroke();
-    }
-  }
-  // Scattered bone shards
-  for (let i = 0; i < 70; i++) {
-    const x = rnd() * S;
-    const y = rnd() * S;
-    const s = 2 + rnd() * 5;
-    const a = rnd() * TAU;
-    g.fillStyle = `rgba(239,234,224,${(0.12 + rnd() * 0.2).toFixed(3)})`;
-    g.beginPath();
-    g.moveTo(x + Math.cos(a) * s, y + Math.sin(a) * s);
-    g.lineTo(x + Math.cos(a + 2.4) * s * 0.6, y + Math.sin(a + 2.4) * s * 0.6);
-    g.lineTo(x + Math.cos(a + 3.9) * s * 0.6, y + Math.sin(a + 3.9) * s * 0.6);
-    g.closePath();
-    g.fill();
-  }
-  // Two dead white trees, seen from above: branching strokes
-  const tree = (x: number, y: number, len: number, a: number, depth: number): void => {
-    if (depth === 0 || len < 6) return;
-    const x2 = x + Math.cos(a) * len;
-    const y2 = y + Math.sin(a) * len;
-    g.lineWidth = depth * 1.1;
-    g.beginPath();
-    g.moveTo(x, y);
-    g.lineTo(x2, y2);
-    g.stroke();
-    tree(x2, y2, len * 0.68, a - 0.5 - rnd() * 0.3, depth - 1);
-    tree(x2, y2, len * 0.68, a + 0.5 + rnd() * 0.3, depth - 1);
-  };
-  g.strokeStyle = 'rgba(232,236,245,0.16)';
-  for (const [tx, ty] of [
-    [260, 340],
-    [760, 790],
-  ] as const) {
-    for (let b = 0; b < 4; b++) tree(tx, ty, 34, (b / 4) * TAU + rnd(), 4);
-  }
-}
-
-/**
- * Seireitei at night, seen from above: a courtyard of big slate flagstones in
- * staggered rows, worn edges and cracks, pale gravel strips, and the warm
- * pools of light from stone lanterns. Everything stays low-contrast so the
- * fight on top reads first.
- */
-function seireiteiGround(g: Ctx, S: number): void {
-  g.fillStyle = '#10131b';
-  g.fillRect(0, 0, S, S);
-  const rnd = seeded(4321);
-  // Flagstones: 8 rows of 128 px, every other row shifted half a stone. The slab
-  // that hangs over the right edge is drawn again on the left, so the tile wraps.
-  const row = 128;
-  const stone = 128;
-  const slab = (x: number, y: number, seed: number): void => {
-    const r2 = seeded(seed);
-    const v = Math.floor(r2() * 10);
-    g.fillStyle = `rgb(${24 + v},${28 + v},${38 + v})`;
-    roundRect(g, x + 3, y + 3, stone - 6, row - 6, 6);
-    g.fill();
-    // A faint lit top edge and a darker bottom edge give each slab some thickness.
-    g.lineWidth = 2;
-    g.strokeStyle = 'rgba(200,210,235,0.05)';
-    g.beginPath();
-    g.moveTo(x + 8, y + 5);
-    g.lineTo(x + stone - 8, y + 5);
-    g.stroke();
-    g.strokeStyle = 'rgba(0,0,0,0.35)';
-    g.beginPath();
-    g.moveTo(x + 8, y + row - 4);
-    g.lineTo(x + stone - 8, y + row - 4);
-    g.stroke();
-    for (let m = 0; m < 10; m++) {
-      g.fillStyle = `rgba(150,160,190,${(0.015 + r2() * 0.03).toFixed(3)})`;
-      g.beginPath();
-      g.arc(x + 10 + r2() * (stone - 20), y + 10 + r2() * (row - 20), 3 + r2() * 9, 0, TAU);
-      g.fill();
-    }
-    if (r2() < 0.3) {
-      g.strokeStyle = 'rgba(0,0,0,0.45)';
-      g.lineWidth = 1.2;
-      let cx = x + 20 + r2() * (stone - 40);
-      let cy = y + 12;
-      g.beginPath();
-      g.moveTo(cx, cy);
-      for (let q = 0; q < 5; q++) {
-        cx += (r2() - 0.5) * 22;
-        cy += 12 + r2() * 10;
-        g.lineTo(cx, cy);
-      }
-      g.stroke();
-    }
-  };
-  for (let r = 0; r < S / row; r++) {
-    const shift = r % 2 ? stone / 2 : 0;
-    for (let k = 0; k < S / stone; k++) {
-      const x = k * stone + shift;
-      const seed = 1 + Math.floor(rnd() * 2147483000);
-      slab(x, r * row, seed);
-      if (x + stone > S) slab(x - S, r * row, seed);
-    }
-  }
-  // Gravel strip with raked lines, crossing the tile.
-  const gy = 3 * row;
-  g.fillStyle = '#1a1e28';
-  g.fillRect(0, gy - 2, S, 22);
-  g.strokeStyle = 'rgba(210,218,240,0.07)';
-  g.lineWidth = 1;
-  for (let l = 0; l < 4; l++) {
-    g.beginPath();
-    g.moveTo(0, gy + 3 + l * 5);
-    g.lineTo(S, gy + 3 + l * 5);
-    g.stroke();
-  }
-  // Pale specks of gravel and grit.
-  for (let i = 0; i < 1400; i++) {
-    g.fillStyle = `rgba(200,208,230,${(0.02 + rnd() * 0.05).toFixed(3)})`;
-    g.fillRect(rnd() * S, rnd() * S, 1 + rnd() * 1.5, 1 + rnd() * 1.5);
-  }
-  // Fallen leaves, a few.
-  for (let i = 0; i < 26; i++) {
-    const x = rnd() * S;
-    const y = rnd() * S;
-    g.save();
-    g.translate(x, y);
-    g.rotate(rnd() * TAU);
-    g.fillStyle = `rgba(214,190,150,${(0.08 + rnd() * 0.1).toFixed(3)})`;
-    g.beginPath();
-    g.ellipse(0, 0, 4 + rnd() * 3, 2, 0, 0, TAU);
-    g.fill();
-    g.restore();
-  }
-  // Warm lantern light pooling on the stones; each also drawn on the far side of
-  // the tile edge it is near, so it wraps cleanly.
-  for (const [lx, ly] of [
-    [200, 640],
-    [760, 180],
-  ] as const) {
-    for (const ox of [-S, 0, S]) {
-      for (const oy of [-S, 0, S]) {
-        aura(g, lx + ox, ly + oy, 150, 'rgba(255,190,110,0.07)');
-        aura(g, lx + ox, ly + oy, 40, 'rgba(255,214,150,0.12)');
-      }
-    }
-    // The lantern itself, from above: a square cap on a square base.
-    g.fillStyle = '#2a2e3a';
-    g.fillRect(lx - 14, ly - 14, 28, 28);
-    g.fillStyle = '#3a3f4e';
-    g.fillRect(lx - 9, ly - 9, 18, 18);
-    glowDot(g, lx, ly, 4, 4, '#ffe2b0', '#ffb347', 10);
-  }
-}
-
-/**
- * The Soul King Palace, seen from above: big tiles of pale marble with gold
- * seams, round inlays here and there, and thin cloud drifting across. Lighter
- * than the other stages, but still low in contrast so the fight reads first.
- */
-function palaceGround(g: Ctx, S: number): void {
-  g.fillStyle = '#1b1e2b';
-  g.fillRect(0, 0, S, S);
-  const rnd = seeded(2468);
-  const tile = 128;
-  for (let ty = 0; ty < S; ty += tile) {
-    for (let tx = 0; tx < S; tx += tile) {
-      const v = Math.floor(rnd() * 8);
-      g.fillStyle = `rgb(${34 + v},${37 + v},${52 + v})`;
-      g.fillRect(tx + 2, ty + 2, tile - 4, tile - 4);
-      // Faint veins in the marble
-      g.strokeStyle = 'rgba(220,226,245,0.05)';
-      g.lineWidth = 1.2;
-      g.beginPath();
-      let x = tx + rnd() * tile;
-      let y = ty + 4;
-      g.moveTo(x, y);
-      for (let q = 0; q < 4; q++) {
-        x += (rnd() - 0.5) * 50;
-        y += tile / 4;
-        g.lineTo(Math.max(tx + 4, Math.min(tx + tile - 4, x)), Math.min(ty + tile - 4, y));
-      }
-      g.stroke();
-      if (rnd() < 0.18) {
-        // A round inlay: two gold rings
-        const cx = tx + tile / 2;
-        const cy = ty + tile / 2;
-        g.strokeStyle = 'rgba(255,214,120,0.12)';
-        g.lineWidth = 2;
-        g.beginPath();
-        g.arc(cx, cy, 34, 0, TAU);
-        g.stroke();
-        g.beginPath();
-        g.arc(cx, cy, 22, 0, TAU);
-        g.stroke();
-      }
-    }
-  }
-  // Gold seams between the tiles
-  g.strokeStyle = 'rgba(255,203,92,0.14)';
-  g.lineWidth = 2;
-  for (let k = 0; k <= S; k += tile) {
-    g.beginPath();
-    g.moveTo(k, 0);
-    g.lineTo(k, S);
-    g.moveTo(0, k);
-    g.lineTo(S, k);
-    g.stroke();
-  }
-  // Cloud drifting across, drawn three times so it wraps at the edges
-  for (let c = 0; c < 9; c++) {
-    const x0 = rnd() * S;
-    const y0 = rnd() * S;
-    const r = 60 + rnd() * 90;
-    for (const ox of [-S, 0, S]) {
-      for (const oy of [-S, 0, S]) {
-        const grad = g.createRadialGradient(x0 + ox, y0 + oy, 0, x0 + ox, y0 + oy, r);
-        grad.addColorStop(0, 'rgba(235,240,255,0.06)');
-        grad.addColorStop(1, 'rgba(235,240,255,0)');
-        g.fillStyle = grad;
-        g.fillRect(x0 + ox - r, y0 + oy - r, r * 2, r * 2);
-      }
-    }
-  }
 }

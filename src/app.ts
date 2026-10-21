@@ -114,6 +114,8 @@ export class App {
     const host = document.getElementById('game');
     const uiRoot = document.getElementById('ui');
     if (!host || !uiRoot) throw new Error('Missing #game or #ui');
+    // The atlas letters its damage numerals in the display face: load it first, but never wait long for it.
+    await Promise.race([document.fonts?.load('28px Anton'), new Promise((r) => setTimeout(r, 1500))]).catch(() => undefined);
     await this.renderer.init(host);
     this.input = new Input(host);
     this.input.enabled = false;

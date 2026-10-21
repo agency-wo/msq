@@ -86,6 +86,19 @@ function button(cls: string, text: string): HTMLButtonElement {
   return b;
 }
 
+/** Each stage's vista, painted once per session and kept as an image URL. */
+const VISTA_URLS = new Map<StageId, string>();
+function vistaUrl(id: StageId): string {
+  let url = VISTA_URLS.get(id);
+  if (!url) {
+    const c = document.createElement('canvas');
+    drawVista(c, id, 150, 132);
+    url = c.toDataURL('image/png');
+    VISTA_URLS.set(id, url);
+  }
+  return url;
+}
+
 /** Scroll a sideways strip so `item` sits in its middle, when the strip scrolls at all. */
 function centerIn(strip: HTMLElement, item: HTMLElement | null): void {
   if (!item || strip.scrollWidth <= strip.clientWidth) return;
@@ -1437,8 +1450,10 @@ export class UI {
       const rec = save.stages[def.id];
       const b = button(`stage-btn${open ? (rec.cleared ? ' cleared' : '') : ' locked'}`, '');
       b.setAttribute('role', 'radio');
-      const vista = el('canvas', 'stage-vista');
-      drawVista(vista, def.id);
+      const vista = el('img', 'stage-vista');
+      vista.alt = '';
+      vista.decoding = 'async';
+      vista.src = vistaUrl(def.id);
       const text = el('span', 'stage-label');
       const sub = !open ? 'Locked' : rec.cleared ? 'Cleared' : rec.best > 0 ? `Best ${formatTime(rec.best)}` : '20:00';
       text.append(el('span', 'stage-name', def.name), el('span', 'stage-sub', sub));
@@ -1461,15 +1476,21 @@ export class UI {
     }
     select(stageUnlocked(save, save.stage) ? save.stage : 'hueco');
     box.append(row, modes, info);
-    // With more stages than fit, the strip scrolls; bring the chosen one into view once it is on screen.
-    requestAnimationFrame(() => {
-      const k = STAGES.findIndex((d) => d.id === current);
-      const card = buttons[k];
-      if (!card || row.scrollWidth <= row.clientWidth) return;
+    // With more stages than fit, the strip scrolls; bring the chosen one into view once the strip is laid out.
+    let tries = 0;
+    const reveal = (): void => {
+      const card = buttons[STAGES.findIndex((d) => d.id === current)];
+      if (!card) return;
+      if (row.clientWidth === 0) {
+        if (++tries < 30) requestAnimationFrame(reveal);
+        return;
+      }
+      if (row.scrollWidth <= row.clientWidth) return;
       const a = card.getBoundingClientRect();
       const r = row.getBoundingClientRect();
-      if (a.left < r.left || a.right > r.right) row.scrollLeft += a.left - r.left - 8;
-    });
+      if (a.left < r.left || a.right > r.right) row.scrollLeft += a.left - r.left - 16;
+    };
+    requestAnimationFrame(reveal);
     return box;
   }
 

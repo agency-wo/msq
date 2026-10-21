@@ -1,13 +1,15 @@
+import { DISPLAY_FONT, inkCanvas } from '../render/ink';
+
 /**
- * Card icons, drawn as simple glowing glyphs on a small canvas. Schrift
- * powers show their letter inside a ring of reishi instead of a glyph.
+ * Card icons, drawn as simple flat glyphs on a small canvas (then put through
+ * the ink pass, so they are flat tones with hard edges). Schrift powers show
+ * their letter inside a ring of reishi instead of a glyph.
  */
 
 type Ctx = CanvasRenderingContext2D;
 type Glyph = (g: Ctx) => void;
 
 const TAU = Math.PI * 2;
-const SERIF = '"Didot", "Bodoni 72", "Bodoni MT", Georgia, "Times New Roman", serif';
 
 function poly(g: Ctx, pts: readonly (readonly [number, number])[], fill = true): void {
   g.beginPath();
@@ -530,23 +532,21 @@ export function drawIcon(canvas: HTMLCanvasElement, name: string, color: string,
   g.lineWidth = 3;
   g.lineCap = 'round';
   g.lineJoin = 'round';
-  g.shadowColor = color;
-  g.shadowBlur = 8;
   if (letter) {
-    g.lineWidth = 2;
+    g.lineWidth = 3.4;
     g.beginPath();
     g.arc(24, 24, 19, 0, TAU);
     g.stroke();
-    g.shadowBlur = 6;
     g.fillStyle = '#f4f1ea';
     // Two letters (a resonance) share the ring at a smaller size, three smaller still.
-    g.font = `700 ${letter.length > 2 ? 14 : letter.length > 1 ? 19 : 28}px ${SERIF}`;
+    g.font = `${letter.length > 2 ? 15 : letter.length > 1 ? 20 : 29}px ${DISPLAY_FONT}`;
     g.textAlign = 'center';
     g.textBaseline = 'middle';
-    g.fillText(letter, 24, 26);
-    return;
+    g.fillText(letter, 24, 25.5);
+  } else {
+    (GLYPHS[name] ?? GLYPHS.star)(g);
   }
-  (GLYPHS[name] ?? GLYPHS.star)(g);
+  inkCanvas(canvas, 'figure', 0);
 }
 
 /** The title emblem: a five-pointed star of reishi inside a ring. */
@@ -554,8 +554,6 @@ export function drawEmblem(canvas: HTMLCanvasElement, size: number): void {
   const g = setup(canvas, size);
   if (!g) return;
   const c = size / 2;
-  g.shadowColor = '#59b8ff';
-  g.shadowBlur = size * 0.12;
   g.strokeStyle = '#9fdcff';
   g.lineWidth = size * 0.035;
   g.beginPath();

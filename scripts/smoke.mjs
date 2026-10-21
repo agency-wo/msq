@@ -45,6 +45,12 @@ const cdp = await context.newCDPSession(page);
 const touch = (type, x, y) =>
   cdp.send('Input.dispatchTouchEvent', { type, touchPoints: type === 'touchEnd' ? [] : [{ x, y, id: 1 }] });
 const wait = (ms) => page.waitForTimeout(ms);
+/** Navigate, then wait for the app to be up (its debug hook, and the run when the URL starts one). */
+async function go(url) {
+  await page.goto(url);
+  if (!url.includes('debug')) return;
+  await page.waitForFunction((run) => window.__msq && (!run || window.__msq.world), url.includes('play') || url.includes('stress'), { timeout: 20000 });
+}
 const state = () => page.evaluate(() => window.__msq?.state);
 const shot = (name) => page.screenshot({ path: join(OUT, `${name}.png`) });
 const stats = () =>
@@ -175,8 +181,10 @@ function overflowProbe() {
   for (const e of s.querySelectorAll('.nav-label, .mode-opt, .codex-tab, .stage-sub, .daily-status, .upgrade-buy, .topbar-gold, .topbar-feats, .mode-label, .card-badge')) {
     if (e.clientWidth > 0 && e.scrollWidth > e.clientWidth + 1) out.push(`cut ${name(e)}: "${e.textContent}"`);
   }
+  // Stage names may take two lines; count lines rather than pixels (a tall display face overflows its line box a little).
   for (const e of s.querySelectorAll('.stage-name')) {
-    if (e.clientHeight > 0 && e.scrollHeight > e.clientHeight + 1) out.push(`cut ${name(e)}: "${e.textContent}"`);
+    const lh = parseFloat(getComputedStyle(e).lineHeight);
+    if (e.clientHeight > 0 && Math.round(e.scrollHeight / lh) > 2) out.push(`cut ${name(e)}: "${e.textContent}"`);
   }
   // The chosen tab of a track that scrolls must be in view.
   for (const on of s.querySelectorAll('.codex-tab.on')) {
@@ -221,7 +229,7 @@ const NARROW_SAVE = {
 
 try {
   // 1. Title screen, with the iPhone install hint.
-  await page.goto(`${BASE}?debug&seed=7`);
+  await go(`${BASE}?debug&seed=7`);
   await page.waitForSelector('.screen.title .btn.primary');
   await wait(400);
   log('title', {
@@ -264,14 +272,14 @@ try {
   await wait(300);
 
   // 5. A mid-game build: many Schrift at once (zones, beams, bombs, drones).
-  await page.goto(`${BASE}?debug&seed=7&play&god&t=520&give=xaxis6,explode6,heat6,fear6,wind6,death6,knowledge6,visionary6`);
+  await go(`${BASE}?debug&seed=7&play&god&t=520&give=xaxis6,explode6,heat6,fear6,wind6,death6,knowledge6,visionary6`);
   await wait(500);
   picks = await steer(9000);
   log('schrift build', { ...(await stats()), picks });
   await shot('04-schrift');
 
   // 5b. The second wave of Schrift: maw, cages, charm, fist, doubles, zombies.
-  await page.goto(`${BASE}?debug&seed=7&play&god&t=400&give=glutton6,jail6,love6,power6,yourself6,zombie6`);
+  await go(`${BASE}?debug&seed=7&play&god&t=400&give=glutton6,jail6,love6,power6,yourself6,zombie6`);
   await wait(500);
   picks = await steer(9000, { radius: 20 });
   log('schrift wave 2', {
@@ -287,7 +295,7 @@ try {
   await shot('04b-schrift-wave2');
 
   // 5c. Resonances: Firestorm (burning gusts) and Railgun (lightning down every beam).
-  await page.goto(`${BASE}?debug&seed=7&play&god&t=420&give=heat7,wind7,xaxis7,thunder7&res=firestorm,railgun`);
+  await go(`${BASE}?debug&seed=7&play&god&t=420&give=heat7,wind7,xaxis7,thunder7&res=firestorm,railgun`);
   await wait(500);
   await steer(8000, { radius: 20 });
   log('resonances', {
@@ -303,7 +311,7 @@ try {
   await shot('04c-resonances');
 
   // 5c2. The Antithesis: a wound turned back, half healed and the rest dealt to the sturdiest enemies.
-  await page.goto(`${BASE}?debug&seed=7&play&god&t=420&give=antithesis7,balance5&res=scales`);
+  await go(`${BASE}?debug&seed=7&play&god&t=420&give=antithesis7,balance5&res=scales`);
   await wait(800);
   const woundAt = await page.evaluate(() => {
     const w = window.__msq.world;
@@ -322,7 +330,7 @@ try {
 
   // 5d. Run events: a rift, a golden runner, a Reishi Storm, an ambush.
   for (const kind of ['rift', 'golden', 'storm', 'ambush']) {
-    await page.goto(`${BASE}?debug&seed=7&play&god&t=200&give=xaxis5`);
+    await go(`${BASE}?debug&seed=7&play&god&t=200&give=xaxis5`);
     await wait(400);
     await page.evaluate((k) => window.__msq.world.startEvent(k), kind);
     await wait(1200);
@@ -332,7 +340,7 @@ try {
 
   // 6. Medallion bearers: each fights with its bankai and warns before it hits.
   for (const id of ['tengen', 'raikoben', 'gonryo']) {
-    await page.goto(`${BASE}?debug&seed=3&play&god&t=297&bearers=${id}`);
+    await go(`${BASE}?debug&seed=3&play&god&t=297&bearers=${id}`);
     await wait(400);
     await steer(7000, { radius: 20 });
     log(`bearer ${id}`, { ...(await stats()), bossBar: await page.isVisible('.bossbar'), music: await page.evaluate(() => window.__msq.music) });
@@ -340,7 +348,7 @@ try {
   }
 
   // 7. Taking back a bankai: the gold title card.
-  await page.goto(`${BASE}?debug&seed=5&play&god&t=330`);
+  await go(`${BASE}?debug&seed=5&play&god&t=330`);
   await wait(600);
   await page.evaluate(() => window.__msq.world.grantBankai('senbonzakura'));
   await wait(450);
@@ -349,7 +357,7 @@ try {
 
   // 8. Every bankai in action.
   for (const id of BANKAI) {
-    await page.goto(`${BASE}?debug&seed=9&play&god&t=480&bankai=${id}`);
+    await go(`${BASE}?debug&seed=9&play&god&t=480&bankai=${id}`);
     await wait(400);
     await steer(5000, { radius: 30 });
     log(`bankai ${id}`, await stats());
@@ -357,7 +365,7 @@ try {
   }
 
   // 9. Seireitei: unlocked once Hueco Mundo is cleared; picking it previews its ground on the title screen.
-  await page.goto(`${BASE}?debug&seed=7`);
+  await go(`${BASE}?debug&seed=7`);
   await page.evaluate(() => {
     const save = JSON.parse(localStorage.getItem('msq.save') ?? '{}');
     save.stages = { hueco: { best: 1210, cleared: true }, seireitei: { best: 0, cleared: false } };
@@ -612,14 +620,14 @@ try {
   log('share', { file: card.suggestedFilename(), toast: await page.textContent('.toast') });
 
   // Mid-run: flash-steps, Kidō fire, a seated officer (elite at 7:30).
-  await page.goto(`${BASE}?debug&seed=7&play&god&stage=seireitei&t=445&give=xaxis5,explode5,wind5`);
+  await go(`${BASE}?debug&seed=7&play&god&stage=seireitei&t=445&give=xaxis5,explode5,wind5`);
   await wait(400);
   await steer(9000, { radius: 25 });
   log('seireitei mid', await stats());
   await shot('11-seireitei-mid');
 
   // Hueco Mundo's last boss: Tier Harribel (Ola Azul, Sonído), then Tiburón released and Cascada.
-  await page.goto(`${BASE}?debug&seed=7&play&god&stage=hueco&t=1196&give=xaxis6,explode6,heat6`);
+  await go(`${BASE}?debug&seed=7&play&god&stage=hueco&t=1196&give=xaxis6,explode6,heat6`);
   await wait(400);
   await steer(9000, { radius: 15 });
   log('harribel', { ...(await stats()), bossBar: await page.isVisible('.bossbar'), boss: await page.textContent('.boss-name'), sub: await page.textContent('.boss-sub') });
@@ -654,7 +662,7 @@ try {
     ['hueco', 1078, 6, 'nel'],
     ['seireitei', 903, 11, 'unohana'],
   ]) {
-    await page.goto(`${BASE}?debug&seed=3&play&god&stage=${stage}&t=${t}`);
+    await go(`${BASE}?debug&seed=3&play&god&stage=${stage}&t=${t}`);
     await wait(400);
     await steer(6000, { radius: 20 });
     log(`boss ${name}`, { ...(await stats()), boss: (await page.isVisible('.bossbar')) ? await page.textContent('.boss-name') : null });
@@ -669,7 +677,7 @@ try {
   }
 
   // Spoils of war: a boss falls and leaves its own; its title card when you take it; spoils that strike on their own.
-  await page.goto(`${BASE}?debug&seed=3&play&god&stage=silbern&t=298&bearers=kenpachi`);
+  await go(`${BASE}?debug&seed=3&play&god&stage=silbern&t=298&bearers=kenpachi`);
   await wait(400);
   await steer(5000, { radius: 20 });
   await page.evaluate(() => {
@@ -690,7 +698,7 @@ try {
   await wait(500);
   log('spoil taken', { relics: await page.evaluate(() => window.__msq.world.relics.map((r) => r.id)), banner: await page.textContent('.banner') });
   await shot('12k-spoil-banner');
-  await page.goto(`${BASE}?debug&seed=4&play&god&stage=hueco&t=120&spoils=tengen,getsuga,ember,tsukishiro,taiho`);
+  await go(`${BASE}?debug&seed=4&play&god&stage=hueco&t=120&spoils=tengen,getsuga,ember,tsukishiro,taiho`);
   await wait(400);
   await steer(9000, { radius: 25 });
   log('spoils striking', await stats());
@@ -698,13 +706,13 @@ try {
 
   // Silbern: the second invasion's captains, then the Captain-Commander and his bankai.
   for (const id of ['kenpachi', 'mayuri', 'shinji', 'kensei']) {
-    await page.goto(`${BASE}?debug&seed=3&play&god&stage=silbern&t=298&bearers=${id}`);
+    await go(`${BASE}?debug&seed=3&play&god&stage=silbern&t=298&bearers=${id}`);
     await wait(400);
     await steer(6500, { radius: 20 });
     log(`silbern ${id}`, { ...(await stats()), boss: (await page.isVisible('.bossbar')) ? await page.textContent('.boss-name') : null, inverted: await page.evaluate(() => window.__msq.world.invertT > 0) });
     await shot(`12d-silbern-${id}`);
   }
-  await page.goto(`${BASE}?debug&seed=7&play&god&stage=silbern&t=1196&give=xaxis6,explode6,heat6`);
+  await go(`${BASE}?debug&seed=7&play&god&stage=silbern&t=1196&give=xaxis6,explode6,heat6`);
   await wait(400);
   await steer(8000, { radius: 15 });
   log('kyoraku', { ...(await stats()), boss: await page.textContent('.boss-name'), sub: await page.textContent('.boss-sub') });
@@ -719,7 +727,7 @@ try {
 
   // Wahrwelt: its defenders, then Ichigo and his Hollow mask.
   for (const id of ['renji', 'rukia', 'uryu', 'aizen']) {
-    await page.goto(`${BASE}?debug&seed=3&play&god&stage=wahrwelt&t=298&bearers=${id}`);
+    await go(`${BASE}?debug&seed=3&play&god&stage=wahrwelt&t=298&bearers=${id}`);
     await wait(400);
     await steer(6500, { radius: 20 });
     log(`wahrwelt ${id}`, { ...(await stats()), boss: (await page.isVisible('.bossbar')) ? await page.textContent('.boss-name') : null, copies: await page.evaluate(() => { const w = window.__msq.world; let n = 0; for (let i = 0; i < w.en.n; i++) if (w.en.type[i] === 33 && !w.en.dead[i]) n++; return n; }) });
@@ -735,7 +743,7 @@ try {
       await shot(`12g-wahrwelt-${id}-bankai`);
     }
   }
-  await page.goto(`${BASE}?debug&seed=7&play&god&stage=wahrwelt&t=1196&give=xaxis6,explode6,heat6`);
+  await go(`${BASE}?debug&seed=7&play&god&stage=wahrwelt&t=1196&give=xaxis6,explode6,heat6`);
   await wait(400);
   await steer(8000, { radius: 15 });
   log('ichigo', { ...(await stats()), boss: await page.textContent('.boss-name'), sub: await page.textContent('.boss-sub') });
@@ -749,13 +757,13 @@ try {
   await shot('12i-hollow-mask');
 
   // Las Noches: its swarm, its four Arrancar sealed and released, then Grimmjow and Pantera.
-  await page.goto(`${BASE}?debug&seed=4&play&god&stage=lasnoches&t=420&give=xaxis3,explode2`);
+  await go(`${BASE}?debug&seed=4&play&god&stage=lasnoches&t=420&give=xaxis3,explode2`);
   await wait(400);
   await steer(8000, { radius: 25 });
   log('lasnoches mid', await stats());
   await shot('12l-lasnoches');
   for (const id of ['rudbornn', 'dordoni', 'cirucci', 'gantenbainne']) {
-    await page.goto(`${BASE}?debug&seed=3&play&god&stage=lasnoches&t=298&bearers=${id}`);
+    await go(`${BASE}?debug&seed=3&play&god&stage=lasnoches&t=298&bearers=${id}`);
     await wait(400);
     await steer(6000, { radius: 20 });
     log(`lasnoches ${id}`, { ...(await stats()), boss: (await page.isVisible('.bossbar')) ? await page.textContent('.boss-name') : null });
@@ -768,7 +776,7 @@ try {
     log(`lasnoches ${id} released`, { phase: await page.evaluate(() => window.__msq.world.boss.phase) });
     await shot(`12l-arrancar-${id}-released`);
   }
-  await page.goto(`${BASE}?debug&seed=7&play&god&stage=lasnoches&t=1196&give=xaxis6,explode6,heat6`);
+  await go(`${BASE}?debug&seed=7&play&god&stage=lasnoches&t=1196&give=xaxis6,explode6,heat6`);
   await wait(400);
   await steer(8000, { radius: 15 });
   log('grimmjow', { ...(await stats()), boss: await page.textContent('.boss-name'), sub: await page.textContent('.boss-sub') });
@@ -782,13 +790,13 @@ try {
   await shot('12m-pantera');
 
   // Karakura Town: its streets, its four defenders and what each shows at half health, then Urahara's bankai.
-  await page.goto(`${BASE}?debug&seed=4&play&god&stage=karakura&t=420&give=xaxis3,explode2`);
+  await go(`${BASE}?debug&seed=4&play&god&stage=karakura&t=420&give=xaxis3,explode2`);
   await wait(400);
   await steer(8000, { radius: 25 });
   log('karakura mid', await stats());
   await shot('12n-karakura');
   for (const id of ['chad', 'orihime', 'yoruichi', 'isshin']) {
-    await page.goto(`${BASE}?debug&seed=3&play&god&stage=karakura&t=298&bearers=${id}`);
+    await go(`${BASE}?debug&seed=3&play&god&stage=karakura&t=298&bearers=${id}`);
     await wait(400);
     await steer(6000, { radius: 20 });
     log(`karakura ${id}`, { ...(await stats()), boss: (await page.isVisible('.bossbar')) ? await page.textContent('.boss-name') : null });
@@ -801,7 +809,7 @@ try {
     log(`karakura ${id} late`, { phase: await page.evaluate(() => window.__msq.world.boss.phase) });
     await shot(`12n-karakura-${id}-late`);
   }
-  await page.goto(`${BASE}?debug&seed=7&play&god&stage=karakura&t=1196&give=xaxis6,explode6,heat6`);
+  await go(`${BASE}?debug&seed=7&play&god&stage=karakura&t=1196&give=xaxis6,explode6,heat6`);
   await wait(400);
   await steer(8000, { radius: 15 });
   log('urahara', { ...(await stats()), boss: await page.textContent('.boss-name'), sub: await page.textContent('.boss-sub') });
@@ -816,7 +824,7 @@ try {
 
   // The captains defend their own bankai in Seireitei.
   for (const id of ['senbonzakura', 'hyorinmaru', 'raikoben', 'tengen', 'gonryo']) {
-    await page.goto(`${BASE}?debug&seed=3&play&god&stage=seireitei&t=298&bearers=${id}`);
+    await go(`${BASE}?debug&seed=3&play&god&stage=seireitei&t=298&bearers=${id}`);
     await wait(400);
     await steer(6000, { radius: 20 });
     log(`captain ${id}`, { ...(await stats()), boss: (await page.isVisible('.bossbar')) ? await page.textContent('.boss-name') : null });
@@ -824,7 +832,7 @@ try {
   }
 
   // The Captain-Commander: heat, fire lines, pillars of flame, the ashen dead.
-  await page.goto(`${BASE}?debug&seed=7&play&god&stage=seireitei&t=1196&give=xaxis6,explode6,heat6,knowledge6`);
+  await go(`${BASE}?debug&seed=7&play&god&stage=seireitei&t=1196&give=xaxis6,explode6,heat6,knowledge6`);
   await wait(400);
   await steer(12000, { radius: 15 });
   log('captain-commander', { ...(await stats()), bossBar: await page.isVisible('.bossbar'), boss: await page.textContent('.boss-name') });
@@ -842,7 +850,7 @@ try {
   await shot('12c-zanka-taken');
 
   // A · The Almighty: time stops, an eye opens, then everything on screen is struck down.
-  await page.goto(`${BASE}?debug&seed=7&play&god&t=500&almighty&give=xaxis5,explode5`);
+  await go(`${BASE}?debug&seed=7&play&god&t=500&almighty&give=xaxis5,explode5`);
   let stopped = false;
   for (let k = 0; k < 80 && !stopped; k++) {
     stopped = await page.evaluate(() => window.__msq.world.almightyT > 0.5);
@@ -852,17 +860,17 @@ try {
   await shot('15-almighty-stop');
 
   // The Soul King Palace: its servants, each guardian, Ichibē, and a fragment taken back.
-  await page.goto(`${BASE}?debug&seed=7&play&god&stage=palace&give=xaxis5,explode5`);
+  await go(`${BASE}?debug&seed=7&play&god&stage=palace&give=xaxis5,explode5`);
   await steer(7000, { radius: 25 });
   log('palace early', { ...(await stats()), stage: await page.evaluate(() => window.__msq.world.stage.id), music: await page.evaluate(() => window.__msq.music) });
   await shot('18-palace-early');
   for (const id of ['tenjiro', 'kirio', 'oetsu', 'senjumaru']) {
-    await page.goto(`${BASE}?debug&seed=7&play&god&stage=palace&t=296&bearers=${id}&give=xaxis5,explode5`);
+    await go(`${BASE}?debug&seed=7&play&god&stage=palace&t=296&bearers=${id}&give=xaxis5,explode5`);
     await steer(8000, { radius: 25 });
     log(`royal ${id}`, { ...(await stats()), boss: (await page.isVisible('.bossbar')) ? await page.textContent('.boss-name') : null, sub: await page.textContent('.boss-sub').catch(() => null) });
     await shot(`18b-royal-${id}`);
   }
-  await page.goto(`${BASE}?debug&seed=7&play&god&stage=palace&t=1196&give=xaxis7,explode7,heat7,knowledge7`);
+  await go(`${BASE}?debug&seed=7&play&god&stage=palace&t=1196&give=xaxis7,explode7,heat7,knowledge7`);
   await steer(9000, { radius: 25 });
   log('ichibe', { ...(await stats()), boss: await page.textContent('.boss-name').catch(() => null), sealed: await page.$$eval('.tray-item.sealed', (s) => s.length) });
   await shot('18c-ichibe');
@@ -884,13 +892,13 @@ try {
   await shot('18d-fragment');
 
   // Boss Rush: the stage's bosses back to back, eight level-ups to start.
-  await page.goto(`${BASE}?debug&seed=7&play&god&rush&stage=hueco`);
+  await go(`${BASE}?debug&seed=7&play&god&rush&stage=hueco`);
   await steer(16000, { radius: 25 });
   log('boss rush', { ...(await stats()), rush: await page.evaluate(() => window.__msq.world.bossRush), boss: (await page.isVisible('.bossbar')) ? await page.textContent('.boss-name') : null });
   await shot('19-boss-rush');
 
   // A Quincy shrine: walk into it and make a pact.
-  await page.goto(`${BASE}?debug&seed=7&play&god&give=explode4,fear3`);
+  await go(`${BASE}?debug&seed=7&play&god&give=explode4,fear3`);
   await wait(800);
   await page.evaluate(() => {
     const w = window.__msq.world;
@@ -905,18 +913,18 @@ try {
   log('shrine', { pacts, made: await page.evaluate(() => [...window.__msq.world.pacts]), state: await state() });
 
   // The Emperor evolves: three awakened Schrift bring wings and eyes; The Almighty, his shadow.
-  await page.goto(`${BASE}?debug&seed=7&play&god&give=heilig7,explode7,fear7`);
+  await go(`${BASE}?debug&seed=7&play&god&give=heilig7,explode7,fear7`);
   await steer(4500, { radius: 20 });
   log('evolve eyes', { tier: await page.evaluate(() => window.__msq.world.evolution) });
   await shot('16-evolve-eyes');
-  await page.goto(`${BASE}?debug&seed=7&play&god&almighty`);
+  await go(`${BASE}?debug&seed=7&play&god&almighty`);
   await steer(4500, { radius: 20 });
   for (let k = 0; k < 40 && (await page.evaluate(() => window.__msq.world.almightyT > 0)); k++) await wait(100);
   log('evolve shadow', { tier: await page.evaluate(() => window.__msq.world.evolution) });
   await shot('16b-evolve-shadow');
 
   // 10. Stress: 1500 enemies, every Schrift maxed, two bankai. Software WebGL here, so FPS is only a floor.
-  await page.goto(`${BASE}?debug&stress=1500&bankai=senbonzakura,gonryo`);
+  await go(`${BASE}?debug&stress=1500&bankai=senbonzakura,gonryo`);
   await wait(6000);
   const samples = [];
   for (let i = 0; i < 6; i++) {
@@ -927,7 +935,7 @@ try {
   await shot('08-stress');
 
   // Same in Seireitei, where casters keep enemy fire in the air.
-  await page.goto(`${BASE}?debug&stress=1500&stage=seireitei&bankai=zanka,hyorinmaru`);
+  await go(`${BASE}?debug&stress=1500&stage=seireitei&bankai=zanka,hyorinmaru`);
   await wait(6000);
   const seiSamples = [];
   for (let i = 0; i < 4; i++) {
@@ -938,7 +946,7 @@ try {
   await shot('13-stress-seireitei');
 
   // And in the palace, where ink splits and threads fly.
-  await page.goto(`${BASE}?debug&stress=1500&stage=palace&bankai=zanka,hyorinmaru`);
+  await go(`${BASE}?debug&stress=1500&stage=palace&bankai=zanka,hyorinmaru`);
   await wait(6000);
   const palSamples = [];
   for (let i = 0; i < 4; i++) {
@@ -1056,7 +1064,7 @@ try {
   }
 
   // 11. Offline: the service worker serves the whole game with the network off.
-  await page.goto(`${BASE}?debug`);
+  await go(`${BASE}?debug`);
   const sw = await page.evaluate(async () => {
     const reg = await navigator.serviceWorker.ready;
     return !!reg.active;

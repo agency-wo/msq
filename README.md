@@ -21,7 +21,11 @@ rewrites the future (enemy fire vanishes, everything on screen is struck down).
 All art is drawn in code: the Emperor, the Sternritter, the Gotei 13 captains,
 the Royal Guard, Tier Harribel and the other named characters are chibi
 homages to their Bleach designs; everything else (Hollows, Soul Reaper
-soldiers, the palace's servants, effects) is an original design.
+soldiers, the palace's servants, effects) is an original design. It is all
+inked like a printed manga: flat tones, a black line round every figure,
+effects in hard-edged bands, grounds in screentone, and a swarm drawn
+grotesque (Hollows that are all limbs, spines and teeth; lanky soldiers with
+their eyes in shadow). The menus are ink and paper, square, in Anton.
 
 As he takes power back, the Emperor **evolves** in front of you: reishi wings
 with the first bankai or awakened Schrift, crimson eyes opening across his
@@ -262,7 +266,8 @@ Add `META=max` to the balance report for a player with every upgrade.
 
 - `src/game/` is the whole simulation in plain TypeScript with no rendering, so it runs headless in tests.
 - `src/data/` holds the content tables: powers with their Lv 7 attributes, passives, relics, enemies and the stages (spawn mixes, events, difficulty). New content goes here.
-- `src/render/` draws with PixiJS particle containers from one texture atlas generated in code at startup.
+- `src/render/` draws with PixiJS particle containers from one texture atlas generated in code at startup. Every sprite, icon and vista then goes through the ink pass (`src/render/ink.ts`); the stage grounds are in `src/render/grounds.ts`.
+- `src/fonts/` holds Anton (SIL Open Font License, text in `public/fonts/OFL-Anton.txt`), bundled so the game needs nothing from the network.
 - `src/ui/` is plain DOM with an external stylesheet, laid out to fit any phone from 320 points wide; each row's colour reaches CSS through custom properties.
 - No inline scripts or styles and no `eval`, so it runs under the strict Content-Security-Policy that minarankstudio.com sends.
 - A service worker generated at build time precaches every file for offline play.

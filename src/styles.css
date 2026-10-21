@@ -1,3 +1,22 @@
+/* The display face: Anton (SIL Open Font License, see fonts/OFL-Anton.txt), bundled so it works offline. */
+@font-face {
+  font-family: 'Anton';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('./fonts/anton-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: 'Anton';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('./fonts/anton-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
 /* Ink & light: black, bone white, Quincy blue, Hollow red, bankai gold. */
 :root {
   --ink: #07080c;
@@ -2443,26 +2462,35 @@ button:focus-visible {
   align-self: center;
 }
 
-/* ============================================================== The finish
- * One look across every screen: panels lit softly from above, icons in tiles
- * of their own colour, pill buttons and tabs, ornamented headings; and
- * layouts that fit any phone from 320 px wide up, so nothing ever pushes a
- * screen wider than the phone.
+/* ================================================================ The ink
+ * The game dressed like a printed manga: ink black and paper white, one red,
+ * square panels and hard offset shadows instead of soft glows, screentone for
+ * texture, a heavy condensed display face, selection shown by inverting (paper
+ * fill, ink text). Layouts fit any phone from 320 px wide up: nothing may push
+ * a screen wider than the phone.
  */
 
 :root {
-  --radius: 12px;
-  --radius-s: 9px;
-  --edge: rgba(239, 234, 224, 0.13);
-  --surface: linear-gradient(180deg, rgba(28, 31, 45, 0.95), rgba(11, 12, 19, 0.96));
-  --lift:
-    inset 0 1px 0 rgba(255, 255, 255, 0.07),
-    0 6px 18px rgba(0, 0, 0, 0.42);
+  --paper: #ece6d6;
+  --ink-0: #0a0a0c;
+  --sheet: #111114;
+  --blood: #c8102e;
+  --gold: #e3b24a;
+  --hollow: #e0203e;
+  --rule: rgba(236, 230, 214, 0.32);
+  --rule-strong: rgba(236, 230, 214, 0.75);
+  --display: 'Anton', 'Avenir Next Condensed', 'Arial Narrow', Impact, sans-serif;
+  /* Screentone: printed dots for texture. */
+  --tone: radial-gradient(rgba(236, 230, 214, 0.06) 1px, rgba(0, 0, 0, 0) 1.5px) 0 0 / 6px 6px;
+  --tone-red: radial-gradient(rgba(200, 16, 46, 0.22) 1px, rgba(0, 0, 0, 0) 1.6px) 0 0 / 5px 5px;
 }
 
 /* A child too wide is a bug to fix, never a reason to cut the screen off at the side. */
 .screen {
   overflow-x: hidden;
+  background: var(--tone), rgba(4, 4, 6, 0.74);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
 .panel {
@@ -2477,7 +2505,8 @@ button:focus-visible {
   overflow-wrap: anywhere;
 }
 
-/* The menus sit on a night of their own: Quincy blue above, a trace of Hollow red below. */
+/* The menus are a page of their own: solid ink with a fine screentone. */
+.screen.title,
 .screen.archives,
 .screen.codex,
 .screen.feats,
@@ -2486,54 +2515,93 @@ button:focus-visible {
 .screen.wardrobe,
 .screen.daily,
 .screen.story {
-  background:
-    radial-gradient(ellipse 120% 55% at 50% -8%, rgba(60, 100, 170, 0.34), rgba(0, 0, 0, 0) 62%),
-    radial-gradient(ellipse 90% 45% at 50% 108%, rgba(255, 45, 74, 0.1), rgba(0, 0, 0, 0) 62%),
-    rgba(4, 5, 9, 0.9);
+  background: var(--tone), rgba(5, 5, 7, 0.95);
 }
 
-.screen.title {
-  background:
-    radial-gradient(ellipse 115% 50% at 50% 20%, rgba(52, 92, 160, 0.42), rgba(0, 0, 0, 0) 70%),
-    radial-gradient(ellipse 80% 40% at 50% 104%, rgba(255, 45, 74, 0.1), rgba(0, 0, 0, 0) 60%),
-    rgba(3, 3, 6, 0.86);
+.screen.pause {
+  background: var(--tone), rgba(5, 5, 7, 0.86);
+}
+
+button:focus-visible {
+  outline: 2px solid var(--paper);
+  outline-offset: 2px;
 }
 
 /* ------------------------------------------------------------ Headings */
 
-/* Under every big title, a line of light with a gold diamond at its heart. */
+.board-kicker {
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: 14px;
+  letter-spacing: 0.34em;
+  color: var(--blood);
+}
+
+.board-title {
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: 40px;
+  line-height: 1.05;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--paper);
+}
+
+/* Under every title, one stroke of red brush. */
 .board-title::after {
   content: '';
   display: block;
-  width: 150px;
-  height: 10px;
-  margin: 8px auto 0;
-  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='150' height='10'%3E%3Cdefs%3E%3ClinearGradient id='a' x1='0' x2='1'%3E%3Cstop offset='0' stop-color='%239fdcff' stop-opacity='0'/%3E%3Cstop offset='1' stop-color='%239fdcff' stop-opacity='.7'/%3E%3C/linearGradient%3E%3ClinearGradient id='b' x1='1' x2='0'%3E%3Cstop offset='0' stop-color='%239fdcff' stop-opacity='0'/%3E%3Cstop offset='1' stop-color='%239fdcff' stop-opacity='.7'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect y='4.5' width='64' height='1' fill='url(%23a)'/%3E%3Crect x='86' y='4.5' width='64' height='1' fill='url(%23b)'/%3E%3Cpath d='M75 .5l4.5 4.5-4.5 4.5-4.5-4.5z' fill='%23ffcb5c'/%3E%3C/svg%3E")
+  width: 168px;
+  height: 12px;
+  margin: 6px auto 0;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='168' height='12' viewBox='0 0 168 12'%3E%3Cpath d='M1 8.2C24 5 52 3.4 84 3.1c30-.3 58 1 83 3.6-.2.9-.4 1.4-.9 1.9-26-1.6-53-2-83-1.5C53 7.6 26 9 2 10.9c-.6-.8-1-1.7-1-2.7Z' fill='%23c8102e'/%3E%3Cpath d='M30 9.4c14-1 26-1.4 38-1.5' stroke='%23c8102e' stroke-width='1' fill='none'/%3E%3C/svg%3E")
     center / contain no-repeat;
 }
 
-/* Section headings ride a hairline that fades out to either side. */
+.results.won .board-title,
+.chest-black .board-title,
+.shrine .board-title {
+  text-shadow: none;
+}
+
+.results.won .board-title {
+  color: var(--gold);
+}
+
+.results.lost .board-title {
+  color: var(--paper);
+}
+
+/* Section headings ride a hard rule on either side. */
 .section-title {
   display: flex;
   align-items: center;
   gap: 10px;
   margin-right: 0;
-  color: #b8bccb;
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: 14px;
+  letter-spacing: 0.2em;
+  color: var(--paper);
 }
 
 .section-title::before,
 .section-title::after {
   content: '';
   flex: 1;
-  height: 1px;
-  background: linear-gradient(90deg, rgba(239, 234, 224, 0), rgba(239, 234, 224, 0.28));
+  height: 2px;
+  background: var(--rule);
 }
 
-.section-title::after {
-  background: linear-gradient(90deg, rgba(239, 234, 224, 0.28), rgba(239, 234, 224, 0));
+.archives-sub {
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: 14px;
+  letter-spacing: 0.24em;
+  color: var(--paper);
 }
 
-/* -------------------------------------------------------------- Surfaces */
+/* -------------------------------------------------------------- Panels */
 
 .upgrade,
 .codex-entry,
@@ -2550,71 +2618,56 @@ button:focus-visible {
 .daily-card,
 .stage-info,
 .unlock-note,
-.install,
-.story-text {
-  border-radius: var(--radius);
-  border: 1px solid var(--edge);
-  background: var(--surface);
-  box-shadow: var(--lift);
+.install {
+  border-radius: 0;
+  border: 1.5px solid var(--rule);
+  background: var(--sheet);
+  box-shadow: none;
 }
 
-/* A row in a list carries its own colour: an edge on the left and a wash behind its icon. */
+/* A row in a list carries its colour as a solid slab down its left edge. */
 .upgrade,
 .codex-entry,
 .chapter,
 .gesang {
-  border-left: 1px solid var(--edge);
-  background:
-    linear-gradient(90deg, var(--accent-soft, rgba(159, 220, 255, 0.1)), rgba(0, 0, 0, 0) 46%),
-    var(--surface);
-  box-shadow:
-    inset 3px 0 0 var(--accent, rgba(159, 220, 255, 0.6)),
-    var(--lift);
+  border-left: 6px solid var(--accent, var(--paper));
 }
 
 .codex-entry.enemy {
-  --accent: rgba(239, 234, 224, 0.42);
-  --accent-soft: rgba(239, 234, 224, 0.06);
+  --accent: rgba(236, 230, 214, 0.55);
 }
 
 .codex-entry.boss {
-  --accent: rgba(255, 45, 74, 0.8);
-  --accent-soft: rgba(255, 45, 74, 0.12);
-  border-left: 1px solid var(--edge);
+  --accent: var(--blood);
+  border-left: 6px solid var(--blood);
 }
 
 .codex-entry.spoil {
-  border-left: 1px solid var(--edge);
+  border-left: 6px solid var(--accent, var(--gold));
 }
 
 .codex-entry.locked {
-  --accent: rgba(239, 234, 224, 0.16);
-  --accent-soft: rgba(0, 0, 0, 0);
+  --accent: rgba(236, 230, 214, 0.14);
+  border-left-color: rgba(236, 230, 214, 0.14);
 }
 
 .chapter {
   --accent: var(--quincy-soft);
-  --accent-soft: rgba(159, 220, 255, 0.1);
 }
 
 .chapter.locked {
-  --accent: rgba(239, 234, 224, 0.2);
-  --accent-soft: rgba(0, 0, 0, 0);
-  border-left-color: var(--edge);
+  border-left-color: rgba(236, 230, 214, 0.14);
 }
 
 .chapter.daily-mod {
-  --accent: var(--hollow);
-  --accent-soft: rgba(255, 45, 74, 0.12);
-  border-left-color: var(--edge);
+  border-left-color: var(--blood);
 }
 
 .gesang {
   --accent: var(--gold);
-  --accent-soft: rgba(255, 203, 92, 0.12);
 }
 
-/* Icons sit in tiles washed with their own colour. */
+/* Icons sit in square tiles of their own colour, flat. */
 .upgrade-icon,
 .codex-icon,
 .codex-portrait,
@@ -2622,9 +2675,10 @@ button:focus-visible {
 .card-icon,
 .dmg-icon {
   padding: 4px;
-  border-radius: var(--radius-s);
-  background: radial-gradient(circle at 50% 38%, var(--accent-soft, rgba(159, 220, 255, 0.14)), rgba(0, 0, 0, 0.42) 78%);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.07);
+  border-radius: 0;
+  border: 1px solid var(--rule);
+  background: var(--accent-soft, rgba(236, 230, 214, 0.06));
+  box-shadow: none;
   object-fit: contain;
 }
 
@@ -2638,8 +2692,19 @@ button:focus-visible {
   height: 46px;
 }
 
+.upgrade-name,
+.codex-name,
+.feat-name,
+.chapter-title,
+.card-title,
+.look-name {
+  font-family: var(--display);
+  font-weight: 400;
+  letter-spacing: 0.03em;
+}
+
 .upgrade-name {
-  font-size: 16.5px;
+  font-size: 18px;
 }
 
 .codex-entry {
@@ -2657,16 +2722,28 @@ button:focus-visible {
   padding: 2px;
 }
 
+.codex-name {
+  font-size: 17px;
+}
+
 .feat {
   grid-template-columns: 38px minmax(0, 1fr);
   padding: 10px 12px;
 }
 
 .feat-icon {
-  --accent-soft: rgba(255, 203, 92, 0.14);
   width: 38px;
   height: 38px;
   padding: 3px;
+}
+
+.feat-name {
+  font-size: 16px;
+}
+
+.feat.done {
+  border-color: rgba(227, 178, 74, 0.7);
+  border-left: 6px solid var(--gold);
 }
 
 .dmg-row {
@@ -2677,7 +2754,6 @@ button:focus-visible {
   width: 30px;
   height: 30px;
   padding: 2px;
-  border-radius: 8px;
 }
 
 .card-icon {
@@ -2686,11 +2762,9 @@ button:focus-visible {
 }
 
 .chip-icon {
-  border-radius: 50%;
-  background: rgba(0, 0, 0, 0.35);
+  border-radius: 0;
 }
 
-/* Level pips: rounded, and the lit ones glow. */
 .pips {
   gap: 3px;
 }
@@ -2698,53 +2772,96 @@ button:focus-visible {
 .pip,
 .card-pips .pip {
   width: 16px;
-  border-radius: 3px;
+  border-radius: 0;
+}
+
+.pip.on,
+.card-pips .pip.on {
+  box-shadow: none;
+}
+
+/* Bars: square tracks with a hard rule; fills are flat (they scale, so they are never rounded). */
+.gesang-bar,
+.feat-bar,
+.dmg-bar {
+  overflow: hidden;
+  border-radius: 0;
+}
+
+.gesang-fill,
+.dmg-fill,
+.xpfill,
+.boss-fill {
+  box-shadow: none;
+}
+
+.gesang-bar {
+  height: 8px;
+  border: 1px solid var(--rule);
+}
+
+.gesang-fill {
+  background: var(--gold);
+}
+
+.gesang-verse {
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: 46px;
+  text-shadow: 3px 3px 0 var(--blood);
+}
+
+.gesang-lore {
+  font-family: var(--serif);
 }
 
 /* -------------------------------------------------------------- Buttons */
 
 .btn {
-  border-radius: var(--radius);
-  border-color: var(--edge);
-  background: var(--surface);
-  box-shadow: var(--lift);
-  transition:
-    transform 0.12s,
-    box-shadow 0.12s;
+  border-radius: 0;
+  border: 2px solid var(--rule-strong);
+  background: var(--sheet);
+  box-shadow: 4px 4px 0 #000;
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: 19px;
+  letter-spacing: 0.1em;
+  transition: transform 0.08s, box-shadow 0.08s;
 }
 
 .btn.primary {
-  border-radius: 14px;
-  border-color: #fffaf0;
-  background: linear-gradient(180deg, #fffcf4, #e4dccc);
-  color: #07080c;
-  letter-spacing: 0.12em;
-  text-indent: 0.12em;
-  box-shadow:
-    inset 0 1px 0 #ffffff,
-    0 0 0 3px var(--ink),
-    0 0 0 4px rgba(239, 234, 224, 0.42),
-    0 10px 30px rgba(89, 184, 255, 0.28);
+  border-color: var(--paper);
+  background: var(--paper);
+  color: var(--ink-0);
+  font-size: 21px;
+  letter-spacing: 0.16em;
+  text-indent: 0.16em;
+  box-shadow: 5px 5px 0 var(--blood);
 }
 
-/* The title's Play: the one call to arms, spaced wide. */
+/* The title's Play: the one call to arms. */
 .screen.title .btn.primary {
-  font-size: 19px;
+  font-size: 28px;
   letter-spacing: 0.34em;
   text-indent: 0.34em;
+  padding: 12px 18px;
 }
 
 .btn.danger {
-  border-color: rgba(255, 45, 74, 0.35);
-  background:
-    linear-gradient(180deg, rgba(255, 45, 74, 0.12), rgba(255, 45, 74, 0.03)),
-    var(--surface);
+  border-color: var(--blood);
+  color: #ff5a6e;
+}
+
+.btn.small {
+  font-size: 15px;
+  padding: 10px 12px;
 }
 
 .row-btns {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+/* Pressed: the panel drops onto its own shadow, like a stamp. */
 .btn:active,
 .card:active,
 .nav-btn:active,
@@ -2756,59 +2873,66 @@ button:focus-visible {
 .look-chip:active,
 .trail-chip:active,
 .start-chip:active {
-  transform: scale(0.97);
+  transform: translate(3px, 3px);
 }
 
-/* Prices are gold pills with a coin; what you cannot afford yet is grey; what is done is blue. */
+.btn:active,
+.upgrade-buy:active {
+  box-shadow: 1px 1px 0 #000;
+}
+
+.btn.primary:active {
+  box-shadow: 2px 2px 0 var(--blood);
+}
+
+/* Prices: a gold block with a coin; what you cannot afford yet is an empty frame; what is done is blue. */
 .upgrade-buy {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
   min-width: 74px;
-  padding: 9px 12px;
-  border-radius: 999px;
-  border: 1px solid #ffe8a8;
-  background: linear-gradient(180deg, #ffe39a, #e2a83c);
-  color: #2a1804;
-  font-size: 14px;
+  padding: 8px 11px;
+  border-radius: 0;
+  border: 0;
+  background: var(--gold);
+  color: var(--ink-0);
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: 17px;
+  letter-spacing: 0.04em;
   white-space: nowrap;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.65),
-    0 0 14px rgba(255, 203, 92, 0.3);
-  transition: transform 0.12s;
+  box-shadow: 3px 3px 0 #000;
+  transition: transform 0.08s;
 }
 
 .upgrade-buy::before {
   content: '';
   flex: 0 0 auto;
-  width: 10px;
-  height: 10px;
+  width: 9px;
+  height: 9px;
   border-radius: 50%;
-  background: radial-gradient(circle at 35% 35%, #fff6d0, #b8780e);
-  box-shadow: 0 0 0 1px rgba(60, 30, 0, 0.35);
+  border: 2px solid var(--ink-0);
 }
 
 .upgrade-buy.poor {
-  border-color: var(--edge);
-  background: rgba(255, 255, 255, 0.04);
+  border: 1.5px solid var(--rule);
+  background: transparent;
   color: var(--muted);
   box-shadow: none;
 }
 
 .upgrade-buy.poor::before {
-  background: radial-gradient(circle at 35% 35%, #c8c2b0, #6a6458);
+  border-color: var(--muted);
 }
 
 .upgrade-buy.maxed,
 .upgrade-buy.equip,
 .upgrade-buy.equipped {
-  padding: 8px 11px;
-  border-color: rgba(159, 220, 255, 0.5);
-  background: rgba(89, 184, 255, 0.1);
+  border: 1.5px solid var(--quincy-soft);
+  background: transparent;
   color: var(--quincy-soft);
-  font-size: 13px;
-  letter-spacing: 0.04em;
+  font-size: 15px;
   box-shadow: none;
 }
 
@@ -2819,41 +2943,36 @@ button:focus-visible {
 }
 
 .upgrade-buy.equipped {
-  background: linear-gradient(180deg, rgba(89, 184, 255, 0.42), rgba(47, 134, 224, 0.26));
-  color: #f0f8ff;
-  box-shadow: 0 0 14px rgba(89, 184, 255, 0.32);
+  background: var(--quincy-soft);
+  color: var(--ink-0);
 }
 
-/* The Kaiser Gesang's verse: a wide gold button, grey until you can pay for it. */
 .btn.gesang-buy {
-  border-color: #ffe8a8;
-  background: linear-gradient(180deg, #ffe39a, #e2a83c);
-  color: #2a1804;
-  font-size: 15px;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.65),
-    0 0 18px rgba(255, 203, 92, 0.3);
+  border-color: var(--gold);
+  background: var(--gold);
+  color: var(--ink-0);
+  box-shadow: 4px 4px 0 #000;
 }
 
 .btn.gesang-buy:disabled {
   opacity: 1;
-  border-color: var(--edge);
-  background: rgba(255, 255, 255, 0.04);
+  border-color: var(--rule);
+  background: transparent;
   color: var(--muted);
   box-shadow: none;
 }
 
 /* ---------------------------------------------------------------- Tabs */
 
-/* Tabs are a pill track and the chosen one is lit; with more than fit, the track scrolls. */
+/* Tabs: one framed strip, the chosen one inverted; with more than fit, the strip scrolls. */
 .codex-tabs {
   display: flex;
-  gap: 4px;
-  padding: 4px;
-  border: 1px solid var(--edge);
-  border-radius: 999px;
-  background: rgba(7, 8, 12, 0.72);
-  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.5);
+  gap: 0;
+  padding: 0;
+  border: 2px solid var(--rule-strong);
+  border-radius: 0;
+  background: var(--sheet);
+  box-shadow: none;
   overflow-x: auto;
   scrollbar-width: none;
 }
@@ -2864,70 +2983,107 @@ button:focus-visible {
 
 .codex-tab {
   flex: 1 0 auto;
-  height: 34px;
-  padding: 0 11px;
-  border-radius: 999px;
+  height: 36px;
+  padding: 0 12px;
+  border-radius: 0;
   background: transparent;
-  font-size: 10.5px;
+  color: rgba(236, 230, 214, 0.62);
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: 15px;
   letter-spacing: 0.08em;
   white-space: nowrap;
 }
 
 .codex-tab + .codex-tab {
-  border-left: 0;
+  border-left: 1.5px solid var(--rule);
 }
 
 .codex-tab.on {
-  background: linear-gradient(180deg, rgba(216, 200, 255, 0.3), rgba(150, 120, 230, 0.15));
-  color: #f4eeff;
-  box-shadow:
-    inset 0 0 0 1px rgba(201, 168, 255, 0.6),
-    0 0 12px rgba(168, 130, 255, 0.25);
+  background: var(--paper);
+  color: var(--ink-0);
+  box-shadow: none;
 }
 
 .archives-tabs .codex-tab.on {
-  background: linear-gradient(180deg, rgba(255, 220, 140, 0.32), rgba(200, 150, 50, 0.15));
-  color: #fff2cf;
-  box-shadow:
-    inset 0 0 0 1px rgba(255, 203, 92, 0.65),
-    0 0 12px rgba(255, 203, 92, 0.22);
+  background: var(--gold);
+  color: var(--ink-0);
+  box-shadow: none;
 }
 
 /* --------------------------------------------------------------- Title */
 
-.topbar-gold,
-.topbar-feats {
-  padding: 4px 11px 4px 6px;
-  border-radius: 999px;
-  border: 1px solid rgba(255, 203, 92, 0.35);
-  background: rgba(8, 9, 14, 0.72);
-  box-shadow: 0 0 14px rgba(255, 203, 92, 0.1);
+.topbar {
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: 16px;
+  letter-spacing: 0.06em;
 }
 
+.topbar-gold,
 .topbar-feats {
-  border-color: rgba(232, 216, 176, 0.28);
+  padding: 3px 10px 3px 6px;
+  border-radius: 0;
+  border: 1.5px solid var(--rule);
+  background: var(--sheet);
+  box-shadow: none;
+}
+
+.topbar-gold {
+  border-color: rgba(227, 178, 74, 0.6);
+}
+
+.hero-portrait {
+  filter: none;
+}
+
+.title-hero .emblem {
+  opacity: 0.32;
+}
+
+/* QUINCY in heavy capitals with a red offset print; SURVIVAL reversed out of a paper slab. */
+.logo-top {
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: clamp(58px, 19vw, 86px);
+  line-height: 0.95;
+  letter-spacing: 0.08em;
+  margin-right: -0.08em;
+  text-shadow: 5px 5px 0 var(--blood);
+}
+
+.logo-bottom {
+  display: inline-block;
+  margin-top: 8px;
+  padding: 3px 12px 2px 18px;
+  background: var(--paper);
+  color: var(--ink-0);
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: clamp(15px, 4.6vw, 19px);
+  letter-spacing: 0.6em;
+  margin-right: 0;
 }
 
 .tagline {
-  margin: 0 0 4px;
+  margin: 2px 0 4px;
+  color: rgba(236, 230, 214, 0.72);
 }
 
 /*
- * Seven stages: a strip that scrolls sideways, bleeding to the screen's edges
- * and fading there. Its padding leaves room for the chosen card's glow, which
- * the strip would otherwise clip into a box.
+ * Seven stages: a strip that scrolls sideways, bleeding to the screen's edges.
+ * No mask on it (iOS Safari mis-draws the cards inside a masked scroller), and
+ * each card is its own layer so its name always paints over its picture.
  */
 .stage-row.strip {
   display: flex;
   gap: 10px;
-  margin: -10px -16px -12px;
-  padding: 18px 16px 20px;
+  margin: -6px -16px -8px;
+  padding: 8px 16px 12px;
   overflow-x: auto;
   scroll-snap-type: x mandatory;
   scroll-padding: 0 16px;
   scrollbar-width: none;
-  -webkit-mask-image: linear-gradient(90deg, rgba(0, 0, 0, 0), #000 16px, #000 calc(100% - 16px), rgba(0, 0, 0, 0));
-  mask-image: linear-gradient(90deg, rgba(0, 0, 0, 0), #000 16px, #000 calc(100% - 16px), rgba(0, 0, 0, 0));
 }
 
 .stage-row.strip::-webkit-scrollbar {
@@ -2940,26 +3096,31 @@ button:focus-visible {
 }
 
 .stage-btn {
+  isolation: isolate;
   height: 132px;
-  border-radius: 14px;
-  border-color: rgba(239, 234, 224, 0.16);
-  box-shadow: var(--lift);
-  transition:
-    transform 0.15s,
-    box-shadow 0.15s,
-    border-color 0.15s;
+  border-radius: 0;
+  border: 2px solid var(--rule);
+  box-shadow: none;
+  transition: transform 0.12s, box-shadow 0.12s;
+}
+
+.stage-vista {
+  z-index: 0;
 }
 
 .stage-btn::after {
-  inset: 26% 0 0;
-  background: linear-gradient(rgba(5, 6, 10, 0), rgba(5, 6, 10, 0.92) 78%);
+  z-index: 1;
+  inset: 40% 0 0;
+  background: linear-gradient(rgba(5, 5, 7, 0), rgba(5, 5, 7, 0.94) 60%);
 }
 
 .stage-label {
-  left: 10px;
-  right: 10px;
-  bottom: 9px;
+  z-index: 2;
+  left: 9px;
+  right: 9px;
+  bottom: 8px;
   gap: 5px;
+  transform: translateZ(0);
 }
 
 /* Names get two lines (Soul King / Palace) rather than being cut. */
@@ -2969,52 +3130,57 @@ button:focus-visible {
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  font-size: 16px;
-  line-height: 1.08;
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: 18px;
+  line-height: 1.18;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  text-shadow: 2px 2px 0 #000;
 }
 
 .stage-sub {
   align-self: flex-start;
-  padding: 2px 8px;
-  border-radius: 999px;
-  border: 1px solid rgba(239, 234, 224, 0.2);
-  background: rgba(7, 8, 12, 0.72);
-  font-size: 9.5px;
-  letter-spacing: 0.14em;
+  padding: 1px 6px;
+  border-radius: 0;
+  border: 1px solid var(--rule);
+  background: var(--ink-0);
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: 12px;
+  letter-spacing: 0.1em;
   white-space: nowrap;
 }
 
 .stage-btn.cleared .stage-sub {
-  border-color: rgba(255, 203, 92, 0.55);
+  border-color: var(--gold);
   color: var(--gold);
 }
 
 .stage-btn.on {
-  transform: translateY(-2px);
-  border-color: var(--quincy-soft);
-  box-shadow:
-    0 0 0 1px var(--quincy-soft),
-    0 0 16px rgba(89, 184, 255, 0.36),
-    var(--lift);
+  transform: translate(-2px, -2px);
+  border: 2px solid var(--paper);
+  box-shadow: 4px 4px 0 var(--blood);
 }
 
 .stage-btn.on .stage-sub {
-  border-color: var(--quincy-soft);
-  background: rgba(36, 104, 190, 0.75);
-  color: #f0f8ff;
+  border-color: var(--paper);
+  background: var(--paper);
+  color: var(--ink-0);
 }
 
 .stage-lock {
-  top: 9px;
-  right: 9px;
+  z-index: 2;
+  top: 8px;
+  right: 8px;
   width: 26px;
   height: 26px;
   padding: 3px;
-  border-radius: 50%;
-  background: rgba(7, 8, 12, 0.7);
+  border-radius: 0;
+  background: var(--ink-0);
 }
 
-/* The chosen stage, told in a card under the strip: its name and trial on top, what it holds below. */
+/* The chosen stage, told in a panel under the strip: its name and trial on top, what it holds below. */
 .stage-info {
   min-height: 0;
   padding: 10px 12px 11px 14px;
@@ -3033,24 +3199,27 @@ button:focus-visible {
 .stage-info-name {
   flex: 1;
   min-width: 0;
-  font-family: var(--serif);
-  font-size: 17px;
-  line-height: 1.15;
-  color: var(--bone);
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: 20px;
+  line-height: 1.1;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--paper);
 }
 
 .stage-info-text {
   margin: 0;
 }
 
-/* The trial stepper: a small pill beside the stage's name. */
+/* The trial stepper beside the stage's name. */
 .mode-trial {
   flex: 0 0 auto;
   grid-template-columns: 30px minmax(56px, auto) 30px;
   overflow: hidden;
-  border-color: var(--edge);
-  border-radius: 999px;
-  background: rgba(7, 8, 12, 0.72);
+  border: 1.5px solid var(--rule-strong);
+  border-radius: 0;
+  background: var(--ink-0);
 }
 
 .mode-trial .mode-step {
@@ -3060,82 +3229,88 @@ button:focus-visible {
 }
 
 .mode-trial .mode-label {
-  font-size: 14px;
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: 15px;
+  letter-spacing: 0.06em;
   white-space: nowrap;
 }
 
-/* Standard, Endless or Boss Rush: a pill track across the full width, the chosen mode lit in its own colour. */
+/* Standard, Endless or Boss Rush: one framed strip across the full width, the chosen mode inverted. */
 .mode-row {
   grid-template-columns: minmax(0, 1fr);
 }
 
 .mode-seg {
   grid-auto-columns: minmax(0, 1fr);
-  gap: 3px;
-  padding: 3px;
-  border-color: var(--edge);
-  border-radius: 999px;
-  background: rgba(7, 8, 12, 0.72);
-  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.5);
+  gap: 0;
+  padding: 0;
+  border: 2px solid var(--rule-strong);
+  border-radius: 0;
+  background: var(--sheet);
+  box-shadow: none;
 }
 
 .mode-opt {
   min-width: 0;
-  height: 32px;
+  height: 34px;
   padding: 0 6px;
   overflow: hidden;
-  border-radius: 999px;
+  border-radius: 0;
   background: transparent;
-  font-size: 11px;
-  letter-spacing: 0.1em;
+  color: rgba(236, 230, 214, 0.62);
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: 15px;
+  letter-spacing: 0.08em;
   white-space: nowrap;
   text-overflow: ellipsis;
 }
 
 .mode-opt + .mode-opt {
-  border-left: 0;
+  border-left: 1.5px solid var(--rule);
 }
 
 .mode-opt.on {
-  background: linear-gradient(180deg, rgba(120, 200, 255, 0.3), rgba(47, 134, 224, 0.16));
-  box-shadow:
-    inset 0 0 0 1px rgba(159, 220, 255, 0.6),
-    0 0 12px rgba(89, 184, 255, 0.22);
+  background: var(--paper);
+  color: var(--ink-0);
+  box-shadow: none;
 }
 
 .mode-endless.on {
-  background: linear-gradient(180deg, rgba(255, 110, 130, 0.3), rgba(200, 30, 60, 0.16));
-  box-shadow:
-    inset 0 0 0 1px rgba(255, 106, 126, 0.65),
-    0 0 12px rgba(255, 45, 74, 0.22);
+  background: var(--blood);
+  color: var(--paper);
+  box-shadow: none;
 }
 
 .mode-rush.on {
-  background: linear-gradient(180deg, rgba(255, 220, 140, 0.32), rgba(200, 150, 50, 0.15));
-  box-shadow:
-    inset 0 0 0 1px rgba(255, 203, 92, 0.65),
-    0 0 12px rgba(255, 203, 92, 0.22);
+  background: var(--gold);
+  color: var(--ink-0);
+  box-shadow: none;
 }
 
-/* The Daily Trial: a crimson card, today's status in a pill. */
+/* The Daily Trial: framed in red over red screentone, today's status in a tag. */
 .daily-card {
   grid-template-columns: 40px minmax(0, 1fr) auto;
   padding: 10px 14px 10px 10px;
-  border-color: rgba(255, 45, 74, 0.45);
-  background:
-    linear-gradient(100deg, rgba(255, 45, 74, 0.2), rgba(255, 45, 74, 0) 62%),
-    var(--surface);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.07),
-    0 6px 20px rgba(120, 0, 20, 0.28);
+  border: 2px solid var(--blood);
+  background: var(--tone-red), var(--sheet);
+  box-shadow: 4px 4px 0 #000;
 }
 
 .daily-icon {
   width: 40px;
   height: 40px;
   padding: 4px;
-  border-radius: var(--radius-s);
-  background: rgba(255, 45, 74, 0.12);
+  border-radius: 0;
+  background: var(--ink-0);
+}
+
+.daily-title {
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: 19px;
+  letter-spacing: 0.08em;
 }
 
 .daily-text .btn-note {
@@ -3145,19 +3320,21 @@ button:focus-visible {
 }
 
 .daily-status {
-  padding: 3px 9px;
-  border-radius: 999px;
-  border: 1px solid rgba(239, 234, 224, 0.22);
-  background: rgba(7, 8, 12, 0.6);
-  font-size: 10.5px;
+  padding: 2px 8px;
+  border-radius: 0;
+  border: 1.5px solid var(--rule-strong);
+  background: var(--ink-0);
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: 13px;
   white-space: nowrap;
 }
 
 .daily-status.done {
-  border-color: rgba(255, 203, 92, 0.55);
+  border-color: var(--gold);
 }
 
-/* The bottom row: five tiles that always fit, however narrow the phone. */
+/* The bottom row: five square tiles that always fit, however narrow the phone. */
 .title-nav {
   grid-template-columns: repeat(5, minmax(0, 1fr));
   grid-auto-flow: row;
@@ -3166,7 +3343,7 @@ button:focus-visible {
 .nav-btn {
   min-width: 0;
   padding: 9px 1px 8px;
-  border-radius: 14px;
+  box-shadow: 3px 3px 0 #000;
 }
 
 .nav-icon {
@@ -3177,24 +3354,48 @@ button:focus-visible {
 .nav-label {
   max-width: 100%;
   overflow: hidden;
-  font-size: clamp(7.5px, 2.35vw, 10px);
-  letter-spacing: 0.04em;
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: clamp(10px, 3.1vw, 13px);
+  letter-spacing: 0.05em;
   white-space: nowrap;
   text-overflow: ellipsis;
 }
 
 .nav-btn.has-dot::after {
-  right: 8px;
+  top: 5px;
+  right: 6px;
+  border-radius: 0;
+  transform: rotate(45deg);
+  box-shadow: none;
 }
 
 .wardrobe-pill {
-  padding: 3px 12px;
-  border-radius: 999px;
+  padding: 2px 10px;
+  border-radius: 0;
+  background: var(--ink-0);
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: 13px;
+  letter-spacing: 0.14em;
+}
+
+.wardrobe-pill.has-dot::after {
+  border-radius: 0;
+  transform: rotate(45deg);
+  box-shadow: none;
 }
 
 .medal {
-  width: 15px;
-  height: 15px;
+  width: 14px;
+  height: 14px;
+  border-radius: 0;
+  transform: rotate(45deg);
+}
+
+.medal.got {
+  background: var(--c);
+  box-shadow: none;
 }
 
 .collection-text {
@@ -3207,11 +3408,15 @@ button:focus-visible {
 .gold-line {
   align-self: center;
   max-width: 100%;
-  padding: 6px 16px 6px 8px;
-  border-radius: 18px;
-  border: 1px solid rgba(255, 203, 92, 0.4);
-  background: rgba(8, 9, 14, 0.72);
-  box-shadow: 0 0 20px rgba(255, 203, 92, 0.12);
+  padding: 4px 14px 4px 8px;
+  border-radius: 0;
+  border: 1.5px solid var(--gold);
+  background: var(--ink-0);
+  box-shadow: 3px 3px 0 #000;
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: 18px;
+  letter-spacing: 0.04em;
   text-align: center;
 }
 
@@ -3219,39 +3424,26 @@ button:focus-visible {
   flex: 0 0 auto;
 }
 
+.armory-rarity {
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: 12px;
+}
+
 .armory-row.on {
-  border-color: rgba(159, 220, 255, 0.55);
-  box-shadow:
-    inset 3px 0 0 var(--quincy-soft),
-    0 0 0 1px rgba(159, 220, 255, 0.35),
-    0 0 18px rgba(89, 184, 255, 0.2);
-}
-
-/* Bars are rounded tracks; the fill is clipped by them (it scales, so it cannot be rounded itself). */
-.gesang-bar,
-.feat-bar,
-.dmg-bar {
-  overflow: hidden;
-  border-radius: 999px;
-}
-
-.gesang-bar {
-  height: 8px;
-}
-
-.gesang-verse {
-  font-size: 40px;
+  border-color: var(--quincy-soft);
+  box-shadow: 4px 4px 0 rgba(95, 170, 230, 0.55);
 }
 
 .start-chip {
-  border-radius: 999px;
+  border-radius: 0;
 }
 
 .start-chip.on {
-  border-color: var(--quincy-soft);
-  box-shadow:
-    inset 0 0 0 1px var(--quincy-soft),
-    0 0 14px rgba(89, 184, 255, 0.28);
+  border-color: var(--paper);
+  background: var(--paper);
+  color: var(--ink-0);
+  box-shadow: none;
 }
 
 /* --------------------------------------------------------------- Lists */
@@ -3261,42 +3453,52 @@ button:focus-visible {
   gap: 8px;
 }
 
-.feat.done {
-  border-color: rgba(255, 203, 92, 0.45);
-  background:
-    linear-gradient(90deg, rgba(255, 203, 92, 0.14), rgba(0, 0, 0, 0) 55%),
-    var(--surface);
-  box-shadow:
-    inset 3px 0 0 var(--gold),
-    var(--lift);
+.codex-sub,
+.chapter-kicker,
+.feat-reward {
+  font-family: var(--display);
+  font-weight: 400;
+  letter-spacing: 0.1em;
 }
 
 .chapter {
-  padding: 13px 14px 13px 16px;
+  padding: 13px 14px 13px 14px;
+}
+
+.chapter-title {
+  font-size: 20px;
 }
 
 .look-chip.on,
 .trail-chip.on {
   border-color: var(--gold);
-  box-shadow:
-    inset 0 0 0 1px var(--gold),
-    0 0 16px rgba(255, 203, 92, 0.28);
+  box-shadow: 3px 3px 0 rgba(227, 178, 74, 0.6);
 }
 
-/* The story reads like a page: a gold initial opens the first paragraph. */
+.look-chip,
+.trail-chip {
+  border-radius: 0;
+}
+
+/* The story is printed on a page: paper, ink, a red initial. */
 .story-text {
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0)),
-    rgba(9, 10, 15, 0.78);
+  border-radius: 0;
+  border: 0;
+  background: var(--paper);
+  box-shadow: 6px 6px 0 #000;
+}
+
+.story-text p {
+  color: #1b1916;
 }
 
 .story-text p:first-child::first-letter {
   float: left;
-  margin: 5px 7px 0 0;
-  font-size: 2.6em;
+  margin: 4px 7px 0 0;
+  font-family: var(--display);
+  font-size: 2.7em;
   line-height: 0.82;
-  color: var(--gold);
-  text-shadow: 0 0 12px rgba(255, 203, 92, 0.45);
+  color: var(--blood);
 }
 
 /* ------------------------------------------------- Settings, pause, results */
@@ -3309,21 +3511,29 @@ button:focus-visible {
 .toggle-switch {
   flex: 0 0 auto;
   width: 46px;
-  height: 26px;
-  border-radius: 999px;
-  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.5);
+  height: 24px;
+  border-radius: 0;
+  border: 1.5px solid var(--rule-strong);
+  background: var(--ink-0);
 }
 
 .toggle-switch::after {
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+  top: 2.5px;
+  left: 2.5px;
+  width: 16px;
+  height: 16px;
+  border-radius: 0;
+  background: rgba(236, 230, 214, 0.55);
 }
 
 .toggle.on .toggle-switch {
-  background: linear-gradient(180deg, #6cc4ff, #2f86e0);
-  box-shadow: 0 0 12px rgba(89, 184, 255, 0.45);
+  background: var(--paper);
+  box-shadow: none;
+}
+
+.toggle.on .toggle-switch::after {
+  background: var(--ink-0);
+  transform: translateX(22px);
 }
 
 .stats {
@@ -3332,94 +3542,188 @@ button:focus-visible {
 }
 
 .stat {
-  padding: 13px 8px 11px;
-  border-top: 2px solid rgba(159, 220, 255, 0.45);
+  padding: 12px 8px 10px;
+  border-top: 4px solid var(--quincy-soft);
 }
 
 .stat-value {
-  font-size: 27px;
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: 32px;
+}
+
+.stat-label {
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: 13px;
+  letter-spacing: 0.12em;
 }
 
 .results.won .stat {
-  border-top-color: rgba(255, 203, 92, 0.6);
+  border-top-color: var(--gold);
 }
 
 .results.lost .stat {
-  border-top-color: rgba(255, 45, 74, 0.45);
+  border-top-color: var(--blood);
+}
+
+.results-portrait {
+  filter: none;
+}
+
+.results.lost .results-portrait {
+  filter: grayscale(1);
 }
 
 .chip {
-  padding: 3px 11px 3px 3px;
-  border-radius: 999px;
+  padding: 3px 10px 3px 3px;
 }
 
 .chip.bankai {
-  border-color: rgba(255, 203, 92, 0.6);
-  box-shadow:
-    0 0 12px rgba(255, 203, 92, 0.18),
-    var(--lift);
+  border-color: var(--gold);
 }
 
 .unlock-note {
-  border-color: rgba(255, 203, 92, 0.5);
-  background:
-    linear-gradient(90deg, rgba(255, 203, 92, 0.12), rgba(255, 203, 92, 0.02)),
-    var(--surface);
+  border: 2px solid var(--gold);
+  color: var(--gold);
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: 16px;
+  letter-spacing: 0.04em;
 }
 
 .install {
   border-style: dashed;
-  border-color: rgba(159, 220, 255, 0.45);
+  border-color: var(--rule-strong);
 }
 
 /* --------------------------------------------------------------- Boards */
 
 .card {
   overflow: hidden;
-  border-radius: 14px;
-  border-color: rgba(239, 234, 224, 0.42);
-  background:
-    linear-gradient(90deg, var(--accent-soft, rgba(159, 220, 255, 0.08)), rgba(0, 0, 0, 0) 50%),
-    linear-gradient(180deg, rgba(30, 33, 48, 0.97), rgba(10, 11, 17, 0.98));
+  border-radius: 0;
+  border: 2px solid var(--paper);
+  background: var(--sheet);
+  box-shadow: 5px 5px 0 #000;
+}
+
+.card::before {
+  width: 7px;
+  box-shadow: none;
+}
+
+.card-title {
+  font-size: 21px;
+}
+
+.card.tone-attr {
+  border-color: var(--quincy-soft);
+  box-shadow: 5px 5px 0 rgba(95, 170, 230, 0.55);
+}
+
+.card.tone-pact {
+  border-color: var(--quincy-soft);
+  box-shadow: 5px 5px 0 #000;
+}
+
+.card.tone-bankai,
+.card.tone-legendary {
+  border-color: var(--gold);
+  box-shadow: 5px 5px 0 rgba(227, 178, 74, 0.55);
 }
 
 .card.tone-resonance {
-  background:
-    linear-gradient(135deg, rgba(255, 203, 92, 0.14), rgba(89, 184, 255, 0.14)),
-    linear-gradient(180deg, rgba(30, 33, 48, 0.97), rgba(10, 11, 17, 0.98));
+  border-color: var(--gold);
+  background: var(--tone), var(--sheet);
+  box-shadow: 5px 5px 0 rgba(95, 170, 230, 0.55);
+}
+
+.card.tone-resonance .card-title {
+  text-shadow: none;
 }
 
 .card-badge,
 .card-note {
-  border-radius: 999px;
+  border-radius: 0;
+  font-family: var(--display);
+  font-weight: 400;
+  letter-spacing: 0.06em;
 }
 
 .card-badge {
-  padding: 3px 9px;
+  padding: 2px 7px;
+  font-size: 13px;
 }
 
 .card-note {
-  padding: 2px 9px;
+  padding: 1px 7px;
+  font-size: 13px;
 }
 
 .board-tip {
-  border-radius: 0 var(--radius-s) var(--radius-s) 0;
+  border-left: 5px solid var(--quincy-soft);
+  background: var(--sheet);
 }
 
-/* Paused, the field fades further back, so the menu never reads over the HUD. */
-.screen.pause {
-  background: rgba(3, 3, 6, 0.8);
+/* Title cards over the field: a band of ink between two hard rules, the title in heavy capitals. */
+.banner {
+  background: rgba(6, 6, 8, 0.94);
+  border-top: 2px solid var(--paper);
+  border-bottom: 2px solid var(--paper);
+}
+
+.banner-kicker {
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: 15px;
+}
+
+.banner-title {
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: clamp(30px, 9.5vw, 44px);
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  text-shadow: 3px 3px 0 var(--blood) !important;
+}
+
+/* First-time tips speak in a manga balloon: paper, ink, a hard shadow. */
+.tip-bubble {
+  border-radius: 0;
+  border: 2px solid #000;
+  background: var(--paper);
+  color: var(--ink-0);
+  font-weight: 600;
+  box-shadow: 4px 4px 0 #000;
+}
+
+.toast {
+  border-radius: 0;
+  border: 2px solid var(--rule-strong);
+  background: var(--ink-0);
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: 16px;
+  letter-spacing: 0.04em;
+  box-shadow: 3px 3px 0 #000;
+}
+
+.toast.boss {
+  border-color: var(--blood);
+  box-shadow: 3px 3px 0 var(--blood);
 }
 
 /* --------------------------------------------------------------- HUD */
 
-/* The HUD reads over any ground: a soft shade along the top of the field, the clock on a dark pill. */
-.hud::before {
-  content: '';
-  position: absolute;
-  inset: 0 0 -28px;
-  z-index: -1;
-  background: linear-gradient(rgba(3, 3, 6, 0.42), rgba(3, 3, 6, 0));
+.xpbar {
+  height: 9px;
+  border-radius: 0;
+  border: 1.5px solid var(--rule-strong);
+  background: var(--ink-0);
+}
+
+.xpfill {
+  background: #8fd0ff;
 }
 
 /* The clock stays centred; on a narrow phone the counters on the left wrap rather than push it aside. */
@@ -3431,39 +3735,91 @@ button:focus-visible {
   flex-wrap: wrap;
   row-gap: 4px;
   min-width: 0;
-}
-
-.hud-timer {
-  padding: 1px 12px 2px;
-  border-radius: 999px;
-  background: rgba(7, 8, 12, 0.45);
-}
-
-.xpbar,
-.boss-track {
-  border-radius: 999px;
+  font-family: var(--display);
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  text-shadow: 2px 2px 0 #000;
 }
 
 .hud-level {
-  border-radius: 8px;
+  border-radius: 0;
+  border: 1.5px solid var(--rule-strong);
+  background: var(--ink-0);
+  font-family: var(--display);
+  font-size: 19px;
+  text-shadow: none;
+}
+
+.hud-level::before {
+  font-family: var(--display);
+  font-weight: 400;
+}
+
+.hud-kills,
+.hud-almighty,
+.hud-rush {
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: 15px;
+}
+
+.hud-timer {
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: 30px;
+  letter-spacing: 0.05em;
+  text-shadow:
+    2px 2px 0 #000,
+    -1px -1px 0 #000,
+    1px -1px 0 #000,
+    -1px 1px 0 #000;
 }
 
 .tray-item {
-  border-radius: 7px;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.tray-item.awake,
+.tray-item.ultimate,
+.tray-item.fragment {
+  box-shadow: none;
 }
 
 .icon-btn {
-  border-radius: 12px;
+  border-radius: 0;
+  border: 1.5px solid var(--rule-strong);
+  background: var(--ink-0);
 }
 
 .boss-portrait {
-  border-radius: 10px;
+  border-radius: 0;
+  border: 1.5px solid var(--blood);
+  background: var(--ink-0);
 }
 
-.toast {
-  border-radius: 999px;
+.boss-name {
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: 16px;
+  letter-spacing: 0.08em;
+  text-shadow: 2px 2px 0 #000;
 }
 
-.tip-bubble {
-  border-radius: var(--radius);
+.boss-track {
+  height: 9px;
+  border-radius: 0;
+  border: 1.5px solid var(--blood);
+  background: var(--ink-0);
+}
+
+.boss-fill {
+  background: var(--blood);
+}
+
+.banner.bankai .banner-title,
+.banner.almighty .banner-title,
+.banner.spoil .banner-title,
+.banner.fragment .banner-title {
+  text-shadow: 3px 3px 0 #7a5410 !important;
 }
