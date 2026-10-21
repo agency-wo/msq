@@ -9,6 +9,11 @@
  * with a medallion, the bonds between the knights themselves (Uryū and
  * Haschwalth, Giselle and Bambietta, Bazz-B and Haschwalth), Gerard Valkyrie
  * and the Soul King's heart, and the Emperor's own powers with The Almighty.
+ * The newest follow the Quincy arts themselves (Uryū's silver arrowhead and
+ * Sankt Zwinger, Quilge's Sklaverei, Haschwalth's Freund Schild, the
+ * Emperor's Blut Vene Anhaben) and the stolen bankai with the letters that
+ * suit them. A partner can be a passive (Blut Vene, Blut Arterie): it then
+ * resonates at its last level.
  */
 
 export interface ResonanceDef {
@@ -21,7 +26,7 @@ export interface ResonanceDef {
   letters: string;
   desc: string;
   color: string;
-  /** Levels each power needs (default: its last level). Bankai resonate from Lv 3. */
+  /** Levels each power needs (default: its last level; a passive's last level too). Bankai resonate from Lv 3. */
   needA?: number;
   needB?: number;
   /** From the story, not one of the nine core pairs: an attack can have more than one of these. */
@@ -306,6 +311,88 @@ export const RESONANCES: readonly ResonanceDef[] = [
     letters: 'AA',
     desc: 'The Emperor named Uryū his successor and gave him the letter A. A rewritten future leaves your wounds out: you heal what you were missing (up to half your health), and everything on screen loses that share of its health (bosses a quarter).',
     color: '#e8f4ff',
+    story: true,
+  },
+  {
+    id: 'silverarrow',
+    name: 'Silver Arrowhead',
+    a: 'heilig',
+    b: 'antithesis',
+    letters: 'HA',
+    desc: 'Uryū’s arrowhead of silver held the Almighty still for one instant. Every sixth volley looses a silver arrow at the strongest enemy near you: it pierces everything in its path, strikes five times as hard, and freezes what it hits (a boss loses a moment before its next move).',
+    color: '#e6eef8',
+    story: true,
+  },
+  {
+    id: 'sanktzwinger',
+    name: 'Kirchenlied: Sankt Zwinger',
+    a: 'seele',
+    b: 'jail',
+    letters: 'SJ',
+    desc: 'A Quincy hymn: a cage of light pinned at the points of a star. Every cage is set with five Seele Schneider, and they cut everything it holds on every tick.',
+    color: '#bfe6ff',
+    story: true,
+  },
+  {
+    id: 'sklaverei',
+    name: 'Sklaverei',
+    a: 'jail',
+    b: 'vollstandig',
+    letters: 'JV',
+    desc: 'Quilge Opie hunted Hueco Mundo with Sklaverei, forcing the reishi around him to serve. While Quincy: Vollständig shines, your cages drain their prisoners for twice the damage, and every soul a cage takes heals you a little.',
+    color: '#d8f0ff',
+    story: true,
+  },
+  {
+    id: 'freundschild',
+    name: 'Freund Schild',
+    a: 'balance',
+    b: 'iron',
+    letters: 'BI',
+    desc: 'Freund Schild is Haschwalth’s Vollständig: a sword, and a shield that hands misfortune back. When The Iron turns a blow aside, The Balance repays it three times over to everything near you, and throws it back.',
+    color: '#dfe7f2',
+    story: true,
+  },
+  {
+    id: 'anhaben',
+    name: 'Blut Vene Anhaben',
+    a: 'vene',
+    b: 'almighty',
+    letters: 'BA',
+    desc: 'The Emperor spreads his Blut Vene past his own skin, and nothing that stands close lasts long in it. Every half second a ring of blood around you wounds every enemy inside, and heals you for each one.',
+    color: '#ff5a6e',
+    story: true,
+  },
+  {
+    id: 'hyotenhyakkaso',
+    name: 'Hyōten Hyakkasō',
+    a: 'wind',
+    b: 'hyorinmaru',
+    letters: 'WH',
+    desc: 'Cang Du stole Hyōrinmaru; its flowers of ice fall from the frozen heavens on The Wind’s gusts. Everything a gust touches freezes for a moment.',
+    color: '#bfefff',
+    needB: 3,
+    story: true,
+  },
+  {
+    id: 'galvano',
+    name: 'Twin Storms',
+    a: 'thunder',
+    b: 'gonryo',
+    letters: 'TG',
+    desc: 'Candice’s thunderbolts and the black clouds of Kōkō Gonryō Rikyū, the bankai Driscoll stole. Every third cast of The Thunderbolt, Gonryō answers with six bolts of its own, half again as hard as either storm alone.',
+    color: '#fff3b8',
+    needB: 3,
+    story: true,
+  },
+  {
+    id: 'ironfist',
+    name: 'Arterie Fist',
+    a: 'power',
+    b: 'arterie',
+    letters: 'PA',
+    desc: 'The Power with the Quincy’s offensive Blut running in it. Every punch hits 12% harder for each level of Blut Arterie, and its shockwave throws enemies twice as far.',
+    color: '#ff8a7a',
     story: true,
   },
 ];

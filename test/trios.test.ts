@@ -59,7 +59,7 @@ describe('resonances of three', () => {
     // The Bambies and the Schutzstaffel are who the story says they are.
     expect(['explode', 'thunder', 'glutton'].map((p) => POWER_BY_ID.get(p)?.credit)).toEqual(['Bambietta Basterbine', 'Candice Catnipp', 'Liltotto Lamperd']);
     expect(['xaxis', 'death', 'miracle'].map((p) => POWER_BY_ID.get(p)?.credit)).toEqual(['Lille Barro', 'Askin Nakk Le Vaar', 'Gerard Valkyrie']);
-    expect(RESONANCES.length).toBe(26);
+    expect(RESONANCES.length).toBe(34);
   });
 
   it('is offered only once all three are strong enough', () => {

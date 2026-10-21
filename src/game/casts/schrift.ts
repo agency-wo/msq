@@ -13,6 +13,7 @@ import {
   FX_RING,
   FX_SHOCK,
   HOLD_FEAR,
+  HOLD_FREEZE,
   LAYER_ADD,
   MF_CRATER,
   MF_SHATTER,
@@ -34,6 +35,7 @@ import {
   PK_THORN,
   ZF_BLAZE,
   ZF_FOLLOW,
+  ZF_FREEZE,
   ZF_PULL,
   ZF_PUSH,
   ZF_SPREAD,
@@ -82,7 +84,58 @@ export function castBolt(w: World, ps: PowerState, slot: number): void {
       w.spawnMark(MK_RAIN, MS_CIRCLE, E.x[j], E.y[j], 28 * w.stats.size, 0, 0, 0.22 + k * 0.06, st.damage * 0.6, 0);
     }
   }
+  // Silver Arrowhead (resonance): every sixth volley looses a silver arrow at the strongest enemy near you.
+  if (w.resonances.has('silverarrow') && ++w.silverVolleys % SILVER_EVERY === 0) silverArrow(w, st.damage * SILVER_DAMAGE);
   w.sound('shoot');
+}
+
+/** Silver Arrowhead: one volley in this many carries the silver arrow, which hits this many times as hard as an arrow. */
+export const SILVER_EVERY = 6;
+export const SILVER_DAMAGE = 5;
+
+/**
+ * The silver arrow: straight at the strongest enemy within reach (a boss
+ * before anything), through everything on the way. What it hits freezes;
+ * a boss cannot be held, so it loses a moment before its next move instead.
+ */
+function silverArrow(w: World, dmg: number): void {
+  const E = w.en;
+  const p = w.player;
+  const R = 420;
+  const n = w.grid.query(p.x - R, p.y - R, p.x + R, p.y + R, w.qbuf);
+  let best = -1;
+  let score = 0;
+  for (let k = 0; k < n; k++) {
+    const j = w.qbuf[k];
+    if (E.dead[j]) continue;
+    const dx = E.x[j] - p.x;
+    const dy = E.y[j] - p.y;
+    if (dx * dx + dy * dy > R * R) continue;
+    const s = (E.flags[j] & FLAG_BOSS ? 1e12 : 0) + E.maxHp[j];
+    if (s > score) {
+      score = s;
+      best = j;
+    }
+  }
+  if (best < 0) return;
+  const tx = E.x[best];
+  const ty = E.y[best];
+  const ang = Math.atan2(ty - p.y, tx - p.x);
+  const len = Math.hypot(tx - p.x, ty - p.y) + 60;
+  const m = enemiesOnSegment(w, p.x, p.y, ang, len, 10);
+  const hit: number[] = [];
+  for (let k = 0; k < m; k++) hit.push(w.qout[k]);
+  for (const j of hit) {
+    w.damageEnemy(j, j === best ? dmg : dmg * 0.5, 60, p.x, p.y);
+    if (E.dead[j]) continue;
+    if (E.flags[j] & FLAG_BOSS) E.atkT[j] += 0.6;
+    else w.applyHold(j, 1, HOLD_FREEZE);
+  }
+  const cos = Math.cos(ang);
+  const sin = Math.sin(ang);
+  w.spawnFx(FX_BEAMH, p.x + (cos * len) / 2, p.y + (sin * len) / 2, 0, 0, 0.28, len, len, 1, ang, 0, 0xe6eef8, LAYER_ADD, 0, 0, 12);
+  w.spawnFx(FX_RING, tx, ty, 0, 0, 0.32, 14, 80, 1, 0, 0, 0xffffff, LAYER_ADD);
+  w.sound('strike');
 }
 
 // --------------------------------------------------------- Seele Schneider
@@ -209,7 +262,24 @@ export function castStrike(w: World, ps: PowerState): void {
     fired++;
   }
   if (fired === 0) ps.timer = 0.25;
-  else w.sound('strike');
+  else {
+    w.sound('strike');
+    // Twin Storms (resonance): every third cast, Gonryō answers with bolts of its own.
+    if (w.resonances.has('galvano') && ++w.galvanoCasts % 3 === 0) twinStorms(w, st.damage);
+  }
+}
+
+/** Twin Storms: six bolts of Kōkō Gonryō Rikyū's lightning on enemies near you, half again as hard as the stronger of the two. */
+function twinStorms(w: World, thunderDmg: number): void {
+  const g = w.power('gonryo');
+  if (!g) return;
+  const R = g.stats.radius * g.stats.size * w.stats.size;
+  const dmg = Math.max(thunderDmg, g.stats.damage) * 1.5;
+  for (let k = 0; k < 6; k++) {
+    const j = w.randomEnemyNear(320);
+    if (j < 0) break;
+    strikeAt(w, w.en.x[j], w.en.y[j], dmg, R, null);
+  }
 }
 
 /** One bolt of lightning: area damage plus the Lv 7 effects. Also used by the Sprenger Pentacle and Gonryō Rikyū. */
@@ -539,7 +609,9 @@ export function castGust(w: World, ps: PowerState): void {
   const life = st.duration * w.stats.duration * (gale ? 1.6 : 1);
   // Firestorm (resonance): the gusts carry The Heat's fire.
   const heat = w.resonances.has('firestorm') ? w.power('heat') : undefined;
-  const flags = ZF_WANDER | (ps.attr === 'vacuum' ? ZF_PULL : ZF_PUSH) | (heat ? ZF_BLAZE : 0);
+  // Hyōten Hyakkasō (resonance): the gusts carry ice, and freeze what they touch.
+  const snow = w.resonances.has('hyotenhyakkaso');
+  const flags = ZF_WANDER | (ps.attr === 'vacuum' ? ZF_PULL : ZF_PUSH) | (heat ? ZF_BLAZE : 0) | (snow ? ZF_FREEZE : 0);
   const p = w.player;
   for (let k = 0; k < count; k++) {
     const a = w.rng.next() * TAU;

@@ -81,6 +81,7 @@ export function generateOffers(input: OfferInput, rng: Rng, count = 3): Offer[] 
       pool.push({ item: { kind: 'power-up', id: def.id, to: level + 1 }, w: (def.group === 'bankai' || def.group === 'fragment' ? 5 : 3) + level });
     }
   }
+  const ownedPassives = new Map(input.passives.map((p) => [p.id, p.level]));
   // A resonance is offered, weighted high, once all of its powers (two, or three) are strong enough (by default, at their last level).
   for (const r of input.resonances ?? []) {
     if (input.ownedResonances?.has(r.id)) continue;
@@ -91,11 +92,13 @@ export function generateOffers(input: OfferInput, rng: Rng, count = 3): Offer[] 
     if (r.c) parts.push([r.c, r.needC]);
     const ready = parts.every(([id, need]) => {
       const def = defs.get(id);
-      return !!def && (ownedPowers.get(id) ?? 0) >= (need ?? def.maxLevel);
+      if (def) return (ownedPowers.get(id) ?? 0) >= (need ?? def.maxLevel);
+      // A passive partner (Blut Vene, Blut Arterie) resonates at its last level.
+      const passive = input.passiveDefs.find((d) => d.id === id);
+      return !!passive && (ownedPassives.get(id) ?? 0) >= (need ?? passive.max);
     });
     if (ready) pool.push({ item: { kind: 'resonance', id: r.id }, w: 9 });
   }
-  const ownedPassives = new Map(input.passives.map((p) => [p.id, p.level]));
   for (const def of input.passiveDefs) {
     const level = ownedPassives.get(def.id) ?? 0;
     if (level >= def.max) continue;

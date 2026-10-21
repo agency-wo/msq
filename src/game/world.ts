@@ -632,6 +632,7 @@ export class World {
     updateMarks(this);
     updateZones(this);
     this.dmgSlot = 255;
+    if (this.resonances.has('anhaben')) this.anhaben();
     updateEnemyBullets(this);
     this.updateOrbs();
     this.updatePickups();
@@ -1792,6 +1793,10 @@ export class World {
       if (this.ironBurst > 0) this.credit('iron', () => this.shockwave(140, this.ironBurst, 300));
       // Frozen Steel: the turned blow bursts into ice.
       if (this.resonances.has('ironice')) this.credit('hyorinmaru', () => this.frostBurst());
+      // Freund Schild: the turned blow is handed back three times over.
+      if (this.resonances.has('freundschild') && this.balanceDmg > 0) {
+        this.credit('balance', () => this.shockwave(this.balanceR * 1.15, this.balanceDmg * 3, 360));
+      }
       return;
     }
     const hpBefore = p.hp;
@@ -2311,6 +2316,43 @@ export class World {
     this.sound('nuke');
   }
 
+  /** Resonance counters: volleys toward the next silver arrow, Thunderbolt casts toward the next Twin Storms. */
+  silverVolleys = 0;
+  galvanoCasts = 0;
+  private anhabenT = 0;
+  private sklavereiT = -1;
+
+  /** Blut Vene Anhaben: the ring's reach, its wound per tick, and the share of max health each enemy in it feeds you (capped per tick). */
+  static readonly ANHABEN_R = 110;
+  static readonly ANHABEN_FEED = 0.0015;
+  static readonly ANHABEN_FEED_MAX = 0.015;
+
+  /** Every half second, Blut Vene Anhaben wounds everything in the ring around you and feeds you for each. */
+  private anhaben(): void {
+    this.anhabenT -= DT;
+    if (this.anhabenT > 0) return;
+    this.anhabenT = 0.5;
+    const p = this.player;
+    const R = World.ANHABEN_R * this.stats.size;
+    const n = enemiesInCircle(this, p.x, p.y, R);
+    if (n === 0) return;
+    const hit: number[] = [];
+    for (let k = 0; k < n; k++) hit.push(this.qout[k]);
+    const dmg = 10 + this.level * 1.5;
+    this.credit('almighty', () => {
+      for (const j of hit) this.damageEnemy(j, dmg, 0, p.x, p.y);
+    });
+    this.healFlat(Math.min(p.maxHp * World.ANHABEN_FEED_MAX, hit.length * p.maxHp * World.ANHABEN_FEED));
+    this.spawnFx(FX_RING, 0, 0, 0, 0, 0.3, R * 0.9, R * 2.1, 0.5, 0, 0, 0xc8102e, LAYER_ADD, 0, 1);
+  }
+
+  /** Sklaverei: a soul a cage takes heals you 1% (at most five times a second). */
+  sklavereiFeed(): void {
+    if (this.t - this.sklavereiT < 0.2) return;
+    this.sklavereiT = this.t;
+    this.heal(0.01);
+  }
+
   heal(fraction: number): void {
     const p = this.player;
     p.hp = Math.min(p.maxHp, p.hp + p.maxHp * fraction);
@@ -2652,7 +2694,7 @@ export class World {
     this.resonances.add(id);
     this.refreshTrios();
     const sub = resonanceParts(def)
-      .map((p) => POWER_BY_ID.get(p)?.name ?? p)
+      .map((p) => POWER_BY_ID.get(p)?.name ?? PASSIVE_BY_ID.get(p)?.name ?? p)
       .join(' + ');
     this.banners.push({ kind: 'resonance', title: def.name, sub });
     this.sound('bankai');

@@ -70,12 +70,19 @@ import type { World } from './world';
 
 // ------------------------------------------------------------------ zones
 
+/** Sankt Zwinger: each blade cuts for this share of a Seele Schneider blade, every cage tick. */
+export const ZWINGER_CUT = 0.6;
+
 export function updateZones(w: World): void {
   const Z = w.zones;
   const E = w.en;
   const p = w.player;
   const plague = w.resonances.has('plague');
   const nightmare = w.resonances.has('nightmare');
+  // Sankt Zwinger: the blades at a cage's points cut what it holds. Sklaverei: under Vollständig, cages drain.
+  const seele = w.resonances.has('sanktzwinger') ? w.power('seele') : undefined;
+  const zwinger = seele ? seele.stats.damage * ZWINGER_CUT : 0;
+  const sklaverei = w.resonances.has('sklaverei') && w.vollT > 0;
   for (let i = Z.n - 1; i >= 0; i--) {
     w.dmgSlot = Z.src[i];
     Z.life[i] -= DT;
@@ -137,6 +144,13 @@ export function updateZones(w: World): void {
       // Plague: whatever breathes the cloud is infected before the tick lands, so a cloud kill rises.
       if (plague && kind === ZK_POISON) E.infT[j] = Math.max(E.infT[j], 3);
       w.damageEnemy(j, Z.dmg[i], 0, x, y, noCrit);
+      if (kind === ZK_CAGE) {
+        if (zwinger > 0 && !E.dead[j]) w.damageEnemy(j, zwinger, 0, x, y);
+        if (sklaverei && !E.dead[j]) {
+          w.damageEnemy(j, Z.dmg[i], 0, x, y, true);
+          if (E.dead[j]) w.sklavereiFeed();
+        }
+      }
       if (blaze && !E.dead[j]) w.applyDot(j, 3, Z.aux[i], DOT_FIRE);
       if (nightmare && kind === ZK_CAGE && !E.dead[j]) w.applyVuln(j, Z.tickInt[i] + 0.2, 0.5);
       if (E.dead[j]) {

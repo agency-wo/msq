@@ -1647,7 +1647,7 @@ function resonanceNote(id: string, owned: ReadonlySet<string>): string | undefin
 /** "The Explode + The Thunderbolt + The Glutton". */
 function partsLine(r: ResonanceDef): string {
   return resonanceParts(r)
-    .map((p) => POWER_BY_ID.get(p)?.name ?? p)
+    .map((p) => POWER_BY_ID.get(p)?.name ?? PASSIVE_BY_ID.get(p)?.name ?? p)
     .join(' + ');
 }
 

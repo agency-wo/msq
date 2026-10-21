@@ -88,7 +88,16 @@ The Glutton: each strike hurries the other two), the Schutzstaffel (The X-Axis
 and The Deathdealing grow with your wounds beside The Miracle), Licht Regen
 (Heilig Pfeil, Seele Schneider and Quincy: Vollständig: arrows of light rain
 while the wings shine) and the Soul King, Whole (his three Fragments answer
-twice as often). Twenty-six in all.
+twice as often). The Quincy arts resonate as well: Uryū's silver arrowhead
+(Heilig Pfeil with The Antithesis: a silver arrow freezes the strongest enemy),
+the hymn Sankt Zwinger (Seele Schneider set at the points of The Jail's cages),
+Quilge Opie's Sklaverei (under Vollständig, cages drain their prisoners and
+feed you), Haschwalth's Freund Schild (a blow The Iron turns aside is handed
+back by The Balance), and the Emperor's Blut Vene Anhaben (Blut Vene spread
+round you with The Almighty). Two more take a stolen bankai: Hyōrinmaru's
+Hyōten Hyakkasō freezes The Wind's gusts, and Gonryō Rikyū answers The
+Thunderbolt with its own storm. Blut Arterie runs in The Power's fists.
+A passive partner resonates at its last level. Thirty-four in all.
 
 The story is told in short chapters that unlock as you play (the prologue
 before your first run, the invasion before your first Seireitei run, others

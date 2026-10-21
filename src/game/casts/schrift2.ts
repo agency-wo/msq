@@ -8,6 +8,7 @@ import {
   FX_GLOW,
   FX_MAW,
   FX_RING,
+  FX_STAR,
   HOLD_STUN,
   LAYER_ADD,
   PF_CHARM,
@@ -126,6 +127,13 @@ export function castJail(w: World, ps: PowerState): void {
     placed++;
     w.spawnZone(ZK_CAGE, E.x[best], E.y[best], 0, 0, R, life, st.tick, st.damage, 0, extra);
     w.spawnFx(FX_RING, E.x[best], E.y[best], 0, 0, 0.25, R * 3, R * 2.2, 0.9, 0, 0, 0xcfe0ff, LAYER_ADD);
+    // Sankt Zwinger (resonance): five Seele Schneider pinned at the points of the cage's star.
+    if (w.resonances.has('sanktzwinger')) {
+      for (let k = 0; k < 5; k++) {
+        const a = -Math.PI / 2 + (k / 5) * TAU;
+        w.spawnFx(FX_STAR, E.x[best] + Math.cos(a) * R, E.y[best] + Math.sin(a) * R, 0, 0, life, R * 0.5, R * 0.5, 0.95, a, 3, 0xbfe6ff, LAYER_ADD);
+      }
+    }
     if (w.resonances.has('nightmare')) fearRing(w, E.x[best], E.y[best]);
   }
   if (placed === 0) {
@@ -218,6 +226,9 @@ export function castPunch(w: World, ps: PowerState): void {
   }
 }
 
+/** Arterie Fist: each level of Blut Arterie adds this share to a punch. */
+export const ARTERIE_FIST = 0.12;
+
 function punch(w: World, ps: PowerState): boolean {
   const st = ps.stats;
   const titan = ps.attr === 'titan';
@@ -229,13 +240,16 @@ function punch(w: World, ps: PowerState): boolean {
   const p = w.player;
   const E = w.en;
   const aim = Math.atan2(E.y[t] - p.y, E.x[t] - p.x);
-  const dmg = st.damage * (titan ? 2 : 1);
+  // Arterie Fist (resonance): Blut Arterie runs in every punch, and the shockwave throws twice as far.
+  const arterie = w.resonances.has('ironfist') ? (w.passives.get('arterie') ?? 0) : 0;
+  const dmg = st.damage * (titan ? 2 : 1) * (1 + ARTERIE_FIST * arterie);
+  const knock = arterie > 0 ? 480 : 240;
   w.damageEnemy(t, dmg * 0.5, 0, p.x, p.y);
   const quake = ps.attr === 'quake';
   const n = enemiesInArc(w, p.x, p.y, aim, reach, st.amount);
   for (let k = 0; k < n; k++) {
     const j = w.qout[k];
-    w.damageEnemy(j, dmg, 240, p.x, p.y);
+    w.damageEnemy(j, dmg, knock, p.x, p.y);
     if (quake && !E.dead[j]) w.applyHold(j, 0.8, HOLD_STUN);
   }
   if (w.resonances.has('devour')) devour(w, n, E.x[t], E.y[t], aim, reach);
