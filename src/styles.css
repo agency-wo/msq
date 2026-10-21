@@ -3823,3 +3823,51 @@ button:focus-visible {
 .banner.fragment .banner-title {
   text-shadow: 3px 3px 0 #7a5410 !important;
 }
+
+/* ---------------------------------------------------------- Story Mode */
+
+/* The Story card on the title: a paper slab with a red print, the next mission on it. */
+.story-card {
+  appearance: none;
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--gap);
+  padding: 10px 14px 10px 10px;
+  border: 2px solid var(--paper);
+  background: var(--paper);
+  color: var(--ink-0);
+  font: inherit;
+  text-align: left;
+  box-shadow: 4px 4px 0 var(--blood);
+  pointer-events: auto;
+  touch-action: manipulation;
+  cursor: pointer;
+}
+
+.story-card:active {
+  transform: translate(3px, 3px);
+  box-shadow: 1px 1px 0 var(--blood);
+}
+
+.story-card .daily-icon {
+  background: rgba(10, 10, 12, 0.08);
+}
+
+.story-card .btn-note {
+  color: #5a1420;
+}
+
+.story-card .daily-status {
+  border-color: var(--ink-0);
+  background: var(--ink-0);
+  color: var(--paper);
+}
+
+.chapter.mission.done {
+  border-left-color: var(--gold);
+}
+
+.mission-goal .chapter-title {
+  font-size: 19px;
+}

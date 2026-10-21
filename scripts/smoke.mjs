@@ -956,6 +956,26 @@ try {
   log('stress palace', { samples: palSamples.map((s) => `${s.state} ${s.fps}fps cpu${s.cpu}ms ${s.enemies}e ${s.sprites}spr`) });
   await shot('13b-stress-palace');
 
+  // Story Mode: a mission is won on its goal (here, holding out to the end) and told to its end before the results.
+  await go(`${BASE}?debug&seed=3&play&god&mission=jagdarmee&t=474`);
+  log('mission', await page.evaluate(() => ({ mission: window.__msq.world.mission?.id, length: window.__msq.world.stage.length })));
+  await shot('14-mission-run');
+  // Answer any board that opens until the clock runs out and the mission's ending is told.
+  for (let k = 0; k < 80; k++) {
+    const st = await state();
+    if (st === 'story') break;
+    if (st === 'levelup' || st === 'chest' || st === 'shrine') await page.evaluate(() => window.__msq.pick(0));
+    await wait(300);
+  }
+  await page.waitForSelector('.screen.story', { timeout: 20000 });
+  log('mission ending', { kicker: await page.textContent('.screen.story .board-kicker'), title: await page.textContent('.screen.story .board-title') });
+  await shot('14a-mission-ending');
+  await wait(700);
+  await page.tap('.screen.story .btn.primary');
+  await page.waitForSelector('.screen.results');
+  log('mission results', { kicker: await page.textContent('.screen.results .board-kicker') });
+  await shot('14b-mission-results');
+
   // 12. Narrow phones (an SE, a mini, Display Zoom): every menu, a board, the pause screen and the
   // results must fit at 320 and 375 points wide, with nothing pushed off the side or cut short.
   for (const [vw, vh] of [
@@ -1032,6 +1052,15 @@ try {
     await np.waitForSelector('.screen.wardrobe .look-chip');
     await check('wardrobe');
     await home('.screen.wardrobe .btn.primary');
+    await np.tap('.story-btn');
+    await np.waitForSelector('.screen.missions .chapter');
+    await check('story');
+    await np.tap('.screen.missions button.chapter');
+    await np.waitForSelector('.screen.mission .btn.primary');
+    await check('mission');
+    await np.tap('.screen.mission .btn:not(.primary)');
+    await np.waitForSelector('.screen.missions .btn.primary');
+    await home('.screen.missions .btn.primary');
     await np.tap('.daily-btn');
     await np.waitForSelector('.screen.daily .btn.primary');
     await check('daily');

@@ -147,6 +147,18 @@ one you have not awakened yet) and two rules that bend the run (Letzt Stil,
 The Swarm, Giants, Shunpo, Frail, Barren). Surviving five minutes pays 100 bonus
 gold once a day and clearing it pays 300; the day keeps its own best time.
 
+**Story Mode** retells the Thousand-Year Blood War from the Emperor's side in
+ten short missions, opened one after another from the Story card on the
+title. Each has a briefing, a goal, rules of its own and a page that closes it:
+the desert and Tier Harribel; the Jagdarmee's hunt (survive eight minutes with
+Quilge's Jail); taking three medallions back; the Sexta under the painted sky;
+the First Invasion and Yamamoto; Silbern and Kyōraku; the Royal Guard and
+Ichibē; father and son in the Wahrwelt (Renji, Uryū, Aizen, then Ichigo); ten
+minutes against everything with The Almighty in hand; and, in another telling,
+Karakura Town and Urahara. The first clear of each pays gold; each keeps its
+fastest clear. Missions count for totals, the Codex and feats, never for a
+stage's own records.
+
 Every run pays gold. Spend it in the **Wandenreich Archives** on permanent
 upgrades (attack, health, speed, pickup range, cooldowns, faster level-ups,
 more gold, a revive, level-up rerolls), and pick which awakened Schrift a run
@@ -275,8 +287,10 @@ Add these to the URL: `?debug` (FPS, CPU per frame and entity counts),
 `?bearers=raikoben,gonryo` (choose which bankai the bosses carry; in Hueco Mundo that picks the Sternritter),
 `?stage=seireitei` (play a stage even if it is still locked), `?almighty`
 (start with A · The Almighty), `?start=xaxis` (open the run with that Schrift),
-`?res=firestorm,railgun` (own resonances), `?trial=3` and `?endless`.
-Add `META=max` to the balance report for a player with every upgrade.
+`?res=firestorm,railgun` (own resonances), `?trial=3`, `?endless` and
+`?mission=jagdarmee` (play a Story mission, with `?play`).
+Add `META=max` to the balance report for a player with every upgrade, and
+`MISSION=desert` to simulate a Story mission.
 
 ## How it is built
 

@@ -16,13 +16,14 @@ import type { Banner, World } from '../game/world';
 import { drawEmperor, drawSprite } from '../render/atlas';
 import { bossSpriteName, enemySpriteName } from '../render/names';
 import { armoryRelics, nextCost, nextVerseCost, startOptions, upgradeLevel, wonSpoils } from '../save/archives';
-import { almightyUnlocked, endlessOpen, rushOpen, stageUnlocked, trialsOpen, type DailyRecord, type SaveData, type Settings } from '../save/save';
+import { almightyUnlocked, endlessOpen, missionsCleared, rushOpen, stageUnlocked, trialsOpen, type DailyRecord, type MissionRecord, type SaveData, type Settings } from '../save/save';
 import { chapterUnlocked } from '../save/story';
 import { LOOKS, TRAILS, type LookId, type TrailId } from '../data/looks';
 import { codexFound, codexTotal, featProgress, FEATS } from '../save/feats';
 import { drawEmblem, drawIcon, drawTrailSwatch } from './icons';
 import { shareRun } from './share';
 import { drawVista } from './vistas';
+import { MISSIONS, missionOpen, type MissionDef } from '../data/missions';
 
 /**
  * Everything outside the game world is plain DOM with an external stylesheet:
@@ -210,6 +211,9 @@ export interface ResultSummary {
   /** A Boss Rush: the record shown is the fastest clear. */
   rush: boolean;
   dailyBonus: number;
+  /** A Story mission: the gold its first clear paid, and the mission that opened (by name). */
+  storyReward: number;
+  storyNext: string | null;
   /** "Daily Trial · October 19 · Frail + Giants", or "" for any other run. */
   dailyLine: string;
   damage: DamageRow[];
@@ -498,6 +502,7 @@ export class UI {
       onMode: () => void;
       onDaily: () => void;
       daily: DailySpec;
+      onStory: () => void;
       installHint: boolean;
       /** Something in the Archives is affordable: the button carries a gold dot. */
       archivesDot: boolean;
@@ -552,6 +557,7 @@ export class UI {
       this.stagePicker(save, h.onStage, h.onMode),
       play,
       this.dailyCard(save, h.daily, h.onDaily),
+      this.storyCard(save, h.onStory),
       nav,
       this.collection(save),
     );
@@ -857,6 +863,8 @@ export class UI {
     if (r.starts.length > 0) p.append(el('p', 'unlock-note', `New starting Schrift in the Archives: ${r.starts.join(', ')}`));
     if (r.chapters.length > 0) p.append(el('p', 'unlock-note', `New in the Chronicle: ${r.chapters.join(', ')}`));
     if (r.dailyBonus > 0) p.append(el('p', 'unlock-note', `Daily Trial bonus: +${r.dailyBonus} gold`));
+    if (r.storyReward > 0) p.append(el('p', 'unlock-note', `Mission cleared: +${gold(r.storyReward)} gold`));
+    if (r.storyNext) p.append(el('p', 'unlock-note', `Now open: ${r.storyNext}`));
     for (const f of r.feats) {
       const extra = [f.look ? `the ${LOOKS.find((l) => l.id === f.look)?.name ?? f.look} look` : '', f.relic ? (RELIC_BY_ID.get(f.relic)?.name ?? f.relic) : '']
         .filter(Boolean)
@@ -1322,6 +1330,84 @@ export class UI {
     b.append(icon, text, el('span', `daily-status${today?.cleared ? ' done' : ''}`, status));
     b.addEventListener('click', this.guard(onDaily));
     return b;
+  }
+
+  /** The title's Story card: the next mission, and how far the campaign has come. */
+  private storyCard(save: SaveData, onStory: () => void): HTMLButtonElement {
+    const b = button('story-btn story-card', '');
+    const icon = el('canvas', 'daily-icon');
+    drawIcon(icon, 'banner', '#c8102e');
+    const done = missionsCleared(save);
+    const next = MISSIONS.find((m) => !save.missions[m.id]?.cleared);
+    const text = el('span', 'daily-text');
+    text.append(el('span', 'daily-title', 'Story'), el('span', 'btn-note', next ? `Mission ${next.numeral} · ${next.title}` : 'Every mission cleared'));
+    b.append(icon, text, el('span', `daily-status${next ? '' : ' done'}`, `${done}/${MISSIONS.length}`));
+    b.addEventListener('click', this.guard(onStory));
+    return b;
+  }
+
+  /** Story Mode: the missions in order, each open once the one before is cleared, the cleared ones with their best. */
+  showMissions(save: SaveData, h: { onOpen: (id: string) => void; onBack: () => void }): void {
+    const p = this.open('missions');
+    const cleared = new Set(MISSIONS.filter((m) => save.missions[m.id]?.cleared).map((m) => m.id));
+    p.append(
+      el('div', 'board-kicker', 'The Thousand-Year Blood War'),
+      el('h2', 'board-title', 'Story'),
+      el('p', 'archives-hint', `${cleared.size} of ${MISSIONS.length} missions cleared. Each one opens the next.`),
+    );
+    const list = el('div', 'chapters');
+    for (const m of MISSIONS) {
+      if (!missionOpen(cleared, m.id)) {
+        const row = el('div', 'chapter locked');
+        row.append(el('span', 'chapter-kicker', `Mission ${m.numeral}`), el('span', 'chapter-title', '? ? ?'), el('span', 'chapter-hint', 'Clear the mission before it.'));
+        list.append(row);
+        continue;
+      }
+      const rec = save.missions[m.id];
+      const b = button(`chapter mission${rec?.cleared ? ' done' : ''}`, '');
+      const hint = rec?.cleared ? `Cleared${rec.best > 0 ? ` · best ${formatTime(rec.best)}` : ''}` : `${stageById(m.stage).name} · ${m.goalText}`;
+      b.append(el('span', 'chapter-kicker', `Mission ${m.numeral}`), el('span', 'chapter-title', m.title), el('span', 'chapter-hint', hint));
+      b.addEventListener('click', this.guard(() => h.onOpen(m.id)));
+      list.append(b);
+    }
+    const back = button('btn primary', 'Back');
+    back.addEventListener('click', this.guard(h.onBack));
+    p.append(list, back);
+    this.lock(150);
+  }
+
+  /** A mission's briefing: its page of story, the goal, its rules, what you open with, and its reward. */
+  showMission(m: MissionDef, rec: MissionRecord | undefined, start: string, h: { onBegin: () => void; onBack: () => void }): void {
+    const p = this.open('mission');
+    p.append(el('div', 'board-kicker', `Mission ${m.numeral} · ${stageById(m.stage).name}`), el('h2', 'board-title', m.title));
+    const body = el('div', 'story-text');
+    for (const para of m.brief) body.append(el('p', '', para));
+    const rows = el('div', 'chapters');
+    const goal = el('div', 'chapter daily-mod mission-goal');
+    goal.append(el('span', 'chapter-kicker', 'Goal'), el('span', 'chapter-title', m.goalText));
+    rows.append(goal);
+    for (const rule of m.rules ?? []) {
+      const row = el('div', 'chapter daily-mod');
+      row.append(el('span', 'chapter-kicker', 'Rule'), el('span', 'chapter-hint', rule));
+      rows.append(row);
+    }
+    const opener = el('div', 'start-chips');
+    for (const id of [start, m.extra, m.almighty ? 'almighty' : undefined]) {
+      const def = id ? POWER_BY_ID.get(id) : undefined;
+      if (!def) continue;
+      const chip = el('div', 'start-chip daily-chip');
+      const c = el('canvas', 'chip-icon');
+      drawIcon(c, def.icon, def.color, def.letter);
+      chip.append(c, el('span', 'chip-text', def.name));
+      opener.append(chip);
+    }
+    const status = rec?.cleared ? `Cleared${rec.best > 0 ? `, best ${formatTime(rec.best)}` : ''}.` : `First clear: +${gold(m.reward)} gold.`;
+    const begin = button('btn primary', 'Begin');
+    begin.addEventListener('click', this.guard(h.onBegin));
+    const back = button('btn', 'Back');
+    back.addEventListener('click', this.guard(h.onBack));
+    p.append(body, rows, opener, el('p', 'archives-hint', status), begin, back);
+    this.lock(150);
   }
 
   /** An icon and a label in the title's bottom row. */

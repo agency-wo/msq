@@ -1,4 +1,5 @@
 import { GESANG_VERSES, UPGRADES } from '../data/archives';
+import { MISSION_BY_ID, MISSIONS } from '../data/missions';
 import { BANKAI_IDS } from '../data/bankai';
 import { RESONANCE_BY_ID } from '../data/resonances';
 import { TRAIL_BY_ID, type TrailId } from '../data/looks';
@@ -93,6 +94,14 @@ export interface SaveData {
   /** Cloak trails bought in the Wardrobe ('none' is always there), and the one he wears. */
   trails: TrailId[];
   trail: TrailId;
+  /** Story Mode: each mission played, whether it was cleared and its fastest clear. */
+  missions: Record<string, MissionRecord>;
+}
+
+export interface MissionRecord {
+  cleared: boolean;
+  /** Fastest clear in seconds, 0 if never cleared. */
+  best: number;
 }
 
 export interface Codex {
@@ -119,6 +128,8 @@ export interface RunResult {
   endless?: boolean;
   /** A Daily Trial: counts for gold, bankai, awakenings and totals, not for stage records or unlocks. */
   daily?: boolean;
+  /** A Story mission: counts as a Daily Trial does, and keeps its own record (see recordMission). */
+  mission?: boolean;
   /** How far the Emperor evolved in the run. */
   evolution?: number;
   /** A Boss Rush: keeps its own record (the fastest clear) and changes nothing else about the stage. */
@@ -168,7 +179,37 @@ export function defaultSave(): SaveData {
     gesang: 0,
     trails: ['none'],
     trail: 'none',
+    missions: {},
   };
+}
+
+/**
+ * Fold a Story mission into its record: the first clear pays the mission's
+ * reward and opens the next one. Returns the reward paid, whether this was a
+ * fastest clear, and the mission it opened (by name), if any.
+ */
+export function recordMission(save: SaveData, id: string, time: number, cleared: boolean): { reward: number; newBest: boolean; opened: string | null } {
+  const m = MISSION_BY_ID.get(id);
+  if (!m) return { reward: 0, newBest: false, opened: null };
+  const rec = save.missions[id] ?? (save.missions[id] = { cleared: false, best: 0 });
+  let reward = 0;
+  let opened: string | null = null;
+  if (cleared && !rec.cleared) {
+    rec.cleared = true;
+    reward = m.reward;
+    save.gold += reward;
+    save.totals.gold += reward;
+    const next = MISSIONS[MISSIONS.indexOf(m) + 1];
+    opened = next ? `Mission ${next.numeral} · ${next.title}` : null;
+  }
+  const newBest = cleared && (rec.best === 0 || time < rec.best);
+  if (newBest) rec.best = time;
+  return { reward, newBest, opened };
+}
+
+/** How many Story missions have been cleared. */
+export function missionsCleared(save: SaveData): number {
+  return MISSIONS.filter((m) => save.missions[m.id]?.cleared).length;
 }
 
 /** Fold a Daily Trial into today's record: the bonus gold it earned (each bonus paid once a day) and whether it set today's best. */
@@ -304,7 +345,21 @@ export function migrate(raw: unknown): SaveData {
     tips: Array.isArray(r.tips) ? [...new Set(r.tips.filter((id): id is string => typeof id === 'string' && (TIP_IDS as string[]).includes(id)))] : [],
     ...migrateArmory(r, feats.relicsOpen, codex.relics),
     ...migrateTrails(r),
+    missions: migrateMissions(r.missions),
   };
+}
+
+/** Records only for missions that exist; anything else in the save is dropped. */
+function migrateMissions(raw: unknown): Record<string, MissionRecord> {
+  const r = obj(raw);
+  const out: Record<string, MissionRecord> = {};
+  for (const m of MISSIONS) {
+    if (!(m.id in r)) continue;
+    const rec = obj(r[m.id]);
+    const cleared = bool(rec.cleared, false);
+    out[m.id] = { cleared, best: cleared ? Math.max(0, num(rec.best, 0)) : 0 };
+  }
+  return out;
 }
 
 /** Trails that exist, 'none' always among them; the one worn must be owned. */
@@ -463,8 +518,8 @@ export function recordRun(save: SaveData, r: RunResult): RecordOutcome {
   save.evolution = Math.max(save.evolution, Math.min(3, r.evolution ?? 0));
   if (r.codex) recordCodex(save, r.codex);
   if (r.cleared) save.totals.clears++;
-  if (r.time > save.best.time && !r.daily && !r.bossRush) save.best = { time: r.time, level: r.level, kills: r.kills };
-  if (r.daily) return { newBest: false, unlocked: null, almighty: !hadAlmighty && almightyUnlocked(save), starts };
+  if (r.time > save.best.time && !r.daily && !r.bossRush && !r.mission) save.best = { time: r.time, level: r.level, kills: r.kills };
+  if (r.daily || r.mission) return { newBest: false, unlocked: null, almighty: !hadAlmighty && almightyUnlocked(save), starts };
   if (r.bossRush) {
     const rec = save.stages[r.stage];
     const newBest = r.cleared && (rec.rush === 0 || r.time < rec.rush);

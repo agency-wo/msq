@@ -7,6 +7,7 @@ import { POWER_BY_ID, STARTING_POWER } from './data/powers';
 import { STAGE_BY_ID, stageById, TRIAL_NAMES, type StageId } from './data/stages';
 import { CHAPTER_BY_ID, type Chapter } from './data/story';
 import { dailyFor, dailyLine, dateKey, type DailySpec } from './data/daily';
+import { MISSION_BY_ID, type MissionDef } from './data/missions';
 import type { TipId } from './data/tips';
 import type { Offer } from './game/offers';
 import { runGold } from './game/rewards';
@@ -35,6 +36,7 @@ import {
   importCode,
   loadSave,
   recordDaily,
+  recordMission,
   recordRun,
   rushOpen,
   type SaveData,
@@ -56,6 +58,8 @@ type State =
   | 'feats'
   | 'wardrobe'
   | 'daily'
+  | 'missions'
+  | 'mission'
   | 'story'
   | 'playing'
   | 'paused'
@@ -104,6 +108,8 @@ export class App {
   private sawEvent = false;
   /** The Daily Trial being played, if the current run is one (Play again replays it). */
   private daily: DailySpec | null = null;
+  /** The Story mission being played, if the current run is one (Play again replays it). */
+  private mission: MissionDef | null = null;
   /** Chapters a finished run unlocked, told when the player moves on from the results. */
   private pendingChapters: Chapter[] = [];
   private fps = 0;
@@ -130,6 +136,9 @@ export class App {
     this.bindLifecycle();
     this.loop.start();
     if (this.debug) this.exposeDebug();
+    // Testing: ?mission=jagdarmee plays a Story mission (with ?play).
+    const forcedMission = this.params.get('mission');
+    if (forcedMission) this.mission = MISSION_BY_ID.get(forcedMission) ?? null;
     if (this.params.has('stress') || this.params.has('play')) this.startRun();
     else this.showTitle();
   }
@@ -140,6 +149,7 @@ export class App {
     this.halt('title');
     this.world = null;
     this.daily = null;
+    this.mission = null;
     this.ui.showHud(false);
     if (!stageUnlocked(this.save, this.save.stage)) this.save.stage = 'hueco';
     this.renderer.setStage(this.save.stage);
@@ -162,6 +172,7 @@ export class App {
       onMode: () => writeSave(this.save),
       onDaily: () => this.showDaily(),
       daily: this.todaysDaily(),
+      onStory: () => this.showMissions(),
       installHint: isIOS() && !isStandalone(),
       archivesDot: affordable(this.save) !== null,
       onWardrobe: () => this.showWardrobe(),
@@ -250,6 +261,27 @@ export class App {
         this.startRun();
       },
       onBack: () => this.showTitle(),
+    });
+  }
+
+  /** Story Mode: the missions in order. */
+  private showMissions(): void {
+    this.state = 'missions';
+    this.ui.showMissions(this.save, { onOpen: (id) => this.showMission(id), onBack: () => this.showTitle() });
+  }
+
+  /** A mission's briefing, and Begin. */
+  private showMission(id: string): void {
+    const m = MISSION_BY_ID.get(id);
+    if (!m) return;
+    this.state = 'mission';
+    this.ui.showMission(m, this.save.missions[id], m.start ?? this.save.start, {
+      onBegin: () => {
+        this.mission = m;
+        this.daily = null;
+        this.startRun();
+      },
+      onBack: () => this.showMissions(),
     });
   }
 
@@ -372,9 +404,11 @@ export class App {
     this.sfx.unlock();
     const p = this.params;
     const daily = this.daily;
-    const stage = daily ? daily.stage : this.runStage();
-    // Story chapters that belong before this run (the prologue, the invasion); testing switches skip them.
-    const before = storyTold || this.testing ? [] : chaptersBefore(this.save, stage);
+    const mission = this.mission;
+    const stage = daily ? daily.stage : mission ? mission.stage : this.runStage();
+    // Story chapters that belong before this run (the prologue, the invasion); testing switches skip them,
+    // and a Story mission has its own briefing.
+    const before = storyTold || this.testing || mission ? [] : chaptersBefore(this.save, stage);
     if (before.length > 0) {
       this.halt('story');
       this.tellChapters(before, () => this.startRun(true));
@@ -386,9 +420,10 @@ export class App {
     this.sawEvent = false;
     this.world = new World({
       stage,
-      trial: daily ? 0 : this.runTrial(stage),
-      endless: daily ? false : !this.runRush(stage) && this.runEndless(stage),
-      bossRush: daily ? false : this.runRush(stage),
+      mission: mission ?? undefined,
+      trial: daily || mission ? 0 : this.runTrial(stage),
+      endless: daily || mission ? false : !this.runRush(stage) && this.runEndless(stage),
+      bossRush: daily || mission ? false : this.runRush(stage),
       mods: daily?.mods,
       relicsOpen: this.save.relicsOpen,
       seed: daily ? daily.seed : numParam(p, 'seed'),
@@ -406,8 +441,8 @@ export class App {
       // The Armory's relic comes along on every run but the Daily Trial, which is the same for everyone.
       relic: daily ? undefined : (this.save.startRelic ?? undefined),
       // The Daily Trial opens with Heilig Pfeil and today's Schrift; ?start= tries any attack (testing); otherwise the Archives' pick.
-      start: daily ? STARTING_POWER : (p.get('start') ?? this.save.start),
-      extra: daily?.schrift,
+      start: daily ? STARTING_POWER : (mission?.start ?? p.get('start') ?? this.save.start),
+      extra: daily?.schrift ?? mission?.extra,
     });
     if (p.has('almighty')) this.world.grantAlmighty();
     // Testing: ?give=explode7,xaxis5 owns powers at those levels; ?bankai=senbonzakura,zanka grants bankai.
@@ -420,6 +455,8 @@ export class App {
     for (const id of listParam(p, 'spoils')) this.world.takeSpoil(id.startsWith('spoil-') ? id : `spoil-${id}`);
     for (const id of listParam(p, 'res')) this.world.addResonance(id);
     this.world.banners.length = 0;
+    // A Story mission opens on its goal.
+    if (mission) this.world.banners.push({ kind: 'event', title: `Mission ${mission.numeral} · ${mission.title}`, sub: mission.goalText });
     this.ui.hideScreen();
     this.ui.showHud(true);
     this.resume();
@@ -639,6 +676,7 @@ export class App {
           trial: w.trial,
           endless: w.endless,
           daily: !!this.daily,
+          mission: !!this.mission,
           evolution: w.evolution,
           bossRush: w.bossRush,
           codex: {
@@ -649,21 +687,27 @@ export class App {
           },
         });
     const daily = w.god || !this.daily ? null : recordDaily(this.save, this.daily.date, w.t, victory);
+    const mission = this.mission;
+    const story = w.god || !mission ? null : recordMission(this.save, mission.id, w.t, victory);
     const feats = w.god ? [] : evaluateFeats(this.save, runFacts(w, victory, !!this.daily));
     if (!w.god) writeSave(this.save);
     this.pendingChapters = w.god ? [] : chaptersAfter(this.save);
     this.ui.showHud(false);
-    this.ui.showResults(
+    const results = (): void => this.ui.showResults(
       {
         stage: w.stage.id,
         stageName: w.stage.name,
         evolution: w.evolution,
         mode: this.daily
           ? 'Daily Trial'
-          : [w.trial > 0 ? TRIAL_NAMES[w.trial] : '', w.endless ? 'Endless' : '', w.bossRush ? 'Boss Rush' : ''].filter(Boolean).join(' · '),
+          : mission
+            ? `Story · Mission ${mission.numeral}`
+            : [w.trial > 0 ? TRIAL_NAMES[w.trial] : '', w.endless ? 'Endless' : '', w.bossRush ? 'Boss Rush' : ''].filter(Boolean).join(' · '),
         rush: w.bossRush,
         daily: !!this.daily,
         dailyBonus: daily?.bonus ?? 0,
+        storyReward: story?.reward ?? 0,
+        storyNext: story?.opened ?? null,
         dailyLine: this.daily ? dailyLine(this.daily) : '',
         damage: damageRows(w),
         pacts: [...w.pacts],
@@ -684,12 +728,14 @@ export class App {
         kills: w.kills,
         bestTime: this.daily
           ? this.save.daily.best
-          : w.bossRush
+          : mission
+            ? (this.save.missions[mission.id]?.best ?? 0)
+            : w.bossRush
             ? this.save.stages[w.stage.id].rush
             : w.endless
               ? this.save.stages[w.stage.id].endless
               : this.save.stages[w.stage.id].best,
-        newBest: daily ? daily.newBest : record.newBest,
+        newBest: daily ? daily.newBest : story ? story.newBest : record.newBest,
         resonances: [...w.resonances],
         powers: w.powers.map((ps) => ({
           name: ps.def.name,
@@ -706,6 +752,16 @@ export class App {
         onMenu: () => this.afterResults(() => this.showTitle()),
       },
     );
+    // A mission won is told to its end before the results.
+    if (victory && mission) {
+      this.state = 'story';
+      this.ui.showStory({ id: `mission-${mission.id}`, kicker: `Mission ${mission.numeral} · Cleared`, title: mission.title, hint: '', trigger: { when: 'before' }, text: mission.after }, () => {
+        this.state = 'over';
+        results();
+      });
+    } else {
+      results();
+    }
     this.music.duck(false);
     this.music.play(victory ? 'victory' : 'defeat');
     if (!quit) this.sfx.play(victory ? 'level' : 'boss');

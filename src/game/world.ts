@@ -18,6 +18,7 @@ import { KARAKURA_BY_ID, KARAKURA_IDS } from '../data/karakura';
 import { ROYAL_BY_ID, ROYAL_IDS } from '../data/royal';
 import { RESONANCE_BY_ID, RESONANCES, resonanceParts } from '../data/resonances';
 import { BOSS_LINES } from '../data/story';
+import { missionStage, type MissionDef } from '../data/missions';
 import {
   DIFFICULTY,
   bossToughness,
@@ -221,6 +222,8 @@ export interface WorldOptions {
   choices?: number;
   /** Daily Trial modifiers (see data/daily.ts). */
   mods?: string[];
+  /** A Story Mode mission: its stage, timeline, rules and goal (see data/missions.ts). */
+  mission?: MissionDef;
 }
 
 interface Warning {
@@ -342,6 +345,8 @@ export class World {
   readonly sounds = new Set<SoundName>();
   shake = 0;
   over: 'dead' | 'victory' | null = null;
+  /** The Story mission being played, or null. */
+  readonly mission: MissionDef | null;
 
   readonly powers: PowerState[] = [];
   readonly passives = new Map<string, number>();
@@ -510,13 +515,14 @@ export class World {
   constructor(opts: WorldOptions = {}) {
     this.rng = new Rng(opts.seed);
     this.metaMods = opts.meta ?? null;
-    this.stage = stageById(opts.stage);
+    this.mission = opts.mission ?? null;
+    this.stage = this.mission ? missionStage(this.mission) : stageById(opts.stage);
     this.trial = Math.max(0, Math.min(5, Math.floor(opts.trial ?? 0)));
     this.tm = trialMods(this.trial);
     this.endless = !!opts.endless;
     this.bossRush = !!opts.bossRush && !this.endless;
     this.relicsOpen = new Set(opts.relicsOpen ?? []);
-    const mods = new Set(opts.mods ?? []);
+    const mods = new Set([...(opts.mods ?? []), ...(this.mission?.mods ?? [])]);
     this.mods = mods;
     this.modHp = (mods.has('swarm') ? 0.85 : 1) * (mods.has('giants') ? 1.5 : 1);
     this.modSpawn = mods.has('swarm') ? 1.35 : 1;
@@ -541,7 +547,7 @@ export class World {
       pool[j] = tmp;
     }
     const slots = this.stage.events.filter((e) => e.kind === 'bearer').length;
-    const forced = (opts.bearers ?? []).filter((id) => roster.includes(id));
+    const forced = (opts.bearers ?? this.mission?.bearers ?? []).filter((id) => roster.includes(id));
     let order = [...forced, ...pool.filter((id) => !forced.includes(id))];
     const last = this.stage.lastBearer;
     if (last && order.includes(last) && !forced.includes(last)) order = [...order.filter((id) => id !== last).slice(0, slots - 1), last];
@@ -583,6 +589,7 @@ export class World {
     }
     this.recomputeStats();
     this.player.hp = this.player.maxHp;
+    if (this.mission?.almighty) this.grantAlmighty();
   }
 
   // ---------------------------------------------------------------- step
@@ -692,6 +699,15 @@ export class World {
       }
       if (this.t >= this.nextEventT) this.runEvent();
       if (this.endless && this.endlessNext > 0 && this.t >= this.endlessNext) this.endlessWaveTick();
+    }
+    // A Story mission is won by its goal: holding out to the end, or putting enough bosses down.
+    const goal = this.mission?.goal;
+    if (goal && this.victoryT < 0 && !this.over) {
+      const done = goal.kind === 'survive' ? this.t >= this.stage.length : goal.kind === 'bosses' && this.bossKills >= goal.count;
+      if (done) {
+        this.victoryT = 2.2;
+        this.messages.push({ text: 'Mission complete', kind: 'info' });
+      }
     }
     if (this.victoryT > 0) {
       this.victoryT -= DT;
@@ -1268,6 +1284,7 @@ export class World {
     E.r[i] = r;
     E.spd[i] = def.speed * (def.boss ? 1 : speedScale(this.t) * this.tm.speed) * this.modSpeed * this.pactSpeed * this.rng.range(0.9, 1.1);
     if (def.boss && this.bossRush) dmg *= RUSH_DMG[Math.min(this.rushWave, RUSH_DMG.length - 1)];
+    if (def.boss && this.mission?.bossDamage) dmg *= this.mission.bossDamage;
     E.dmg[i] = dmg;
     E.xp[i] = xp;
     E.flash[i] = 0;

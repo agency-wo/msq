@@ -3,6 +3,7 @@ import { POWERS, STARTABLE_IDS } from '../data/powers';
 import { RELICS } from '../data/relics';
 import { SPOILS } from '../data/spoils';
 import { RESONANCES } from '../data/resonances';
+import { MISSIONS } from '../data/missions';
 import { STAGE_IDS, type StageId } from '../data/stages';
 import type { SaveData } from './save';
 
@@ -56,6 +57,9 @@ export interface FeatDef {
 }
 
 const yes = (b: boolean): number => (b ? 1 : 0);
+
+/** Story missions cleared (counted here, not imported from save.ts, which imports this file). */
+const storyCleared = (s: SaveData): number => MISSIONS.filter((m) => s.missions[m.id]?.cleared).length;
 
 /** Entries the Codex has opened, out of everything it holds. */
 export function codexFound(s: SaveData): number {
@@ -119,6 +123,8 @@ export const FEATS: readonly FeatDef[] = [
   { id: 'rush-clear', name: 'Back to Back', desc: 'Clear a Boss Rush.', group: 'Modes', goal: 1, gold: 300, relic: 'founder', run: (r) => yes(r.bossRush && r.cleared) },
   { id: 'rush-fast', name: 'Racing the Dawn', desc: 'Clear a Boss Rush in under 4:00.', group: 'Modes', goal: 1, gold: 500, run: (r) => yes(r.bossRush && r.cleared && r.time < 240) },
   { id: 'daily-clear', name: 'Daily Devotion', desc: 'Clear a Daily Trial.', group: 'Modes', goal: 1, gold: 300, run: (r) => yes(r.daily && r.cleared) },
+  { id: 'story-half', name: 'Half the War', desc: 'Clear five Story missions.', group: 'Modes', goal: 5, gold: 400, save: (s) => storyCleared(s) },
+  { id: 'story-all', name: 'The Thousand-Year Blood War', desc: 'Clear every Story mission.', group: 'Modes', goal: MISSIONS.length, gold: 1000, save: (s) => storyCleared(s) },
 ];
 
 export const FEAT_BY_ID: ReadonlyMap<string, FeatDef> = new Map(FEATS.map((f) => [f.id, f]));

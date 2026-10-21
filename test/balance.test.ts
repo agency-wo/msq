@@ -1,12 +1,13 @@
 import { describe, it } from 'vitest';
 import { SIM_HZ } from '../src/config';
+import { MISSION_BY_ID } from '../src/data/missions';
 import { World } from '../src/game/world';
 import { bot, circle, firstCard, maxedMeta, resolveChoices, sensible, type Mover, type Strategy } from './helpers';
 
 /**
  * Pacing report, not a pass/fail test. Run with:
  *   BALANCE=1 npx vitest run test/balance.test.ts --silent=false
- * (add STAGE=seireitei, SEED=3, MINUTES=21 to change the run, META=max for a
+ * (add STAGE=seireitei, SEED=3, MINUTES=21 to change the run, MISSION=desert for a Story mission, META=max for a
  * player with every Archives upgrade). Prints level, kills, health and boss progress every 30 s of a simulated run
  * for a few play styles, so tuning changes can be compared before and after.
  */
@@ -17,7 +18,8 @@ function clock(t: number): string {
 }
 
 function run(seed: number, pick: Strategy, move: Mover, god: boolean, minutes: number): string[] {
-  const w = new World({ seed, god, stage: env.STAGE, ...(env.META === 'max' ? maxedMeta() : {}) });
+  const mission = env.MISSION ? MISSION_BY_ID.get(env.MISSION) : undefined;
+  const w = new World({ seed, god, stage: env.STAGE, mission, start: mission?.start, extra: mission?.extra, ...(env.META === 'max' ? maxedMeta() : {}) });
   const rows: string[] = [];
   let nextReport = 30;
   let bossStart = -1;
