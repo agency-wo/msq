@@ -3871,3 +3871,99 @@ button:focus-visible {
 .mission-goal .chapter-title {
   font-size: 19px;
 }
+
+/* ------------------------------------------------------- Pause: stats */
+
+/* The pause screen's three views share the Codex's tab strip. */
+.pause-tabs {
+  margin: 4px 0 12px;
+}
+
+/* A view not chosen stays out of the way, whatever display its own class gives it. */
+.screen.pause [hidden] {
+  display: none !important;
+}
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.stat-tile {
+  min-width: 0;
+  padding: 7px 9px 8px;
+  border: 1.5px solid var(--rule);
+  background: var(--sheet);
+}
+
+.stat-label {
+  color: rgba(236, 230, 214, 0.62);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.stat-value {
+  font-family: var(--display);
+  font-size: 22px;
+  line-height: 1.15;
+  color: var(--paper);
+}
+
+.stat-note {
+  color: rgba(236, 230, 214, 0.55);
+  font-size: 11px;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.power-stats {
+  display: grid;
+  gap: 4px;
+}
+
+.power-stat {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr) 54px 52px;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px 4px 4px;
+  border: 1.5px solid var(--rule);
+  border-left: 4px solid var(--accent, var(--rule-strong));
+  background: var(--sheet);
+}
+
+.power-stat.head {
+  padding-top: 0;
+  padding-bottom: 0;
+  border: 0;
+  background: none;
+  color: rgba(236, 230, 214, 0.55);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.power-stat.head span:nth-child(n + 3),
+.power-stat-num {
+  text-align: right;
+}
+
+.power-stat-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.power-stat-level {
+  color: var(--gold);
+  font-family: var(--display);
+}
+
+.power-stat-num {
+  font-family: var(--display);
+  font-size: 16px;
+  color: var(--paper);
+}

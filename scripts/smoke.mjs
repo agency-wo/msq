@@ -261,6 +261,18 @@ try {
   await wait(300);
   log('paused', { state: await state() });
   await shot('03-pause');
+  // The pause screen's tabs: the stat sheet, then the damage report, then back to the build.
+  await page.tap('.screen.pause .pause-tabs .codex-tab:nth-child(2)');
+  await page.waitForSelector('.screen.pause .stat-grid .stat-tile');
+  const sheet = await page.$$eval('.screen.pause .stat-tile', (t) => t.filter((e) => e.offsetParent).length);
+  const powerRowsShown = await page.$$eval('.screen.pause .power-stat:not(.head)', (r) => r.length);
+  if (sheet < 10 || powerRowsShown < 1) problems.push(`pause stats: ${sheet} tiles, ${powerRowsShown} power rows`);
+  await shot('03b-pause-stats');
+  await page.tap('.screen.pause .pause-tabs .codex-tab:nth-child(3)');
+  await wait(150);
+  if (await page.$eval('.screen.pause .stat-sheet', (e) => !e.hidden)) problems.push('pause: the stat sheet still shows on the damage tab');
+  await shot('03c-pause-damage');
+  await page.tap('.screen.pause .pause-tabs .codex-tab:nth-child(1)');
   await page.tap('.screen.pause .btn.primary');
   await wait(250);
 
@@ -1098,6 +1110,10 @@ try {
     await np.tap('.icon-btn');
     await np.waitForSelector('.screen.pause .btn.danger');
     await check('pause');
+    await np.tap('.screen.pause .pause-tabs .codex-tab:nth-child(2)');
+    await np.waitForSelector('.screen.pause .stat-tile');
+    await check('pause-stats');
+    await np.tap('.screen.pause .pause-tabs .codex-tab:nth-child(1)');
     await np.waitForTimeout(250);
     await np.tap('.screen.pause .btn.danger');
     await np.waitForSelector('.screen.results');

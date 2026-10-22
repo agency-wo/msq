@@ -24,6 +24,7 @@ import { drawEmblem, drawIcon, drawTrailSwatch } from './icons';
 import { shareRun } from './share';
 import { drawVista } from './vistas';
 import { MISSIONS, missionOpen, type MissionDef } from '../data/missions';
+import { powerRows, statSheet } from './statsheet';
 
 /**
  * Everything outside the game world is plain DOM with an external stylesheet:
@@ -32,6 +33,13 @@ import { MISSIONS, missionOpen, type MissionDef } from '../data/missions';
  */
 
 export type Toggle = keyof Settings;
+
+type PauseTab = 'build' | 'stats' | 'damage';
+const PAUSE_TABS: readonly (readonly [PauseTab, string])[] = [
+  ['build', 'Build'],
+  ['stats', 'Stats'],
+  ['damage', 'Damage'],
+];
 
 export type CodexTab = 'schrift' | 'resonances' | 'relics' | 'spoils' | 'enemies';
 
@@ -254,6 +262,8 @@ function powerCard(def: PowerDef, badge: string | undefined, desc: string, tone?
 }
 
 export class UI {
+  /** The pause screen's tab, kept from one pause to the next. */
+  private pauseTab: PauseTab = 'build';
   onPause: () => void = () => undefined;
   private readonly hud: HTMLElement;
   private readonly xpFill: HTMLElement;
@@ -839,15 +849,69 @@ export class UI {
       const chip = this.pactChip(id);
       if (chip) build.append(chip);
     }
+    const rows = damageRows(w);
+    const damage = rows.length > 0 ? this.damageList(rows) : el('p', 'archives-hint', 'Nothing has been struck yet.');
+    // Three views of the run, one at a time: what you hold, your numbers, what each power has done.
+    const panels: Record<PauseTab, HTMLElement> = { build, stats: this.statSheet(w), damage };
+    const tabs = el('div', 'codex-tabs pause-tabs');
+    tabs.setAttribute('role', 'tablist');
+    const show = (t: PauseTab): void => {
+      this.pauseTab = t;
+      for (const [id, panel] of Object.entries(panels) as [PauseTab, HTMLElement][]) panel.hidden = id !== t;
+      for (const b of tabs.querySelectorAll<HTMLElement>('.codex-tab')) {
+        const on = b.dataset.tab === t;
+        b.classList.toggle('on', on);
+        b.setAttribute('aria-selected', String(on));
+      }
+    };
+    for (const [id, label] of PAUSE_TABS) {
+      const b = button('codex-tab', label);
+      b.dataset.tab = id;
+      b.setAttribute('role', 'tab');
+      b.addEventListener('click', () => show(id));
+      tabs.append(b);
+    }
     const resume = button('btn primary', 'Resume');
     resume.addEventListener('click', this.guard(h.onResume));
     const quit = button('btn danger', 'Quit run');
     quit.addEventListener('click', this.guard(h.onQuit));
-    p.append(build);
-    const rows = damageRows(w);
-    if (rows.length > 0) p.append(el('h3', 'section-title', 'Damage'), this.damageList(rows));
+    p.append(tabs, build, panels.stats, damage);
+    show(this.pauseTab);
     p.append(resume, this.toggles(settings, h.onToggle), quit);
     this.lock(200);
+  }
+
+  /** The pause screen's numbers: a grid of the Emperor's stats, then each power's hit and cooldown. */
+  private statSheet(w: World): HTMLElement {
+    const box = el('div', 'stat-sheet');
+    const grid = el('div', 'stat-grid');
+    for (const t of statSheet(w)) {
+      const tile = el('div', 'stat-tile');
+      tile.append(el('div', 'stat-label', t.label), el('div', 'stat-value', t.value));
+      if (t.note) tile.append(el('div', 'stat-note', t.note));
+      grid.append(tile);
+    }
+    box.append(grid);
+    const powers = powerRows(w);
+    if (powers.length > 0) {
+      box.append(el('h3', 'section-title', 'Powers'));
+      const list = el('div', 'power-stats');
+      const head = el('div', 'power-stat head');
+      head.append(el('span', '', ''), el('span', '', 'Power'), el('span', '', 'Hit'), el('span', '', 'Every'));
+      list.append(head);
+      for (const r of powers) {
+        const row = el('div', 'power-stat');
+        setAccent(row, r.color);
+        const icon = el('canvas', 'dmg-icon');
+        drawIcon(icon, r.icon, r.color, r.letter);
+        const name = el('span', 'power-stat-name', r.name);
+        name.append(el('span', 'power-stat-level', ` ${r.level}`));
+        row.append(icon, name, el('span', 'power-stat-num', r.hit), el('span', 'power-stat-num', r.every));
+        list.append(row);
+      }
+      box.append(list);
+    }
+    return box;
   }
 
   showResults(r: ResultSummary, h: { onRetry: () => void; onMenu: () => void }): void {
