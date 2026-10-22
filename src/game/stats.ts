@@ -29,6 +29,10 @@ export interface StatMods {
   /** Damage taken as a fraction: 0.2 takes 20% more, -0.15 takes 15% less. */
   dmgTaken?: number;
   projSpeed?: number;
+  /** Extra damage to bosses and elites, as a fraction. */
+  bossDmg?: number;
+  /** Extra damage while below 40% health, as a fraction. */
+  lowHpDmg?: number;
 }
 
 export interface Stats {
@@ -49,12 +53,16 @@ export interface Stats {
   xpGain: number;
   dmgTaken: number;
   projSpeed: number;
+  bossDmg: number;
+  lowHpDmg: number;
 }
 
 export const BASE_ATK = 100;
 export const BASE_HP = 100;
 export const CDR_CAP = 0.75;
 export const DMG_TAKEN_FLOOR = 0.2;
+/** Below this share of max health, lowHpDmg applies. */
+export const LOW_HP = 0.4;
 
 export function computeStats(mods: readonly StatMods[]): Stats {
   let atkPoints = 0;
@@ -72,6 +80,8 @@ export function computeStats(mods: readonly StatMods[]): Stats {
   let xpGain = 1;
   let dmgTaken = 1;
   let projSpeed = 1;
+  let bossDmg = 0;
+  let lowHpDmg = 0;
   for (const m of mods) {
     atkPoints += m.atk ?? 0;
     dmgMult *= 1 + (m.dmg ?? 0);
@@ -88,6 +98,8 @@ export function computeStats(mods: readonly StatMods[]): Stats {
     xpGain += m.xpGain ?? 0;
     dmgTaken += m.dmgTaken ?? 0;
     projSpeed += m.projSpeed ?? 0;
+    bossDmg += m.bossDmg ?? 0;
+    lowHpDmg += m.lowHpDmg ?? 0;
   }
   return {
     atk: BASE_ATK + atkPoints,
@@ -106,6 +118,8 @@ export function computeStats(mods: readonly StatMods[]): Stats {
     xpGain,
     dmgTaken: Math.max(DMG_TAKEN_FLOOR, dmgTaken),
     projSpeed,
+    bossDmg,
+    lowHpDmg,
   };
 }
 

@@ -21,6 +21,7 @@ import { castAlmighty } from './casts/almighty';
 import { castAntithesis, castDouble, castJail, castLove, castMaw, castPunch, castZombie } from './casts/schrift2';
 import { castBalance, castIron, castMiracle, castOverkill, castSuperstar, castVollstandig, lichtRegen } from './casts/utility';
 import { BAMBIES, BAMBIES_HASTE } from '../data/resonances';
+import { MASTERY_PER } from '../data/archives';
 import type { World } from './world';
 
 /** Runtime state of one owned power. */
@@ -40,9 +41,11 @@ export interface PowerState {
   active: number;
   /** Run time when it was gained, for damage per second. */
   since: number;
+  /** Its discipline, learned in the Archives: every level a little more damage. */
+  mastery: number;
 }
 
-export function computePowerStats(def: PowerDef, level: number): PowerStats {
+export function computePowerStats(def: PowerDef, level: number, mastery = 0): PowerStats {
   const s: PowerStats = { ...def.base };
   const top = Math.min(level, upgradeCap(def));
   for (let l = 2; l <= top; l++) {
@@ -50,15 +53,16 @@ export function computePowerStats(def: PowerDef, level: number): PowerStats {
     if (!add) continue;
     for (const key of Object.keys(add) as (keyof PowerStats)[]) s[key] += add[key] ?? 0;
   }
+  if (mastery > 0) s.damage *= 1 + MASTERY_PER * mastery;
   return s;
 }
 
-export function newPowerState(def: PowerDef): PowerState {
-  return { def, level: 1, attr: null, stats: computePowerStats(def, 1), timer: 0.35, timer2: 0.5, counter: 0, angle: 0, active: 0, since: 0 };
+export function newPowerState(def: PowerDef, mastery = 0): PowerState {
+  return { def, level: 1, attr: null, stats: computePowerStats(def, 1, mastery), timer: 0.35, timer2: 0.5, counter: 0, angle: 0, active: 0, since: 0, mastery };
 }
 
 export function refreshPowerStats(ps: PowerState): void {
-  ps.stats = computePowerStats(ps.def, ps.level);
+  ps.stats = computePowerStats(ps.def, ps.level, ps.mastery);
 }
 
 export function updatePowers(w: World): void {

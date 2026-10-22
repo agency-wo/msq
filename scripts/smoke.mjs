@@ -1088,6 +1088,9 @@ try {
     await np.tap('.archives-btn');
     await np.waitForSelector('.screen.archives .upgrade');
     await check('archives');
+    await np.tap('.archives-tab.tab-mastery');
+    await np.waitForSelector('.screen.archives .upgrade.mastery');
+    await check('disciplines');
     await np.tap('.archives-tab.tab-armory');
     await np.waitForSelector('.screen.archives .armory-row');
     await check('armory');

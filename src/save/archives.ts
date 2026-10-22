@@ -1,5 +1,5 @@
-import { ARMORY_COST, GESANG_PER, UPGRADE_BY_ID, UPGRADES, verseCost, type UpgradeSpecial } from '../data/archives';
-import { STARTABLE_IDS, STARTING_POWER } from '../data/powers';
+import { ARMORY_COST, GESANG_PER, MASTERY_COSTS, masteryKey, SHELL_EVERY, UPGRADE_BY_ID, UPGRADES, verseCost, type UpgradeSpecial } from '../data/archives';
+import { POWERS, STARTABLE_IDS, STARTING_POWER, type PowerDef } from '../data/powers';
 import { RELIC_BY_ID, RELICS, type RelicDef } from '../data/relics';
 import { SPOILS } from '../data/spoils';
 import { scaleMods, type StatMods } from '../game/stats';
@@ -71,6 +71,62 @@ export function metaStartLevels(save: SaveData): number {
 /** The Emperor's Foresight: extra cards on every level-up board. */
 export function metaChoices(save: SaveData): number {
   return special(save, 'choices');
+}
+
+/** Blut Vene shell: seconds before the shield grows back (0 without it). */
+export function metaShellEvery(save: SaveData): number {
+  return SHELL_EVERY[Math.min(SHELL_EVERY.length - 1, upgradeLevel(save, 'shell'))] ?? 0;
+}
+
+/** Jagdarmee spoils: the chance an elite leaves a second chest. */
+export function metaEliteChest(save: SaveData): number {
+  return special(save, 'eliteChest');
+}
+
+/** Quartermaster: extra choices in every chest. */
+export function metaChestChoices(save: SaveData): number {
+  return special(save, 'chestChoice');
+}
+
+/** Auswählen harvest: the share of max health a fallen boss gives back. */
+export function metaBossHeal(save: SaveData): number {
+  return special(save, 'bossHeal');
+}
+
+// ------------------------------------------------------------ Disciplines
+
+/** The attacks a discipline can be learned for: every Quincy art, Schrift, support power that strikes, and bankai. */
+export const MASTERY_POWERS: readonly PowerDef[] = POWERS.filter(
+  (d) => (d.group === 'art' || d.group === 'schrift' || d.group === 'utility' || d.group === 'bankai') && d.base.damage > 0,
+);
+
+export function masteryLevel(save: SaveData, id: string): number {
+  return save.meta[masteryKey(id)] ?? 0;
+}
+
+/** Cost of a discipline's next level, or null once mastered. */
+export function nextMasteryCost(save: SaveData, id: string): number | null {
+  const level = masteryLevel(save, id);
+  return level < MASTERY_COSTS.length ? MASTERY_COSTS[level] : null;
+}
+
+export function buyMastery(save: SaveData, id: string): boolean {
+  if (!MASTERY_POWERS.some((d) => d.id === id)) return false;
+  const cost = nextMasteryCost(save, id);
+  if (cost === null || save.gold < cost) return false;
+  save.gold -= cost;
+  save.meta[masteryKey(id)] = masteryLevel(save, id) + 1;
+  return true;
+}
+
+/** Every discipline learned, by power, for the run. */
+export function metaMastery(save: SaveData): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const d of MASTERY_POWERS) {
+    const level = masteryLevel(save, d.id);
+    if (level > 0) out[d.id] = level;
+  }
+  return out;
 }
 
 // ------------------------------------------------------------ the Armory

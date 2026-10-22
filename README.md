@@ -170,7 +170,10 @@ Every run pays gold. Spend it in the **Wandenreich Archives** on permanent
 upgrades (attack, health, damage taken, health regeneration, speed, pickup
 range, cooldowns, power size and duration, projectile speed, critical chance
 and damage, one more of everything, faster level-ups, more gold, two revives,
-level-up rerolls), and pick which awakened Schrift a run opens with. A gift
+level-up rerolls, damage against bosses and elites, a Letzt Stil edge when close
+to falling, a Blut Vene shell that grows back, second chests from elites, wider
+chests, a boss's harvest), drill a Discipline for each attack (five levels of
+damage apiece), and pick which awakened Schrift a run opens with. A gift
 code typed under Settings (Redeem a gift code) pays its gold once per save.
 
 Stages, 20 minutes each:

@@ -8,7 +8,7 @@ import type { Rarity } from './relics';
  * waiting at the start, extra cards on every board).
  */
 
-export type UpgradeSpecial = 'revive' | 'reroll' | 'gold' | 'start' | 'choices';
+export type UpgradeSpecial = 'revive' | 'reroll' | 'gold' | 'start' | 'choices' | 'shell' | 'eliteChest' | 'chestChoice' | 'bossHeal';
 
 export interface UpgradeDef {
   id: string;
@@ -224,7 +224,82 @@ export const UPGRADES: readonly UpgradeDef[] = [
     costs: [6000],
     perLevel: { count: 1 },
   },
+  {
+    id: 'discipline',
+    name: 'Sternritter discipline',
+    per: '+5% damage to bosses and elites',
+    desc: 'The knights drill against the strongest: every blow finds the gap in a captain’s guard.',
+    icon: 'helm',
+    color: '#ffb36a',
+    costs: [600, 1200, 2000, 3000, 4200],
+    perLevel: { bossDmg: 0.05 },
+  },
+  {
+    id: 'letzt',
+    name: 'Letzt Stil drills',
+    per: '+8% damage below 40% health',
+    desc: 'The last style of the Quincy: the closer you are to falling, the harder you strike.',
+    icon: 'flame',
+    color: '#ff6a7e',
+    costs: [700, 1500, 2600],
+    perLevel: { lowHpDmg: 0.08 },
+  },
+  {
+    id: 'shell',
+    name: 'Blut Vene shell',
+    per: 'A shield that turns one blow, grown back every 60 / 45 / 30 s',
+    desc: 'Blut Vene hardened into a shell over the skin, which breaks on one blow and closes again.',
+    icon: 'shield',
+    color: '#cfd8e6',
+    costs: [1200, 2400, 4000],
+    special: 'shell',
+    amount: 1,
+  },
+  {
+    id: 'jagd',
+    name: 'Jagdarmee spoils',
+    per: '+15% chance an elite leaves a second chest',
+    desc: 'The hunting army brings back more of what the strong ones carried.',
+    icon: 'banner',
+    color: '#ffd27a',
+    costs: [800, 1700, 3000],
+    special: 'eliteChest',
+    amount: 0.15,
+  },
+  {
+    id: 'quartermaster',
+    name: 'Quartermaster',
+    per: '+1 choice in every chest',
+    desc: 'The Wandenreich’s stores open wider: one more in every chest you open.',
+    icon: 'vault',
+    color: '#ffe6a0',
+    costs: [5000],
+    special: 'chestChoice',
+    amount: 1,
+  },
+  {
+    id: 'harvest',
+    name: 'Auswählen harvest',
+    per: 'A boss falling gives back 12% of your health',
+    desc: 'Take back a little of what a fallen enemy held.',
+    icon: 'drop',
+    color: '#ff8a9a',
+    costs: [1500, 3200],
+    special: 'bossHeal',
+    amount: 0.12,
+  },
 ];
+
+/** Blut Vene shell: seconds before the shield grows back, by level (0 for none). */
+export const SHELL_EVERY: readonly number[] = [0, 60, 45, 30];
+
+/**
+ * Disciplines: a mastery for every attack, bought in the Archives. Each
+ * level makes that power hit harder in every run.
+ */
+export const MASTERY_PER = 0.06;
+export const MASTERY_COSTS: readonly number[] = [400, 900, 1600, 2600, 4000];
+export const masteryKey = (id: string): string => `mastery:${id}`;
 
 export const UPGRADE_BY_ID: ReadonlyMap<string, UpgradeDef> = new Map(UPGRADES.map((u) => [u.id, u]));
 

@@ -2,7 +2,19 @@ import { SIM_HZ } from '../src/config';
 import { UPGRADES } from '../src/data/archives';
 import type { Offer } from '../src/game/offers';
 import type { World, WorldOptions } from '../src/game/world';
-import { buyUpgrade, metaMods, metaRerolls, metaRevives } from '../src/save/archives';
+import {
+  buyMastery,
+  buyUpgrade,
+  MASTERY_POWERS,
+  metaBossHeal,
+  metaChestChoices,
+  metaEliteChest,
+  metaMastery,
+  metaMods,
+  metaRerolls,
+  metaRevives,
+  metaShellEvery,
+} from '../src/save/archives';
 import { defaultSave } from '../src/save/save';
 
 /** Simulated players for headless tests: how they pick cards and how they move. */
@@ -189,9 +201,19 @@ export function play(w: World, seconds: number, pick: Strategy, move: Mover, onS
 }
 
 /** World options for a player who bought every Archives upgrade. */
-export function maxedMeta(): Pick<WorldOptions, 'meta' | 'revives' | 'rerolls'> {
+export function maxedMeta(): Pick<WorldOptions, 'meta' | 'revives' | 'rerolls' | 'shellEvery' | 'eliteChest' | 'chestChoices' | 'bossHeal' | 'mastery'> {
   const s = defaultSave();
-  s.gold = 1_000_000;
+  s.gold = 10_000_000;
   for (const u of UPGRADES) while (buyUpgrade(s, u.id));
-  return { meta: metaMods(s), revives: metaRevives(s), rerolls: metaRerolls(s) };
+  for (const d of MASTERY_POWERS) while (buyMastery(s, d.id));
+  return {
+    meta: metaMods(s),
+    revives: metaRevives(s),
+    rerolls: metaRerolls(s),
+    shellEvery: metaShellEvery(s),
+    eliteChest: metaEliteChest(s),
+    chestChoices: metaChestChoices(s),
+    bossHeal: metaBossHeal(s),
+    mastery: metaMastery(s),
+  };
 }

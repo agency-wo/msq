@@ -119,7 +119,7 @@ import {
 } from './spoils';
 import { EBulletPool, EnemyPool, FxPool, HITS, MarkPool, NumberRing, OrbPool, ProjPool, ZonePool } from './pools';
 import { newPowerState, refreshPowerStats, syncPower, updatePowers, type PowerState } from './powers';
-import { BASE_HP, computeStats, damageMultiplier, scaleMods, type StatMods, type Stats } from './stats';
+import { BASE_HP, computeStats, damageMultiplier, LOW_HP, scaleMods, type StatMods, type Stats } from './stats';
 import { xpToNext } from './xp';
 
 export type PickupKind = 'chest' | 'chestBlack' | 'heart' | 'magnet' | 'nuke' | 'medallion' | 'shrine' | 'fragment' | 'spoil';
@@ -233,6 +233,16 @@ export interface WorldOptions {
   startLevels?: number;
   /** The Emperor's Foresight: extra cards on every level-up board. */
   choices?: number;
+  /** Blut Vene shell: seconds before its shield grows back (0 for none). */
+  shellEvery?: number;
+  /** Jagdarmee spoils: the chance an elite leaves a second chest. */
+  eliteChest?: number;
+  /** Quartermaster: extra choices in every chest. */
+  chestChoices?: number;
+  /** Auswählen harvest: the share of max health a fallen boss gives back. */
+  bossHeal?: number;
+  /** Disciplines: mastery level by power id. */
+  mastery?: Readonly<Record<string, number>>;
   /** Daily Trial modifiers (see data/daily.ts). */
   mods?: string[];
   /** A Story Mode mission: its stage, timeline, rules and goal (see data/missions.ts). */
@@ -366,6 +376,13 @@ export class World {
   readonly banners: Banner[] = [];
   readonly sounds = new Set<SoundName>();
   shake = 0;
+  /** Archives training read by the run: the shell's regrowth and its clock, elites' chests, chest choices, a boss's harvest, disciplines. */
+  private shellEvery = 0;
+  private shellT = 0;
+  private eliteChest = 0;
+  private chestChoices = 0;
+  private bossHeal = 0;
+  private mastery: Readonly<Record<string, number>> = {};
   /**
    * Seconds the picture should hold still on a heavy blow (a big hit taken, a
    * boss changing form or falling). A hint for the app's loop only: the
@@ -604,6 +621,7 @@ export class World {
     }
     this.nextEventT = this.t + this.rng.range(100, 140);
     if (this.bossRush) this.setupBossRush();
+    this.mastery = opts.mastery ?? {};
     this.addPower(opts.start && STARTABLE_IDS.includes(opts.start) ? opts.start : STARTING_POWER);
     if (opts.extra && STARTABLE_IDS.includes(opts.extra) && !this.powers.some((ps) => ps.def.id === opts.extra)) this.addPower(opts.extra);
     this.player.revives += Math.max(0, Math.floor(opts.revives ?? 0));
@@ -613,6 +631,10 @@ export class World {
     if (relic && (!relic.locked || this.relicsOpen.has(relic.id))) this.addRelic(relic.id);
     this.pendingLevelUps += Math.max(0, Math.floor(opts.startLevels ?? 0));
     this.choices = 3 + Math.max(0, Math.floor(opts.choices ?? 0));
+    this.shellEvery = Math.max(0, opts.shellEvery ?? 0);
+    this.eliteChest = Math.min(1, Math.max(0, opts.eliteChest ?? 0));
+    this.chestChoices = Math.max(0, Math.floor(opts.chestChoices ?? 0));
+    this.bossHeal = Math.max(0, opts.bossHeal ?? 0);
     if (this.stress > 0) {
       for (const def of POWERS) {
         if (def.group === 'bankai') continue;
@@ -664,6 +686,14 @@ export class World {
     }
     this.runTimeline();
     this.hazardStep();
+    // Blut Vene shell: the shield grows back on its own clock.
+    if (this.shellEvery > 0 && this.shieldCharges === 0) {
+      this.shellT -= DT;
+      if (this.shellT <= 0) {
+        this.shieldCharges = 1;
+        this.shellT = this.shellEvery;
+      }
+    }
     this.spawnTick();
     this.grid.build(this.en.x, this.en.y, this.en.dead, this.en.n, p.x, p.y);
     this.updateEnemies();
@@ -1662,6 +1692,9 @@ export class World {
     const crit = !noCrit && this.rng.next() < this.stats.critChance;
     const vul = E.vulnT[i] > 0 ? 1 + E.vulnK[i] : 1;
     let dmg = base * this.dmgMul * vul * (crit ? this.stats.critMult : 1);
+    // Sternritter discipline (and the like): more against bosses and elites; Letzt Stil: more when close to falling.
+    if (this.stats.bossDmg > 0 && E.flags[i] & (FLAG_BOSS | FLAG_ELITE)) dmg *= 1 + this.stats.bossDmg;
+    if (this.stats.lowHpDmg > 0 && this.player.hp < this.player.maxHp * LOW_HP) dmg *= 1 + this.stats.lowHpDmg;
     // A boss on guard (Cang Du's iron skin) lets only part of each blow through.
     if (E.flags[i] & FLAG_BOSS) {
       const m = this.memos.get(E.uid[i]);
@@ -1817,7 +1850,11 @@ export class World {
     if (!(flags & FLAG_BOSS)) this.feedOverkill(x, y);
     if (this.spoil.on) spoilKill(this, x, y, (flags & FLAG_BOSS) !== 0);
     if (E.volT[i] > 0) this.queueBurst(x, y, 44 * this.stats.size, E.volDmg[i]);
+    // Jagdarmee spoils: an elite may leave a second chest behind.
+    if (flags & FLAG_ELITE && this.eliteChest > 0 && this.rng.next() < this.eliteChest) this.addPickup('chest', x, y);
     if (flags & FLAG_BOSS) {
+      // Auswählen harvest: a little of the fallen boss's power comes back to you.
+      if (this.bossHeal > 0) this.heal(this.bossHeal);
       this.hitStop = Math.max(this.hitStop, 0.18);
       this.splash(x, y, E.r[i] * 3.2);
       this.bossCount = Math.max(0, this.bossCount - 1);
@@ -2791,7 +2828,7 @@ export class World {
 
   relicChoices(kind: ChestKind): RelicDef[] {
     const pool = RELICS.filter((r) => (!r.locked || this.relicsOpen.has(r.id)) && this.relicUseful(r.id));
-    return rollRelics(pool, new Set(this.relics.map((r) => r.id)), kind, this.rng, spoilChestChoices(this));
+    return rollRelics(pool, new Set(this.relics.map((r) => r.id)), kind, this.rng, spoilChestChoices(this) + this.chestChoices);
   }
 
   /**
@@ -2903,7 +2940,7 @@ export class World {
     this.checkEvolution(id);
     const def = POWER_BY_ID.get(id);
     if (!def) return;
-    const ps = newPowerState(def);
+    const ps = newPowerState(def, this.mastery[id] ?? 0);
     ps.since = this.t;
     this.powers.push(ps);
     syncPower(this, this.powers.length - 1);

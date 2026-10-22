@@ -15,7 +15,8 @@ import type { ChestKind, Offer } from '../game/offers';
 import type { Banner, World } from '../game/world';
 import { drawEmperor, drawSprite } from '../render/atlas';
 import { bossSpriteName, enemySpriteName } from '../render/names';
-import { armoryRelics, nextCost, nextVerseCost, startOptions, upgradeLevel, wonSpoils } from '../save/archives';
+import { armoryRelics, MASTERY_POWERS, masteryLevel, nextCost, nextMasteryCost, nextVerseCost, startOptions, upgradeLevel, wonSpoils } from '../save/archives';
+import { MASTERY_COSTS, MASTERY_PER } from '../data/archives';
 import { almightyUnlocked, endlessOpen, missionsCleared, rushOpen, stageUnlocked, trialsOpen, type DailyRecord, type MissionRecord, type SaveData, type Settings } from '../save/save';
 import { chapterUnlocked } from '../save/story';
 import { LOOKS, TRAILS, type LookId, type TrailId } from '../data/looks';
@@ -128,9 +129,10 @@ function setAccent(e: HTMLElement, color: string): void {
 const RARITY_COLOR: Readonly<Record<Rarity, string>> = { common: '#d8d2c4', rare: '#7cc4ff', legendary: '#ffcb5c' };
 
 /** The Archives' tabs. */
-export type ArchivesTab = 'training' | 'armory' | 'gesang';
+export type ArchivesTab = 'training' | 'mastery' | 'armory' | 'gesang';
 const ARCHIVES_TABS: readonly (readonly [ArchivesTab, string])[] = [
   ['training', 'Training'],
+  ['mastery', 'Disciplines'],
   ['armory', 'Armory'],
   ['gesang', 'Kaiser Gesang'],
 ];
@@ -145,6 +147,8 @@ export interface ArchivesHandlers {
   onEquip: (id: string | null) => void;
   /** Kaiser Gesang: sing the next verse. */
   onVerse: () => void;
+  /** Disciplines: learn the next level of a power's mastery. */
+  onMastery: (id: string) => void;
   onBack: () => void;
 }
 const RARITY_LABEL: Readonly<Record<Rarity, string>> = { common: 'Common', rare: 'Rare', legendary: 'Legendary' };
@@ -726,8 +730,11 @@ export class UI {
       tabs.append(b);
     }
     p.append(tabs);
+    // Four tabs overflow a narrow phone: keep the chosen one in view.
+    requestAnimationFrame(() => centerIn(tabs, tabs.querySelector<HTMLElement>('.codex-tab.on')));
     if (tab === 'armory') this.archivesArmory(p, save, h);
     else if (tab === 'gesang') this.archivesGesang(p, save, h);
+    else if (tab === 'mastery') this.archivesMastery(p, save, h);
     else this.archivesTraining(p, save, h);
     const back = button('btn primary', 'Back');
     back.addEventListener('click', this.guard(h.onBack));
@@ -778,6 +785,45 @@ export class UI {
     }
     p.append(starts);
     if (options.length <= 1) p.append(el('p', 'archives-hint', 'Awaken an attack to Lv 7 in a run and you can start with it.'));
+  }
+
+  /** Disciplines: a mastery for every attack, five levels each, each making that power hit harder in every run. */
+  private archivesMastery(p: HTMLElement, save: SaveData, h: ArchivesHandlers): void {
+    p.append(el('p', 'archives-hint', `Drill one power at a time: +${Math.round(MASTERY_PER * 100)}% damage a level, in every run, five levels each.`));
+    const sections: [string, (d: PowerDef) => boolean][] = [
+      ['Quincy arts and Schrift', (d) => d.group === 'art' || d.group === 'schrift'],
+      ['Support', (d) => d.group === 'utility'],
+      ['Bankai', (d) => d.group === 'bankai'],
+    ];
+    for (const [title, test] of sections) {
+      const defs = MASTERY_POWERS.filter(test);
+      if (defs.length === 0) continue;
+      p.append(el('h3', 'archives-sub', title));
+      const list = el('div', 'upgrades');
+      for (const d of defs) {
+        const level = masteryLevel(save, d.id);
+        const cost = nextMasteryCost(save, d.id);
+        const row = el('div', `upgrade mastery${cost === null ? ' mastered' : ''}`);
+        setAccent(row, d.color);
+        const icon = el('canvas', 'upgrade-icon');
+        drawIcon(icon, d.icon, d.color, d.letter);
+        const body = el('div', 'upgrade-body');
+        const pips = el('div', 'pips');
+        for (let k = 0; k < MASTERY_COSTS.length; k++) pips.append(el('span', k < level ? 'pip on' : 'pip'));
+        body.append(el('div', 'upgrade-name', d.name), pips, el('p', 'upgrade-desc', level > 0 ? `+${Math.round(level * MASTERY_PER * 100)}% damage.` : 'Not yet drilled.'));
+        const buy = button('upgrade-buy', cost === null ? 'Max' : gold(cost));
+        if (cost === null || save.gold < cost) {
+          buy.disabled = true;
+          buy.classList.add(cost === null ? 'maxed' : 'poor');
+        } else {
+          buy.addEventListener('click', this.guard(() => h.onMastery(d.id)));
+        }
+        buy.setAttribute('aria-label', cost === null ? `${d.name}: mastered` : `Drill ${d.name} to level ${level + 1} for ${cost} gold`);
+        row.append(icon, body, buy);
+        list.append(row);
+      }
+      p.append(list);
+    }
   }
 
   /** The Armory: buy relics for good, equip one, and every run (but the Daily Trial) starts with it. */
