@@ -189,9 +189,18 @@ export function casterAI(w: World, i: number, dist: number): void {
   E.atkT[i] -= DT;
   if (E.atkT[i] > 0) return;
   E.atkT[i] = 5 + w.rng.next() * 2.5;
-  if (dist > 270) return;
   const p = w.player;
   const a = Math.atan2(p.y - E.y[i], p.x - E.x[i]);
+  if (E.type[i] === ENEMY_INDEX.cero) {
+    // An Adjuchas's Cero: red light gathers in its jaws, then a long line fires where you stood.
+    E.atkT[i] = 5 + w.rng.next() * 1.5;
+    if (dist > 320) return;
+    w.spawnMark(MK_CERO, MS_LINE, E.x[i], E.y[i], 20, 420, a, 0.9, E.dmg[i] * 0.9, MF_ENEMY);
+    w.spawnFx(FX_GLOW, E.x[i] + Math.cos(a) * E.r[i], E.y[i] - E.r[i] * 0.5, 0, 0, 0.9, E.r[i] * 0.6, E.r[i] * 2, 0.9, 0, 0, 0xff3050, LAYER_ADD);
+    w.sound('warn');
+    return;
+  }
+  if (dist > 270) return;
   if (E.type[i] === ENEMY_INDEX.jizo) {
     // Konjiki Ashisogi Jizō breathes its poison out ahead of it.
     E.atkT[i] = 3.2;

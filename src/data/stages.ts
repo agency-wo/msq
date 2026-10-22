@@ -27,7 +27,32 @@ export type TimelineEvent =
   | { at: number; kind: 'chest' }
   /** A Quincy shrine appears near you (see data/shrines.ts). */
   | { at: number; kind: 'shrine' }
-  | { at: number; kind: 'rune'; rune: RuneKind };
+  | { at: number; kind: 'rune'; rune: RuneKind }
+  /** A formation of `count` charges across the field in a line, after a warning; `what` names it in the warning. */
+  | { at: number; kind: 'stampede'; enemy: EnemyId; count: number; what: string }
+  /** The stage's hazard comes down for a while (StageDef.hazard). */
+  | { at: number; kind: 'hazard' };
+
+/**
+ * A stage's hazard: for a burst, something comes down near you every so
+ * often, a little ahead of where you are going, always warned first.
+ * strike: circles that burst · mire: patches that slow you while you stand
+ * in them · line: strokes across your path · seal: circles that bind you.
+ */
+export interface HazardDef {
+  form: 'strike' | 'mire' | 'line' | 'seal';
+  /** How it looks: which warning and which burst. */
+  look: 'sand' | 'shadow' | 'kido' | 'rubble' | 'ink' | 'collapse' | 'seal';
+  r: number;
+  /** Said as a burst begins. */
+  warn: string;
+}
+
+/** Who charges in a stage's formations, and how the warning names them. */
+export interface FormationDef {
+  enemy: EnemyId;
+  what: string;
+}
 
 export interface StageDef {
   id: StageId;
@@ -60,6 +85,10 @@ export interface StageDef {
   lastBearer?: string;
   /** Clearing this stage unlocks this one. */
   unlockedBy?: StageId;
+  /** What comes down in the stage's hazard bursts. */
+  hazard: HazardDef;
+  /** Who charges in its formations. */
+  formation: FormationDef;
 }
 
 const LENGTH = 20 * 60;
@@ -103,11 +132,51 @@ export const DIFFICULTY = {
   ringEvery: 12,
   firstElite: 150,
   eliteEvery: 75,
+  /** Charging formations from firstStampede, every stampedeEvery seconds: stampedeBase strong, one more a minute, at most stampedeCap. */
+  firstStampede: 210,
+  stampedeEvery: 150,
+  stampedeBase: 8,
+  stampedeCap: 24,
+  /** Hazard bursts from firstHazard, every hazardEvery seconds, hazardSecs long; each strike hits for hazardDamage on the swarm's damage curve. */
+  firstHazard: 150,
+  hazardEvery: 120,
+  hazardSecs: 18,
+  hazardDamage: 12,
 } as const;
 
-/** Rings, elites, chests, runes and the three bearers: the skeleton every stage shares. */
-function skeleton(ring: (t: number) => EnemyId, elite: (t: number) => EnemyId, bearerHp: readonly [number, number, number]): TimelineEvent[] {
+/**
+ * The formations and hazard bursts on a timeline of `length` seconds. None
+ * comes in the 45 s before a boss (at `bosses`) or the 20 s after it: a
+ * boss's arrival is its own moment.
+ */
+export function variety(length: number, formation: FormationDef, bosses: readonly number[] = []): TimelineEvent[] {
   const events: TimelineEvent[] = [];
+  for (let t = DIFFICULTY.firstStampede; t < length - 30; t += DIFFICULTY.stampedeEvery) {
+    if (nearBoss(t, bosses)) continue;
+    events.push({ at: t, kind: 'stampede', enemy: formation.enemy, count: Math.min(DIFFICULTY.stampedeCap, DIFFICULTY.stampedeBase + Math.floor(t / 60)), what: formation.what });
+  }
+  for (let t = DIFFICULTY.firstHazard; t < length - 30; t += DIFFICULTY.hazardEvery) {
+    if (!nearBoss(t, bosses)) events.push({ at: t, kind: 'hazard' });
+  }
+  return events;
+}
+
+function nearBoss(t: number, bosses: readonly number[]): boolean {
+  return bosses.some((b) => t > b - 45 && t < b + 20);
+}
+
+/** Who charges in each stage's formations. */
+const HUECO_FORMATION: FormationDef = { enemy: 'hound', what: 'A pack of hounds' };
+const SEIREITEI_FORMATION: FormationDef = { enemy: 'flash', what: 'A line of the Onmitsukidō' };
+const LASNOCHES_FORMATION: FormationDef = { enemy: 'numeros', what: 'A rank of Arrancar soldiers' };
+const PALACE_FORMATION: FormationDef = { enemy: 'sentinel', what: 'A phalanx of sentinels' };
+const SILBERN_FORMATION: FormationDef = { enemy: 'brawler', what: 'The Eleventh Division' };
+const WAHRWELT_FORMATION: FormationDef = { enemy: 'brawler', what: 'A charge of Soul Reapers' };
+const KARAKURA_FORMATION: FormationDef = { enemy: 'gigai', what: 'A crowd of empty gigai' };
+
+/** Rings, elites, chests, runes, formations, hazards and the three bearers: the skeleton every stage shares. */
+function skeleton(ring: (t: number) => EnemyId, elite: (t: number) => EnemyId, bearerHp: readonly [number, number, number], formation: FormationDef): TimelineEvent[] {
+  const events: TimelineEvent[] = variety(LENGTH, formation, [300, 600, 900]);
   for (let t = 90; t < LENGTH; t += 120) events.push({ at: t, kind: 'ring', enemy: ring(t), count: DIFFICULTY.ringBase + Math.floor(t / DIFFICULTY.ringEvery) });
   for (let t = DIFFICULTY.firstElite; t < LENGTH; t += DIFFICULTY.eliteEvery) events.push({ at: t, kind: 'elite', enemy: elite(t) });
   for (let t = 170; t < LENGTH; t += 150) events.push({ at: t, kind: 'chest' });
@@ -142,16 +211,17 @@ const HUECO: StageDef = {
     { from: 0, mix: [['hollow', 1]] },
     { from: 60, mix: [['hollow', 3], ['hound', 1]] },
     { from: 180, mix: [['hollow', 3], ['hound', 2], ['brute', 1]] },
-    { from: 360, mix: [['hollow', 3], ['hound', 2], ['brute', 1], ['volatile', 1]] },
-    { from: 600, mix: [['hollow', 2], ['hound', 3], ['brute', 2], ['volatile', 2]] },
-    { from: 720, mix: [['hollow', 2], ['hound', 3], ['brute', 2], ['volatile', 2], ['gillian', 1]] },
-    { from: 900, mix: [['hollow', 2], ['hound', 3], ['brute', 3], ['volatile', 2], ['gillian', 1]] },
+    { from: 360, mix: [['hollow', 3], ['hound', 2], ['brute', 1], ['volatile', 1], ['cero', 1]] },
+    { from: 600, mix: [['hollow', 2], ['hound', 3], ['brute', 2], ['volatile', 2], ['cero', 1]] },
+    { from: 720, mix: [['hollow', 2], ['hound', 3], ['brute', 2], ['volatile', 2], ['gillian', 1], ['cero', 1]] },
+    { from: 900, mix: [['hollow', 2], ['hound', 3], ['brute', 3], ['volatile', 2], ['gillian', 1], ['cero', 2]] },
   ],
   events: sorted([
     ...skeleton(
       (t) => (t < 400 ? 'hollow' : 'hound'),
       (t) => (t < 300 ? 'hollow' : 'brute'),
       [1, 3.4, 14],
+      HUECO_FORMATION,
     ),
     { at: 905, kind: 'boss', enemy: 'ayon', hpMul: 3.4, final: false, warn: 'Harribel’s Fracción give their left arms: Ayon rises', sub: 'The beast of three left arms' },
     { at: 1080, kind: 'boss', enemy: 'nel', hpMul: 14, final: false, warn: 'Neliel stands between you and Las Noches', sub: 'Once the Tercera Espada' },
@@ -169,6 +239,8 @@ const HUECO: StageDef = {
   spawn: 1,
   xp: 1,
   gold: 1,
+  hazard: { form: 'mire', look: 'sand', r: 48, warn: 'The sand begins to sink' },
+  formation: HUECO_FORMATION,
   // The five stolen bankai: Zanka no Tachi was never a knight's; the Emperor takes it from Yamamoto.
   bearerPool: ['senbonzakura', 'hyorinmaru', 'raikoben', 'tengen', 'gonryo'],
 };
@@ -198,6 +270,7 @@ const SEIREITEI: StageDef = {
       (t) => (t < 400 ? 'officer' : 'flash'),
       (t) => (t < 300 ? 'officer' : 'guard'),
       [1.15, 4, 16],
+      SEIREITEI_FORMATION,
     ),
     // The third captain comes with Unohana, who closes her soldiers' wounds as fast as you open them.
     { at: 905, kind: 'boss', enemy: 'unohana', hpMul: 5, final: false, warn: 'Retsu Unohana comes to tend her soldiers', sub: 'Captain of the 4th Division' },
@@ -216,6 +289,8 @@ const SEIREITEI: StageDef = {
   spawn: 1.05,
   xp: 1.2,
   gold: 1.25,
+  hazard: { form: 'strike', look: 'kido', r: 44, warn: 'The Kidō Corps open a barrage' },
+  formation: SEIREITEI_FORMATION,
   captains: true,
   // Zanka no Tachi belongs to the Captain-Commander, who only fights at the end.
   bearerPool: ['senbonzakura', 'hyorinmaru', 'raikoben', 'tengen', 'gonryo'],
@@ -239,15 +314,17 @@ const LASNOCHES: StageDef = {
     { from: 0, mix: [['numeros', 2], ['hollow', 1]] },
     { from: 45, mix: [['numeros', 3], ['hollow', 1], ['hound', 1]] },
     { from: 150, mix: [['numeros', 3], ['hound', 2], ['exequias', 1]] },
-    { from: 300, mix: [['numeros', 3], ['hound', 2], ['exequias', 2], ['brute', 1]] },
-    { from: 600, mix: [['numeros', 3], ['hound', 3], ['exequias', 2], ['brute', 2]] },
-    { from: 900, mix: [['numeros', 3], ['hound', 3], ['exequias', 3], ['brute', 3]] },
+    { from: 180, mix: [['numeros', 3], ['hound', 2], ['exequias', 1], ['cero', 1]] },
+    { from: 300, mix: [['numeros', 3], ['hound', 2], ['exequias', 2], ['brute', 1], ['cero', 1]] },
+    { from: 600, mix: [['numeros', 3], ['hound', 3], ['exequias', 2], ['brute', 2], ['cero', 1]] },
+    { from: 900, mix: [['numeros', 3], ['hound', 3], ['exequias', 3], ['brute', 3], ['cero', 2]] },
   ],
   events: sorted([
     ...skeleton(
       (t) => (t < 400 ? 'numeros' : 'hound'),
       (t) => (t < 300 ? 'numeros' : 'gillian'),
       [1.15, 4.2, 16],
+      LASNOCHES_FORMATION,
     ),
     // A Gillian lumbers in after the third Arrancar.
     { at: 906, kind: 'elite', enemy: 'gillian' },
@@ -265,6 +342,8 @@ const LASNOCHES: StageDef = {
   spawn: 1.05,
   xp: 1.2,
   gold: 1.35,
+  hazard: { form: 'strike', look: 'rubble', r: 44, warn: 'The false sky cracks: the dome is coming down' },
+  formation: LASNOCHES_FORMATION,
   roster: 'arrancar',
   unlockedBy: 'hueco',
 };
@@ -293,6 +372,7 @@ const PALACE: StageDef = {
       (t) => (t < 400 ? 'inkling' : 'asauchi'),
       (t) => (t < 300 ? 'sentinel' : 'attendant'),
       [1.3, 4.6, 18],
+      PALACE_FORMATION,
     ),
     // The third guardian keeps two attendants close.
     { at: 906, kind: 'elite', enemy: 'attendant' },
@@ -311,6 +391,8 @@ const PALACE: StageDef = {
   spawn: 1,
   xp: 1.3,
   gold: 1.5,
+  hazard: { form: 'line', look: 'ink', r: 18, warn: 'Ink runs across the palace floor' },
+  formation: PALACE_FORMATION,
   roster: 'royal',
   unlockedBy: 'seireitei',
 };
@@ -341,6 +423,7 @@ const SILBERN: StageDef = {
       (t) => (t < 400 ? 'brawler' : 'flash'),
       (t) => (t < 300 ? 'brawler' : 'guard'),
       [1.3, 4.6, 18],
+      SILBERN_FORMATION,
     ),
     {
       at: LENGTH,
@@ -356,6 +439,8 @@ const SILBERN: StageDef = {
   spawn: 1.08,
   xp: 1.2,
   gold: 1.6,
+  hazard: { form: 'mire', look: 'shadow', r: 50, warn: 'The Schatten Bereich opens under the streets' },
+  formation: SILBERN_FORMATION,
   roster: 'gotei',
   unlockedBy: 'seireitei',
 };
@@ -386,6 +471,7 @@ const WAHRWELT: StageDef = {
       (t) => (t < 400 ? 'hollow' : 'flash'),
       (t) => (t < 300 ? 'brute' : 'guard'),
       [1.4, 5, 20],
+      WAHRWELT_FORMATION,
     ),
     // Kyōraku lets Aizen out of Muken: he always comes, and always last before Ichigo.
     { at: 1080, kind: 'bearer', tier: 3, hpMul: 30 },
@@ -403,6 +489,8 @@ const WAHRWELT: StageDef = {
   spawn: 1.1,
   xp: 1.3,
   gold: 1.8,
+  hazard: { form: 'strike', look: 'collapse', r: 58, warn: 'The old palace falls into the new world' },
+  formation: WAHRWELT_FORMATION,
   roster: 'heroes',
   lastBearer: 'aizen',
   unlockedBy: 'palace',
@@ -426,14 +514,16 @@ const KARAKURA: StageDef = {
     { from: 45, mix: [['hollow', 2], ['gigai', 2], ['hound', 1]] },
     { from: 150, mix: [['gigai', 2], ['hound', 2], ['sentry', 1], ['brute', 1]] },
     { from: 300, mix: [['gigai', 3], ['hound', 2], ['sentry', 2], ['brute', 1], ['volatile', 1]] },
-    { from: 600, mix: [['gigai', 3], ['hound', 3], ['sentry', 2], ['brute', 2], ['volatile', 1]] },
-    { from: 900, mix: [['gigai', 3], ['hound', 3], ['sentry', 3], ['brute', 3], ['volatile', 2]] },
+    { from: 360, mix: [['gigai', 3], ['hound', 2], ['sentry', 2], ['brute', 1], ['volatile', 1], ['cero', 1]] },
+    { from: 600, mix: [['gigai', 3], ['hound', 3], ['sentry', 2], ['brute', 2], ['volatile', 1], ['cero', 1]] },
+    { from: 900, mix: [['gigai', 3], ['hound', 3], ['sentry', 3], ['brute', 3], ['volatile', 2], ['cero', 2]] },
   ],
   events: sorted([
     ...skeleton(
       (t) => (t < 400 ? 'gigai' : 'hound'),
       (t) => (t < 300 ? 'brute' : 'gillian'),
       [1.4, 5, 19],
+      KARAKURA_FORMATION,
     ),
     // A Menos Grande comes through after the third defender, as one did in Karakura before.
     { at: 906, kind: 'elite', enemy: 'gillian' },
@@ -451,6 +541,8 @@ const KARAKURA: StageDef = {
   spawn: 1.12,
   xp: 1.35,
   gold: 2,
+  hazard: { form: 'seal', look: 'seal', r: 40, warn: 'Urahara’s traps wake under the streets' },
+  formation: KARAKURA_FORMATION,
   roster: 'karakura',
   unlockedBy: 'wahrwelt',
 };

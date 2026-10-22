@@ -41,7 +41,8 @@ export type EnemyId =
   | 'gigai'
   | 'sentry'
   | 'karakura'
-  | 'urahara';
+  | 'urahara'
+  | 'cero';
 
 /**
  * chase: walks at you · blink: walks, and every few seconds flash-steps closer ·
@@ -157,6 +158,8 @@ export const ENEMY_LIST: readonly EnemyDef[] = [
   // Karakura's defenders (variant = which of them, see data/karakura.ts) and Urahara, who ends the stage.
   { id: 'karakura', name: 'Defender', hp: 2600, speed: 50, radius: 30, damage: 30, xp: 85, behavior: 'chase', boss: true, color: 0xffc878 },
   { id: 'urahara', name: 'Kisuke Urahara', hp: 2600, speed: 48, radius: 31, damage: 40, xp: 220, behavior: 'chase', boss: true, shinigami: true, color: 0x7ac88a },
+  // An Adjuchas, one of the Menos that can fire a Cero: it keeps its distance and fires down a long, warned line. Original design.
+  { id: 'cero', name: 'Adjuchas', hp: 34, speed: 40, radius: 13, damage: 10, xp: 3, behavior: 'ranged', color: 0xe8e2d6 },
 ];
 
 export const ENEMY_INDEX: Readonly<Record<EnemyId, number>> = {
@@ -203,4 +206,5 @@ export const ENEMY_INDEX: Readonly<Record<EnemyId, number>> = {
   sentry: 40,
   karakura: 41,
   urahara: 42,
+  cero: 43,
 };

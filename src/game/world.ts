@@ -85,6 +85,17 @@ import {
   MK_GAS,
   MF_ENEMY,
   MS_CIRCLE,
+  FLAG_STAMPEDE,
+  ZK_MIRE,
+  ZF_ENEMY,
+  ZF_SLOWS,
+  MK_LANE,
+  MK_FIRE,
+  MK_METEOR,
+  MK_INK,
+  MK_SEAL,
+  MF_ROOT,
+  MS_LINE,
 } from './constants';
 import { blinkAI, bossAI, casterAI, chargeAI, COMMANDER_HEAT, eliteAI, eventAI, HARRIBEL_RELEASED, ICHIGO_MASKED, updateEnemyBullets } from './hostile';
 import { generateOffers, rollRelics, type ChestKind, type Offer } from './offers';
@@ -272,6 +283,13 @@ const BEHAVIOR_CODE = { chase: BH_CHASE, blink: BH_BLINK, ranged: BH_RANGED, fle
 /** Per enemy type, for the hot loop. */
 const BEHAVIOR = Uint8Array.from(ENEMY_LIST, (d) => BEHAVIOR_CODE[d.behavior]);
 
+/** Charging formations: room between runners, the slowest a charge runs (units a second), and how long it holds behind its warning. */
+const STAMPEDE_GAP = 24;
+const STAMPEDE_SPEED = 240;
+const STAMPEDE_WINDUP = 1.2;
+/** A hazard's warning before it strikes. */
+const HAZARD_WARN = 1.1;
+
 /** One run's whole simulation. Pure logic: the renderer and UI only read it. */
 export class World {
   readonly rng: Rng;
@@ -344,6 +362,9 @@ export class World {
   readonly banners: Banner[] = [];
   readonly sounds = new Set<SoundName>();
   shake = 0;
+  /** Seconds left in the stage hazard's burst, and until the next thing it drops. */
+  hazardT = 0;
+  private hazardTick = 0;
   over: 'dead' | 'victory' | null = null;
   /** The Story mission being played, or null. */
   readonly mission: MissionDef | null;
@@ -630,6 +651,7 @@ export class World {
       this.aim = Math.atan2(my, mx);
     }
     this.runTimeline();
+    this.hazardStep();
     this.spawnTick();
     this.grid.build(this.en.x, this.en.y, this.en.dead, this.en.n, p.x, p.y);
     this.updateEnemies();
@@ -800,6 +822,83 @@ export class World {
         this.addPickup(ev.rune, p.x + Math.cos(a) * d, p.y + Math.sin(a) * d);
         break;
       }
+      case 'stampede':
+        this.stampede(ENEMY_INDEX[ev.enemy], ev.count, ev.what);
+        break;
+      case 'hazard':
+        this.hazardT = DIFFICULTY.hazardSecs;
+        this.hazardTick = 0.8;
+        this.messages.push({ text: this.stage.hazard.warn, kind: 'boss' });
+        this.sound('warn');
+        break;
+    }
+  }
+
+  /**
+   * A formation charging in a line: it forms up just off one side of the
+   * screen, square across your path, waits behind its warning lanes, then
+   * runs straight through and on. Whatever reaches the far side leaves
+   * without a kill.
+   */
+  private stampede(type: number, count: number, what: string): void {
+    const p = this.player;
+    const E = this.en;
+    const side = this.rng.int(4);
+    // Where it comes from: east, south, west, north (y grows downward).
+    const from = (side * Math.PI) / 2;
+    const fx = Math.cos(from);
+    const fy = Math.sin(from);
+    const R = (Math.abs(fx) > 0.5 ? this.viewHalfW : this.viewHalfH) + 40;
+    const run = from + Math.PI;
+    for (let k = 0; k < count; k++) {
+      const off = (k - (count - 1) / 2) * STAMPEDE_GAP;
+      const x = p.x + fx * R - fy * off;
+      const y = p.y + fy * R + fx * off;
+      const i = this.spawnEnemy(type, x, y);
+      if (i < 0) break;
+      E.flags[i] |= FLAG_STAMPEDE;
+      const v = Math.max(STAMPEDE_SPEED, E.spd[i] * 2.6);
+      E.sx[i] = Math.cos(run) * v;
+      E.sy[i] = Math.sin(run) * v;
+      E.atk2T[i] = STAMPEDE_WINDUP;
+      if (k % 3 === 1) this.spawnMark(MK_LANE, MS_LINE, x, y, 12, R * 2 + 80, run, STAMPEDE_WINDUP, 0, MF_ENEMY);
+    }
+    this.messages.push({ text: `${what} charges from the ${['east', 'south', 'west', 'north'][side]}`, kind: 'boss' });
+    this.sound('warn');
+  }
+
+  /** While a hazard burst lasts, something comes down near you every so often, a little ahead of where you are going. */
+  private hazardStep(): void {
+    if (this.hazardT <= 0) return;
+    this.hazardT -= DT;
+    this.hazardTick -= DT;
+    if (this.hazardTick > 0) return;
+    const hz = this.stage.hazard;
+    this.hazardTick = hz.form === 'mire' ? 2.2 : 1.1;
+    const p = this.player;
+    const lead = this.rng.range(40, 130);
+    const a = this.rng.next() * TAU;
+    const spread = this.rng.range(0, 70);
+    const x = p.x + this.moveX * lead + Math.cos(a) * spread;
+    const y = p.y + this.moveY * lead + Math.sin(a) * spread;
+    const dmg = DIFFICULTY.hazardDamage * (DIFFICULTY.damage + (DIFFICULTY.damagePerMinute * Math.min(this.t, this.stage.length)) / 60) * this.tm.damage;
+    switch (hz.form) {
+      case 'mire':
+        this.spawnZone(ZK_MIRE, x, y, 0, 0, hz.r, 8, 0.2, 0, ZF_ENEMY | ZF_SLOWS, hz.look === 'shadow' ? 1 : 0);
+        break;
+      case 'strike':
+        this.spawnMark(hz.look === 'kido' ? MK_FIRE : MK_METEOR, MS_CIRCLE, x, y, hz.r, 0, 0, HAZARD_WARN, dmg, MF_ENEMY);
+        break;
+      case 'line': {
+        // A stroke across your path, its middle a little ahead of you.
+        const ang = this.aim + Math.PI / 2 + this.rng.range(-0.4, 0.4);
+        const len = 340;
+        this.spawnMark(MK_INK, MS_LINE, x - (Math.cos(ang) * len) / 2, y - (Math.sin(ang) * len) / 2, hz.r, len, ang, HAZARD_WARN, dmg, MF_ENEMY);
+        break;
+      }
+      case 'seal':
+        this.spawnMark(MK_SEAL, MS_CIRCLE, x, y, hz.r, 0, 0, HAZARD_WARN, dmg * 0.5, MF_ENEMY | MF_ROOT);
+        break;
     }
   }
 
@@ -1280,6 +1379,7 @@ export class World {
     E.x[i] = E.ox[i] = x;
     E.y[i] = E.oy[i] = y;
     E.kx[i] = E.ky[i] = 0;
+    E.sx[i] = E.sy[i] = 0;
     E.hp[i] = E.maxHp[i] = hp;
     E.r[i] = r;
     E.spd[i] = def.speed * (def.boss ? 1 : speedScale(this.t) * this.tm.speed) * this.modSpeed * this.pactSpeed * this.rng.range(0.9, 1.1);
@@ -1415,6 +1515,13 @@ export class World {
           x += (dx / dist) * v;
           y += (dy / dist) * v;
         }
+      } else if (flags & FLAG_STAMPEDE) {
+        // A charging formation: it holds behind its warning, then runs straight on.
+        if (E.atk2T[i] > 0) E.atk2T[i] -= DT;
+        else {
+          x += E.sx[i] * k * DT;
+          y += E.sy[i] * k * DT;
+        }
       } else if (behavior === BH_FLEE) {
         x -= (dx / dist) * v;
         y -= (dy / dist) * v;
@@ -1452,8 +1559,8 @@ export class World {
           E.ky[i] = nky;
         }
       }
-      // Soft separation so the swarm spreads out instead of stacking. Half the swarm each step.
-      if ((i & 1) === parity) {
+      // Soft separation so the swarm spreads out instead of stacking. Half the swarm each step; a formation keeps its line.
+      if ((i & 1) === parity && !(flags & FLAG_STAMPEDE)) {
         const r = E.r[i];
         const c0x = Math.floor((x - g.originX) / cs);
         const c0y = Math.floor((y - g.originY) / cs);
@@ -1501,13 +1608,18 @@ export class World {
       else if (charmed) {
         // Allies neither shoot at you nor flash-step.
       } else if (flags & FLAG_EVENT) eventAI(this, i);
-      else if (flags & FLAG_ELITE) eliteAI(this, i, dist);
+      else if (flags & FLAG_STAMPEDE) {
+        // A charge never stops to shoot.
+      } else if (flags & FLAG_ELITE) eliteAI(this, i, dist);
       else if (k > 0 && behavior === BH_BLINK) blinkAI(this, i, dist);
       else if (k > 0 && behavior === BH_RANGED) casterAI(this, i, dist);
       else if (k > 0 && behavior === BH_CHARGE) chargeAI(this, i, dist);
       if (E.dead[i]) continue;
       if (!charmed && E.dmg[i] > 0 && dist < E.r[i] + PLAYER.radius + 2) this.contact(i);
-      else if (dist2 > recycle2 && !boss && !(flags & FLAG_EVENT)) this.recycle(i);
+      else if (flags & FLAG_STAMPEDE) {
+        // Past you and well off the screen: the charge is over, and it is gone.
+        if (E.atk2T[i] <= 0 && dx * E.sx[i] + dy * E.sy[i] < 0 && dist2 > recycle2 * 0.5) E.dead[i] = 1;
+      } else if (dist2 > recycle2 && !boss && !(flags & FLAG_EVENT)) this.recycle(i);
     }
   }
 

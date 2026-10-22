@@ -18,6 +18,12 @@ back in a run counts toward **A · The Almighty** (the HUD shows how many): at
 five it awakens (at three once you have taken back all six bankai across your
 runs). It stops time every 24 s and
 rewrites the future (enemy fire vanishes, everything on screen is struck down).
+Between the bosses each stage has its own trouble: Adjuchas that fire a Cero
+down a warned line (in the Hollow stages), formations of the stage's troops
+that form up off-screen and charge straight across in a line, and hazard
+bursts, always warned (Hueco Mundo's sinking sand, Seireitei's Kidō barrage,
+rubble from Las Noches' false sky, Silbern's pools of shadow, ink across the
+palace floor, the Wahrwelt's falling palace, Urahara's traps in Karakura).
 All art is drawn in code: the Emperor, the Sternritter, the Gotei 13 captains,
 the Royal Guard, Tier Harribel and the other named characters are manga
 homages to their Bleach designs, lanky figures drawn with one shared kit

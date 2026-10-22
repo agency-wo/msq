@@ -1,6 +1,6 @@
 import type { EnemyId } from './enemies';
 import { FIRST_SHRINE_AT } from './shrines';
-import { DIFFICULTY, stageById, type StageDef, type StageId, type TimelineEvent } from './stages';
+import { DIFFICULTY, stageById, type StageDef, type StageId, type TimelineEvent, variety } from './stages';
 
 /**
  * Story Mode: the Thousand-Year Blood War from the Emperor's side, told as
@@ -277,6 +277,8 @@ function missionSkeleton(m: MissionDef): TimelineEvent[] {
   for (let t = 170; t < m.length; t += 150) events.push({ at: t, kind: 'chest' });
   for (let t = 240; t < m.length; t += 180) events.push({ at: t, kind: 'rune', rune: 'magnet' });
   if (FIRST_SHRINE_AT < m.length) events.push({ at: FIRST_SHRINE_AT, kind: 'shrine' });
+  // The stage's own charging formations and hazard bursts.
+  events.push(...variety(m.length, stageById(m.stage).formation, m.events.filter((e) => e.kind === 'bearer' || e.kind === 'boss').map((e) => e.at)));
   return events;
 }
 

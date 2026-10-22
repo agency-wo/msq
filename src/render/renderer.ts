@@ -77,6 +77,7 @@ import {
   ZK_FROST,
   ZK_GUST,
   ZK_HEAT,
+  ZK_MIRE,
   ZK_PETALS,
   ZK_POISON,
   ZF_BLAZE,
@@ -370,6 +371,7 @@ export class Renderer {
       gigai: 11,
       sentry: 11,
       urahara: 29,
+      cero: 13,
     };
     // Types drawn per variant (or per stage) fall back to one of their sprites here.
     this.enemySprites = ENEMY_LIST.map((d, t) => sprite(enemySpriteName(t), REF[d.id] ?? d.radius));
@@ -624,6 +626,15 @@ export class Renderer {
           // Drops in slightly large and settles.
           const drop = 1 + Math.max(0, 0.25 - age) * 1.2;
           L.zonesA.add(f.cage, x, y, ((r * 2) / 128) * drop, ((r * 2) / 128) * drop, 0, tint, 0.55 * a);
+          break;
+        }
+        case ZK_MIRE: {
+          // A hazard's patch: sinking sand, or a pool of the Schatten Bereich's shadow, turning slowly.
+          const shadow = Z.extra[i] > 0;
+          const line = shadow ? 0x8a6ad8 : 0xe0d0a8;
+          L.zonesN.add(f.disc, x, y, (r * 2) / 64, (r * 2) / 64, 0, shadow ? 0x140c22 : 0x6a5a3a, 0.6 * a);
+          L.zonesN.add(f.ring, x, y, (r * 2) / 110, (r * 2) / 110, now * (shadow ? -0.7 : 0.5), line, 0.65 * a);
+          L.zonesN.add(f.ring, x, y, r / 110, r / 110, -now * 1.3, line, 0.45 * a);
           break;
         }
         case ZK_HEAT: {

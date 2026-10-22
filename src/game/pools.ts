@@ -56,6 +56,9 @@ export class EnemyPool extends Pool {
   /** Knockback velocity, decays every step. */
   readonly kx = this.f32();
   readonly ky = this.f32();
+  /** A charging formation's run, units per second (FLAG_STAMPEDE). */
+  readonly sx = this.f32();
+  readonly sy = this.f32();
   readonly hp = this.f32();
   readonly maxHp = this.f32();
   readonly r = this.f32();

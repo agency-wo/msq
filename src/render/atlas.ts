@@ -1717,6 +1717,82 @@ const adjuchas: Draw = (g) => {
   grinMask(g, 36, 18, 22, 20, 29, { teeth: 5, stripes: true, horns: 0.4 });
 };
 
+/**
+ * Cero Adjuchas: a Menos crouched on four legs, its neck reaching out long
+ * and low, spines of bone down its back, and a long bone muzzle split open
+ * on the red light of a Cero. Original design.
+ */
+const ceroHollow: Draw = (g) => {
+  // The tail, then the far legs.
+  limb(g, [[17, 38], [8, 37], [3, 30]], 4.4, 1.6);
+  limb(g, [[24, 41], [22, 49], [25, 56]], 4, 2.4);
+  limb(g, [[36, 40], [39, 48], [37, 56]], 4, 2.4);
+  // The hunched body.
+  g.fillStyle = H_INK;
+  poly(g, [[13, 38], [20, 28], [33, 25], [43, 29], [45, 39], [34, 45], [19, 45]]);
+  g.fill();
+  g.fillStyle = H_SHADE;
+  poly(g, [[20, 40], [33, 41], [40, 38], [34, 44], [21, 44]]);
+  g.fill();
+  // Spines of bone down its back.
+  g.fillStyle = H_BONE;
+  for (let k = 0; k < 5; k++) {
+    const x = 19 + k * 5;
+    const y = 29 - Math.sin((k / 4) * Math.PI) * 3;
+    poly(g, [[x - 1.6, y + 1.5], [x + 0.4, y - 6 - (k % 2) * 2], [x + 2, y + 1.2]]);
+    g.fill();
+  }
+  heartHole(g, 29, 36, 2.4);
+  // The near legs, clawed.
+  limb(g, [[19, 40], [14, 48], [17, 56]], 4.6, 2.6);
+  limb(g, [[41, 37], [46, 46], [45, 56]], 4.6, 2.6);
+  claws(g, 17, 56, Math.PI * 0.62, 3);
+  claws(g, 25, 56, Math.PI * 0.5, 3);
+  claws(g, 37, 56, Math.PI * 0.5, 3);
+  claws(g, 45, 56, Math.PI * 0.38, 3);
+  // The long neck, reaching up and out.
+  limb(g, [[40, 31], [46, 23], [49, 16]], 6.2, 4.4);
+  // The maw: a red Cero gathering between the jaws.
+  g.fillStyle = H_MAW;
+  poly(g, [[46, 13], [58, 12], [58, 20], [47, 19]]);
+  g.fill();
+  g.fillStyle = H_EYE;
+  g.beginPath();
+  g.arc(54, 16, 3, 0, TAU);
+  g.fill();
+  g.fillStyle = '#ffd0d8';
+  g.beginPath();
+  g.arc(54.4, 15.6, 1.3, 0, TAU);
+  g.fill();
+  // Upper jaw: a long muzzle of bone, teeth hanging from it.
+  g.fillStyle = H_BONE;
+  poly(g, [[42, 9], [49, 5], [58, 9], [59.5, 12.5], [47, 13.5], [42.5, 13]]);
+  g.fill();
+  g.fillStyle = H_BONE_SHADE;
+  poly(g, [[49, 5], [58, 9], [59.5, 12.5], [52, 11]]);
+  g.fill();
+  g.fillStyle = H_BONE;
+  for (let k = 0; k < 4; k++) {
+    poly(g, [[48 + k * 2.8, 13.2], [49.2 + k * 2.8, 15.6], [50.4 + k * 2.8, 13.2]]);
+    g.fill();
+  }
+  // Lower jaw, dropped open.
+  poly(g, [[44, 17], [57, 19.5], [56.5, 22.5], [45, 21]]);
+  g.fill();
+  for (let k = 0; k < 3; k++) {
+    poly(g, [[49 + k * 2.8, 19.6], [50.2 + k * 2.8, 17.4], [51.4 + k * 2.8, 20]]);
+    g.fill();
+  }
+  // One red eye in a slit of the mask.
+  g.fillStyle = H_INK;
+  poly(g, [[46, 8.6], [50.6, 7.6], [50, 10], [46.4, 10.6]]);
+  g.fill();
+  g.fillStyle = H_EYE;
+  g.beginPath();
+  g.arc(48.6, 9.2, 0.9, 0, TAU);
+  g.fill();
+};
+
 // ----------------------------------------------------------- Soul Reapers
 
 interface ReaperLook {
@@ -2926,6 +3002,7 @@ const ENEMY_DRAW: readonly [string, number, Draw][] = [
   ['brute', 76, brute],
   ['adjuchas', 72, adjuchas],
   ['hollow', 52, hollow],
+  ['cero', 60, ceroHollow],
   ['volatile', 52, volatile],
   ['hound', 48, hound],
   ['unohana', 112, gotei.unohana],

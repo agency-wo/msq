@@ -12,6 +12,8 @@ export const FLAG_PLAGUE = 16;
 export const FLAG_BLOODBURST = 32;
 /** Event enemies (rifts, golden runners): no knockback, holds, charm or zombies, no contact damage. */
 export const FLAG_EVENT = 64;
+/** A charging formation: stands through its warning, then runs straight along (sx, sy) and leaves at the far side. */
+export const FLAG_STAMPEDE = 128;
 
 /** Projectile kinds. */
 export const PK_ARROW = 0;
@@ -77,6 +79,8 @@ export const ZK_FROST = 4;
 export const ZK_HEAT = 5;
 /** The Jail: holds every non-boss enemy inside; extra = burst damage when it opens (Execution). */
 export const ZK_CAGE = 6;
+/** A stage hazard's lingering patch: sinking sand, or a pool of shadow (extra 1). */
+export const ZK_MIRE = 7;
 
 /** Zone flags. */
 export const ZF_FOLLOW = 1; // sits on the player
@@ -88,6 +92,7 @@ export const ZF_WANDER = 32;
 export const ZF_SPREAD = 64; // kills inside spawn a new, smaller zone
 export const ZF_FREEZE = 128;
 export const ZF_BLAZE = 256; // Firestorm: burns what it touches and leaves fire behind (aux = burn damage)
+export const ZF_SLOWS = 512; // slows the player standing in it (with ZF_ENEMY)
 
 /** Mark kinds: delayed strikes with a warning shape. */
 export const MK_METEOR = 0;
@@ -109,6 +114,7 @@ export const MK_WATER = 15; // a lane or a falling torrent of water (Harribel)
 export const MK_GAS = 16; // a cloud of poison gas (Mayuri, his specimens, Konjiki Ashisogi Jizō)
 export const MK_MIST = 17; // Sakanade's sweet mist: it does no harm, it turns you around (Shinji)
 export const MK_SILVER = 18; // the silver arrow: struck, The Almighty falls silent for a while (Uryū)
+export const MK_LANE = 20; // a charging formation's lane: a warning only, it strikes nothing
 export const MK_STING = 19; // Suì-Fēng's sting: the first marks you with the Hōmonka, a second on the mark strikes three times as hard
 
 /** Mark shapes. */

@@ -41,6 +41,7 @@ import {
   PK_BOMB,
   ZF_BLAZE,
   ZF_ENEMY,
+  ZF_SLOWS,
   ZF_FOLLOW,
   ZF_FREEZE,
   ZF_PULL,
@@ -132,7 +133,11 @@ export function updateZones(w: World): void {
       const dx = p.x - x;
       const dy = p.y - y;
       const rr = r + PLAYER.radius;
-      if (dx * dx + dy * dy < rr * rr) w.hurtPlayer(Z.dmg[i]);
+      if (dx * dx + dy * dy < rr * rr) {
+        if (Z.dmg[i] > 0) w.hurtPlayer(Z.dmg[i]);
+        // Sinking sand, a pool of shadow: it drags at your feet while you stand in it.
+        if (flags & ZF_SLOWS && !w.steady) p.slowT = Math.max(p.slowT, 0.3);
+      }
       continue;
     }
     const kind = Z.kind[i];
