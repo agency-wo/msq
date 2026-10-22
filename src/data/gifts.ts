@@ -13,6 +13,8 @@ export interface GiftDef {
 
 export const GIFT_CODES: Readonly<Record<string, GiftDef>> = {
   KAISER900K: { gold: 900_000, note: 'The Wandenreich’s treasury opens to its Emperor' },
+  // Until 2026-10-22 a reload forgot every Discipline drilled: this pays back what that cost.
+  ARCHIVES300K: { gold: 300_000, note: 'The Archives repay the Disciplines a reload forgot' },
 };
 
 /** A typed code as the table keys it: capitals and digits only, so "kaiser 900k" works too. */

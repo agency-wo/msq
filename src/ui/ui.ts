@@ -16,8 +16,8 @@ import { TREASURE_BY_ID } from '../data/treasures';
 import type { Banner, World } from '../game/world';
 import { drawEmperor, drawSprite } from '../render/atlas';
 import { bossSpriteName, enemySpriteName } from '../render/names';
-import { armoryRelics, MASTERY_POWERS, masteryLevel, metaPressure, nextCost, nextMasteryCost, nextVerseCost, startOptions, upgradeLevel, wonSpoils } from '../save/archives';
-import { MASTERY_COSTS, MASTERY_PER } from '../data/archives';
+import { armoryRelics, heldMastery, MASTERY_POWERS, masteryLevel, masterySpent, metaPressure, nextCost, nextMasteryCost, nextVerseCost, startOptions, upgradeLevel, wonSpoils } from '../save/archives';
+import { MASTERY_BACK, MASTERY_COSTS, MASTERY_PER } from '../data/archives';
 import { almightyUnlocked, endlessOpen, gauntletOpen, missionsCleared, rushOpen, stageUnlocked, trialsOpen, type DailyRecord, type MissionRecord, type SaveData, type Settings } from '../save/save';
 import { chapterUnlocked } from '../save/story';
 import { LOOKS, TRAILS, type LookId, type TrailId } from '../data/looks';
@@ -37,11 +37,12 @@ import { powerRows, statSheet } from './statsheet';
 
 export type Toggle = keyof Settings;
 
-type PauseTab = 'build' | 'stats' | 'damage';
+type PauseTab = 'build' | 'stats' | 'damage' | 'options';
 const PAUSE_TABS: readonly (readonly [PauseTab, string])[] = [
   ['build', 'Build'],
   ['stats', 'Stats'],
   ['damage', 'Damage'],
+  ['options', 'Options'],
 ];
 
 export type CodexTab = 'schrift' | 'resonances' | 'relics' | 'spoils' | 'enemies';
@@ -151,6 +152,7 @@ export interface ArchivesHandlers {
   onVerse: () => void;
   /** Disciplines: learn the next level of a power's mastery. */
   onMastery: (id: string) => void;
+  onMasterySwitch: (id: string) => void;
   onBack: () => void;
 }
 const RARITY_LABEL: Readonly<Record<Rarity, string>> = { common: 'Common', rare: 'Rare', legendary: 'Legendary' };
@@ -806,7 +808,18 @@ export class UI {
 
   /** Disciplines: a mastery for every attack, five levels each, each making that power hit harder in every run. */
   private archivesMastery(p: HTMLElement, save: SaveData, h: ArchivesHandlers): void {
-    p.append(el('p', 'archives-hint', `Drill one power at a time: +${Math.round(MASTERY_PER * 100)}% damage a level, in every run, five levels each.`));
+    const held = heldMastery(save);
+    const heldDef = held ? POWER_BY_ID.get(held) : undefined;
+    const per = `+${Math.round(MASTERY_PER * 100)}% damage a level, five levels, in every run`;
+    p.append(
+      el(
+        'p',
+        'archives-hint',
+        heldDef
+          ? `Your Discipline is ${heldDef.name}: ${per}. You hold one at a time; taking up another forgets it, and half of what it cost comes back.`
+          : `Choose one attack to master: ${per}. You hold one Discipline at a time.`,
+      ),
+    );
     const sections: [string, (d: PowerDef) => boolean][] = [
       ['Quincy arts and Schrift', (d) => d.group === 'art' || d.group === 'schrift'],
       ['Support', (d) => d.group === 'utility'],
@@ -820,14 +833,45 @@ export class UI {
       for (const d of defs) {
         const level = masteryLevel(save, d.id);
         const cost = nextMasteryCost(save, d.id);
-        const row = el('div', `upgrade mastery${cost === null ? ' mastered' : ''}`);
+        const other = held !== null && held !== d.id;
+        const row = el('div', `upgrade mastery${cost === null ? ' mastered' : ''}${held === d.id ? ' held' : ''}`);
         setAccent(row, d.color);
         const icon = el('canvas', 'upgrade-icon');
         drawIcon(icon, d.icon, d.color, d.letter);
         const body = el('div', 'upgrade-body');
         const pips = el('div', 'pips');
         for (let k = 0; k < MASTERY_COSTS.length; k++) pips.append(el('span', k < level ? 'pip on' : 'pip'));
-        body.append(el('div', 'upgrade-name', d.name), pips, el('p', 'upgrade-desc', level > 0 ? `+${Math.round(level * MASTERY_PER * 100)}% damage.` : 'Not yet drilled.'));
+        body.append(el('div', 'upgrade-name', d.name), pips, el('p', 'upgrade-desc', level > 0 ? `+${Math.round(level * MASTERY_PER * 100)}% damage.` : other ? 'Take it up in place of yours.' : 'Not yet drilled.'));
+        if (other) {
+          // Switching forgets the one you hold, so it takes a second tap to be sure.
+          const back = Math.floor(masterySpent(masteryLevel(save, held)) * MASTERY_BACK);
+          const first = MASTERY_COSTS[0];
+          const sw = button('upgrade-buy switch', 'Switch');
+          sw.setAttribute('aria-label', `Take up ${d.name} in place of ${heldDef?.name ?? 'your Discipline'}: ${back} gold back, ${first} for the first level`);
+          if (save.gold + back < first) {
+            sw.disabled = true;
+            sw.classList.add('poor');
+          } else {
+            let armed = 0;
+            sw.addEventListener(
+              'click',
+              this.guard(() => {
+                if (performance.now() < armed) {
+                  h.onMasterySwitch(d.id);
+                  return;
+                }
+                armed = performance.now() + 2500;
+                sw.textContent = 'Sure?';
+                window.setTimeout(() => {
+                  if (sw.isConnected) sw.textContent = 'Switch';
+                }, 2500);
+              }),
+            );
+          }
+          row.append(icon, body, sw);
+          list.append(row);
+          continue;
+        }
         const buy = button('upgrade-buy', cost === null ? 'Max' : gold(cost));
         if (cost === null || save.gold < cost) {
           buy.disabled = true;
@@ -996,8 +1040,9 @@ export class UI {
     }
     const rows = damageRows(w);
     const damage = rows.length > 0 ? this.damageList(rows) : el('p', 'archives-hint', 'Nothing has been struck yet.');
-    // Three views of the run, one at a time: what you hold, your numbers, what each power has done.
-    const panels: Record<PauseTab, HTMLElement> = { build, stats: this.statSheet(w), damage };
+    // Four views, one at a time: what you hold, your numbers, what each power has done, and the switches.
+    const options = this.toggles(settings, h.onToggle);
+    const panels: Record<PauseTab, HTMLElement> = { build, stats: this.statSheet(w), damage, options };
     const tabs = el('div', 'codex-tabs pause-tabs');
     tabs.setAttribute('role', 'tablist');
     const show = (t: PauseTab): void => {
@@ -1018,11 +1063,16 @@ export class UI {
     }
     const resume = button('btn primary', 'Resume');
     resume.addEventListener('click', this.guard(h.onResume));
-    const quit = button('btn danger', 'Quit run');
+    const quit = button('btn danger', 'Quit');
+    quit.setAttribute('aria-label', 'Quit the run');
     quit.addEventListener('click', this.guard(h.onQuit));
-    p.append(tabs, build, panels.stats, damage);
+    // One screen: the view scrolls inside its own space if it must, and Resume and Quit never leave the bottom.
+    const body = el('div', 'pause-body scroll');
+    body.append(build, panels.stats, damage, options);
+    const actions = el('div', 'pause-actions');
+    actions.append(resume, quit);
+    p.append(tabs, body, actions);
     show(this.pauseTab);
-    p.append(resume, this.toggles(settings, h.onToggle), quit);
     this.lock(200);
   }
 

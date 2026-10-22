@@ -347,10 +347,12 @@ export const UPGRADES: readonly UpgradeDef[] = [
 export const SHELL_EVERY: readonly number[] = [0, 60, 45, 30];
 
 /**
- * Disciplines: a mastery for every attack, bought in the Archives. Each
- * level makes that power hit harder in every run.
+ * Disciplines: a mastery for one attack, bought in the Archives. Each level
+ * makes that power hit harder in every run. Only one is held at a time:
+ * taking up another forgets it, and MASTERY_BACK of what it cost comes back.
  */
 export const MASTERY_PER = 0.06;
+export const MASTERY_BACK = 0.5;
 export const MASTERY_COSTS: readonly number[] = [400, 900, 1600, 2600, 4000];
 export const masteryKey = (id: string): string => `mastery:${id}`;
 

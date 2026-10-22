@@ -1,4 +1,5 @@
-import { GESANG_VERSES, UPGRADES } from '../data/archives';
+import { GESANG_VERSES, MASTERY_COSTS, masteryKey, UPGRADES } from '../data/archives';
+import { MASTERY_POWERS, masterySpent } from './archives';
 import { MISSION_BY_ID, missionBefore, MISSIONS } from '../data/missions';
 import { GAUNTLET, GAUNTLET_GOLD, GAUNTLET_UNLOCK } from '../data/gauntlet';
 import { GIFT_CODES, normalizeGiftCode } from '../data/gifts';
@@ -385,6 +386,25 @@ export function migrate(raw: unknown): SaveData {
     const level = Math.floor(num(metaRaw[u.id], 0));
     if (level > 0) meta[u.id] = Math.min(level, u.costs.length);
   }
+  // Disciplines ("mastery:<power>"). One is held at a time: a save that drilled several keeps its strongest
+  // (the first, on a tie) and is paid back every coin spent on the rest.
+  let refund = 0;
+  let held: string | null = null;
+  for (const d of MASTERY_POWERS) {
+    const level = Math.min(MASTERY_COSTS.length, Math.floor(num(metaRaw[masteryKey(d.id)], 0)));
+    if (level <= 0) continue;
+    const top = held ? meta[masteryKey(held)] : 0;
+    if (held && level <= top) {
+      refund += masterySpent(level);
+      continue;
+    }
+    if (held) {
+      refund += masterySpent(top);
+      delete meta[masteryKey(held)];
+    }
+    held = d.id;
+    meta[masteryKey(d.id)] = level;
+  }
   const awakened = Array.isArray(r.awakened) ? STARTABLE_IDS.filter((id) => (r.awakened as unknown[]).includes(id)) : [];
   const start = typeof r.start === 'string' && awakened.includes(r.start) ? r.start : STARTING_POWER;
   const chapters = Array.isArray(r.chapters) ? (r.chapters as unknown[]).filter((id): id is string => typeof id === 'string' && CHAPTER_BY_ID.has(id)) : [];
@@ -410,7 +430,7 @@ export function migrate(raw: unknown): SaveData {
     stages,
     taken,
     // Saves from before the Archives start with the gold they had already counted.
-    gold: num(r.gold, num(totals.gold, 0)),
+    gold: num(r.gold, num(totals.gold, 0)) + refund,
     meta,
     awakened,
     start,

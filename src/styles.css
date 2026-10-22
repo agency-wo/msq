@@ -3885,9 +3885,65 @@ button:focus-visible {
 
 /* ------------------------------------------------------- Pause: stats */
 
-/* The pause screen's three views share the Codex's tab strip. */
+/* The pause screen fits one screen: title, tabs, the chosen view (scrolling inside itself if it is long),
+   and Resume and Quit side by side at the bottom, always in reach. */
+.screen.pause {
+  overflow: hidden;
+}
+
+.screen.pause .panel {
+  height: 100%;
+  margin: 0 auto;
+  gap: 10px;
+}
+
+.screen.pause .board-title {
+  font-size: 30px;
+}
+
+.screen.pause .board-title::after {
+  width: 120px;
+  height: 9px;
+}
+
+.pause-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.pause-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: 8px;
+}
+
+.pause-actions .btn {
+  margin: 0;
+  min-width: 0;
+  padding-top: 12px;
+  padding-bottom: 12px;
+  white-space: nowrap;
+}
+
+/* The pause screen's views share the Codex's tab strip. */
 .pause-tabs {
-  margin: 4px 0 12px;
+  margin: 0;
+  flex: none;
+}
+
+.screen.pause .pause-tabs .codex-tab {
+  padding: 0 8px;
+  font-size: 14px;
+}
+
+/* Long menus: Back stays at the bottom of the screen, however far down the list you are. */
+.screen:is(.archives, .codex, .feats, .chronicle, .settings, .wardrobe, .missions, .daily) .panel > .btn:last-child {
+  position: sticky;
+  bottom: calc(var(--safe-b) + 4px);
+  z-index: 3;
 }
 
 /* A view not chosen stays out of the way, whatever display its own class gives it. */
@@ -3903,7 +3959,7 @@ button:focus-visible {
 
 .stat-tile {
   min-width: 0;
-  padding: 7px 9px 8px;
+  padding: 5px 8px 6px;
   border: 1.5px solid var(--rule);
   background: var(--sheet);
 }
@@ -3917,7 +3973,7 @@ button:focus-visible {
 
 .stat-value {
   font-family: var(--display);
-  font-size: 22px;
+  font-size: 19px;
   line-height: 1.15;
   color: var(--paper);
 }

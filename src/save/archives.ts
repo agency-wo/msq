@@ -1,4 +1,4 @@
-import { ARMORY_COST, GESANG_PER, GESANG_VERSES, MASTERY_COSTS, masteryKey, SHELL_EVERY, UPGRADE_BY_ID, UPGRADES, verseCost, type UpgradeSpecial } from '../data/archives';
+import { ARMORY_COST, GESANG_PER, GESANG_VERSES, MASTERY_BACK, MASTERY_COSTS, masteryKey, SHELL_EVERY, UPGRADE_BY_ID, UPGRADES, verseCost, type UpgradeSpecial } from '../data/archives';
 import { POWERS, STARTABLE_IDS, STARTING_POWER, type PowerDef } from '../data/powers';
 import { RELIC_BY_ID, RELICS, type RelicDef } from '../data/relics';
 import { SPOILS } from '../data/spoils';
@@ -124,13 +124,42 @@ export function nextMasteryCost(save: SaveData, id: string): number | null {
   return level < MASTERY_COSTS.length ? MASTERY_COSTS[level] : null;
 }
 
+/** The one Discipline you hold (a power id), or null. */
+export function heldMastery(save: SaveData): string | null {
+  for (const d of MASTERY_POWERS) if (masteryLevel(save, d.id) > 0) return d.id;
+  return null;
+}
+
+/** Gold a Discipline has cost to reach a level. */
+export function masterySpent(level: number): number {
+  return MASTERY_COSTS.slice(0, Math.max(0, level)).reduce((a, b) => a + b, 0);
+}
+
+/** Drill a Discipline one level: the one you hold, or a first one. Another while you hold one: switchMastery. */
 export function buyMastery(save: SaveData, id: string): boolean {
   if (!MASTERY_POWERS.some((d) => d.id === id)) return false;
+  const held = heldMastery(save);
+  if (held && held !== id) return false;
   const cost = nextMasteryCost(save, id);
   if (cost === null || save.gold < cost) return false;
   save.gold -= cost;
   save.meta[masteryKey(id)] = masteryLevel(save, id) + 1;
   return true;
+}
+
+/**
+ * Take up another Discipline: the one you hold is forgotten, MASTERY_BACK of what it cost comes back, and
+ * the new one starts at Lv 1. False (and nothing changes) when the first level cannot be paid for.
+ */
+export function switchMastery(save: SaveData, id: string): boolean {
+  if (!MASTERY_POWERS.some((d) => d.id === id)) return false;
+  const held = heldMastery(save);
+  if (!held || held === id) return buyMastery(save, id);
+  const back = Math.floor(masterySpent(masteryLevel(save, held)) * MASTERY_BACK);
+  if (save.gold + back < MASTERY_COSTS[0]) return false;
+  save.gold += back;
+  delete save.meta[masteryKey(held)];
+  return buyMastery(save, id);
 }
 
 /**
@@ -145,10 +174,10 @@ export function metaPressure(save: SaveData): number {
     have += Math.min(u.costs.length, upgradeLevel(save, u.id));
     all += u.costs.length;
   }
-  for (const d of MASTERY_POWERS) {
-    have += masteryLevel(save, d.id);
-    all += MASTERY_COSTS.length;
-  }
+  // One Discipline is held at a time, so its five levels are all there are to learn.
+  const held = heldMastery(save);
+  have += held ? masteryLevel(save, held) : 0;
+  all += MASTERY_COSTS.length;
   return all > 0 ? Math.min(1, have / all) : 0;
 }
 

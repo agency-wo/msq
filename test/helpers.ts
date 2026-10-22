@@ -5,7 +5,6 @@ import type { World, WorldOptions } from '../src/game/world';
 import {
   buyMastery,
   buyUpgrade,
-  MASTERY_POWERS,
   metaBossHeal,
   metaBounty,
   metaPassiveSlots,
@@ -213,9 +212,10 @@ export function maxedMeta(
 ): Pick<WorldOptions, 'meta' | 'revives' | 'rerolls' | 'shellEvery' | 'eliteChest' | 'chestChoices' | 'bossHeal' | 'mastery' | 'pressure' | 'bounty' | 'powerSlots' | 'passiveSlots'> {
   const s = defaultSave();
   s.gold = 10_000_000;
-  // share < 1: that part of every training row, no Disciplines, that part of the Gesang (a player part of the way there).
+  // share < 1: that part of every training row, no Discipline, that part of the Gesang (a player part of the way there).
+  // The one Discipline held is Heilig Pfeil's, the attack every run has.
   for (const u of UPGRADES) while ((s.meta[u.id] ?? 0) < Math.round(u.costs.length * share) && buyUpgrade(s, u.id));
-  if (share >= 1) for (const d of MASTERY_POWERS) while (buyMastery(s, d.id));
+  if (share >= 1) while (buyMastery(s, 'heilig'));
   s.gesang = Math.round(100 * share);
   return {
     meta: metaMods(s),

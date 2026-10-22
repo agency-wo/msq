@@ -272,6 +272,8 @@ try {
   await wait(150);
   if (await page.$eval('.screen.pause .stat-sheet', (e) => !e.hidden)) problems.push('pause: the stat sheet still shows on the damage tab');
   await shot('03c-pause-damage');
+  await page.tap('.screen.pause .pause-tabs .codex-tab:nth-child(4)');
+  if (!(await page.isVisible('.screen.pause .toggles .toggle'))) problems.push('pause: the Options tab shows no switches');
   await page.tap('.screen.pause .pause-tabs .codex-tab:nth-child(1)');
   await page.tap('.screen.pause .btn.primary');
   await wait(250);
@@ -1216,6 +1218,17 @@ try {
     await np.tap('.screen.pause .pause-tabs .codex-tab:nth-child(2)');
     await np.waitForSelector('.screen.pause .stat-tile');
     await check('pause-stats');
+    // One screen: the pause screen never scrolls, and Resume and Quit sit inside it on the longest view.
+    const reach = await np.evaluate(() => {
+      const s = document.querySelector('.screen.pause');
+      const r = document.querySelector('.screen.pause .btn.primary')?.getBoundingClientRect();
+      const q = document.querySelector('.screen.pause .btn.danger')?.getBoundingClientRect();
+      return { scrolls: s ? s.scrollHeight > s.clientHeight + 1 : true, resume: r ? r.bottom <= innerHeight : false, quit: q ? q.bottom <= innerHeight : false };
+    });
+    if (reach.scrolls || !reach.resume || !reach.quit) problems.push(`[${vw}px] pause is not one screen: ${JSON.stringify(reach)}`);
+    await np.tap('.screen.pause .pause-tabs .codex-tab:nth-child(4)');
+    await np.waitForSelector('.screen.pause .toggles .toggle');
+    await check('pause-options');
     await np.tap('.screen.pause .pause-tabs .codex-tab:nth-child(1)');
     await np.waitForTimeout(250);
     await np.tap('.screen.pause .btn.danger');
