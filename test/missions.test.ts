@@ -4,7 +4,7 @@ import { BANKAI_IDS } from '../src/data/bankai';
 import { GOTEI_IDS } from '../src/data/gotei';
 import { HERO_IDS } from '../src/data/heroes';
 import { KARAKURA_IDS } from '../src/data/karakura';
-import { BOOK_ONE, MISSION_BY_ID, MISSIONS, missionOpen, missionStage } from '../src/data/missions';
+import { BOOK_ONE, BOOK_TWO, MISSION_BY_ID, missionBefore, MISSIONS, missionOpen, missionStage } from '../src/data/missions';
 import { ROYAL_IDS } from '../src/data/royal';
 import { stageById } from '../src/data/stages';
 import { FEAT_BY_ID } from '../src/save/feats';
@@ -28,11 +28,12 @@ const ROSTER: Record<string, readonly string[]> = {
 };
 
 describe('Story Mode', () => {
-  it('fifteen missions in two books, numbered in order, each on a real stage with a goal its timeline can meet', () => {
-    expect(MISSIONS).toHaveLength(15);
+  it('twenty-two missions in three books, numbered in order, each on a real stage with a goal its timeline can meet', () => {
+    expect(MISSIONS).toHaveLength(22);
     expect(BOOK_ONE).toBe(10);
+    expect(BOOK_TWO).toBe(15);
     expect(new Set(MISSIONS.map((m) => m.id)).size).toBe(MISSIONS.length);
-    expect(MISSIONS.map((m) => m.numeral)).toEqual(['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII', 'XIII', 'XIV', 'XV']);
+    expect(MISSIONS.map((m) => m.numeral)).toEqual(['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII', 'XIII', 'XIV', 'XV', 'XVI', 'XVII', 'XVIII', 'XIX', 'XX', 'XXI', 'XXII']);
     for (const m of MISSIONS) {
       const stage = missionStage(m);
       expect(stage.id, m.id).toBe(m.stage);
@@ -131,9 +132,43 @@ describe('Story Mode', () => {
     for (const m of MISSIONS.slice(0, 5)) recordMission(s, m.id, 300, true);
     expect(FEAT_BY_ID.get('story-half')?.save?.(s)).toBe(5);
     expect(FEAT_BY_ID.get('story-all')?.goal).toBe(BOOK_ONE);
-    expect(FEAT_BY_ID.get('story-book2')?.goal).toBe(MISSIONS.length - BOOK_ONE);
+    expect(FEAT_BY_ID.get('story-book2')?.goal).toBe(BOOK_TWO - BOOK_ONE);
+    expect(FEAT_BY_ID.get('story-book3')?.goal).toBe(MISSIONS.length - BOOK_TWO);
+    expect(FEAT_BY_ID.get('story-book3')?.look).toBe('firstwar');
     for (const m of MISSIONS.slice(BOOK_ONE, BOOK_ONE + 2)) recordMission(s, m.id, 300, true);
     expect(FEAT_BY_ID.get('story-book2')?.save?.(s)).toBe(2);
+  });
+
+  it('Book III opens after Book I, then divides: both roads open with its first mission, each road in order', () => {
+    const s = defaultSave();
+    const open = (id: string): boolean => missionOpen(new Set(MISSIONS.filter((m) => s.missions[m.id]?.cleared).map((m) => m.id)), id);
+    for (const m of MISSIONS.slice(0, BOOK_ONE)) recordMission(s, m.id, 300, true);
+    expect(open('firstwar')).toBe(true);
+    expect(open('throne')).toBe(false);
+    expect(open('unbroken')).toBe(false);
+    const prologue = recordMission(s, 'firstwar', 400, true);
+    expect(prologue.opened).toContain('Mission XVII');
+    expect(prologue.opened).toContain('Mission XX');
+    expect(open('throne')).toBe(true);
+    expect(open('unbroken')).toBe(true);
+    expect(open('hollowarmy')).toBe(false);
+    expect(open('zero')).toBe(false);
+    expect(missionBefore(MISSION_BY_ID.get('zero') ?? MISSIONS[0])?.id).toBe('unbroken');
+    // Each road has its own ending, and roads carry their names.
+    const roads = new Set(MISSIONS.slice(BOOK_TWO).map((m) => m.road).filter(Boolean));
+    expect(roads.size).toBe(2);
+  });
+
+  it('a telling can change who a roster boss is: Aizen still on his throne', () => {
+    const m = MISSION_BY_ID.get('throne');
+    if (!m) throw new Error('throne');
+    // Just before he comes, with no swarm to wade through.
+    const w = new World({ seed: 2, god: true, mission: m, startTime: 470 });
+    Object.assign(w as unknown as Record<string, unknown>, { spawnTick: () => undefined });
+    expect(w.bearers).toEqual(['aizen']);
+    steps(w, 15 * 60);
+    expect(w.messages.some((x) => x.text === 'Aizen rises from the white throne')).toBe(true);
+    expect(w.banners.some((b) => b.title === 'Sōsuke Aizen' && b.sub === 'King of Las Noches')).toBe(true);
   });
 
   it('Book II: the Gotei climb to the palace, and Auswählen heals on every elite', () => {

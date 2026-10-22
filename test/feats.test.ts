@@ -27,8 +27,8 @@ function facts(over: Partial<RunFacts> = {}): RunFacts {
 }
 
 describe('feats', () => {
-  it('there are forty, each with a goal and a reward', () => {
-    expect(FEATS).toHaveLength(40);
+  it('there are forty-one, each with a goal and a reward', () => {
+    expect(FEATS).toHaveLength(41);
     expect(new Set(FEATS.map((f) => f.id)).size).toBe(FEATS.length);
     for (const f of FEATS) {
       expect(f.goal).toBeGreaterThan(0);

@@ -7,9 +7,12 @@ Store. Live at **https://play.minarankstudio.com**.
 You are the Emperor. Level-ups let you take back the Schrift you gave your
 knights (Auswählen): 19 offensive powers with a Lv 7 attribute pick, plus 6
 utilities. Some fight for you: The Love charms enemies onto your side, The
-Zombie raises the infected dead, The Yourself sends out doubles, and Uryū
-Ishida's Antithesis reverses your wounds: you heal half, and the sturdiest
-enemies near you lose the same share of their health. Every run in Hueco
+Zombie raises the infected dead, The Yourself sends out the Lloyd twins as
+copies of you (never more than the two of them: Loyd with all of your power and
+70% of your memory, Royd the other way round), and Uryū Ishida's Antithesis
+reverses your wounds: you heal half, and the sturdiest enemies near you lose the
+same share of their health. Lille Barro's X-Axis pierces everything on its line,
+a boss's guard too, and as it fires you turn intangible for a moment. Every run in Hueco
 Mundo, three of the Sternritter who stole the captains' bankai with their
 medallions come for you (Äs Nödt with Senbonzakura, Cang Du with Hyōrinmaru,
 BG9 with Raikōben, Bambietta with Tengen, Driscoll with Gonryō Rikyū); beat
@@ -48,7 +51,7 @@ a portrait and a title. The pause and results screens break down the **damage**
 each power dealt (total, share and damage per second), and **Share** on the
 results turns the run into a picture for the phone's share sheet.
 
-Forty **Feats** give long goals (a hundred thousand kills, every letter
+Forty-one **Feats** give long goals (a hundred thousand kills, every letter
 awakened, Trial V, a Boss Rush under 4:00, all three fragments in one run,
 every spoil of war...),
 each paying gold once; some open one of three new looks for the Emperor
@@ -176,8 +179,8 @@ The Swarm, Giants, Shunpo, Frail, Barren). Surviving five minutes pays 100 bonus
 gold once a day and clearing it pays 300; the day keeps its own best time.
 
 **Story Mode** retells the Thousand-Year Blood War from the Emperor's side in
-fifteen short missions over two books, opened one after another from the Story
-card on the title. Each has a briefing, a goal, rules of its own and a page that closes it:
+twenty-two short missions over three books, opened one after another from the
+Story card on the title. Each has a briefing, a goal, rules of its own and a page that closes it:
 the desert and Tier Harribel; the Jagdarmee's hunt (survive eight minutes with
 Quilge's Jail); taking three medallions back; the Sexta under the painted sky;
 the First Invasion and Yamamoto; Silbern and Kyōraku; the Royal Guard and
@@ -188,7 +191,15 @@ closer, and asks for a trained Emperor: Auswählen (hold eight minutes, every
 elite put down giving health back); Renji, Rukia and then Uryū, the successor
 with the silver arrow; the Gotei climbing to the palace, Kenpachi, Mayuri and
 Shinji before Kyōraku; Aizen and Kyōka Suigetsu; and the end of a thousand
-years, Uryū and Aizen together and Ichigo last. The first clear of each pays gold; each keeps its
+years, Uryū and Aizen together and Ichigo last. Book III, **Another Telling**,
+opens after Book I and asks what if: a thousand years ago the Emperor does not
+lose (Chōjirō Sasakibe, the first Kenpachi and a young Yamamoto), and from there
+the story divides into two roads, each with its own ending. The Hollow Road
+runs to an Aizen who never fell, still king of Las Noches with his Espada, then
+the desert's Hollows that will not kneel, then Ichigo with the Hollow in him
+awake. The Soul Reaper Road runs to a Gotei that kept its bankai, the Royal
+Guard two at a time, and the Soul King's seat. Walking both roads wins a look,
+the Emperor as he was a thousand years ago. The first clear of each pays gold; each keeps its
 fastest clear. Missions count for totals, the Codex and feats, never for a
 stage's own records.
 

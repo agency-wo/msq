@@ -1,5 +1,5 @@
 import { GESANG_VERSES, UPGRADES } from '../data/archives';
-import { MISSION_BY_ID, MISSIONS } from '../data/missions';
+import { MISSION_BY_ID, missionBefore, MISSIONS } from '../data/missions';
 import { GAUNTLET, GAUNTLET_GOLD, GAUNTLET_UNLOCK } from '../data/gauntlet';
 import { GIFT_CODES, normalizeGiftCode } from '../data/gifts';
 import { BANKAI_IDS } from '../data/bankai';
@@ -284,8 +284,8 @@ export function recordMission(save: SaveData, id: string, time: number, cleared:
     reward = m.reward;
     save.gold += reward;
     save.totals.gold += reward;
-    const next = MISSIONS[MISSIONS.indexOf(m) + 1];
-    opened = next ? `Mission ${next.numeral} · ${next.title}` : null;
+    const next = MISSIONS.filter((o) => missionBefore(o) === m);
+    opened = next.length > 0 ? next.map((o) => `Mission ${o.numeral} · ${o.title}`).join(' and ') : null;
   }
   const newBest = cleared && (rec.best === 0 || time < rec.best);
   if (newBest) rec.best = time;

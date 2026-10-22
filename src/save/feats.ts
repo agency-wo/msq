@@ -3,7 +3,7 @@ import { POWERS, STARTABLE_IDS } from '../data/powers';
 import { RELICS } from '../data/relics';
 import { SPOILS } from '../data/spoils';
 import { RESONANCES } from '../data/resonances';
-import { BOOK_ONE, MISSIONS } from '../data/missions';
+import { BOOK_ONE, BOOK_TWO, MISSIONS } from '../data/missions';
 import { STAGE_IDS, type StageId } from '../data/stages';
 import type { SaveData } from './save';
 
@@ -125,7 +125,17 @@ export const FEATS: readonly FeatDef[] = [
   { id: 'daily-clear', name: 'Daily Devotion', desc: 'Clear a Daily Trial.', group: 'Modes', goal: 1, gold: 300, run: (r) => yes(r.daily && r.cleared) },
   { id: 'story-half', name: 'Half the War', desc: 'Clear five Story missions.', group: 'Modes', goal: 5, gold: 400, save: (s) => storyCleared(s) },
   { id: 'story-all', name: 'The Thousand-Year Blood War', desc: 'Clear every mission of Book I.', group: 'Modes', goal: BOOK_ONE, gold: 1000, save: (s) => storyCleared(s) },
-  { id: 'story-book2', name: 'The Last Days', desc: 'Clear every mission of Book II.', group: 'Modes', goal: MISSIONS.length - BOOK_ONE, gold: 1500, save: (s) => MISSIONS.slice(BOOK_ONE).filter((m) => s.missions[m.id]?.cleared).length },
+  { id: 'story-book2', name: 'The Last Days', desc: 'Clear every mission of Book II.', group: 'Modes', goal: BOOK_TWO - BOOK_ONE, gold: 1500, save: (s) => MISSIONS.slice(BOOK_ONE, BOOK_TWO).filter((m) => s.missions[m.id]?.cleared).length },
+  {
+    id: 'story-book3',
+    name: 'Another Telling',
+    desc: 'Walk both roads of Book III to their ends.',
+    group: 'Modes',
+    goal: MISSIONS.length - BOOK_TWO,
+    gold: 2500,
+    look: 'firstwar',
+    save: (s) => MISSIONS.slice(BOOK_TWO).filter((m) => s.missions[m.id]?.cleared).length,
+  },
   { id: 'gauntlet-half', name: 'Halfway Through the Gauntlet', desc: 'Clear four tiers of the Gauntlet in one run.', group: 'Modes', goal: 4, gold: 800, save: (s) => s.gauntlet.tiers },
   { id: 'gauntlet-all', name: 'Every Enemy of the Wandenreich', desc: 'Clear all seven tiers of the Gauntlet.', group: 'Modes', goal: 7, gold: 2000, look: 'almighty', save: (s) => s.gauntlet.tiers },
 ];

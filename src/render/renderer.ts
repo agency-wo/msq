@@ -971,13 +971,15 @@ export class Renderer {
         const dx = x + Math.cos(a) * DOUBLE_RING;
         const dy = y + Math.sin(a) * DOUBLE_RING;
         L.shadows.add(f.shadow, dx, dy + 15, 0.5, 0.5, 0, 0xffffff, 0.4);
-        // A ghost of light in your shape: a blue glow with your features showing through.
-        L.allies.add(f.player_f, dx, dy - 4, 0.48 * HERO_SIZE * p.face, 0.48 * HERO_SIZE, 0, 0x6fa8ff, 0.3);
-        L.allies.add(f.player, dx, dy - 4, 0.46 * HERO_SIZE * p.face, 0.46 * HERO_SIZE, 0, 0xcfe6ff, 0.55);
+        // A ghost of light in your shape, your features showing through: Loyd warm (your power), Royd cool (your memory).
+        const loyd = k === 0 && ps.attr !== 'perfect';
+        L.allies.add(f.player_f, dx, dy - 4, 0.48 * HERO_SIZE * p.face, 0.48 * HERO_SIZE, 0, loyd ? 0xffa86f : 0x6fa8ff, 0.3);
+        L.allies.add(f.player, dx, dy - 4, 0.46 * HERO_SIZE * p.face, 0.46 * HERO_SIZE, 0, loyd ? 0xffe2cf : 0xcfe6ff, 0.55);
       }
     }
     const justHit = p.iframes > PLAYER.iframes - 0.08;
-    const blink = p.iframes > 0 && w.vollT <= 0 && Math.floor(now * 18) % 2 === 0;
+    const ghost = w.intangibleT > 0;
+    const blink = !ghost && p.iframes > 0 && w.vollT <= 0 && Math.floor(now * 18) % 2 === 0;
     // His walk, read once per simulation step: the distance covered drives his steps, the speed his cape.
     if (w.steps !== this.heroStep) {
       this.heroStep = w.steps;
@@ -1015,7 +1017,8 @@ export class Renderer {
     const body = f[`player${suffix}${stride ? '_w' : ''}`] ?? f[`player${suffix}`];
     const bodyHit = f[`player${suffix}_f`];
     const cape = f[`cape${suffix}`];
-    const fade = blink ? 0.45 : 1;
+    // Intangible (The X-Axis): see-through, steady; hurt: a blink.
+    const fade = ghost ? 0.35 : blink ? 0.45 : 1;
     L.player.add(cape, x, capeY, s * p.face, s * capeStretch * (1 + breath), capeRot, justHit ? 0xffb0b8 : 0xffffff, fade, CAPE_PIVOT.x, CAPE_PIVOT.y);
     if (tier >= 2) {
       // Every few seconds the eyes on his cloak blink together.

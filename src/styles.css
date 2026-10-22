@@ -2585,6 +2585,17 @@ button:focus-visible {
   color: var(--paper);
 }
 
+/* Book III's two roads: a smaller heading under the book's. */
+.road-title {
+  margin: 6px 0 0;
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: 12px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
 .section-title::before,
 .section-title::after {
   content: '';

@@ -342,6 +342,9 @@ const STAMPEDE_GAP = 24;
 const SPLATS = 96;
 const STAMPEDE_SPEED = 240;
 const STAMPEDE_WINDUP = 1.2;
+/** The X-Axis's intangible moment: how long it lasts, and how soon it can come again. */
+const INTANGIBLE_SECS = 0.3;
+const INTANGIBLE_EVERY = 3;
 /** A strike on a spot held too long: its warning, and its size. */
 const STILL_WARN = 0.9;
 const STILL_R = 64;
@@ -443,6 +446,10 @@ export class World {
   /** Seconds left in the stage hazard's burst, and until the next thing it drops. */
   hazardT = 0;
   private hazardTick = 0;
+  /** The X-Axis: its beams let a boss's whole blow through a guard while they fire; and Lille Barro's intangibility, its seconds left and when it can come again. */
+  pierceGuard = false;
+  intangibleT = 0;
+  private intangibleNext = 0;
   /** Standing still (see DIFFICULTY.still*): the spot, how long you have stood on it, the strikes it has drawn. */
   private stillX = 0;
   private stillY = 0;
@@ -837,6 +844,7 @@ export class World {
 
   private updateBuffs(): void {
     if (this.superT > 0) this.superT -= DT;
+    if (this.intangibleT > 0) this.intangibleT -= DT;
     if (this.vollT > 0) this.vollT -= DT;
     let mul = this.modDealt;
     if (this.superT > 0) mul *= 1 + this.superAmt;
@@ -1127,6 +1135,14 @@ export class World {
     }
   }
 
+  /** The X-Axis: blows pass through you for INTANGIBLE_SECS, at most once every INTANGIBLE_EVERY. */
+  turnIntangible(): void {
+    if (this.t < this.intangibleNext) return;
+    this.intangibleNext = this.t + INTANGIBLE_EVERY;
+    this.intangibleT = INTANGIBLE_SECS;
+    this.player.iframes = Math.max(this.player.iframes, INTANGIBLE_SECS);
+  }
+
   /**
    * Stand still and the field finds you: past the grace, warned strikes come down on the spot you hold,
    * quicker and heavier each time and taking a share of max health, so no build can sit them out. Moving
@@ -1376,6 +1392,8 @@ export class World {
 
   /** The warning a few seconds before a roster boss arrives: who is coming, in a line of their own. */
   private bearerWarning(id: string | undefined): string {
+    const role = id ? this.mission?.roles?.[id]?.warn : undefined;
+    if (role) return role;
     const roster = this.stage.roster;
     if (roster === 'royal') return (id && ROYAL_BY_ID.get(id)?.warn) || 'A guardian of the palace approaches';
     if (roster === 'gotei') return (id && GOTEI_BY_ID.get(id)?.warn) || 'A captain approaches';
@@ -1441,7 +1459,7 @@ export class World {
     this.bossCount++;
     this.holdLetter(this.heroLetter(id));
     const info = HERO_BY_ID.get(id);
-    this.banners.push({ kind: 'boss', title: info?.name ?? 'Defender', sub: info?.title ?? '', quote: BOSS_LINES[`heroes:${id}`] });
+    this.banners.push({ kind: 'boss', title: info?.name ?? 'Defender', sub: this.mission?.roles?.[id]?.title ?? info?.title ?? '', quote: BOSS_LINES[`heroes:${id}`] });
     this.shake = Math.max(this.shake, 8);
     return i;
   }
@@ -2053,7 +2071,7 @@ export class World {
     // A boss on guard (Cang Du's iron skin) lets only part of each blow through.
     if (E.flags[i] & FLAG_BOSS) {
       const m = this.memos.get(E.uid[i]);
-      if (m && m.guard > this.t) dmg *= m.guardMul;
+      if (m && m.guard > this.t && !this.pierceGuard) dmg *= m.guardMul;
     }
     if (this.spoil.on) dmg = spoilDamage(this, i, dmg, crit);
     // Schutzstaffel: up to twice as hard the closer you are to falling.

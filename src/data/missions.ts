@@ -4,8 +4,10 @@ import { DIFFICULTY, stageById, type StageDef, type StageId, type TimelineEvent,
 
 /**
  * Story Mode: the Thousand-Year Blood War from the Emperor's side, told as
- * short missions in two books: Book I, the war in ten missions; Book II, its
- * last days told again, closer. Each is a run of its own on one of the stages, with a
+ * short missions in three books: Book I, the war in ten missions; Book II, its
+ * last days told again, closer; Book III, Another Telling, where the first war
+ * a thousand years ago went the other way, and the story divides into two
+ * roads (the Hollows' and the Soul Reapers'), each with an ending of its own. Each is a run of its own on one of the stages, with a
  * goal (a boss to fall, a span to survive, a number of bosses to put down),
  * its own rules and timeline, a briefing before and a page after. Mission I
  * is always open; clearing one opens the next. Written for this game, in its
@@ -52,6 +54,12 @@ export interface MissionDef {
   roster?: StageDef['roster'];
   /** Every elite put down gives back this share of max health (Auswählen). */
   eliteHeal?: number;
+  /** The mission whose clear opens this one, when it is not the one before it (where Book III divides). */
+  opensAfter?: string;
+  /** Book III: which road the mission is on, shown as a heading over the road's first mission. */
+  road?: string;
+  /** Who a roster boss is in this telling, when not who the stage says (Aizen still on his throne): the line under the name, the warning. */
+  roles?: Readonly<Record<string, { title?: string; warn?: string }>>;
   brief: readonly string[];
   after: readonly string[];
 }
@@ -389,10 +397,199 @@ export const MISSIONS: readonly MissionDef[] = [
       'The arrow, the illusion and the blade came together, as they do in the telling everyone knows. In this one the Emperor saw all three coming, and the thousand years ended the way he had always said they would.',
     ],
   },
+  // ------------------------------------------------ Book III: Another Telling. The first war went the other way.
+  {
+    id: 'firstwar',
+    numeral: 'XVI',
+    title: 'A Thousand Years Ago',
+    stage: 'seireitei',
+    length: 540,
+    goal: { kind: 'boss' },
+    goalText: 'Defeat Genryūsai Yamamoto in his prime.',
+    ring: 'officer',
+    elite: 'guard',
+    events: [
+      bearer(150, 0, 1.5),
+      boss(300, 'unohana', 3.5, 'The first Kenpachi draws her blade: Yachiru Unohana', 'The First Kenpachi', false),
+      boss(540, 'commander', 9, 'Yamamoto, young and burning, steps out of the flames', 'Founder of the Gotei 13'),
+    ],
+    bearers: ['gonryo'],
+    hp: 1.1,
+    reward: 1800,
+    opensAfter: 'telling',
+    rules: ['Chōjirō Sasakibe stands with the founder, as he has from the first day.', 'Clear this one and the telling divides into two roads.'],
+    brief: [
+      'A thousand years ago the Emperor marched on the Soul Reapers and lost. Yamamoto’s fire broke him, and the Quincy waited nine hundred years in the dark for him to come back.',
+      'In this telling he does not lose. His lieutenant and the first Kenpachi stand at the Captain-Commander’s side, and the old man is not yet old.',
+    ],
+    after: [
+      'The founder of the Gotei 13 fell before the Gotei was a hundred years old. There was no long wait in the dark and no hidden empire in the shadows: the Emperor simply won, and the story everyone knows was never told.',
+      'From here the telling divides. One road runs down into Hueco Mundo, where a traitor sits on a white throne. The other climbs to the Soul Reapers who were left.',
+    ],
+  },
+  {
+    id: 'throne',
+    numeral: 'XVII',
+    title: 'The King of Las Noches',
+    stage: 'lasnoches',
+    length: 540,
+    goal: { kind: 'bosses', count: 3 },
+    goalText: 'Defeat Grimmjow, Harribel and Sōsuke Aizen.',
+    ring: 'numeros',
+    elite: 'exequias',
+    events: [
+      boss(180, 'grimmjow', 3.5, 'The Sexta Espada is spoiling for a fight', 'Sexta Espada', false),
+      boss(330, 'harribel', 3.5, 'The Tres Espada rises from her seat', 'Tres Espada', false),
+      bearer(480, 0, 6),
+    ],
+    roster: 'heroes',
+    bearers: ['aizen'],
+    roles: { aizen: { title: 'King of Las Noches', warn: 'Aizen rises from the white throne' } },
+    hp: 1.2,
+    reward: 1900,
+    opensAfter: 'firstwar',
+    road: 'The Hollow Road',
+    rules: ['Aizen never fell: his Espada still stand before his throne.'],
+    brief: [
+      'In this telling Aizen was never beaten. He went home to Las Noches with the Hōgyoku in his chest, and his Espada still stand before the white throne.',
+      'The Sexta first, spoiling for a fight as ever; then the Tres Espada; then the man who meant to be king of every world.',
+    ],
+    after: [
+      'Two would-be kings met in the white palace. Only one of them could see the future, and the Hōgyoku had never learned to want anything but more. Las Noches has a new throne, and the Arrancar bow to it.',
+    ],
+  },
+  {
+    id: 'hollowarmy',
+    numeral: 'XVIII',
+    title: 'The Desert Does Not Kneel',
+    stage: 'hueco',
+    length: 480,
+    goal: { kind: 'survive' },
+    goalText: 'Hold the desert for 8:00 against every Hollow in it.',
+    ring: 'brute',
+    elite: 'gillian',
+    events: [40, 80, 120, 160, 200, 240, 280, 320, 360, 400, 440].map((at): TimelineEvent => ({ at, kind: 'elite', enemy: 'gillian' })),
+    mods: ['giants'],
+    hp: 1.3,
+    spawn: 1.25,
+    reward: 2000,
+    road: 'The Hollow Road',
+    rules: ['Giants: bigger, slower, sturdier enemies.', 'A Menos Grande walks out of the sand every 40 s.'],
+    brief: [
+      'The Arrancar bowed to the new throne. The Hollows of the desert did not: they have never knelt to anyone, and they come up out of the sand in their thousands, the Menos walking among them.',
+      'Hold the desert for eight minutes, and Hueco Mundo is yours in every way that matters.',
+    ],
+    after: ['By morning the desert was quiet, which in Hueco Mundo is the nearest thing to peace. Only one thing in that world was still not afraid of him.'],
+  },
+  {
+    id: 'mask',
+    numeral: 'XIX',
+    title: 'The Hollow in the Boy',
+    stage: 'lasnoches',
+    length: 600,
+    goal: { kind: 'boss' },
+    goalText: 'Defeat Ichigo Kurosaki, the Hollow in him awake.',
+    ring: 'numeros',
+    elite: 'exequias',
+    events: [
+      boss(200, 'nel', 4.5, 'Neliel stands in your way, for Ichigo’s sake', 'Former Tres Espada', false),
+      boss(600, 'ichigo', 15, 'Ichigo Kurosaki comes across the sand, the mask already forming', 'Substitute Soul Reaper'),
+    ],
+    hp: 1.35,
+    reward: 2600,
+    road: 'The Hollow Road',
+    rules: ['Neliel fights for Ichigo before he comes.', 'The end of the Hollow Road.'],
+    brief: [
+      'A boy came to Hueco Mundo once before, to bring a friend home. He has come again, and this time the Hollow in him came too.',
+      'Neliel remembers him kindly. She will stand in your way first.',
+    ],
+    after: [
+      'The mask broke last. Under it was a boy who had always been half of everything: Soul Reaper, Hollow, human, Quincy. The Emperor took back the Quincy half and left the rest to the sand.',
+      'So ends the Hollow Road: the Emperor on the white throne, king of everything that hungers, and the Soul Reapers above still waiting for a war that comes to them last.',
+    ],
+  },
+  {
+    id: 'unbroken',
+    numeral: 'XX',
+    title: 'The Gotei Unbroken',
+    stage: 'seireitei',
+    length: 540,
+    goal: { kind: 'bosses', count: 4 },
+    goalText: 'Defeat Kenpachi, Mayuri, Shinji and Kensei.',
+    ring: 'officer',
+    elite: 'guard',
+    events: [bearer(120, 0, 2), bearer(240, 1, 3), bearer(360, 2, 4.5), bearer(480, 3, 6)],
+    roster: 'gotei',
+    bearers: ['kenpachi', 'mayuri', 'shinji', 'kensei'],
+    hp: 1.3,
+    reward: 1900,
+    opensAfter: 'firstwar',
+    road: 'The Soul Reaper Road',
+    rules: ['No medallions in this telling: every captain fights with their bankai from the first moment.'],
+    brief: [
+      'Without its founder, the Gotei 13 rebuilt itself the hard way, one captain at a time, and a thousand years later it is harder than it ever was with him.',
+      'There are no medallions this time. Every captain keeps their bankai, and every one of them has waited their whole life for you.',
+    ],
+    after: ['They never lost their bankai, and still they lost. The Seireitei falls quiet, as it would have a thousand years ago if the old man had not been there.'],
+  },
+  {
+    id: 'zero',
+    numeral: 'XXI',
+    title: 'Zero Division',
+    stage: 'palace',
+    length: 540,
+    goal: { kind: 'boss' },
+    goalText: 'Defeat the Royal Guard, two at a time, and then Ichibē.',
+    ring: 'attendant',
+    elite: 'sentinel',
+    events: [
+      bearer(150, 0, 3),
+      bearer(152, 1, 3),
+      bearer(330, 2, 5),
+      bearer(332, 3, 5),
+      boss(540, 'ichibe', 14, 'Ichibē Hyōsube opens his brush case', 'Commander of the Royal Guard'),
+    ],
+    bearers: ['tenjiro', 'kirio', 'oetsu', 'senjumaru'],
+    hp: 1.35,
+    reward: 2200,
+    road: 'The Soul Reaper Road',
+    rules: ['The Royal Guard come two at a time.'],
+    brief: [
+      'The Soul King’s own guard did not wait for the Emperor to climb to them. They came down to meet him, two by two, and their leader behind them with ink on his brush.',
+    ],
+    after: ['Ichibē named everything, and everything answered to its name. The Emperor had chosen his own long ago, and it answered to no one else.'],
+  },
+  {
+    id: 'kingseat',
+    numeral: 'XXII',
+    title: 'The Soul King’s Seat',
+    stage: 'wahrwelt',
+    length: 600,
+    goal: { kind: 'boss' },
+    goalText: 'Defeat Renji, Rukia and Uryū together, and then Ichigo.',
+    ring: 'officer',
+    elite: 'brute',
+    events: [bearer(240, 0, 3), bearer(242, 1, 3.5), bearer(244, 2, 4), boss(600, 'ichigo', 17, 'Ichigo Kurosaki climbs the last stair', 'Substitute Soul Reaper')],
+    bearers: ['renji', 'rukia', 'uryu'],
+    almighty: true,
+    hp: 1.15,
+    spawn: 1.1,
+    reward: 3000,
+    road: 'The Soul Reaper Road',
+    rules: ['You hold A · The Almighty from the first second.', 'Renji, Rukia and Uryū come together.', 'The end of the Soul Reaper Road.'],
+    brief: [
+      'With the Gotei gone and the Royal Guard fallen, only the friends are left. They climb together, as they always have, and the boy who brought them together comes last.',
+    ],
+    after: [
+      'The Emperor sat where the Soul King had sat, and did what the Soul King never would: he made the worlds one, with no more death and no more fear in any of them.',
+      'So ends the Soul Reaper Road. A thousand years late, or a thousand years early; in this telling it makes no difference.',
+    ],
+  },
 ];
 
-/** Missions in Book I: the war in ten. Book II follows. */
+/** Where each book starts in MISSIONS: Book I is the war in ten, Book II its last days in five; Book III (Another Telling) follows. */
 export const BOOK_ONE = 10;
+export const BOOK_TWO = 15;
 
 export const MISSION_BY_ID: ReadonlyMap<string, MissionDef> = new Map(MISSIONS.map((m) => [m.id, m]));
 
@@ -427,6 +624,15 @@ export function missionStage(m: MissionDef): StageDef {
 
 /** A mission's place in the campaign: open once the one before it is cleared (the first always). */
 export function missionOpen(cleared: ReadonlySet<string>, id: string): boolean {
-  const k = MISSIONS.findIndex((m) => m.id === id);
-  return k === 0 || (k > 0 && cleared.has(MISSIONS[k - 1].id));
+  const m = MISSION_BY_ID.get(id);
+  if (!m) return false;
+  const before = missionBefore(m);
+  return !before || cleared.has(before.id);
+}
+
+/** The mission whose clear opens this one: its opensAfter, or the one before it (none for Mission I). */
+export function missionBefore(m: MissionDef): MissionDef | undefined {
+  if (m.opensAfter) return MISSION_BY_ID.get(m.opensAfter);
+  const k = MISSIONS.indexOf(m);
+  return k > 0 ? MISSIONS[k - 1] : undefined;
 }

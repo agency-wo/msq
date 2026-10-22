@@ -284,9 +284,23 @@ function devour(w: World, n: number, tx: number, ty: number, aim: number, reach:
 
 /** How far from you the doubles stand. */
 export const DOUBLE_RING = 46;
+/** What a twin holds of you, in the part of you he does not copy whole; and the arrows in each of his shots. */
+export const TWIN_SHARE = 0.7;
+const TWIN_ARROWS = 2;
 
-export function doubleCount(w: World, ps: PowerState): number {
-  return ps.stats.count + w.stats.count + (ps.attr === 'legion' ? 2 : 0);
+/** The twins: Loyd and Royd Lloyd, so never more than two (Royd joins at Lv 4). */
+export function doubleCount(_w: World, ps: PowerState): number {
+  return Math.min(2, ps.stats.count);
+}
+
+/**
+ * What twin k copies of you. Loyd (the first) takes all of your power and 70% of your memory: his arrows hit as
+ * hard as yours, but he keeps pace with you on only 70% of the beats. Royd takes all of your memory and 70% of
+ * your power: he fires on every beat, 70% as hard. Perfect Copy: all of both.
+ */
+export function twinCopy(ps: PowerState, k: number): { power: number; memory: number } {
+  if (ps.attr === 'perfect') return { power: 1, memory: 1 };
+  return k === 0 ? { power: 1, memory: TWIN_SHARE } : { power: TWIN_SHARE, memory: 1 };
 }
 
 /** Where double k of n stands right now, written to w.tx/w.ty. */
@@ -296,7 +310,7 @@ export function doubleAt(w: World, ps: PowerState, k: number, n: number, px = w.
   w.ty = py + Math.sin(a) * DOUBLE_RING;
 }
 
-/** Doubles step out for a while and fire arrows of their own, then rest. Mirror Image keeps them out for good. */
+/** The twins step out for a while and fire arrows of their own, then rest. Mirror Image keeps them out for good. */
 export function castDouble(w: World, ps: PowerState, slot: number): void {
   const st = ps.stats;
   ps.angle += 0.8 * DT;
@@ -313,22 +327,27 @@ export function castDouble(w: World, ps: PowerState, slot: number): void {
     if (ps.timer2 > 0) return;
     ps.timer2 = cooldown(w, st.tick);
     const n = doubleCount(w, ps);
-    const perfect = ps.attr === 'perfect';
+    const volley = ps.attr === 'volley';
     const size = st.size * w.stats.size;
     const speed = st.speed * w.stats.projSpeed;
     const E = w.en;
+    // Each twin fires in pairs, as you would; one more of everything gives each one more arrow, never one more twin.
+    const shots = TWIN_ARROWS + w.stats.count + (volley ? 2 : 0);
+    const beat = ps.counter++;
     let fired = 0;
     for (let k = 0; k < n; k++) {
+      const copy = twinCopy(ps, k);
+      // A twin short of your memory misses some of the beats you keep.
+      if ((beat + k * 3) % 10 >= Math.round(copy.memory * 10)) continue;
       doubleAt(w, ps, k, n);
       const x = w.tx;
       const y = w.ty;
       const j = w.grid.nearest(x, y, 380, E.x, E.y, w.isAlive);
       if (j < 0) continue;
       const aim = Math.atan2(E.y[j] - y, E.x[j] - x);
-      const shots = perfect ? 3 : 1;
       for (let s = 0; s < shots; s++) {
         const a = aim + (s - (shots - 1) / 2) * 0.14;
-        w.spawnProjectile(PK_ARROW, slot, x, y, Math.cos(a) * speed, Math.sin(a) * speed, 1.2, st.damage, st.radius * size, st.pierce + (perfect ? 2 : 0), 0);
+        w.spawnProjectile(PK_ARROW, slot, x, y, Math.cos(a) * speed, Math.sin(a) * speed, 1.2, st.damage * copy.power, st.radius * size, st.pierce + (volley ? 2 : 0), 0);
       }
       if (w.resonances.has('narcissus')) narcissus(w, x, y, aim);
       fired++;

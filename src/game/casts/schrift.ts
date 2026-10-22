@@ -358,6 +358,8 @@ function fireBeams(w: World, ps: PowerState): boolean {
   const width = st.radius * st.size * w.stats.size * (sniper ? 2 : 1);
   const dmg = st.damage * (sniper ? 2 : 1);
   const count = st.count + w.stats.count;
+  // Everything between the muzzle and the far end is pierced: a boss's guard lets the whole blow through.
+  w.pierceGuard = true;
   for (let b = 0; b < count; b++) {
     const a = aim + (b - (count - 1) / 2) * 0.16;
     beamLine(w, p.x, p.y, a, 900, width, dmg, 0x9fe7ff, FX_BEAMH, 20, 0, 0);
@@ -367,6 +369,9 @@ function fireBeams(w: World, ps: PowerState): boolean {
     const perp = aim + Math.PI / 2;
     beamLine(w, tx - Math.cos(perp) * 450, ty - Math.sin(perp) * 450, perp, 900, width, dmg, 0x9fe7ff, FX_BEAMH, 20, 0, 0);
   }
+  w.pierceGuard = false;
+  // Lille Barro's intangibility, lightly: blows pass through you for a moment as the beam fires.
+  w.turnIntangible();
   if (w.resonances.has('railgun')) {
     for (let b = 0; b < count; b++) railgun(w, p.x, p.y, aim + (b - (count - 1) / 2) * 0.16);
   }

@@ -57,6 +57,8 @@ export const HERO_LOOKS: Readonly<Record<string, HeroLook>> = {
   kaiser: { cape: '#2c1040', coat: '#26262e', shade: '#0b0a10', trim: '#e8c060', star: '#ffd25a', sleeve: '#16171e', cuff: '#e8c870', collar: '#101117', lining: '#7a3aaa' },
   // The Almighty: black on black, lined in blood, the star itself red; won in the Gauntlet.
   almighty: { cape: '#0b0a10', coat: '#16141c', shade: '#0b0a10', trim: '#c8102e', star: '#ff3050', sleeve: '#0e0c12', cuff: '#c8102e', collar: '#0b0a10', lining: '#c8102e' },
+  // A Thousand Years Ago: the plainer, older coat of the first war, earth-dark with tarnished bronze; won in Book III.
+  firstwar: { cape: '#1c140e', coat: '#2a2018', shade: '#120c08', trim: '#b08040', star: '#d8a050', sleeve: '#1e1610', cuff: '#b08040', collar: '#16100c', lining: '#6a4a2a' },
 };
 
 /** The look ids the atlas draws. */

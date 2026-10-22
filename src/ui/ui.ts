@@ -25,7 +25,7 @@ import { codexFound, codexTotal, featProgress, FEATS } from '../save/feats';
 import { drawEmblem, drawIcon, drawTrailSwatch } from './icons';
 import { shareRun } from './share';
 import { drawVista } from './vistas';
-import { BOOK_ONE, MISSIONS, missionOpen, type MissionDef } from '../data/missions';
+import { BOOK_ONE, BOOK_TWO, MISSIONS, missionBefore, missionOpen, type MissionDef } from '../data/missions';
 import { GAUNTLET, GAUNTLET_GOLD, GAUNTLET_UNLOCK, gauntletBosses } from '../data/gauntlet';
 import { powerRows, statSheet } from './statsheet';
 
@@ -1614,15 +1614,20 @@ export class UI {
     p.append(
       el('div', 'board-kicker', 'The Thousand-Year Blood War'),
       el('h2', 'board-title', 'Story'),
-      el('p', 'archives-hint', `${cleared.size} of ${MISSIONS.length} missions cleared. Each one opens the next.`),
+      el('p', 'archives-hint', `${cleared.size} of ${MISSIONS.length} missions cleared. Each one opens the next; Book III divides into two roads.`),
     );
     const list = el('div', 'chapters');
+    let road: string | undefined;
     for (const [k, m] of MISSIONS.entries()) {
       if (k === 0) list.append(el('h3', 'section-title', 'Book I · The War'));
       if (k === BOOK_ONE) list.append(el('h3', 'section-title', 'Book II · The Last Days'));
+      if (k === BOOK_TWO) list.append(el('h3', 'section-title', 'Book III · Another Telling'));
+      if (m.road && m.road !== road) list.append(el('h4', 'road-title', m.road));
+      road = m.road;
       if (!missionOpen(cleared, m.id)) {
+        const before = missionBefore(m);
         const row = el('div', 'chapter locked');
-        row.append(el('span', 'chapter-kicker', `Mission ${m.numeral}`), el('span', 'chapter-title', '? ? ?'), el('span', 'chapter-hint', 'Clear the mission before it.'));
+        row.append(el('span', 'chapter-kicker', `Mission ${m.numeral}`), el('span', 'chapter-title', '? ? ?'), el('span', 'chapter-hint', before ? `Clear Mission ${before.numeral} first.` : 'Clear the mission before it.'));
         list.append(row);
         continue;
       }
