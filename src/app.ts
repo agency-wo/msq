@@ -14,7 +14,7 @@ import { GAUNTLET } from './data/gauntlet';
 import type { TipId } from './data/tips';
 import type { Offer } from './game/offers';
 import { runGold } from './game/rewards';
-import { RUSH_TIERS, World } from './game/world';
+import { CALAMITIES, RUSH_TIERS, World } from './game/world';
 import { installGestureGuards, isIOS, isPhoneLandscape, isStandalone } from './platform/pwa';
 import { Renderer } from './render/renderer';
 import {
@@ -25,6 +25,9 @@ import {
   buyVerse,
   goldMul,
   metaBossHeal,
+  metaBounty,
+  metaPassiveSlots,
+  metaPowerSlots,
   metaChestChoices,
   metaChoices,
   metaEliteChest,
@@ -498,6 +501,9 @@ export class App {
       eliteChest: metaEliteChest(this.save),
       chestChoices: metaChestChoices(this.save),
       bossHeal: metaBossHeal(this.save),
+      bounty: metaBounty(this.save),
+      powerSlots: metaPowerSlots(this.save),
+      passiveSlots: metaPassiveSlots(this.save),
       mastery: metaMastery(this.save),
       pressure: metaPressure(this.save),
       // The Armory's relic comes along on every run but the Daily Trial, which is the same for everyone.
@@ -517,6 +523,9 @@ export class App {
     for (const id of listParam(p, 'spoils')) this.world.takeSpoil(id.startsWith('spoil-') ? id : `spoil-${id}`);
     for (const id of listParam(p, 'res')) this.world.addResonance(id);
     this.world.banners.length = 0;
+    // Testing: ?calamity=barrage starts that calamity at once.
+    const calamity = CALAMITIES.find((c) => c === p.get('calamity'));
+    if (calamity) this.world.startEvent(calamity);
     // A Story mission opens on its goal.
     if (mission) this.world.banners.push({ kind: 'event', title: `Mission ${mission.numeral} · ${mission.title}`, sub: mission.goalText });
     this.ui.hideScreen();

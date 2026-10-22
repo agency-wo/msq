@@ -1585,7 +1585,7 @@ export class UI {
     const body = el('div', 'story-text');
     body.append(
       el('p', '', 'Seven tiers, each on its own ground, each boss one after another and the tier’s lord last. Every boss put down is a level-up; between tiers, a golden chest and two more. Only a tier’s lord leaves its spoils.'),
-      el('p', '', 'No timeline, no shrines: only them, and you.'),
+      el('p', '', 'No timeline, no shrines: only them, you, and whatever the field throws in between.'),
     );
     const rows = el('div', 'chapters');
     GAUNTLET.forEach((t, k) => {

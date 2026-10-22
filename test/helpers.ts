@@ -7,6 +7,9 @@ import {
   buyUpgrade,
   MASTERY_POWERS,
   metaBossHeal,
+  metaBounty,
+  metaPassiveSlots,
+  metaPowerSlots,
   metaChestChoices,
   metaEliteChest,
   metaMastery,
@@ -35,6 +38,9 @@ export const sensible: Strategy = (o) =>
 
 /** Pessimistic: walks a big circle and ignores enemies, orbs and chests. */
 export const circle: Mover = (w) => [Math.cos(w.t * 0.35), Math.sin(w.t * 0.35)];
+
+/** Never moves: the Emperor left standing while the run plays itself. */
+export const idle: Mover = () => [0, 0];
 
 /**
  * Closer to a person: backs away from enemies that get close, sidesteps
@@ -202,7 +208,9 @@ export function play(w: World, seconds: number, pick: Strategy, move: Mover, onS
 }
 
 /** World options for a player who bought every Archives upgrade. */
-export function maxedMeta(share = 1): Pick<WorldOptions, 'meta' | 'revives' | 'rerolls' | 'shellEvery' | 'eliteChest' | 'chestChoices' | 'bossHeal' | 'mastery' | 'pressure'> {
+export function maxedMeta(
+  share = 1,
+): Pick<WorldOptions, 'meta' | 'revives' | 'rerolls' | 'shellEvery' | 'eliteChest' | 'chestChoices' | 'bossHeal' | 'mastery' | 'pressure' | 'bounty' | 'powerSlots' | 'passiveSlots'> {
   const s = defaultSave();
   s.gold = 10_000_000;
   // share < 1: that part of every training row, no Disciplines, that part of the Gesang (a player part of the way there).
@@ -217,6 +225,9 @@ export function maxedMeta(share = 1): Pick<WorldOptions, 'meta' | 'revives' | 'r
     eliteChest: metaEliteChest(s),
     chestChoices: metaChestChoices(s),
     bossHeal: metaBossHeal(s),
+    bounty: metaBounty(s),
+    powerSlots: metaPowerSlots(s),
+    passiveSlots: metaPassiveSlots(s),
     mastery: metaMastery(s),
     pressure: metaPressure(s),
   };

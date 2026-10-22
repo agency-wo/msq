@@ -33,10 +33,11 @@ describe('more training', () => {
     }
     const m = metaMods(s);
     expect(m.dmgTaken).toBeCloseTo(-0.15);
-    expect(m.regen).toBeCloseTo(0.9);
-    expect(m.projSpeed).toBeCloseTo(0.18);
-    expect(m.duration).toBeCloseTo(0.15);
-    expect(m.critMult).toBeCloseTo(0.45);
+    // Five levels each now (two more since the rows were added).
+    expect(m.regen).toBeCloseTo(1.5);
+    expect(m.projSpeed).toBeCloseTo(0.3);
+    expect(m.duration).toBeCloseTo(0.25);
+    expect(m.critMult).toBeCloseTo(0.75);
     expect(m.count).toBe(1);
   });
 

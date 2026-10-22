@@ -3,7 +3,7 @@ import { SpatialGrid } from '../core/grid';
 import { TAU } from '../core/math';
 import { Rng } from '../core/rng';
 import { BANKAI_BY_ID, BANKAI_IDS } from '../data/bankai';
-import { ENEMY_INDEX, ENEMY_LIST } from '../data/enemies';
+import { ENEMY_INDEX, ENEMY_LIST, type EnemyId } from '../data/enemies';
 import { PASSIVE_BY_ID, PASSIVES } from '../data/passives';
 import { enemyKey } from '../data/codex';
 import { FRAGMENT_IDS } from '../data/fragments';
@@ -20,7 +20,7 @@ import { RESONANCE_BY_ID, RESONANCES, resonanceParts } from '../data/resonances'
 import { BOSS_LINES } from '../data/story';
 import { missionStage, type MissionDef } from '../data/missions';
 import { GAUNTLET, GAUNTLET_FIRST, GAUNTLET_LEVELS_PER_BOSS, GAUNTLET_START_LEVELS, type GauntletBoss } from '../data/gauntlet';
-import { bossToughness, DIFFICULTY, hpScale, phaseAt, spawnRate, speedScale, stageById, type StageDef, swarmDamage, type TimelineEvent, trialMods, type TrialMods, xpScale } from '../data/stages';
+import { bossToughness, DIFFICULTY, hpScale, phaseAt, shuffleTimeline, spawnRate, speedScale, stageById, type StageDef, type StageId, swarmDamage, type TimelineEvent, trialMods, type TrialMods, xpScale } from '../data/stages';
 import { updateMarks, updateZones } from './areas';
 import { rewrite } from './casts/almighty';
 import { burstAt, enemiesInCircle } from './casts/common';
@@ -79,6 +79,8 @@ import {
   ZF_ENEMY,
   ZF_SLOWS,
   MK_LANE,
+  MK_CERO,
+  MK_LANCE,
   MK_FIRE,
   MK_METEOR,
   MK_INK,
@@ -239,6 +241,11 @@ export interface WorldOptions {
   mods?: string[];
   /** A Story Mode mission: its stage, timeline, rules and goal (see data/missions.ts). */
   mission?: MissionDef;
+  /** Wandenreich bounty: gold for every calamity lived through (grows with the clock). */
+  bounty?: number;
+  /** The Emperor's vessel and the Sternritter regimen: power and passive slots beyond twelve and eight. */
+  powerSlots?: number;
+  passiveSlots?: number;
   /** The Gauntlet: every named enemy, tier after tier (see data/gauntlet.ts); and the tier to start at (testing). */
   gauntlet?: boolean;
   gauntletTier?: number;
@@ -272,6 +279,42 @@ const RUNNERS: Readonly<Record<string, { title: string; sub: string }>> = {
   karakura: { title: 'Don Kanonji', sub: 'The television spiritualist is running off with the show’s prize money. Catch him.' },
 };
 
+/** The run's random threats, each forcing you to move: lines across the field, a pack, a frenzy, the ground itself, an ambush. */
+export const CALAMITIES = ['barrage', 'hunt', 'frenzy', 'hazard', 'ambush'] as const;
+export type Calamity = (typeof CALAMITIES)[number];
+/** And the run's random boons. */
+type Boon = 'rift' | 'golden' | 'storm' | 'shrine';
+
+/** A barrage: its waves and their spacing, each line's share of max health and warning. A frenzy: its length, speed and spawns. A hunt: its pack. */
+const BARRAGE_WAVES = 5;
+const BARRAGE_GAP = 1.6;
+const BARRAGE_SHARE = 0.12;
+const BARRAGE_WARN = 1.1;
+const FRENZY_SECS = 20;
+const FRENZY_SPEED = 1.35;
+const FRENZY_SPAWN = 2;
+const HUNT_SIZE = 3;
+const HUNT_SPEED = 1.8;
+
+/** Who hunts you on each ground. */
+const HUNTS: Readonly<Record<string, { enemy: EnemyId; title: string; sub: string }>> = {
+  hueco: { enemy: 'hound', title: 'The Pack', sub: 'Hollow hounds have your scent, and they do not tire.' },
+  seireitei: { enemy: 'flash', title: 'The Onmitsukidō', sub: 'The Stealth Force hunts you through the alleys.' },
+  silbern: { enemy: 'brawler', title: 'The Eleventh Division', sub: 'They came for a fight, and you are the best one here.' },
+  lasnoches: { enemy: 'numeros', title: 'Fracción', sub: 'Arrancar soldiers hunt you on their master’s orders.' },
+  palace: { enemy: 'asauchi', title: 'Loose Blades', sub: 'Unformed asauchi fly from Ōetsu’s forge, all of them at you.' },
+  wahrwelt: { enemy: 'brawler', title: 'The Gotei 13', sub: 'Soul Reapers climbed after you, and they are hunting.' },
+  karakura: { enemy: 'gigai', title: 'Empty Gigai', sub: 'Urahara’s spare bodies are up and walking, every one toward you.' },
+};
+
+/** What comes across the field in a barrage on each ground. */
+function barrageOf(stage: StageId): { kind: number; title: string; sub: string } {
+  if (stage === 'hueco' || stage === 'lasnoches' || stage === 'karakura') return { kind: MK_CERO, title: 'Cero Barrage', sub: 'Menos Grande fire from past the edge of sight.' };
+  if (stage === 'seireitei' || stage === 'silbern') return { kind: MK_FIRE, title: 'Kidō Volley', sub: 'The Kidō Corps fire Hadō down every street.' };
+  if (stage === 'palace') return { kind: MK_INK, title: 'Ink Rain', sub: 'Ichibē’s ink runs down from the palace roofs.' };
+  return { kind: MK_LANCE, title: 'Falling Lances', sub: 'Shards of the old palace come down like spears.' };
+}
+
 /** Boss Rush: each wave's health against a full run's, wave by wave (you meet them with far fewer levels). */
 const RUSH_HP = [1, 0.8, 0.55, 0.36];
 /** ...and how hard they hit: the Emperor faces the first wave with a run's first levels and base health. */
@@ -299,6 +342,9 @@ const STAMPEDE_GAP = 24;
 const SPLATS = 96;
 const STAMPEDE_SPEED = 240;
 const STAMPEDE_WINDUP = 1.2;
+/** A strike on a spot held too long: its warning, and its size. */
+const STILL_WARN = 0.9;
+const STILL_R = 64;
 /** A hazard's warning before it strikes. */
 const HAZARD_WARN = 1.1;
 
@@ -397,6 +443,25 @@ export class World {
   /** Seconds left in the stage hazard's burst, and until the next thing it drops. */
   hazardT = 0;
   private hazardTick = 0;
+  /** Standing still (see DIFFICULTY.still*): the spot, how long you have stood on it, the strikes it has drawn. */
+  private stillX = 0;
+  private stillY = 0;
+  private stillT = 0;
+  private stillStrikes = 0;
+  private stillNext = 0;
+  private stillWarned = false;
+  /** Calamities: a barrage's waves still to come and when the next falls; a frenzy's seconds left; when the one under way ends. */
+  private barrageWaves = 0;
+  private barrageNext = 0;
+  frenzyT = 0;
+  private calamityEnd = -1;
+  /** A hunt's elites, by uid: they drop no chest. */
+  private readonly hunters = new Set<number>();
+  /** Wandenreich bounty (Archives): gold for every calamity lived through, before the clock's share. */
+  private bounty = 0;
+  /** Power and passive slots (the Archives can add to both). */
+  maxPowers = 12;
+  maxPassives = 8;
   over: 'dead' | 'victory' | null = null;
   /** The Story mission being played, or null. */
   readonly mission: MissionDef | null;
@@ -639,6 +704,10 @@ export class World {
     if (last && order.includes(last) && !forced.includes(last)) order = [...order.filter((id) => id !== last).slice(0, slots - 1), last];
     this.bearers = order.slice(0, slots);
 
+    // Every run its own war (a mission keeps its script). A stream of its own leaves the run's dice as they were.
+    if (!this.mission && !this.bossRush && this.stage.events.length > 0) {
+      this.stage = { ...this.stage, events: shuffleTimeline(this.stage.events, this.stage.length, new Rng(((opts.seed ?? Date.now()) ^ 0x5eed) >>> 0)) };
+    }
     this.warnings = [];
     const events = this.stage.events;
     events.forEach((e, ev) => {
@@ -658,7 +727,8 @@ export class World {
     this.nextEventT = this.t + this.rng.range(100, 140);
     if (this.bossRush) this.setupBossRush();
     if (this.gauntlet) {
-      this.nextEventT = Infinity;
+      // No boons in the Gauntlet; its calamities start a little after the first boss.
+      this.nextEventT = GAUNTLET_FIRST + 45;
       this.pendingLevelUps += GAUNTLET_START_LEVELS;
     }
     this.mastery = opts.mastery ?? {};
@@ -678,6 +748,9 @@ export class World {
     this.eliteChest = Math.min(1, Math.max(0, opts.eliteChest ?? 0));
     this.chestChoices = Math.max(0, Math.floor(opts.chestChoices ?? 0));
     this.bossHeal = Math.max(0, opts.bossHeal ?? 0);
+    this.bounty = Math.max(0, opts.bounty ?? 0);
+    this.maxPowers = 12 + Math.max(0, Math.floor(opts.powerSlots ?? 0));
+    this.maxPassives = 8 + Math.max(0, Math.floor(opts.passiveSlots ?? 0));
     if (this.stress > 0) {
       for (const def of POWERS) {
         if (def.group === 'bankai') continue;
@@ -729,6 +802,8 @@ export class World {
     }
     this.runTimeline();
     this.hazardStep();
+    this.stillStep();
+    this.calamityStep();
     // Blut Vene shell: the shield grows back on its own clock.
     if (this.shellEvery > 0 && this.shieldCharges === 0) {
       this.shellT -= DT;
@@ -794,6 +869,12 @@ export class World {
       this.rushTick();
     } else if (this.gauntlet) {
       this.gauntletTick();
+      // The Gauntlet is all bosses, so its calamities come in the middle of the fights: only the ones that
+      // threaten (lines across the field, the ground itself), none that would bring it more to take.
+      if (this.t >= this.nextEventT && this.t > GAUNTLET_FIRST) {
+        this.nextEventT = this.t + this.rng.range(60, 110);
+        this.startEvent(this.rng.next() < 0.55 ? 'barrage' : 'hazard');
+      }
     } else {
       while (this.warnCursor < this.warnings.length && this.t >= this.warnings[this.warnCursor].at) {
         const warn = this.warnings[this.warnCursor++];
@@ -1047,6 +1128,39 @@ export class World {
   }
 
   /**
+   * Stand still and the field finds you: past the grace, warned strikes come down on the spot you hold,
+   * quicker and heavier each time and taking a share of max health, so no build can sit them out. Moving
+   * on starts the count again.
+   */
+  private stillStep(): void {
+    if (this.stress > 0 || this.victoryT >= 0) return;
+    const D = DIFFICULTY;
+    const p = this.player;
+    const dx = p.x - this.stillX;
+    const dy = p.y - this.stillY;
+    if (dx * dx + dy * dy > D.stillRadius * D.stillRadius) {
+      this.stillX = p.x;
+      this.stillY = p.y;
+      this.stillT = 0;
+      this.stillStrikes = 0;
+      this.stillNext = 0;
+      return;
+    }
+    this.stillT += DT;
+    if (this.stillT < D.stillGrace || this.t < D.stillFrom || this.t < this.stillNext) return;
+    if (!this.stillWarned) {
+      this.stillWarned = true;
+      this.messages.push({ text: 'Stand still and the field finds you', kind: 'boss' });
+    }
+    const look = this.stage.hazard.look;
+    const kind = look === 'kido' ? MK_FIRE : look === 'ink' ? MK_INK : look === 'seal' ? MK_SEAL : MK_METEOR;
+    const share = Math.min(D.stillCap, D.stillBase + D.stillStep * this.stillStrikes);
+    this.spawnMark(kind, MS_CIRCLE, p.x, p.y, STILL_R, 0, 0, STILL_WARN, share * p.maxHp, MF_ENEMY);
+    this.stillStrikes++;
+    this.stillNext = this.t + Math.max(D.stillFastest, D.stillEvery - 0.1 * this.stillStrikes);
+  }
+
+  /**
    * Something happens between the bosses: a rift, a golden runner, a storm of
    * mana, an ambush. Never during a boss fight or just before one.
    */
@@ -1056,13 +1170,59 @@ export class World {
       this.nextEventT = this.t + 15;
       return;
     }
-    this.nextEventT = this.t + this.rng.range(120, 170);
-    const roll = this.rng.next() * 12;
-    this.startEvent(roll < 3 ? 'rift' : roll < 6 ? 'golden' : roll < 8 ? 'storm' : roll < 10 ? 'ambush' : 'shrine');
+    const beyond = this.endless ? Math.max(0, this.t - this.stage.length) / 60 : 0;
+    this.nextEventT = this.t + Math.max(35, this.rng.range(70, 130) * Math.pow(0.92, beyond));
+    if (this.rng.next() < 2 / 3) {
+      const roll = this.rng.next() * 10;
+      this.startEvent(roll < 2.6 ? 'barrage' : roll < 4.8 ? 'hunt' : roll < 6.6 ? 'frenzy' : roll < 8.4 ? 'hazard' : 'ambush');
+    } else {
+      const roll = this.rng.next() * 10;
+      this.startEvent(roll < 3 ? 'rift' : roll < 6 ? 'golden' : roll < 8 ? 'storm' : 'shrine');
+    }
+  }
+
+  /** A calamity under way: the barrage's next wave, the frenzy's clock, and the bounty when it is over. */
+  private calamityStep(): void {
+    if (this.frenzyT > 0) this.frenzyT -= DT;
+    if (this.barrageWaves > 0 && this.t >= this.barrageNext) this.barrageWave();
+    if (this.calamityEnd >= 0 && this.t >= this.calamityEnd) {
+      this.calamityEnd = -1;
+      if (this.bounty > 0 && this.player.alive) this.payBounty();
+    }
+  }
+
+  /** One wave of a barrage: two or three warned lines across the field, each passing close by you. */
+  private barrageWave(): void {
+    this.barrageWaves--;
+    this.barrageNext = this.t + BARRAGE_GAP;
+    const p = this.player;
+    const { kind } = barrageOf(this.stage.id);
+    const len = 1000;
+    for (let n = 2 + this.rng.int(2), k = 0; k < n; k++) {
+      const ang = this.rng.next() * Math.PI;
+      const off = this.rng.range(-80, 80);
+      const cx = p.x - Math.sin(ang) * off;
+      const cy = p.y + Math.cos(ang) * off;
+      this.spawnMark(kind, MS_LINE, cx - (Math.cos(ang) * len) / 2, cy - (Math.sin(ang) * len) / 2, 36, len, ang, BARRAGE_WARN, BARRAGE_SHARE * p.maxHp, MF_ENEMY);
+    }
+    this.sound('warn');
+  }
+
+  /** Wandenreich bounty: a calamity lived through pays gold (more the longer the run) and a ring of mana. */
+  private payBounty(): void {
+    const g = Math.round(this.bounty * (1 + this.t / 600));
+    this.gold += g;
+    this.messages.push({ text: `Bounty paid: +${g} gold`, kind: 'info' });
+    const p = this.player;
+    const value = Math.max(1, Math.round(this.xpNext * 0.05));
+    for (let k = 0; k < 10; k++) {
+      const a = (k / 10) * TAU;
+      this.spawnOrb(p.x + Math.cos(a) * 110, p.y + Math.sin(a) * 110, value);
+    }
   }
 
   /** Start one run event now. */
-  startEvent(kind: 'rift' | 'golden' | 'storm' | 'ambush' | 'shrine'): void {
+  startEvent(kind: Boon | Calamity): void {
     // Hollows come through a Garganta (into the world of the living as well); Soul Reapers through a Senkaimon.
     const hollowWorld = this.stage.id === 'hueco' || this.stage.id === 'lasnoches' || this.stage.id === 'karakura';
     const p = this.player;
@@ -1086,6 +1246,32 @@ export class World {
     } else if (kind === 'storm') {
       this.stormT = 15;
       this.banners.push({ kind: 'event', title: 'Reishi Storm', sub: 'Mana falls like rain.' });
+    } else if (kind === 'barrage') {
+      const b = barrageOf(this.stage.id);
+      this.barrageWaves = BARRAGE_WAVES;
+      this.barrageNext = this.t + 0.6;
+      this.calamityEnd = this.t + 0.6 + BARRAGE_WAVES * BARRAGE_GAP;
+      this.banners.push({ kind: 'event', title: b.title, sub: b.sub });
+    } else if (kind === 'hunt') {
+      const h = HUNTS[this.stage.id] ?? HUNTS.hueco;
+      const a = this.rng.next() * TAU;
+      for (let k = 0; k < HUNT_SIZE; k++) {
+        const i = this.spawnEnemy(ENEMY_INDEX[h.enemy], p.x + Math.cos(a) * 420 + this.rng.range(-60, 60), p.y + Math.sin(a) * 420 + this.rng.range(-60, 60), true);
+        if (i < 0) continue;
+        this.en.spd[i] *= HUNT_SPEED;
+        this.hunters.add(this.en.uid[i]);
+      }
+      this.calamityEnd = this.t + 25;
+      this.banners.push({ kind: 'event', title: h.title, sub: h.sub });
+    } else if (kind === 'frenzy') {
+      this.frenzyT = FRENZY_SECS;
+      this.calamityEnd = this.t + FRENZY_SECS;
+      this.banners.push({ kind: 'event', title: 'Frenzy', sub: 'Blood in the air: the swarm comes faster, and twice as many.' });
+    } else if (kind === 'hazard') {
+      this.hazardT = DIFFICULTY.hazardSecs;
+      this.hazardTick = 0.8;
+      this.calamityEnd = this.t + DIFFICULTY.hazardSecs;
+      this.banners.push({ kind: 'event', title: 'The Ground Turns', sub: this.stage.hazard.warn });
     } else if (kind === 'shrine') {
       if (this.stress > 0) return;
       const a = this.rng.next() * TAU;
@@ -1099,12 +1285,12 @@ export class World {
         const a = (k / 24) * TAU;
         this.spawnEnemy(this.regularType(), p.x + Math.cos(a) * 290, p.y + Math.sin(a) * 290);
       }
+      this.calamityEnd = this.t + 15;
       this.banners.push({ kind: 'event', title: 'Ambush', sub: 'They were waiting for you.' });
     }
     this.sound('warn');
   }
 
-  /** A bankai boss: in Seireitei the bankai's own captain defends it; elsewhere a medallion bearer carries it. */
   /** The letter a boss of this stage would carry: a bankai's thief (not its captain), or a defender given one. */
   private plannedLetter(id: string): { power: string; holder: string } | null {
     if (this.stage.roster === 'heroes') return this.heroLetter(id);
@@ -1137,11 +1323,12 @@ export class World {
     }
   }
 
+  /** One short line (it must fit a phone's toast): the held letters by letter, "E, I and K are held by knights here". */
   private sayHeldLetters(): void {
-    const names = [...this.heldLetters.keys()].map((id) => POWER_BY_ID.get(id)?.name ?? id);
+    const names = [...this.heldLetters.keys()].map((id) => POWER_BY_ID.get(id)?.letter ?? POWER_BY_ID.get(id)?.name ?? id);
     if (names.length === 0) return;
     const list = names.length === 1 ? names[0] : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
-    this.messages.push({ text: `${list} ${names.length === 1 ? 'is' : 'are'} held by knights here: defeat them to take ${names.length === 1 ? 'it' : 'them'} back`, kind: 'info' });
+    this.messages.push({ text: `${list} ${names.length === 1 ? 'is' : 'are'} held by knights here`, kind: 'info' });
   }
 
   /** Its holder down: the Emperor takes the letter back, and it is his to use at once. */
@@ -1157,6 +1344,7 @@ export class World {
     this.spawnFx(FX_RING, 0, 0, 0, 0, 0.7, 30, 480, 1, 0, 0, tint, LAYER_ADD, 0, 1);
   }
 
+  /** A bankai boss: in Seireitei the bankai's own captain defends it; elsewhere a medallion bearer carries it. */
   private spawnBearer(id: string, hpMul: number): number {
     this.edgePoint(80);
     if (this.stage.roster === 'royal') return this.spawnRoyal(id, hpMul);
@@ -1489,7 +1677,7 @@ export class World {
     const beyond = this.endless ? Math.max(0, this.t - this.stage.length) : 0;
     const rate = Math.min(70, spawnRate(Math.min(this.t, this.stage.length)) + (beyond / 60) * 1.5);
     // Boss Rush keeps only a thin swarm between and around the bosses.
-    this.spawnAcc += rate * this.stage.spawn * this.tm.spawn * this.modSpawn * (this.bossRush ? 0.35 : 1) * DT;
+    this.spawnAcc += rate * this.stage.spawn * this.tm.spawn * this.modSpawn * (this.bossRush ? 0.35 : 1) * (this.frenzyT > 0 ? FRENZY_SPAWN : 1) * DT;
     while (this.spawnAcc >= 1) {
       this.spawnAcc -= 1;
       if (E.n >= MAX_ENEMIES_ALIVE) {
@@ -1630,6 +1818,7 @@ export class World {
     const p = this.player;
     const parity = this.steps & 1;
     const frozenAll = this.freezeAllT > 0;
+    const frenzy = this.frenzyT > 0 ? FRENZY_SPEED : 1;
     const recycle = Math.hypot(this.viewHalfW, this.viewHalfH) * 1.6;
     const recycle2 = recycle * recycle;
     const dim = g.dim;
@@ -1696,7 +1885,7 @@ export class World {
       const dy = p.y - y;
       const dist2 = dx * dx + dy * dy;
       const dist = Math.sqrt(dist2) || 1;
-      const v = E.spd[i] * k * DT;
+      const v = E.spd[i] * k * (boss ? 1 : frenzy) * DT;
       const behavior = BEHAVIOR[E.type[i]];
       if (charmed) {
         // On your side: rush the nearest enemy and hit it; with nobody near, stay close to you.
@@ -2019,7 +2208,7 @@ export class World {
     // Auswählen (a Story mission): an elite falling gives back some of what it carried.
     if (flags & FLAG_ELITE && this.mission?.eliteHeal) this.heal(this.mission.eliteHeal);
     // Jagdarmee spoils: an elite may leave a second chest behind.
-    if (flags & FLAG_ELITE && this.eliteChest > 0 && this.rng.next() < this.eliteChest) this.addPickup('chest', x, y);
+    if (flags & FLAG_ELITE && this.eliteChest > 0 && !this.hunters.has(E.uid[i]) && this.rng.next() < this.eliteChest) this.addPickup('chest', x, y);
     // The Auswählen Chalice: every fiftieth kill fills it a little.
     if (this.hasChalice && ++this.chaliceKills % 50 === 0) {
       this.heal(0.05);
@@ -2109,7 +2298,8 @@ export class World {
         }
         this.messages.push({ text: golden ? 'Caught. Gold spills everywhere.' : 'The rift is sealed. Something was left behind.', kind: 'info' });
       } else if (flags & FLAG_ELITE) {
-        this.addPickup('chest', x, y);
+        // A hunt's pack is a threat, not a prize: its elites carry no chest.
+        if (!this.hunters.delete(E.uid[i])) this.addPickup('chest', x, y);
       } else {
         const roll = this.rng.next();
         if (roll < 0.0035) this.addPickup('heart', x, y);
@@ -2148,8 +2338,9 @@ export class World {
   hurtPlayer(amount: number): void {
     const p = this.player;
     if (p.iframes > 0 || this.god || !p.alive || this.vollT > 0 || this.surgeT > 0) return;
-    if (this.foresight > 0 && this.rng.next() < this.foresight) {
-      // Foresight: you saw this future and stepped out of it.
+    const dodge = this.foresight + this.stats.dodge;
+    if (dodge > 0 && this.rng.next() < dodge) {
+      // Foresight (or a Hirenkyaku afterimage): you saw this future and stepped out of it.
       p.iframes = 0.25;
       this.spawnFx(FX_RING, 0, 0, 0, 0, 0.3, 16, 60, 0.9, 0, 0, 0xffe6a0, LAYER_ADD, 0, 1);
       return;
@@ -2492,7 +2683,8 @@ export class World {
     M.r[i] = r;
     M.len[i] = len;
     M.ang[i] = ang;
-    M.delay[i] = M.max[i] = delay;
+    // Reiatsu sensing: whatever is aimed at you shows itself longer.
+    M.delay[i] = M.max[i] = flags & MF_ENEMY ? delay * (1 + this.stats.warn) : delay;
     M.dmg[i] = dmg;
     M.kind[i] = kind;
     M.shape[i] = shape;
@@ -3052,8 +3244,8 @@ export class World {
         passives: [...this.passives].map(([id, level]) => ({ id, level })),
         powerDefs: this.heldLetters.size > 0 ? POWERS.filter((d) => !this.heldLetters.has(d.id)) : POWERS,
         passiveDefs: PASSIVES,
-        maxPowers: 12,
-        maxPassives: 8,
+        maxPowers: this.maxPowers,
+        maxPassives: this.maxPassives,
         resonances: RESONANCES,
         ownedResonances: this.resonances,
       },

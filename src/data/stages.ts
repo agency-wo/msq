@@ -1,4 +1,5 @@
 import type { EnemyId } from './enemies';
+import type { Rng } from '../core/rng';
 import { FIRST_SHRINE_AT } from './shrines';
 
 /**
@@ -169,6 +170,20 @@ export const DIFFICULTY = {
   hazardEvery: 120,
   hazardSecs: 18,
   hazardDamage: 12,
+  /**
+   * Stand still and the field finds you: after stillGrace seconds within stillRadius of one spot (and
+   * never before stillFrom into a run), a warned strike comes down on it every stillEvery seconds, a
+   * tenth of a second sooner each time down to stillFastest. Each takes stillBase of max health, stillStep
+   * more every strike, at most stillCap: a share of health, so no build sits it out. Moving on resets it.
+   */
+  stillRadius: 140,
+  stillGrace: 6,
+  stillFrom: 20,
+  stillEvery: 1.6,
+  stillFastest: 0.6,
+  stillBase: 0.06,
+  stillStep: 0.03,
+  stillCap: 0.4,
 } as const;
 
 /**
@@ -190,6 +205,34 @@ export function variety(length: number, formation: FormationDef, bosses: readonl
 
 function nearBoss(t: number, bosses: readonly number[]): boolean {
   return bosses.some((b) => t > b - 45 && t < b + 20);
+}
+
+/** How far each kind of timeline event may move in a shuffled run (seconds, either way). */
+const DRIFT: Partial<Record<TimelineEvent['kind'], number>> = { ring: 25, elite: 25, chest: 35, rune: 35, stampede: 40, hazard: 40 };
+
+/**
+ * Every run its own war: the rings, elites, chests, runes, formations and hazard bursts of a stage's
+ * timeline each come a little earlier or later, and a formation and a hazard burst can trade places, so
+ * no two runs bring them at the same moments. Bosses, bearers and shrines keep their times. Nothing moves
+ * into a boss's window (45 s before it, 20 s after) or into the run's last half minute; an event that
+ * would is put back where it was.
+ */
+export function shuffleTimeline(events: readonly TimelineEvent[], length: number, rng: Rng): TimelineEvent[] {
+  const bosses = events.filter((e) => e.kind === 'bearer' || e.kind === 'boss').map((e) => e.at);
+  const formation = events.find((e) => e.kind === 'stampede');
+  const out = events.map((e): TimelineEvent => {
+    const drift = DRIFT[e.kind];
+    if (drift === undefined) return e;
+    let moved: TimelineEvent = e;
+    if (e.kind === 'stampede' && rng.next() < 1 / 3) moved = { at: e.at, kind: 'hazard' };
+    else if (e.kind === 'hazard' && formation?.kind === 'stampede' && rng.next() < 1 / 3) {
+      moved = { ...formation, at: e.at, count: Math.min(DIFFICULTY.stampedeCap, DIFFICULTY.stampedeBase + Math.floor(e.at / 60)) };
+    }
+    const at = Math.round(e.at + rng.range(-drift, drift));
+    if (at < 30 || at > length - 30 || nearBoss(at, bosses)) return moved;
+    return { ...moved, at };
+  });
+  return out.sort((a, b) => a.at - b.at);
 }
 
 /** Who charges in each stage's formations. */

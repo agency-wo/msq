@@ -33,6 +33,10 @@ export interface StatMods {
   bossDmg?: number;
   /** Extra damage while below 40% health, as a fraction. */
   lowHpDmg?: number;
+  /** Longer warnings on every attack aimed at you, as a fraction (Reiatsu sensing). */
+  warn?: number;
+  /** Chance a blow finds only an afterimage (Hirenkyaku afterimage). */
+  dodge?: number;
 }
 
 export interface Stats {
@@ -55,6 +59,8 @@ export interface Stats {
   projSpeed: number;
   bossDmg: number;
   lowHpDmg: number;
+  warn: number;
+  dodge: number;
 }
 
 export const BASE_ATK = 100;
@@ -82,6 +88,8 @@ export function computeStats(mods: readonly StatMods[]): Stats {
   let projSpeed = 1;
   let bossDmg = 0;
   let lowHpDmg = 0;
+  let warn = 0;
+  let dodge = 0;
   for (const m of mods) {
     atkPoints += m.atk ?? 0;
     dmgMult *= 1 + (m.dmg ?? 0);
@@ -100,6 +108,8 @@ export function computeStats(mods: readonly StatMods[]): Stats {
     projSpeed += m.projSpeed ?? 0;
     bossDmg += m.bossDmg ?? 0;
     lowHpDmg += m.lowHpDmg ?? 0;
+    warn += m.warn ?? 0;
+    dodge += m.dodge ?? 0;
   }
   return {
     atk: BASE_ATK + atkPoints,
@@ -120,6 +130,8 @@ export function computeStats(mods: readonly StatMods[]): Stats {
     projSpeed,
     bossDmg,
     lowHpDmg,
+    warn,
+    dodge: Math.min(0.5, dodge),
   };
 }
 

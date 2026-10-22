@@ -93,6 +93,20 @@ export function metaBossHeal(save: SaveData): number {
   return special(save, 'bossHeal');
 }
 
+/** The Emperor's vessel and the Sternritter regimen: extra power and passive slots. */
+export function metaPowerSlots(save: SaveData): number {
+  return special(save, 'powerSlot');
+}
+
+export function metaPassiveSlots(save: SaveData): number {
+  return special(save, 'passiveSlot');
+}
+
+/** Wandenreich bounty: gold for each calamity lived through, before the clock's share. */
+export function metaBounty(save: SaveData): number {
+  return special(save, 'bounty');
+}
+
 // ------------------------------------------------------------ Disciplines
 
 /** The attacks a discipline can be learned for: every Quincy art, Schrift, support power that strikes, and bankai. */

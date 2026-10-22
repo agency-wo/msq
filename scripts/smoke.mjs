@@ -350,6 +350,21 @@ try {
     await shot(`04d-event-${kind}`);
   }
 
+  // 5d2. Calamities, each through the ?calamity= switch: its banner, and for a barrage the warned lines.
+  for (const kind of ['barrage', 'hunt', 'frenzy', 'hazard']) {
+    await go(`${BASE}?debug&seed=7&play&god&t=200&give=xaxis5&calamity=${kind}`);
+    await wait(kind === 'barrage' ? 1500 : 600);
+    const banner = (await page.isVisible('.banner.show.event')) ? await page.textContent('.banner .banner-title') : null;
+    const marks = await page.evaluate(() => window.__msq.world.marks.n);
+    log(`calamity ${kind}`, { banner, marks });
+    if (!banner) problems.push(`[smoke] calamity ${kind} showed no banner`);
+    if (kind === 'barrage' && marks === 0) problems.push('[smoke] a barrage drew no lines');
+    // A toast is one line: anything longer is cut off with an ellipsis on a phone.
+    const clipped = await page.$eval('.toast.show', (el) => (el.scrollWidth > el.clientWidth + 1 ? el.textContent : null)).catch(() => null);
+    if (clipped) problems.push(`[smoke] a toast is cut short: ${clipped}`);
+    if (kind === 'barrage') await shot('04e-calamity-barrage');
+  }
+
   // 5e. A golden chest: four cards, a legendary first and a treasure among them.
   await go(`${BASE}?debug&seed=7&play&god&t=200&give=xaxis5`);
   await wait(400);

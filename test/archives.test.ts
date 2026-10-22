@@ -78,8 +78,8 @@ describe('the Wandenreich Archives', () => {
     expect(metaRerolls(full)).toBe(3);
     expect(goldMul(full)).toBeCloseTo(1.3);
     expect(metaMods(full).atk).toBe(20);
-    expect(metaMods(full).size).toBeCloseTo(0.15);
-    expect(metaMods(full).critChance).toBeCloseTo(0.06);
+    expect(metaMods(full).size).toBeCloseTo(0.25);
+    expect(metaMods(full).critChance).toBeCloseTo(0.1);
     expect(metaStartLevels(full)).toBe(2);
     expect(metaChoices(full)).toBe(1);
   });

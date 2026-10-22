@@ -128,7 +128,21 @@ Between the bosses, **events** break the rhythm: a Garganta (a Senkaimon
 outside Hueco Mundo) pours out enemies until you destroy it, a runaway flees
 with treasure (a gorged Adjuchas in Hueco Mundo, Ganju Shiba on his boar
 Bonnie in the Seireitei and Silbern, the mod soul Kon in the Palace and the
-Wahrwelt), a Reishi Storm rains mana, or an ambush closes in.
+Wahrwelt), or a Reishi Storm rains mana. More often, a **calamity** comes, and
+each one makes you move: a barrage of warned lines across the field (Ceros in
+the Hollow worlds, Kidō volleys in the Seireitei and Silbern, ink in the
+Palace, falling lances in the Wahrwelt), a hunt (a fast pack of the ground's
+elites, carrying no chests), a frenzy (twenty seconds of a faster swarm, twice
+as many), the ground itself turning, or an ambush. They come at random times,
+and in Endless faster the longer it lasts; in the Gauntlet the barrages and the
+ground strike in the middle of the boss fights.
+No two runs are timed alike: every ring, elite, chest, rune, formation and
+hazard burst comes a little earlier or later than the last time, and a
+formation and a hazard burst can trade places (bosses and the first shrine keep
+their times; Story missions keep their scripts). And **stand still and the field
+finds you**: hold one spot for six seconds and warned strikes come down on it,
+quicker and heavier each time and taking a share of your health, so no build
+can stand and let the run play itself.
 **Quincy shrines** turn up too (always one around 3:40): walk into one for a
 choice of three pacts, each a real gain at a real price (Blut Arterie: +30%
 damage for a quarter of your health; Gintō Hoard: 60% more gold, sturdier
@@ -192,7 +206,9 @@ range, cooldowns, power size and duration, projectile speed, critical chance
 and damage, one more of everything, faster level-ups, more gold, two revives,
 level-up rerolls, damage against bosses and elites, a Letzt Stil edge when close
 to falling, a Blut Vene shell that grows back, second chests from elites, wider
-chests, a boss's harvest), drill a Discipline for each attack (five levels of
+chests, a boss's harvest, longer warnings, an afterimage that some blows strike
+instead of you, a thirteenth and fourteenth power slot and a ninth passive, and
+a Wandenreich bounty for every calamity lived through), drill a Discipline for each attack (five levels of
 damage apiece), and pick which awakened Schrift a run opens with. The world
 answers what you learn: the more of the Archives you hold, the tougher bosses,
 elites and the swarm become (the Archives say by how much), and past 8:00 every

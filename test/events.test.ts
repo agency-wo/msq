@@ -8,6 +8,8 @@ function quiet(seed = 1, god = true): World {
   w.powers.length = 0;
   w.pr.n = 0;
   w.nextEventT = 1e9;
+  // No timeline either: a shuffled run may bring its next chest or ring into the moments a test watches.
+  w.stage = { ...w.stage, events: [] };
   return w;
 }
 

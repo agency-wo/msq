@@ -2,14 +2,15 @@ import { describe, it } from 'vitest';
 import { SIM_HZ } from '../src/config';
 import { MISSION_BY_ID } from '../src/data/missions';
 import { World } from '../src/game/world';
-import { bot, circle, firstCard, maxedMeta, resolveChoices, sensible, type Mover, type Strategy } from './helpers';
+import { bot, circle, firstCard, idle, maxedMeta, resolveChoices, sensible, type Mover, type Strategy } from './helpers';
 
 /**
  * Pacing report, not a pass/fail test. Run with:
  *   BALANCE=1 npx vitest run test/balance.test.ts --silent=false
  * (add STAGE=seireitei, SEED=3, MINUTES=21 to change the run, MISSION=desert for a Story mission, META=max for a
- * player with every Archives upgrade). Prints level, kills, health and boss progress every 30 s of a simulated run
- * for a few play styles, so tuning changes can be compared before and after.
+ * player with every Archives upgrade, META=half for half of it, ENDLESS=1 for Endless, MOVE=idle IDLE_AT=8 for an
+ * Emperor who plays well for eight minutes and then stands still). Prints level, kills, health and boss progress
+ * every 30 s of a simulated run for a few play styles, so tuning changes can be compared before and after.
  */
 const env = (globalThis as { process?: { env: Record<string, string | undefined> } }).process?.env ?? {};
 
@@ -19,7 +20,7 @@ function clock(t: number): string {
 
 function run(seed: number, pick: Strategy, move: Mover, god: boolean, minutes: number): string[] {
   const mission = env.MISSION ? MISSION_BY_ID.get(env.MISSION) : undefined;
-  const w = new World({ seed, god, stage: env.STAGE, mission, start: mission?.start, extra: mission?.extra, gauntlet: !!env.GAUNTLET, ...(env.META === 'max' ? maxedMeta() : env.META === 'half' ? maxedMeta(0.5) : {}) });
+  const w = new World({ seed, god, stage: env.STAGE, mission, start: mission?.start, extra: mission?.extra, gauntlet: !!env.GAUNTLET, endless: !!env.ENDLESS, ...(env.META === 'max' ? maxedMeta() : env.META === 'half' ? maxedMeta(0.5) : {}) });
   const rows: string[] = [];
   let nextReport = 30;
   let bossStart = -1;
@@ -55,12 +56,16 @@ function run(seed: number, pick: Strategy, move: Mover, god: boolean, minutes: n
 describe.runIf(env.BALANCE)('balance report', () => {
   it('prints pacing for a few play styles', { timeout: 600_000 }, () => {
     const minutes = Number(env.MINUTES ?? 15);
-    const styles: [string, Strategy, Mover, boolean][] = [
-      ['circle + first card (god)', firstCard, circle, true],
-      ['bot + sensible (god)', sensible, bot, true],
-      ['bot + sensible (mortal)', sensible, bot, false],
-      ['circle + first card (mortal)', firstCard, circle, false],
-    ];
+    // MOVE=idle: only the Emperor who never moves (picking sensibly), to see how long standing still survives.
+    const styles: [string, Strategy, Mover, boolean][] =
+      env.MOVE === 'idle'
+        ? [['idle + sensible (mortal)', sensible, (w) => (w.t < Number(env.IDLE_AT ?? 0) * 60 ? bot(w) : idle(w)), false]]
+        : [
+            ['circle + first card (god)', firstCard, circle, true],
+            ['bot + sensible (god)', sensible, bot, true],
+            ['bot + sensible (mortal)', sensible, bot, false],
+            ['circle + first card (mortal)', firstCard, circle, false],
+          ];
     for (const [name, pick, move, god] of styles) {
       console.log(`\n=== ${name} ===\n${run(Number(env.SEED ?? 7), pick, move, god, minutes).join('\n')}`);
     }

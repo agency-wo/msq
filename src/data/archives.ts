@@ -8,7 +8,7 @@ import type { Rarity } from './relics';
  * waiting at the start, extra cards on every board).
  */
 
-export type UpgradeSpecial = 'revive' | 'reroll' | 'gold' | 'start' | 'choices' | 'shell' | 'eliteChest' | 'chestChoice' | 'bossHeal';
+export type UpgradeSpecial = 'revive' | 'reroll' | 'gold' | 'start' | 'choices' | 'shell' | 'eliteChest' | 'chestChoice' | 'bossHeal' | 'powerSlot' | 'passiveSlot' | 'bounty';
 
 export interface UpgradeDef {
   id: string;
@@ -56,7 +56,7 @@ export const UPGRADES: readonly UpgradeDef[] = [
     desc: 'Ride the reishi under your feet a little faster.',
     icon: 'feather',
     color: '#e6f4ff',
-    costs: [150, 350, 600],
+    costs: [150, 350, 600, 950, 1400],
     perLevel: { moveSpeed: 0.03 },
   },
   {
@@ -66,7 +66,7 @@ export const UPGRADES: readonly UpgradeDef[] = [
     desc: 'Mana and pickups drift to you from further away.',
     icon: 'magnet',
     color: '#bfe6ff',
-    costs: [100, 220, 380],
+    costs: [100, 220, 380, 600, 900],
     perLevel: { pickup: 0.1 },
   },
   {
@@ -96,7 +96,7 @@ export const UPGRADES: readonly UpgradeDef[] = [
     desc: 'Arrows rain down wider: every power covers more ground.',
     icon: 'circles',
     color: '#bfe6ff',
-    costs: [300, 600, 1000],
+    costs: [300, 600, 1000, 1500, 2200],
     perLevel: { size: 0.05 },
   },
   {
@@ -106,7 +106,7 @@ export const UPGRADES: readonly UpgradeDef[] = [
     desc: 'A blade of humming reishi finds the gap in any guard.',
     icon: 'blade',
     color: '#9fe8ff',
-    costs: [250, 500, 900],
+    costs: [250, 500, 900, 1400, 2100],
     perLevel: { critChance: 0.02 },
   },
   {
@@ -126,7 +126,7 @@ export const UPGRADES: readonly UpgradeDef[] = [
     desc: 'Draw in the reishi around you to close your wounds as you fight.',
     icon: 'drop',
     color: '#9fffd0',
-    costs: [500, 1100, 1900],
+    costs: [500, 1100, 1900, 2900, 4200],
     perLevel: { regen: 0.3 },
   },
   {
@@ -136,7 +136,7 @@ export const UPGRADES: readonly UpgradeDef[] = [
     desc: 'A truer bow of reishi: arrows, blades and missiles fly faster and reach the crowd sooner.',
     icon: 'arrow',
     color: '#bfe6ff',
-    costs: [300, 650, 1100],
+    costs: [300, 650, 1100, 1700, 2500],
     perLevel: { projSpeed: 0.06 },
   },
   {
@@ -146,7 +146,7 @@ export const UPGRADES: readonly UpgradeDef[] = [
     desc: 'The Quincy hymns hold a spell in place: clouds, cages, blades and fire all last longer.',
     icon: 'candle',
     color: '#e6f4ff',
-    costs: [350, 750, 1250],
+    costs: [350, 750, 1250, 1900, 2800],
     perLevel: { duration: 0.05 },
   },
   {
@@ -156,7 +156,7 @@ export const UPGRADES: readonly UpgradeDef[] = [
     desc: 'Blood driven into the blow at the moment it lands: critical hits strike far harder.',
     icon: 'star',
     color: '#ff8a8a',
-    costs: [500, 1100, 1900],
+    costs: [500, 1100, 1900, 2900, 4200],
     perLevel: { critMult: 0.15 },
   },
   {
@@ -287,6 +287,59 @@ export const UPGRADES: readonly UpgradeDef[] = [
     costs: [1500, 3200],
     special: 'bossHeal',
     amount: 0.12,
+  },
+  {
+    id: 'sensing',
+    name: 'Reiatsu sensing',
+    per: 'Warnings last 15% longer',
+    desc: 'Feel the reiatsu gather before a blow falls: every attack aimed at you shows itself a moment sooner.',
+    icon: 'eye',
+    color: '#bfe8ff',
+    costs: [600, 1300, 2400],
+    perLevel: { warn: 0.15 },
+  },
+  {
+    id: 'afterimage',
+    name: 'Hirenkyaku afterimage',
+    per: '3% of blows miss',
+    desc: 'A step too quick to follow: some blows strike only the place you just left.',
+    icon: 'wing',
+    color: '#d8f0ff',
+    costs: [900, 1900, 3200],
+    perLevel: { dodge: 0.03 },
+  },
+  {
+    id: 'vessel',
+    name: 'The Emperor’s vessel',
+    per: 'One more power slot',
+    desc: 'Every power he ever gave away is his to hold again: carry one more at once.',
+    icon: 'crown',
+    color: '#ffd27a',
+    costs: [9000, 18000],
+    special: 'powerSlot',
+    amount: 1,
+  },
+  {
+    id: 'regimen',
+    name: 'Sternritter regimen',
+    per: 'One more passive slot',
+    desc: 'Every drill of the knights at once, until the body keeps one more of them.',
+    icon: 'gear',
+    color: '#c8d2e0',
+    costs: [7000],
+    special: 'passiveSlot',
+    amount: 1,
+  },
+  {
+    id: 'bounty',
+    name: 'Wandenreich bounty',
+    per: '+40 gold for every calamity you live through',
+    desc: 'The Wandenreich pays for every calamity its Emperor walks out of, more the longer the war goes on, and a ring of mana with it.',
+    icon: 'coin',
+    color: '#ffcb5c',
+    costs: [700, 1500, 2600],
+    special: 'bounty',
+    amount: 40,
   },
 ];
 
