@@ -17,7 +17,7 @@ import { DOUBLE_RING, doubleCount } from '../game/casts/schrift2';
 import { COMMANDER_HEAT, HARRIBEL_RELEASED, ICHIGO_MASKED } from '../game/hostile';
 import { AYON_RAGE, NEL_RELEASED } from '../game/signatures';
 import { GRIMMJOW_RELEASED } from '../game/lasnoches';
-import { enemySpriteName } from './names';
+import { bossSpriteName, enemySpriteName } from './names';
 import {
   EB_FIRE,
   EB_ICE,
@@ -184,6 +184,7 @@ const MOTES = 28;
 const FRAGMENT_TINT: Readonly<Record<string, number>> = { rightarm: 0xfff2c2, leftarm: 0xe8d8ff, heart: 0xffcf7a };
 
 type LayerName =
+  | 'decals'
   | 'zonesN'
   | 'zonesA'
   | 'warn'
@@ -200,6 +201,10 @@ type LayerName =
   | 'fx'
   | 'nums'
   | 'hud';
+
+/** Splashes of ink kept on the ground, and for how long. */
+const DECALS = 160;
+const DECAL_LIFE = 4.5;
 
 const ORB_SCALE = [0.42, 0.5, 0.62];
 /** The Emperor is drawn a little larger than his hitbox, so he reads first in a crowd. */
@@ -229,6 +234,10 @@ export class Renderer {
   /** Particles drawn last frame, for the debug overlay. */
   drawn = 0;
   shakeEnabled = true;
+  /** Ink on the ground: a ring of the latest splashes, kept DECAL_LIFE seconds. */
+  private readonly decals = { x: new Float32Array(DECALS), y: new Float32Array(DECALS), s: new Float32Array(DECALS), a: new Float32Array(DECALS), v: new Uint8Array(DECALS), born: new Float64Array(DECALS), n: 0, next: 0 };
+  private decalWorld: World | null = null;
+  private splatTex: Texture[] = [];
   private atlas!: Atlas;
   private ground!: TilingSprite;
   private readonly worldRoot = new Container();
@@ -290,10 +299,12 @@ export class Renderer {
     host.appendChild(this.app.canvas);
     this.atlas = buildAtlas();
     const f = this.atlas.frames;
+    this.splatTex = [f.splat0, f.splat1, f.splat2];
     this.ground = new TilingSprite({ texture: this.groundFor('hueco'), width: 16, height: 16 });
     this.groundId = 'hueco';
     const base = this.atlas.base;
     this.L = {
+      decals: new Layer(base),
       zonesN: new Layer(base),
       zonesA: new Layer(base, true),
       warn: new Layer(base),
@@ -314,6 +325,7 @@ export class Renderer {
     const L = this.L;
     this.layers = Object.values(L);
     this.worldRoot.addChild(
+      L.decals.view,
       L.zonesN.view,
       L.zonesA.view,
       L.warn.view,
@@ -510,6 +522,7 @@ export class Renderer {
     const view = { cx, cy, halfW, halfH };
     this.drawAmbient(view, now);
     if (w) {
+      this.drawDecals(w, now);
       this.drawZones(w, alpha, now);
       this.drawMarks(w);
       this.drawPickups(w, now);
@@ -1229,9 +1242,46 @@ export class Renderer {
     }
   }
 
+  /**
+   * Ink left on the ground by the dead: taken from the world each frame,
+   * kept a few seconds, fading. The newest replace the oldest past DECALS.
+   */
+  private drawDecals(w: World, now: number): void {
+    const D = this.decals;
+    if (this.decalWorld !== w) {
+      this.decalWorld = w;
+      D.n = 0;
+      D.next = 0;
+    }
+    const S = w.splats;
+    for (let k = 0; k < S.n; k++) {
+      const i = D.next;
+      D.next = (D.next + 1) % DECALS;
+      D.n = Math.min(DECALS, D.n + 1);
+      D.x[i] = S.x[k];
+      D.y[i] = S.y[k];
+      D.s[i] = S.s[k];
+      D.a[i] = S.a[k];
+      D.v[i] = S.v[k];
+      D.born[i] = now;
+    }
+    S.n = 0;
+    const L = this.L.decals;
+    for (let i = 0; i < D.n; i++) {
+      const age = now - D.born[i];
+      if (age > DECAL_LIFE) continue;
+      // It lands with a splash (a touch larger), then sinks into the ground.
+      const grow = age < 0.08 ? 0.75 + (age / 0.08) * 0.35 : 1.1 - Math.min(0.1, (age - 0.08) * 0.5);
+      const a = 0.78 * Math.min(1, (DECAL_LIFE - age) / 1.6);
+      const sc = (D.s[i] * grow) / 64;
+      L.add(this.splatTex[D.v[i]], D.x[i], D.y[i], sc, sc * 0.85, D.a[i], 0xffffff, a);
+    }
+  }
+
   /** Arrows on the screen edge pointing at chests and medallions you cannot see. */
   private drawIndicators(w: World, v: View, sw: number, sh: number): void {
     const f = this.atlas.frames;
+    this.drawBossArrows(w, v, sw, sh);
     for (const q of w.pickups) {
       if (q.kind !== 'chest' && q.kind !== 'chestBlack' && q.kind !== 'medallion' && q.kind !== 'shrine' && q.kind !== 'fragment') continue;
       const dx = q.x - v.cx;
@@ -1245,6 +1295,47 @@ export class Renderer {
       const tint = q.kind === 'chest' ? 0xffd27a : q.kind === 'medallion' || q.kind === 'fragment' ? 0xffe2a0 : q.kind === 'shrine' ? 0x9fdcff : 0xff5a78;
       const s = q.kind === 'medallion' || q.kind === 'shrine' || q.kind === 'fragment' ? 0.9 : 0.7;
       this.L.hud.add(f.pointer, sw / 2 + Math.cos(ang) * k, sh / 2 + Math.sin(ang) * k, s, s, ang, tint, 0.95);
+    }
+  }
+
+  /**
+   * A boss you cannot see: a blood-red arrow on the screen's edge, and beside
+   * it the boss's face on a paper disc, pulsing, so you know who is coming
+   * and from where.
+   */
+  private drawBossArrows(w: World, v: View, sw: number, sh: number): void {
+    const E = w.en;
+    const f = this.atlas.frames;
+    const L = this.L.hud;
+    const pulse = 0.5 + 0.5 * Math.sin(performance.now() / 160);
+    for (let i = 0; i < E.n; i++) {
+      if (E.dead[i] || !(E.flags[i] & FLAG_BOSS)) continue;
+      const dx = E.x[i] - v.cx;
+      const dy = E.y[i] - v.cy;
+      if (Math.abs(dx) < v.halfW + E.r[i] * 0.5 && Math.abs(dy) < v.halfH + E.r[i] * 0.5) continue;
+      const ang = Math.atan2(dy, dx);
+      const kx = (sw / 2 - 26) / Math.max(1e-6, Math.abs(Math.cos(ang)));
+      const ky = (dy < 0 ? sh / 2 - 132 : sh / 2 - 56) / Math.max(1e-6, Math.abs(Math.sin(ang)));
+      const k = Math.min(kx, ky);
+      const ax = sw / 2 + Math.cos(ang) * k;
+      const ay = sh / 2 + Math.sin(ang) * k;
+      const s = 1.05 + pulse * 0.12;
+      L.add(f.pointer, ax, ay, s, s, ang, 0xc8102e, 0.95);
+      // The face, a little in from the arrow.
+      const fx = ax - Math.cos(ang) * 30;
+      const fy = ay - Math.sin(ang) * 30;
+      const name = bossSpriteName(E.type[i], E.variant[i], w.phaseOf(i));
+      const face = this.atlas.faces[name];
+      L.add(f.disc, fx, fy, 34 / 64, 34 / 64, 0, 0xc8102e, 0.9);
+      L.add(f.disc, fx, fy, 30 / 64, 30 / 64, 0, 0xece6d6, 1);
+      if (face) {
+        const fs = 26 / face.frame.width;
+        L.add(face, fx, fy, fs, fs, 0, 0xffffff, 1);
+      } else {
+        const tex = f[name] ?? f.pointer;
+        const fs = 26 / Math.max(tex.frame.width, tex.frame.height);
+        L.add(tex, fx, fy, fs, fs, 0, 0xffffff, 1);
+      }
     }
   }
 

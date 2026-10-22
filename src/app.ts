@@ -3,6 +3,7 @@ import { Music } from './audio/music';
 import { Sfx } from './audio/sfx';
 import { Input } from './core/input';
 import { FixedLoop } from './core/loop';
+import { DT as HIT_STOP_STEP } from './config';
 import { POWER_BY_ID, STARTING_POWER } from './data/powers';
 import { STAGE_BY_ID, stageById, TRIAL_NAMES, type StageId } from './data/stages';
 import { CHAPTER_BY_ID, type Chapter } from './data/story';
@@ -467,6 +468,14 @@ export class App {
   private step(): boolean {
     const w = this.world;
     if (!w || this.state !== 'playing') return false;
+    // Hit-stop: on a heavy blow the world holds for a beat (skipped steps, the shake still showing); off with the shake setting.
+    if (w.hitStop > 0) {
+      if (this.save.settings.shake) {
+        w.hitStop -= HIT_STOP_STEP;
+        return true;
+      }
+      w.hitStop = 0;
+    }
     w.step(this.input.mx, this.input.my);
     if (w.over) {
       this.finishRun(false);

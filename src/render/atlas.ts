@@ -45,7 +45,7 @@ const FX_SPRITES = new Set([
 ]);
 
 /** Drawn flat already (solid fills and the ground shadow): left as they are. */
-const PLAIN_SPRITES = new Set(['square', 'shadow']);
+const PLAIN_SPRITES = new Set(['square', 'shadow', 'splat0', 'splat1', 'splat2']);
 
 /** How the ink pass treats a sprite, and how wide its ink line is in atlas pixels (bigger figures, bolder line). */
 function inkOf(name: string, w: number): { kind: InkKind; line: number } {
@@ -60,6 +60,8 @@ export interface Atlas {
   frames: Record<string, Texture>;
   /** Frame size in atlas pixels. */
   px: Record<string, { w: number; h: number }>;
+  /** Head-and-shoulders frames of the named characters (see FACE), for the off-screen boss arrow. */
+  faces: Record<string, Texture>;
 }
 
 const TAU = Math.PI * 2;
@@ -3140,6 +3142,9 @@ function specs(): Spec[] {
     { name: 'bomb', w: 26, h: 26, draw: bomb },
     { name: 'drone', w: 30, h: 30, draw: drone },
     { name: 'shadow', w: 48, h: 20, draw: shadow },
+    { name: 'splat0', w: 64, h: 64, draw: splat(11) },
+    { name: 'splat1', w: 64, h: 64, draw: splat(23) },
+    { name: 'splat2', w: 64, h: 64, draw: splat(37) },
     { name: 'chest', w: 44, h: 38, draw: chest('#2a1d12', '#3a2818', '#e2b552', 'rgba(255,200,90,0.35)') },
     { name: 'chestBlack', w: 44, h: 38, draw: chest('#0e0c14', '#1c1828', '#f0c869', 'rgba(255,60,90,0.45)') },
     { name: 'medallion', w: 40, h: 40, draw: medallion },
@@ -3209,14 +3214,73 @@ export function buildAtlas(): Atlas {
   const base = Texture.from(canvas);
   const frames: Record<string, Texture> = {};
   const px: Record<string, { w: number; h: number }> = {};
+  const faces: Record<string, Texture> = {};
   list.forEach((s, i) => {
     const inset = s.inset ?? 0;
     const w = s.w - inset * 2;
     const h = s.h - inset * 2;
     frames[s.name] = new Texture({ source: base.source, frame: new Rectangle(pos[i].x + inset, pos[i].y + inset, w, h) });
     px[s.name] = { w, h };
+    // A face frame, kept inside the sprite's own box so it never shows a neighbour.
+    const crop = faceRect(s.name, s.w, s.h);
+    if (crop) {
+      const x0 = Math.max(0, crop.x);
+      const y0 = Math.max(0, crop.y);
+      const size = Math.min(crop.size, s.w - x0, s.h - y0);
+      faces[s.name] = new Texture({ source: base.source, frame: new Rectangle(pos[i].x + x0, pos[i].y + y0, size, size) });
+    }
   });
-  return { canvas, base, frames, px };
+  return { canvas, base, frames, px, faces };
+}
+
+/**
+ * Ink splashed on the ground where something died, as the manga inks a
+ * killing blow: a heavy blot, a few long flicks thrown out from it, and
+ * droplets. Three of them, so no two deaths splash alike.
+ */
+function splat(seed: number): Draw {
+  return (g, w, h) => {
+    const rnd = seeded(seed);
+    const cx = w / 2;
+    const cy = h / 2;
+    g.fillStyle = INK;
+    g.beginPath();
+    const n = 14;
+    for (let k = 0; k <= n; k++) {
+      const a = (k / n) * TAU;
+      const r = w * (0.17 + rnd() * 0.09);
+      const x = cx + Math.cos(a) * r;
+      const y = cy + Math.sin(a) * r * 0.8;
+      if (k === 0) g.moveTo(x, y);
+      else g.lineTo(x, y);
+    }
+    g.closePath();
+    g.fill();
+    // Flicks thrown out from the blot, thinning to a point.
+    for (let k = 0; k < 5; k++) {
+      const a = rnd() * TAU;
+      const r0 = w * 0.18;
+      const r1 = w * (0.33 + rnd() * 0.13);
+      const wd = 2 + rnd() * 2.6;
+      g.beginPath();
+      g.moveTo(cx + Math.cos(a - 0.12) * r0, cy + Math.sin(a - 0.12) * r0 * 0.8);
+      g.lineTo(cx + Math.cos(a) * r1, cy + Math.sin(a) * r1 * 0.8);
+      g.lineTo(cx + Math.cos(a + 0.12) * r0, cy + Math.sin(a + 0.12) * r0 * 0.8);
+      g.closePath();
+      g.fill();
+      g.beginPath();
+      g.arc(cx + Math.cos(a) * (r1 + 2), cy + Math.sin(a) * (r1 + 2) * 0.8, wd * 0.6, 0, TAU);
+      g.fill();
+    }
+    // Droplets.
+    for (let k = 0; k < 9; k++) {
+      const a = rnd() * TAU;
+      const r = w * (0.24 + rnd() * 0.22);
+      g.beginPath();
+      g.arc(cx + Math.cos(a) * r, cy + Math.sin(a) * r * 0.8, 0.8 + rnd() * 1.8, 0, TAU);
+      g.fill();
+    }
+  };
 }
 
 /**

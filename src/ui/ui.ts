@@ -1719,7 +1719,7 @@ export class UI {
       ['sound', 'Sound'],
       ['music', 'Music'],
       ['numbers', 'Damage numbers'],
-      ['shake', 'Screen shake'],
+      ['shake', 'Shake & hit-stop'],
       ['tips', 'First-time tips'],
     ];
     for (const [key, label] of items) {

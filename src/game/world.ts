@@ -285,6 +285,8 @@ const BEHAVIOR = Uint8Array.from(ENEMY_LIST, (d) => BEHAVIOR_CODE[d.behavior]);
 
 /** Charging formations: room between runners, the slowest a charge runs (units a second), and how long it holds behind its warning. */
 const STAMPEDE_GAP = 24;
+/** Ink splashes one step can leave (a nuke's worth beyond this go unsplashed). */
+const SPLATS = 96;
 const STAMPEDE_SPEED = 240;
 const STAMPEDE_WINDUP = 1.2;
 /** A hazard's warning before it strikes. */
@@ -362,6 +364,14 @@ export class World {
   readonly banners: Banner[] = [];
   readonly sounds = new Set<SoundName>();
   shake = 0;
+  /**
+   * Seconds the picture should hold still on a heavy blow (a big hit taken, a
+   * boss changing form or falling). A hint for the app's loop only: the
+   * simulation never reads it, so runs play out the same with or without it.
+   */
+  hitStop = 0;
+  /** Ink splashed by this step's deaths, for the renderer to lay on the ground: x, y, size, angle, which splash. */
+  readonly splats = { x: new Float32Array(SPLATS), y: new Float32Array(SPLATS), s: new Float32Array(SPLATS), a: new Float32Array(SPLATS), v: new Uint8Array(SPLATS), n: 0 };
   /** Seconds left in the stage hazard's burst, and until the next thing it drops. */
   hazardT = 0;
   private hazardTick = 0;
@@ -1805,6 +1815,8 @@ export class World {
     if (this.spoil.on) spoilKill(this, x, y, (flags & FLAG_BOSS) !== 0);
     if (E.volT[i] > 0) this.queueBurst(x, y, 44 * this.stats.size, E.volDmg[i]);
     if (flags & FLAG_BOSS) {
+      this.hitStop = Math.max(this.hitStop, 0.18);
+      this.splash(x, y, E.r[i] * 3.2);
       this.bossCount = Math.max(0, this.bossCount - 1);
       if (E.uid[i] !== this.finalBossUid) this.bossKills++;
       // Boss Rush: every boss down is four more level-ups.
@@ -1930,6 +1942,10 @@ export class World {
     }
     const hpBefore = p.hp;
     let dealt = amount * this.stats.dmgTaken * (1 - this.balanceCut) * this.tm.damageTaken * this.modTaken;
+    // A heavy blow lands with a jolt: the picture holds for a beat.
+    const share = dealt / Math.max(1, p.maxHp);
+    if (share >= 0.2) this.hitStop = Math.max(this.hitStop, 0.1);
+    else if (share >= 0.1) this.hitStop = Math.max(this.hitStop, 0.06);
     if (this.spoil.on) dealt = spoilBeforeHurt(this, dealt);
     if (dealt <= 0) {
       p.iframes = PLAYER.iframes;
@@ -2534,7 +2550,20 @@ export class World {
   }
 
   /** Hollows: the mask cracks into white shards and the body dissolves into ash. */
+  /** Ink on the ground where something died: the renderer takes these each frame. */
+  private splash(x: number, y: number, size: number): void {
+    const S = this.splats;
+    if (S.n >= SPLATS) return;
+    const k = S.n++;
+    S.x[k] = x;
+    S.y[k] = y;
+    S.s[k] = size;
+    S.a[k] = this.rng.next() * TAU;
+    S.v[k] = this.rng.int(3);
+  }
+
   private deathFx(x: number, y: number, color: number, r: number): void {
+    this.splash(x, y, r * 2.6);
     this.spawnFx(FX_ASH, x, y, 0, -12, 0.45, r * 1.6, r * 3, 0.55, this.rng.next() * TAU, 0, 0x14101c, LAYER_NORMAL);
     for (let k = 0; k < 3; k++) {
       const a = this.rng.next() * TAU;
@@ -2546,6 +2575,7 @@ export class World {
 
   /** Soul Reapers: the body comes apart into rising motes of spirit light. */
   private spiritFx(x: number, y: number, r: number): void {
+    this.splash(x, y, r * 1.5);
     for (let k = 0; k < 4; k++) {
       const ox = this.rng.range(-r, r) * 0.7;
       this.spawnFx(FX_DOT, x + ox, y + this.rng.range(-r, r) * 0.5, ox * 0.6, -this.rng.range(50, 95), this.rng.range(0.4, 0.65), 5, 2, 0.95, 0, 0, 0xcfe6ff, LAYER_ADD, 1.5);
@@ -2716,7 +2746,10 @@ export class World {
           B.final = E.uid[i] === this.finalBossUid;
           B.hp = E.hp[i];
           B.max = E.maxHp[i];
-          B.phase = this.phaseOf(i);
+          const phase = this.phaseOf(i);
+          // A boss taking its second form: the moment holds.
+          if (B.uid === E.uid[i] && phase > B.phase) this.hitStop = Math.max(this.hitStop, 0.12);
+          B.phase = phase;
           if (B.uid !== E.uid[i]) {
             B.uid = E.uid[i];
             B.type = E.type[i];
