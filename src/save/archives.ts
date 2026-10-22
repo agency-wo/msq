@@ -3,6 +3,9 @@ import { POWERS, STARTABLE_IDS, STARTING_POWER, type PowerDef } from '../data/po
 import { RELIC_BY_ID, RELICS, type RelicDef } from '../data/relics';
 import { SPOILS } from '../data/spoils';
 import { scaleMods, type StatMods } from '../game/stats';
+import { GAUNTLET } from '../data/gauntlet';
+import { MISSIONS } from '../data/missions';
+import { STAGE_IDS } from '../data/stages';
 import type { SaveData } from './save';
 
 /** The Wandenreich Archives, read from and written to the save. */
@@ -163,11 +166,31 @@ export function switchMastery(save: SaveData, id: string): boolean {
 }
 
 /**
+ * How far through the war you are, 0 to 1: the stages cleared, the Gauntlet's tiers and the Story's
+ * missions, a third each.
+ */
+export function progressShare(save: SaveData): number {
+  const stages = STAGE_IDS.filter((id) => save.stages[id]?.cleared).length / STAGE_IDS.length;
+  const gauntlet = Math.min(GAUNTLET.length, save.gauntlet.tiers) / GAUNTLET.length;
+  const story = MISSIONS.filter((m) => save.missions[m.id]?.cleared).length / MISSIONS.length;
+  return (stages + gauntlet + story) / 3;
+}
+
+/**
+ * The world's answer (see DIFFICULTY.pressure*), 0 to 1: how much of the Archives you have learned, or how
+ * far through the war you are, whichever is more. A veteran meets the war's full strength however much
+ * they trained.
+ */
+export function metaPressure(save: SaveData): number {
+  return Math.max(trainingShare(save), progressShare(save));
+}
+
+/**
  * How much of the Archives you have learned, 0 to 1: every training level,
  * every discipline level and every verse of the Kaiser Gesang, against all
  * there are. The world answers it (see DIFFICULTY.pressure*).
  */
-export function metaPressure(save: SaveData): number {
+export function trainingShare(save: SaveData): number {
   let have = save.gesang;
   let all = GESANG_VERSES;
   for (const u of UPGRADES) {

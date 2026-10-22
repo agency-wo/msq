@@ -295,7 +295,8 @@ function bossMoves(w: World, i: number, dist: number): void {
   const def = ENEMY_LIST[E.type[i]];
   if (def.id === 'bearer' || def.id === 'captain') {
     const bankai = BANKAI_IDS[E.variant[i]] ?? '';
-    bearerAI(w, i, bankai, dist);
+    // Without the bankai (another has it), only the knight's own arts.
+    if (!w.bankailess.has(E.uid[i])) bearerAI(w, i, bankai, dist);
     // The knight's own Schrift, or the captain's own art.
     if (def.id === 'bearer') thiefSchrift(w, i, bankai);
     else captainSignature(w, i, bankai);

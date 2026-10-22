@@ -16,7 +16,10 @@ a boss's guard too, and as it fires you turn intangible for a moment. Every run 
 Mundo, three of the Sternritter who stole the captains' bankai with their
 medallions come for you (Äs Nödt with Senbonzakura, Cang Du with Hyōrinmaru,
 BG9 with Raikōben, Bambietta with Tengen, Driscoll with Gonryō Rikyū); beat
-one and its bankai is yours. A Schrift has one holder: while a knight who
+one and its bankai is yours. A bankai has one holder: once you hold it, or the
+knight who carried it has fallen in a run, nobody else carries it, so the
+Gauntlet's captains, who come after their thieves, fight without their bankai
+and leave no medallion. A Schrift has one holder: while a knight who
 carries one stands on the level (those three, or Uryū with the Antithesis in
 the Wahrwelt), its letter never comes up on a level-up board; when they fall the
 Emperor takes it back at once, and it is his to use at Lv 1 (like a bankai, it
@@ -156,9 +159,13 @@ speed, shown by the counter beside your kills.
 
 It is meant to be hard. The first minutes are fair to a new build, but the
 swarm's health, numbers, speed and bite all climb steeply as the run goes on.
-The more of the Archives you hold, the more the world answers: bosses, elites
-and the swarm grow sturdier with your training, and for a trained Emperor the
-swarm keeps growing sturdier minute by minute (the Training tab says how much).
+The stronger you become, the more the world answers: by how much of the
+Archives you hold, or how far through the war you are (stages cleared, Gauntlet
+tiers, Story missions), whichever is more. At full strength bosses have six
+times their health and hit 1.75 times as hard, elites over four times, and the
+swarm three times its health from the start, growing sturdier minute by minute
+and hitting over three times as hard (the Training tab says how much). A new
+save meets none of it.
 Elites come every 75 s, and every boss is tougher the higher it stands on the
 stage (the first close to an even fight, the last up to 2.6 times its old
 health); late in Hueco Mundo the Menos Grande join in with their Ceros. Every

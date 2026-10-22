@@ -163,7 +163,7 @@ export const MISSIONS: readonly MissionDef[] = [
     hp: 1.1,
     reward: 700,
     brief: [
-      'The Wandenreich gave the Soul Reapers five days. On the fifth, its knights walked out of the shadows of the Seireitei and took the captains’ bankai with their medallions.',
+      'The Wandenreich gave the Soul Reapers five days. On the fifth, its knights walked out of the shadows of the Seireitei with their medallions open. Two captains did not wait for them: they came looking for you, their bankai already drawn, and a bankai has only one holder.',
       'For a thousand years one man has held the city: Genryūsai Shigekuni Yamamoto, whose flame has no equal. He is waiting at the First Division. Go to him.',
     ],
     after: [
@@ -361,9 +361,10 @@ export const MISSIONS: readonly MissionDef[] = [
     goalText: 'Find the real Sōsuke Aizen, and defeat him.',
     ring: 'officer',
     elite: 'guard',
-    events: [bearer(150, 0, 4.5)],
+    events: [bearer(150, 0, 3)],
     bearers: ['aizen'],
-    hp: 1.3,
+    hp: 1.2,
+    bossDamage: 0.7,
     reward: 1800,
     rules: ['Kyōka Suigetsu fills the field with copies of Aizen; only one of them is real.'],
     brief: [
@@ -382,11 +383,12 @@ export const MISSIONS: readonly MissionDef[] = [
     goalText: 'Defeat Ichigo Kurosaki, with Uryū and Aizen at his side.',
     ring: 'officer',
     elite: 'brute',
-    events: [bearer(240, 0, 4), bearer(244, 1, 5), boss(600, 'ichigo', 18, 'Ichigo Kurosaki comes, his blades already drawn', 'Substitute Soul Reaper')],
+    events: [bearer(240, 0, 2.8), bearer(244, 1, 3.4), boss(600, 'ichigo', 16, 'Ichigo Kurosaki comes, his blades already drawn', 'Substitute Soul Reaper')],
     bearers: ['uryu', 'aizen'],
     almighty: true,
     hp: 1.2,
     spawn: 1.3,
+    bossDamage: 0.85,
     reward: 2500,
     rules: ['You hold A · The Almighty from the first second.', 'Uryū and Aizen come together; Ichigo comes last.'],
     brief: [

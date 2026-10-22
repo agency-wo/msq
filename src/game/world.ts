@@ -450,6 +450,14 @@ export class World {
   pierceGuard = false;
   intangibleT = 0;
   private intangibleNext = 0;
+  /**
+   * A bankai has one holder. Once you hold it, or a knight carrying it has fallen this run, nobody else
+   * carries it: a captain met after his bankai's thief (the Gauntlet), or a knight back again (Endless),
+   * comes without it, fights with his own arts alone and leaves no medallion. The bankai gone, and the
+   * bosses (by uid) who came without theirs.
+   */
+  private readonly bankaiGone = new Set<string>();
+  readonly bankailess = new Set<number>();
   /** Standing still (see DIFFICULTY.still*): the spot, how long you have stood on it, the strikes it has drawn. */
   private stillX = 0;
   private stillY = 0;
@@ -1381,10 +1389,13 @@ export class World {
     const bankaiName = POWER_BY_ID.get(id)?.name ?? id;
     const info = BANKAI_BY_ID.get(id);
     const quote = BOSS_LINES[`${captain ? 'captain' : 'bearer'}:${id}`];
+    const gone = this.bankaiGone.has(id) || this.powers.some((ps) => ps.def.id === id);
+    if (gone) this.bankailess.add(this.en.uid[i]);
+    const carrying = gone ? 'bankai already taken' : captain ? bankaiName : `carries ${bankaiName}`;
     this.banners.push(
       captain && info
-        ? { kind: 'boss', title: info.owner, sub: `${info.rank} · ${bankaiName}`, quote }
-        : { kind: 'boss', title: info?.thief ?? 'Sternritter', sub: `Sternritter ${info?.thiefLetter ?? ''} · carries ${bankaiName}`, quote },
+        ? { kind: 'boss', title: info.owner, sub: `${info.rank} · ${carrying}`, quote }
+        : { kind: 'boss', title: info?.thief ?? 'Sternritter', sub: `Sternritter ${info?.thiefLetter ?? ''} · ${carrying}`, quote },
     );
     this.shake = Math.max(this.shake, 8);
     return i;
@@ -1530,13 +1541,14 @@ export class World {
     const E = this.en;
     const def = ENEMY_LIST[E.type[i]];
     const bankai = BANKAI_IDS[E.variant[i]];
+    const without = this.bankailess.has(E.uid[i]);
     if (def.id === 'bearer') {
       const info = BANKAI_BY_ID.get(bankai);
-      return { name: info && info.thiefLetter ? info.thief : def.name, sub: `Sternritter ${info?.thiefLetter ?? ''} · ${POWER_BY_ID.get(bankai)?.name ?? ''}` };
+      return { name: info && info.thiefLetter ? info.thief : def.name, sub: `Sternritter ${info?.thiefLetter ?? ''} · ${without ? 'no bankai' : (POWER_BY_ID.get(bankai)?.name ?? '')}` };
     }
     if (def.id === 'captain') {
       const info = BANKAI_BY_ID.get(bankai);
-      return { name: info?.owner ?? def.name, sub: info?.rank ?? '' };
+      return { name: info?.owner ?? def.name, sub: `${info?.rank ?? ''}${without ? ' · no bankai' : ''}` };
     }
     const roster =
       def.id === 'royal'
@@ -1797,6 +1809,7 @@ export class World {
     if (def.boss && this.bossRush) dmg *= RUSH_DMG[Math.min(this.rushWave, RUSH_DMG.length - 1)];
     if (def.boss && this.gauntlet) dmg *= GAUNTLET[this.gauntletTier].dmgMul;
     if (def.boss && this.mission?.bossDamage) dmg *= this.mission.bossDamage;
+    if (def.boss) dmg *= 1 + this.pressure * DIFFICULTY.pressureBossDamage;
     E.dmg[i] = dmg;
     E.xp[i] = xp;
     E.flash[i] = 0;
@@ -2258,7 +2271,9 @@ export class World {
       const loot = !this.gauntlet || this.gauntletIdx >= GAUNTLET[this.gauntletTier].bosses.length;
       const carrier = def.id === 'bearer' || def.id === 'captain';
       if (carrier) {
-        this.addPickup('medallion', x, y, BANKAI_IDS[E.variant[i]]);
+        // Only one who carried it leaves its medallion; either way, nobody else carries that bankai this run.
+        if (!this.bankailess.delete(E.uid[i])) this.addPickup('medallion', x, y, BANKAI_IDS[E.variant[i]]);
+        this.bankaiGone.add(BANKAI_IDS[E.variant[i]]);
         if (loot) this.addPickup('chestBlack', x + 36, y + 12);
       }
       // The Royal Guard each leave a Fragment of the Soul King you do not have yet (gold once you hold all three).

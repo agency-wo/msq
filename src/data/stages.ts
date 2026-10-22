@@ -123,22 +123,24 @@ export const DIFFICULTY = {
   hpLate: 0.15,
   dmgLate: 0.06,
   /**
-   * The world answers your training: at pressure p (0 with nothing learned in the Archives, 1 with all
-   * of it), bosses have 1 + pressureBoss·p times their health, elites 1 + pressureElite·p, the swarm
-   * 1 + pressureSwarm·p, and every swarm hit lands 1 + pressureDamage·p times as hard. Training still
-   * leaves you far ahead; it no longer leaves the fight behind.
+   * The world answers how strong you have become: at pressure p (0 for a new save, 1 with all of the
+   * Archives learned or the whole war behind you; see metaPressure), bosses have 1 + pressureBoss·p times
+   * their health and hit 1 + pressureBossDamage·p times as hard, elites have 1 + pressureElite·p, the swarm
+   * 1 + pressureSwarm·p, and every swarm hit lands 1 + pressureDamage·p times as hard. A new save meets
+   * none of it; a veteran meets all of it.
    */
-  pressureBoss: 3,
-  pressureElite: 1.2,
-  pressureSwarm: 0.5,
-  pressureDamage: 0.6,
+  pressureBoss: 5,
+  pressureBossDamage: 0.75,
+  pressureElite: 3.4,
+  pressureSwarm: 2,
+  pressureDamage: 2.2,
   /**
    * And it answers more as the run goes on: past pressureGrowthFrom minutes the swarm and elites gain
    * pressureGrowth·p more health for every minute on the clock (up to pressureGrowthCap minutes). A
    * trained Emperor's damage outgrows the swarm's own curve, so without this the late swarm still fell
    * to a hit or two.
    */
-  pressureGrowth: 0.3,
+  pressureGrowth: 0.6,
   pressureGrowthFrom: 3,
   pressureGrowthCap: 20,
   /**

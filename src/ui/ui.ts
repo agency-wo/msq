@@ -760,7 +760,7 @@ export class UI {
         el(
           'p',
           'archives-hint pressure-line',
-          `Your enemies answer what you have learned: bosses +${pct(DIFFICULTY.pressureBoss)}% health, the swarm +${pct(DIFFICULTY.pressureSwarm)}% at first and +${pct(late)}% by ${DIFFICULTY.pressureGrowthCap}:00.`,
+          `Your enemies answer how strong you have become: bosses +${pct(DIFFICULTY.pressureBoss)}% health and +${pct(DIFFICULTY.pressureBossDamage)}% to their hits, the swarm +${pct(DIFFICULTY.pressureSwarm)}% at first and +${pct(late)}% by ${DIFFICULTY.pressureGrowthCap}:00.`,
         ),
       );
     }
