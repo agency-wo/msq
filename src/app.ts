@@ -28,6 +28,7 @@ import {
   metaChoices,
   metaEliteChest,
   metaMastery,
+  metaPressure,
   metaMods,
   metaRerolls,
   metaRevives,
@@ -471,6 +472,7 @@ export class App {
       chestChoices: metaChestChoices(this.save),
       bossHeal: metaBossHeal(this.save),
       mastery: metaMastery(this.save),
+      pressure: metaPressure(this.save),
       // The Armory's relic comes along on every run but the Daily Trial, which is the same for everyone.
       relic: daily ? undefined : (this.save.startRelic ?? undefined),
       // The Daily Trial opens with Heilig Pfeil and today's Schrift; ?start= tries any attack (testing); otherwise the Archives' pick.

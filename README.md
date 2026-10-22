@@ -173,7 +173,10 @@ and damage, one more of everything, faster level-ups, more gold, two revives,
 level-up rerolls, damage against bosses and elites, a Letzt Stil edge when close
 to falling, a Blut Vene shell that grows back, second chests from elites, wider
 chests, a boss's harvest), drill a Discipline for each attack (five levels of
-damage apiece), and pick which awakened Schrift a run opens with. A gift
+damage apiece), and pick which awakened Schrift a run opens with. The world
+answers what you learn: the more of the Archives you hold, the tougher bosses,
+elites and the swarm become (the Archives say by how much), and past 8:00 every
+run's swarm grows faster still. A gift
 code typed under Settings (Redeem a gift code) pays its gold once per save.
 
 Stages, 20 minutes each:

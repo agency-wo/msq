@@ -9,14 +9,14 @@ import { type Rarity, RELIC_BY_ID, type RelicDef, RELICS } from '../data/relics'
 import { RESONANCE_BY_ID, RESONANCES, resonanceParts, type ResonanceDef } from '../data/resonances';
 import { PACT_BY_ID, type PactDef } from '../data/shrines';
 import { SPOILS } from '../data/spoils';
-import { MAX_TRIAL, STAGES, stageById, TRIAL_NAMES, trialBlurb, type StageId } from '../data/stages';
+import { DIFFICULTY, MAX_TRIAL, STAGES, stageById, TRIAL_NAMES, trialBlurb, type StageId } from '../data/stages';
 import { CHAPTERS, type Chapter } from '../data/story';
 import type { ChestCard, ChestKind, Offer } from '../game/offers';
 import { TREASURE_BY_ID } from '../data/treasures';
 import type { Banner, World } from '../game/world';
 import { drawEmperor, drawSprite } from '../render/atlas';
 import { bossSpriteName, enemySpriteName } from '../render/names';
-import { armoryRelics, MASTERY_POWERS, masteryLevel, nextCost, nextMasteryCost, nextVerseCost, startOptions, upgradeLevel, wonSpoils } from '../save/archives';
+import { armoryRelics, MASTERY_POWERS, masteryLevel, metaPressure, nextCost, nextMasteryCost, nextVerseCost, startOptions, upgradeLevel, wonSpoils } from '../save/archives';
 import { MASTERY_COSTS, MASTERY_PER } from '../data/archives';
 import { almightyUnlocked, endlessOpen, missionsCleared, rushOpen, stageUnlocked, trialsOpen, type DailyRecord, type MissionRecord, type SaveData, type Settings } from '../save/save';
 import { chapterUnlocked } from '../save/story';
@@ -746,6 +746,11 @@ export class UI {
   /** Training: the permanent upgrades, then the choice of starting Schrift. */
   private archivesTraining(p: HTMLElement, save: SaveData, h: ArchivesHandlers): void {
     p.append(el('p', 'archives-hint', 'Every run pays gold. What you learn here stays with you.'));
+    // The world answers what you learn here: say by how much.
+    const pressure = metaPressure(save);
+    if (pressure > 0.005) {
+      p.append(el('p', 'archives-hint pressure-line', `Your enemies answer what you have learned: bosses +${Math.round(pressure * DIFFICULTY.pressureBoss * 100)}% health, the swarm +${Math.round(pressure * DIFFICULTY.pressureSwarm * 100)}%.`));
+    }
     const list = el('div', 'upgrades');
     for (const u of UPGRADES) {
       const level = upgradeLevel(save, u.id);

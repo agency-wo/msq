@@ -19,20 +19,7 @@ import { ROYAL_BY_ID, ROYAL_IDS } from '../data/royal';
 import { RESONANCE_BY_ID, RESONANCES, resonanceParts } from '../data/resonances';
 import { BOSS_LINES } from '../data/story';
 import { missionStage, type MissionDef } from '../data/missions';
-import {
-  DIFFICULTY,
-  bossToughness,
-  hpScale,
-  phaseAt,
-  spawnRate,
-  speedScale,
-  stageById,
-  trialMods,
-  xpScale,
-  type StageDef,
-  type TimelineEvent,
-  type TrialMods,
-} from '../data/stages';
+import { bossToughness, DIFFICULTY, hpScale, phaseAt, spawnRate, speedScale, stageById, type StageDef, swarmDamage, type TimelineEvent, trialMods, type TrialMods, xpScale } from '../data/stages';
 import { updateMarks, updateZones } from './areas';
 import { rewrite } from './casts/almighty';
 import { burstAt, enemiesInCircle } from './casts/common';
@@ -245,6 +232,8 @@ export interface WorldOptions {
   bossHeal?: number;
   /** Disciplines: mastery level by power id. */
   mastery?: Readonly<Record<string, number>>;
+  /** How much of the Archives the player has learned, 0 to 1: the world answers it (see DIFFICULTY.pressure*). */
+  pressure?: number;
   /** Daily Trial modifiers (see data/daily.ts). */
   mods?: string[];
   /** A Story Mode mission: its stage, timeline, rules and goal (see data/missions.ts). */
@@ -385,6 +374,8 @@ export class World {
   private chestChoices = 0;
   private bossHeal = 0;
   private mastery: Readonly<Record<string, number>> = {};
+  /** See WorldOptions.pressure. */
+  readonly pressure: number;
   /**
    * Seconds the picture should hold still on a heavy blow (a big hit taken, a
    * boss changing form or falling). A hint for the app's loop only: the
@@ -579,6 +570,7 @@ export class World {
     this.rng = new Rng(opts.seed);
     this.metaMods = opts.meta ?? null;
     this.mission = opts.mission ?? null;
+    this.pressure = Math.max(0, Math.min(1, opts.pressure ?? 0));
     this.stage = this.mission ? missionStage(this.mission) : stageById(opts.stage);
     this.trial = Math.max(0, Math.min(5, Math.floor(opts.trial ?? 0)));
     this.tm = trialMods(this.trial);
@@ -936,7 +928,7 @@ export class World {
     const spread = this.rng.range(0, 70);
     const x = p.x + this.moveX * lead + Math.cos(a) * spread;
     const y = p.y + this.moveY * lead + Math.sin(a) * spread;
-    const dmg = DIFFICULTY.hazardDamage * (DIFFICULTY.damage + (DIFFICULTY.damagePerMinute * Math.min(this.t, this.stage.length)) / 60) * this.tm.damage;
+    const dmg = DIFFICULTY.hazardDamage * swarmDamage(this.t, this.stage.length) * this.tm.damage;
     switch (hz.form) {
       case 'mire':
         this.spawnZone(ZK_MIRE, x, y, 0, 0, hz.r, 8, 0.2, 0, ZF_ENEMY | ZF_SLOWS, hz.look === 'shadow' ? 1 : 0);
@@ -1413,13 +1405,15 @@ export class World {
     // Bosses get their health from the timeline alone; everything else also scales with time.
     const tough = def.boss ? bossToughness(hpMul) : null;
     let hp = def.hp * hpMul * (tough ? this.tm.bossHp * tough.hp : hpScale(this.t) * this.stage.hp * this.tm.hp);
+    // The world answers your training.
+    hp *= 1 + this.pressure * (def.boss ? DIFFICULTY.pressureBoss : elite ? DIFFICULTY.pressureElite : DIFFICULTY.pressureSwarm);
     // Endless pressure: every minute past the stage's end, the swarm gets sturdier (faster and faster) and hits harder.
     const over = this.endless ? Math.max(0, this.t - this.stage.length) / 60 : 0;
     if (over > 0 && !def.boss) hp *= 1 + 0.15 * over + 0.02 * over * over;
     if (!def.boss) hp *= this.modHp * this.pactHp;
     let r = def.radius * (def.boss ? 1 : this.modRadius);
     // Boss hits scale with the boss's tier: the first bearer is an introduction, the last boss hits hard.
-    const swarmDmg = DIFFICULTY.damage + DIFFICULTY.damagePerMinute * (Math.min(this.t, this.stage.length) / 60);
+    const swarmDmg = swarmDamage(this.t, this.stage.length) * (1 + this.pressure * DIFFICULTY.pressureDamage);
     let dmg = def.damage * (tough ? Math.min(1.6, 0.65 + 0.06 * hpMul) * this.tm.bossDamage * tough.damage : this.tm.damage * swarmDmg) * (1 + 0.1 * over);
     let xp = def.xp * xpScale(this.t) * this.stage.xp;
     let flags = 0;

@@ -10,6 +10,7 @@ import {
   metaChestChoices,
   metaEliteChest,
   metaMastery,
+  metaPressure,
   metaMods,
   metaRerolls,
   metaRevives,
@@ -201,11 +202,12 @@ export function play(w: World, seconds: number, pick: Strategy, move: Mover, onS
 }
 
 /** World options for a player who bought every Archives upgrade. */
-export function maxedMeta(): Pick<WorldOptions, 'meta' | 'revives' | 'rerolls' | 'shellEvery' | 'eliteChest' | 'chestChoices' | 'bossHeal' | 'mastery'> {
+export function maxedMeta(): Pick<WorldOptions, 'meta' | 'revives' | 'rerolls' | 'shellEvery' | 'eliteChest' | 'chestChoices' | 'bossHeal' | 'mastery' | 'pressure'> {
   const s = defaultSave();
   s.gold = 10_000_000;
   for (const u of UPGRADES) while (buyUpgrade(s, u.id));
   for (const d of MASTERY_POWERS) while (buyMastery(s, d.id));
+  s.gesang = 100;
   return {
     meta: metaMods(s),
     revives: metaRevives(s),
@@ -215,5 +217,6 @@ export function maxedMeta(): Pick<WorldOptions, 'meta' | 'revives' | 'rerolls' |
     chestChoices: metaChestChoices(s),
     bossHeal: metaBossHeal(s),
     mastery: metaMastery(s),
+    pressure: metaPressure(s),
   };
 }

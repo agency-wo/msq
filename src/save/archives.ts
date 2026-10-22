@@ -1,4 +1,4 @@
-import { ARMORY_COST, GESANG_PER, MASTERY_COSTS, masteryKey, SHELL_EVERY, UPGRADE_BY_ID, UPGRADES, verseCost, type UpgradeSpecial } from '../data/archives';
+import { ARMORY_COST, GESANG_PER, GESANG_VERSES, MASTERY_COSTS, masteryKey, SHELL_EVERY, UPGRADE_BY_ID, UPGRADES, verseCost, type UpgradeSpecial } from '../data/archives';
 import { POWERS, STARTABLE_IDS, STARTING_POWER, type PowerDef } from '../data/powers';
 import { RELIC_BY_ID, RELICS, type RelicDef } from '../data/relics';
 import { SPOILS } from '../data/spoils';
@@ -117,6 +117,25 @@ export function buyMastery(save: SaveData, id: string): boolean {
   save.gold -= cost;
   save.meta[masteryKey(id)] = masteryLevel(save, id) + 1;
   return true;
+}
+
+/**
+ * How much of the Archives you have learned, 0 to 1: every training level,
+ * every discipline level and every verse of the Kaiser Gesang, against all
+ * there are. The world answers it (see DIFFICULTY.pressure*).
+ */
+export function metaPressure(save: SaveData): number {
+  let have = save.gesang;
+  let all = GESANG_VERSES;
+  for (const u of UPGRADES) {
+    have += Math.min(u.costs.length, upgradeLevel(save, u.id));
+    all += u.costs.length;
+  }
+  for (const d of MASTERY_POWERS) {
+    have += masteryLevel(save, d.id);
+    all += MASTERY_COSTS.length;
+  }
+  return all > 0 ? Math.min(1, have / all) : 0;
 }
 
 /** Every discipline learned, by power, for the run. */

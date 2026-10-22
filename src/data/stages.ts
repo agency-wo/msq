@@ -114,15 +114,33 @@ export const DIFFICULTY = {
   damage: 0.9,
   damagePerMinute: 0.035,
   /**
+   * Past lateFrom minutes the swarm grows on top of all that: hpLate·(m − lateFrom)² more health and
+   * dmgLate·(m − lateFrom) more on every hit. A run that is not strong by then will not last; one that is,
+   * still has to work for it.
+   */
+  lateFrom: 8,
+  hpLate: 0.15,
+  dmgLate: 0.06,
+  /**
+   * The world answers your training: at pressure p (0 with nothing learned in the Archives, 1 with all
+   * of it), bosses have 1 + pressureBoss·p times their health, elites 1 + pressureElite·p, the swarm
+   * 1 + pressureSwarm·p, and every swarm hit lands 1 + pressureDamage·p times as hard. Training still
+   * leaves you far ahead; it no longer leaves the fight behind.
+   */
+  pressureBoss: 3,
+  pressureElite: 1.2,
+  pressureSwarm: 0.5,
+  pressureDamage: 0.6,
+  /**
    * Boss health and hits, on top of each boss's own multiplier, growing with
    * that multiplier: the first boss of a stage is close to how it always was,
    * the last ones are far tougher. Health: bossHpBase + bossHpPerMul·hpMul, at
    * most bossHpMax. Hits: up to bossDamage, reached at hpMul bossDamageAt.
    */
   bossHpBase: 1.2,
-  bossHpPerMul: 0.04,
-  bossHpMax: 2.6,
-  bossDamage: 1.35,
+  bossHpPerMul: 0.06,
+  bossHpMax: 4.5,
+  bossDamage: 1.5,
   bossDamageAt: 14,
   /** An elite's health and hits against a regular enemy's. */
   eliteHp: 16,
@@ -619,7 +637,14 @@ export function xpScale(t: number): number {
 /** Enemy health multiplier over time. */
 export function hpScale(t: number): number {
   const m = t / 60;
-  return 1 + DIFFICULTY.hpLinear * m + DIFFICULTY.hpSquare * m * m + DIFFICULTY.hpCube * m * m * m;
+  const late = Math.max(0, m - DIFFICULTY.lateFrom);
+  return 1 + DIFFICULTY.hpLinear * m + DIFFICULTY.hpSquare * m * m + DIFFICULTY.hpCube * m * m * m + DIFFICULTY.hpLate * late * late;
+}
+
+/** What every swarm hit is multiplied by at run time t (seconds), the clock held at the stage's length. */
+export function swarmDamage(t: number, length: number): number {
+  const m = Math.min(t, length) / 60;
+  return DIFFICULTY.damage + DIFFICULTY.damagePerMinute * m + DIFFICULTY.dmgLate * Math.max(0, m - DIFFICULTY.lateFrom);
 }
 
 /** How much tougher and harder-hitting a boss is than its timeline multiplier alone says (see DIFFICULTY). */
