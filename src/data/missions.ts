@@ -4,7 +4,8 @@ import { DIFFICULTY, stageById, type StageDef, type StageId, type TimelineEvent,
 
 /**
  * Story Mode: the Thousand-Year Blood War from the Emperor's side, told as
- * ten short missions. Each is a run of its own on one of the stages, with a
+ * short missions in two books: Book I, the war in ten missions; Book II, its
+ * last days told again, closer. Each is a run of its own on one of the stages, with a
  * goal (a boss to fall, a span to survive, a number of bosses to put down),
  * its own rules and timeline, a briefing before and a page after. Mission I
  * is always open; clearing one opens the next. Written for this game, in its
@@ -47,6 +48,10 @@ export interface MissionDef {
   reward: number;
   /** Rules worth saying out loud on the briefing, beyond the goal. */
   rules?: readonly string[];
+  /** Who the mission's roster bosses are drawn from, when not the stage's own (Book II's Gotei climbing to the palace). */
+  roster?: StageDef['roster'];
+  /** Every elite put down gives back this share of max health (Auswählen). */
+  eliteHeal?: number;
   brief: readonly string[];
   after: readonly string[];
 }
@@ -263,7 +268,131 @@ export const MISSIONS: readonly MissionDef[] = [
       'Even Urahara’s last plan was a plan for losing well. Karakura Town is quiet. The worlds are one. In this telling, the Emperor’s war is over.',
     ],
   },
+  // ------------------------------------------------ Book II: the last days, told again, closer.
+  {
+    id: 'auswahlen',
+    numeral: 'XI',
+    title: 'Auswählen',
+    stage: 'wahrwelt',
+    length: 480,
+    goal: { kind: 'survive' },
+    goalText: 'Hold for 8:00, taking back what your fallen knights carried.',
+    ring: 'brawler',
+    elite: 'guard',
+    events: [45, 90, 135, 180, 225, 270, 315, 360, 405, 450].map((at): TimelineEvent => ({ at, kind: 'elite', enemy: 'guard' })),
+    mods: ['swarm', 'haste'],
+    eliteHeal: 0.06,
+    hp: 2,
+    spawn: 1.3,
+    reward: 1500,
+    rules: ['Every elite you put down gives back 6% of your health.', 'A thick, fast swarm, you faster too; an elite every 45 s.'],
+    brief: [
+      'The knights who served him are falling across the palace, one after another. Their power was always his, only lent to them for a while.',
+      'Take it back. Each elite that falls returns a little of what you gave. Hold for eight minutes.',
+    ],
+    after: [
+      'Light came down over the palace, and the knights who had bled for him gave up the last of what he had given them. He did not look at them. He had never needed to.',
+    ],
+  },
+  {
+    id: 'successor',
+    numeral: 'XII',
+    title: 'The Successor',
+    stage: 'wahrwelt',
+    length: 480,
+    goal: { kind: 'bosses', count: 3 },
+    goalText: 'Defeat Renji, Rukia and Uryū.',
+    ring: 'officer',
+    elite: 'brute',
+    events: [bearer(120, 0, 1.8), bearer(240, 1, 2.8), bearer(360, 2, 4.2)],
+    bearers: ['renji', 'rukia', 'uryu'],
+    hp: 1.3,
+    reward: 1600,
+    rules: ['Uryū’s silver arrow can silence The Almighty for a while.'],
+    brief: [
+      'He named the boy his successor, and the boy took the name, the coat and the bow. It was always going to end with that bow turned the other way.',
+      'Renji and Rukia climb first. Uryū lets them clear the way.',
+    ],
+    after: [
+      'The silver arrowhead was made for his heart. It met the Emperor’s hand instead, and the hand closed on it. The Wandenreich has no need of a successor now.',
+    ],
+  },
+  {
+    id: 'climb',
+    numeral: 'XIII',
+    title: 'The Gotei Climbs',
+    stage: 'palace',
+    roster: 'gotei',
+    length: 540,
+    goal: { kind: 'boss' },
+    goalText: 'Defeat Shunsui Kyōraku.',
+    ring: 'brawler',
+    elite: 'attendant',
+    events: [
+      bearer(120, 0, 2),
+      bearer(240, 1, 3),
+      bearer(360, 2, 4.5),
+      boss(540, 'kyoraku', 13, 'Shunsui Kyōraku pushes back his hat and draws both blades', 'Captain-Commander of the Gotei 13'),
+    ],
+    bearers: ['kenpachi', 'mayuri', 'shinji'],
+    hp: 1.35,
+    reward: 1700,
+    brief: [
+      'They built a stair of their own up to the palace in the sky. Kenpachi first, as ever; Mayuri with whatever he has made since; Shinji turning every direction backwards.',
+      'And behind them, the man who commands them all now.',
+    ],
+    after: ['The new Captain-Commander staked everything on one last game. Even the best gambler loses to a man who can see every hand before it is dealt.'],
+  },
+  {
+    id: 'kyoka',
+    numeral: 'XIV',
+    title: 'Kyōka Suigetsu',
+    stage: 'wahrwelt',
+    length: 480,
+    goal: { kind: 'bosses', count: 1 },
+    goalText: 'Find the real Sōsuke Aizen, and defeat him.',
+    ring: 'officer',
+    elite: 'guard',
+    events: [bearer(150, 0, 4.5)],
+    bearers: ['aizen'],
+    hp: 1.3,
+    reward: 1800,
+    rules: ['Kyōka Suigetsu fills the field with copies of Aizen; only one of them is real.'],
+    brief: [
+      'Aizen sat bound in the dark for a very long time, and smiled through all of it. Kyōraku has let him out to stand against the Emperor.',
+      'His blade’s illusion lies to every sense there is. The Almighty sees the future, but a future can be dressed up too.',
+    ],
+    after: ['For one moment the Emperor struck at a man who was not there. Only for a moment. The real one was still smiling when he fell.'],
+  },
+  {
+    id: 'end',
+    numeral: 'XV',
+    title: 'The End of a Thousand Years',
+    stage: 'wahrwelt',
+    length: 600,
+    goal: { kind: 'boss' },
+    goalText: 'Defeat Ichigo Kurosaki, with Uryū and Aizen at his side.',
+    ring: 'officer',
+    elite: 'brute',
+    events: [bearer(240, 0, 4), bearer(244, 1, 5), boss(600, 'ichigo', 18, 'Ichigo Kurosaki comes, his blades already drawn', 'Substitute Soul Reaper')],
+    bearers: ['uryu', 'aizen'],
+    almighty: true,
+    hp: 1.4,
+    spawn: 1.3,
+    reward: 2500,
+    rules: ['You hold A · The Almighty from the first second.', 'Uryū and Aizen come together; Ichigo comes last.'],
+    brief: [
+      'It ends where every telling of him was always going to end: the boy, the arrow and the illusion, all three at once.',
+      'Hold the future in your hands, and do not let it slip, not even for a moment.',
+    ],
+    after: [
+      'The arrow, the illusion and the blade came together, as they do in the telling everyone knows. In this one the Emperor saw all three coming, and the thousand years ended the way he had always said they would.',
+    ],
+  },
 ];
+
+/** Missions in Book I: the war in ten. Book II follows. */
+export const BOOK_ONE = 10;
 
 export const MISSION_BY_ID: ReadonlyMap<string, MissionDef> = new Map(MISSIONS.map((m) => [m.id, m]));
 
@@ -291,6 +420,7 @@ export function missionStage(m: MissionDef): StageDef {
     events: [...missionSkeleton(m), ...m.events].sort((a, b) => a.at - b.at),
     hp: base.hp * (m.hp ?? 1),
     spawn: base.spawn * (m.spawn ?? 1),
+    roster: m.roster ?? base.roster,
     lastBearer: undefined,
   };
 }

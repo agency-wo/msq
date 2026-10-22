@@ -4,7 +4,7 @@ import { BANKAI_IDS } from '../src/data/bankai';
 import { GOTEI_IDS } from '../src/data/gotei';
 import { HERO_IDS } from '../src/data/heroes';
 import { KARAKURA_IDS } from '../src/data/karakura';
-import { MISSION_BY_ID, MISSIONS, missionOpen, missionStage } from '../src/data/missions';
+import { BOOK_ONE, MISSION_BY_ID, MISSIONS, missionOpen, missionStage } from '../src/data/missions';
 import { ROYAL_IDS } from '../src/data/royal';
 import { stageById } from '../src/data/stages';
 import { FEAT_BY_ID } from '../src/save/feats';
@@ -28,10 +28,11 @@ const ROSTER: Record<string, readonly string[]> = {
 };
 
 describe('Story Mode', () => {
-  it('ten missions, numbered in order, each on a real stage with a goal its timeline can meet', () => {
-    expect(MISSIONS).toHaveLength(10);
-    expect(new Set(MISSIONS.map((m) => m.id)).size).toBe(10);
-    expect(MISSIONS.map((m) => m.numeral)).toEqual(['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X']);
+  it('fifteen missions in two books, numbered in order, each on a real stage with a goal its timeline can meet', () => {
+    expect(MISSIONS).toHaveLength(15);
+    expect(BOOK_ONE).toBe(10);
+    expect(new Set(MISSIONS.map((m) => m.id)).size).toBe(MISSIONS.length);
+    expect(MISSIONS.map((m) => m.numeral)).toEqual(['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII', 'XIII', 'XIV', 'XV']);
     for (const m of MISSIONS) {
       const stage = missionStage(m);
       expect(stage.id, m.id).toBe(m.stage);
@@ -54,7 +55,8 @@ describe('Story Mode', () => {
 
   it('forced bearers belong to the stage’s roster, and every bearer slot can be filled', () => {
     for (const m of MISSIONS) {
-      const base = stageById(m.stage);
+      // A mission may draw its bosses from another roster than its ground's (the Gotei climbing to the palace).
+      const base = missionStage(m);
       const pool = base.roster ? ROSTER[base.roster] : (base.bearerPool ?? BANKAI_IDS);
       for (const id of m.bearers ?? []) expect(pool, `${m.id}: ${id}`).toContain(id);
       const slots = missionStage(m).events.filter((e) => e.kind === 'bearer').length;
@@ -128,6 +130,25 @@ describe('Story Mode', () => {
     const s = defaultSave();
     for (const m of MISSIONS.slice(0, 5)) recordMission(s, m.id, 300, true);
     expect(FEAT_BY_ID.get('story-half')?.save?.(s)).toBe(5);
-    expect(FEAT_BY_ID.get('story-all')?.goal).toBe(MISSIONS.length);
+    expect(FEAT_BY_ID.get('story-all')?.goal).toBe(BOOK_ONE);
+    expect(FEAT_BY_ID.get('story-book2')?.goal).toBe(MISSIONS.length - BOOK_ONE);
+    for (const m of MISSIONS.slice(BOOK_ONE, BOOK_ONE + 2)) recordMission(s, m.id, 300, true);
+    expect(FEAT_BY_ID.get('story-book2')?.save?.(s)).toBe(2);
+  });
+
+  it('Book II: the Gotei climb to the palace, and Auswählen heals on every elite', () => {
+    const climb = MISSION_BY_ID.get('climb');
+    if (!climb) throw new Error('climb');
+    const w = new World({ seed: 2, god: true, mission: climb });
+    expect(w.stage.id).toBe('palace');
+    expect(w.stage.roster).toBe('gotei');
+    expect(stageById('palace').roster).toBe('royal');
+    const m = MISSION_BY_ID.get('auswahlen');
+    if (!m) throw new Error('auswahlen');
+    const a = new World({ seed: 2, mission: m });
+    a.step(0, 0);
+    a.player.hp = a.player.maxHp * 0.5;
+    a.killEnemy(a.spawnEnemy(0, a.player.x + 300, a.player.y, true));
+    expect(a.player.hp).toBeCloseTo(a.player.maxHp * (0.5 + (m.eliteHeal ?? 0)), 3);
   });
 });

@@ -202,12 +202,13 @@ export function play(w: World, seconds: number, pick: Strategy, move: Mover, onS
 }
 
 /** World options for a player who bought every Archives upgrade. */
-export function maxedMeta(): Pick<WorldOptions, 'meta' | 'revives' | 'rerolls' | 'shellEvery' | 'eliteChest' | 'chestChoices' | 'bossHeal' | 'mastery' | 'pressure'> {
+export function maxedMeta(share = 1): Pick<WorldOptions, 'meta' | 'revives' | 'rerolls' | 'shellEvery' | 'eliteChest' | 'chestChoices' | 'bossHeal' | 'mastery' | 'pressure'> {
   const s = defaultSave();
   s.gold = 10_000_000;
-  for (const u of UPGRADES) while (buyUpgrade(s, u.id));
-  for (const d of MASTERY_POWERS) while (buyMastery(s, d.id));
-  s.gesang = 100;
+  // share < 1: that part of every training row, no Disciplines, that part of the Gesang (a player part of the way there).
+  for (const u of UPGRADES) while ((s.meta[u.id] ?? 0) < Math.round(u.costs.length * share) && buyUpgrade(s, u.id));
+  if (share >= 1) for (const d of MASTERY_POWERS) while (buyMastery(s, d.id));
+  s.gesang = Math.round(100 * share);
   return {
     meta: metaMods(s),
     revives: metaRevives(s),

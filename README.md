@@ -44,7 +44,7 @@ a portrait and a title. The pause and results screens break down the **damage**
 each power dealt (total, share and damage per second), and **Share** on the
 results turns the run into a picture for the phone's share sheet.
 
-Thirty-nine **Feats** give long goals (a hundred thousand kills, every letter
+Forty **Feats** give long goals (a hundred thousand kills, every letter
 awakened, Trial V, a Boss Rush under 4:00, all three fragments in one run,
 every spoil of war...),
 each paying gold once; some open one of three new looks for the Emperor
@@ -155,14 +155,19 @@ The Swarm, Giants, Shunpo, Frail, Barren). Surviving five minutes pays 100 bonus
 gold once a day and clearing it pays 300; the day keeps its own best time.
 
 **Story Mode** retells the Thousand-Year Blood War from the Emperor's side in
-ten short missions, opened one after another from the Story card on the
-title. Each has a briefing, a goal, rules of its own and a page that closes it:
+fifteen short missions over two books, opened one after another from the Story
+card on the title. Each has a briefing, a goal, rules of its own and a page that closes it:
 the desert and Tier Harribel; the Jagdarmee's hunt (survive eight minutes with
 Quilge's Jail); taking three medallions back; the Sexta under the painted sky;
 the First Invasion and Yamamoto; Silbern and Kyōraku; the Royal Guard and
 Ichibē; father and son in the Wahrwelt (Renji, Uryū, Aizen, then Ichigo); ten
 minutes against everything with The Almighty in hand; and, in another telling,
-Karakura Town and Urahara. The first clear of each pays gold; each keeps its
+Karakura Town and Urahara. Book II, The Last Days, tells the war's end again,
+closer, and asks for a trained Emperor: Auswählen (hold eight minutes, every
+elite put down giving health back); Renji, Rukia and then Uryū, the successor
+with the silver arrow; the Gotei climbing to the palace, Kenpachi, Mayuri and
+Shinji before Kyōraku; Aizen and Kyōka Suigetsu; and the end of a thousand
+years, Uryū and Aizen together and Ichigo last. The first clear of each pays gold; each keeps its
 fastest clear. Missions count for totals, the Codex and feats, never for a
 stage's own records.
 

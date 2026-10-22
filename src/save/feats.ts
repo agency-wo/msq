@@ -3,7 +3,7 @@ import { POWERS, STARTABLE_IDS } from '../data/powers';
 import { RELICS } from '../data/relics';
 import { SPOILS } from '../data/spoils';
 import { RESONANCES } from '../data/resonances';
-import { MISSIONS } from '../data/missions';
+import { BOOK_ONE, MISSIONS } from '../data/missions';
 import { STAGE_IDS, type StageId } from '../data/stages';
 import type { SaveData } from './save';
 
@@ -124,7 +124,8 @@ export const FEATS: readonly FeatDef[] = [
   { id: 'rush-fast', name: 'Racing the Dawn', desc: 'Clear a Boss Rush in under 4:00.', group: 'Modes', goal: 1, gold: 500, run: (r) => yes(r.bossRush && r.cleared && r.time < 240) },
   { id: 'daily-clear', name: 'Daily Devotion', desc: 'Clear a Daily Trial.', group: 'Modes', goal: 1, gold: 300, run: (r) => yes(r.daily && r.cleared) },
   { id: 'story-half', name: 'Half the War', desc: 'Clear five Story missions.', group: 'Modes', goal: 5, gold: 400, save: (s) => storyCleared(s) },
-  { id: 'story-all', name: 'The Thousand-Year Blood War', desc: 'Clear every Story mission.', group: 'Modes', goal: MISSIONS.length, gold: 1000, save: (s) => storyCleared(s) },
+  { id: 'story-all', name: 'The Thousand-Year Blood War', desc: 'Clear every mission of Book I.', group: 'Modes', goal: BOOK_ONE, gold: 1000, save: (s) => storyCleared(s) },
+  { id: 'story-book2', name: 'The Last Days', desc: 'Clear every mission of Book II.', group: 'Modes', goal: MISSIONS.length - BOOK_ONE, gold: 1500, save: (s) => MISSIONS.slice(BOOK_ONE).filter((m) => s.missions[m.id]?.cleared).length },
   { id: 'gauntlet-half', name: 'Halfway Through the Gauntlet', desc: 'Clear four tiers of the Gauntlet in one run.', group: 'Modes', goal: 4, gold: 800, save: (s) => s.gauntlet.tiers },
   { id: 'gauntlet-all', name: 'Every Enemy of the Wandenreich', desc: 'Clear all seven tiers of the Gauntlet.', group: 'Modes', goal: 7, gold: 2000, look: 'almighty', save: (s) => s.gauntlet.tiers },
 ];

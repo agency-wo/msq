@@ -1942,6 +1942,8 @@ export class World {
     if (!(flags & FLAG_BOSS)) this.feedOverkill(x, y);
     if (this.spoil.on) spoilKill(this, x, y, (flags & FLAG_BOSS) !== 0);
     if (E.volT[i] > 0) this.queueBurst(x, y, 44 * this.stats.size, E.volDmg[i]);
+    // Auswählen (a Story mission): an elite falling gives back some of what it carried.
+    if (flags & FLAG_ELITE && this.mission?.eliteHeal) this.heal(this.mission.eliteHeal);
     // Jagdarmee spoils: an elite may leave a second chest behind.
     if (flags & FLAG_ELITE && this.eliteChest > 0 && this.rng.next() < this.eliteChest) this.addPickup('chest', x, y);
     // The Auswählen Chalice: every fiftieth kill fills it a little.

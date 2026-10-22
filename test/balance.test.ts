@@ -19,7 +19,7 @@ function clock(t: number): string {
 
 function run(seed: number, pick: Strategy, move: Mover, god: boolean, minutes: number): string[] {
   const mission = env.MISSION ? MISSION_BY_ID.get(env.MISSION) : undefined;
-  const w = new World({ seed, god, stage: env.STAGE, mission, start: mission?.start, extra: mission?.extra, gauntlet: !!env.GAUNTLET, ...(env.META === 'max' ? maxedMeta() : {}) });
+  const w = new World({ seed, god, stage: env.STAGE, mission, start: mission?.start, extra: mission?.extra, gauntlet: !!env.GAUNTLET, ...(env.META === 'max' ? maxedMeta() : env.META === 'half' ? maxedMeta(0.5) : {}) });
   const rows: string[] = [];
   let nextReport = 30;
   let bossStart = -1;
