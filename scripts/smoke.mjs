@@ -354,7 +354,12 @@ try {
   for (const id of ['tengen', 'raikoben', 'gonryo']) {
     await go(`${BASE}?debug&seed=3&play&god&t=297&bearers=${id}`);
     await wait(400);
-    await steer(7000, { radius: 20 });
+    // Its title card: the face in a manga panel.
+    await wait(3300);
+    const face = await page.$eval('.banner.show.boss .banner-face', (c) => c.width).catch(() => 0);
+    if (!face) problems.push(`[smoke] bearer ${id}: no face on its title card`);
+    if (id === 'tengen') await shot('05a-boss-intro');
+    await steer(3700, { radius: 20 });
     log(`bearer ${id}`, { ...(await stats()), bossBar: await page.isVisible('.bossbar'), music: await page.evaluate(() => window.__msq.music) });
     await shot(`05-bearer-${id}`);
   }

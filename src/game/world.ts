@@ -149,6 +149,8 @@ export interface Banner {
   sub: string;
   /** What a boss says (or does) as it arrives. */
   quote?: string;
+  /** A boss's sprite, for the portrait on its title card (filled in by the app as the card is shown). */
+  sprite?: string;
 }
 
 /** See World.bossMemo. */

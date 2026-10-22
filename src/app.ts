@@ -4,6 +4,7 @@ import { Sfx } from './audio/sfx';
 import { Input } from './core/input';
 import { FixedLoop } from './core/loop';
 import { DT as HIT_STOP_STEP } from './config';
+import { newestBossSprite } from './render/names';
 import { POWER_BY_ID, STARTING_POWER } from './data/powers';
 import { STAGE_BY_ID, stageById, TRIAL_NAMES, type StageId } from './data/stages';
 import { CHAPTER_BY_ID, type Chapter } from './data/story';
@@ -528,6 +529,8 @@ export class App {
         // Only the latest title card is shown; they never queue up behind each other.
         const b = w.banners[w.banners.length - 1];
         if (b.kind === 'event') this.sawEvent = true;
+        // A boss's title card carries its face.
+        if (b.kind === 'boss' && !b.sprite) b.sprite = newestBossSprite(w) ?? undefined;
         this.ui.banner(b);
         w.banners.length = 0;
       }

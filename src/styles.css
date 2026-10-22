@@ -4050,3 +4050,99 @@ button:focus-visible {
 .backup .row-btns {
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
 }
+
+/* ------------------------------------------------- Boss title cards */
+
+/* A boss arrives in a manga panel: its face on paper inside radiating speed lines, a cut corner and a red
+   offset shadow, sliding in a beat before its name. */
+.banner.with-face {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 14px;
+  padding: 12px 16px 12px 14px;
+  text-align: left;
+}
+
+.banner-text {
+  min-width: 0;
+}
+
+.banner.with-face .banner-kicker {
+  margin-right: 0;
+}
+
+.banner.with-face .banner-title {
+  font-size: clamp(26px, 8vw, 40px);
+  overflow-wrap: anywhere;
+}
+
+.banner-panel {
+  position: relative;
+  width: 104px;
+  height: 104px;
+  overflow: hidden;
+  border: 3px solid var(--ink-0);
+  background: var(--paper);
+  clip-path: polygon(0 0, 100% 0, 100% 80%, 80% 100%, 0 100%);
+  box-shadow: 5px 5px 0 var(--blood);
+  transform: translateX(-26px) rotate(-4deg);
+  opacity: 0;
+  transition:
+    transform 0.4s cubic-bezier(0.2, 0.9, 0.2, 1.2),
+    opacity 0.2s;
+}
+
+/* Speed lines, radiating from the face. */
+.banner-panel::before {
+  content: '';
+  position: absolute;
+  inset: -40%;
+  background: repeating-conic-gradient(from 0deg at 50% 50%, rgba(10, 10, 12, 0.62) 0deg 2.2deg, rgba(10, 10, 12, 0) 2.2deg 9deg);
+}
+
+.banner-face {
+  position: relative;
+  display: block;
+  width: 104px;
+  height: 104px;
+}
+
+.banner.show .banner-panel {
+  transform: rotate(-2deg);
+  opacity: 1;
+}
+
+.banner.with-face .banner-text {
+  transform: translateX(16px);
+  opacity: 0;
+  transition:
+    transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) 0.12s,
+    opacity 0.25s 0.12s;
+}
+
+.banner.show.with-face .banner-text {
+  transform: none;
+  opacity: 1;
+}
+
+@media (max-width: 360px) {
+  .banner-panel,
+  .banner-face {
+    width: 84px;
+    height: 84px;
+  }
+
+  .banner.with-face {
+    gap: 10px;
+    padding: 10px 10px 10px 10px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .banner-panel,
+  .banner.with-face .banner-text {
+    transition: opacity 0.2s;
+    transform: none;
+  }
+}

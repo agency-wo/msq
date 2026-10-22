@@ -5,6 +5,8 @@ import { HERO_IDS } from '../data/heroes';
 import { ARRANCAR_IDS } from '../data/arrancar';
 import { KARAKURA_IDS } from '../data/karakura';
 import { ROYAL_IDS } from '../data/royal';
+import { FLAG_BOSS } from '../game/constants';
+import type { World } from '../game/world';
 
 /** Enemies drawn with another enemy's sprite. */
 const SPRITE_NAME: Readonly<Record<string, string>> = { captain: 'cap_senbonzakura', golden: 'ganju', mirage: 'heroes_aizen' };
@@ -53,4 +55,15 @@ export function bossSpriteName(type: number, variant: number, phase: number): st
   if (id === 'harribel') return 'harribel_tiburon';
   if (id === 'royal' && base === 'royal_kirio') return 'royal_kirio_slim';
   return base;
+}
+
+/** The boss that arrived last (the highest uid still standing), as the sprite it shows now; null with none on the field. */
+export function newestBossSprite(w: World): string | null {
+  const E = w.en;
+  let best = -1;
+  for (let i = 0; i < E.n; i++) {
+    if (E.dead[i] || !(E.flags[i] & FLAG_BOSS)) continue;
+    if (best < 0 || E.uid[i] > E.uid[best]) best = i;
+  }
+  return best < 0 ? null : bossSpriteName(E.type[best], E.variant[best], w.phaseOf(best));
 }

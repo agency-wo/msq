@@ -286,6 +286,7 @@ export class UI {
   private readonly tipEl: HTMLElement;
   private tipTimer = 0;
   private readonly bannerEl: HTMLElement;
+  private readonly faces = new Map<string, HTMLCanvasElement>();
   private readonly screen: HTMLElement;
   private readonly rotateEl: HTMLElement;
   private readonly debugEl: HTMLElement;
@@ -467,13 +468,19 @@ export class UI {
       spoil: 'Spoils of war',
     };
     const kicker = KICKER[b.kind];
-    this.bannerEl.replaceChildren(
-      el('div', 'banner-kicker', kicker),
-      el('div', 'banner-title', b.title),
-      el('div', 'banner-sub', b.sub),
-    );
-    if (b.quote) this.bannerEl.append(el('div', 'banner-quote', b.quote));
-    this.bannerEl.className = `banner show ${b.kind}`;
+    const text = el('div', 'banner-text');
+    text.append(el('div', 'banner-kicker', kicker), el('div', 'banner-title', b.title), el('div', 'banner-sub', b.sub));
+    if (b.quote) text.append(el('div', 'banner-quote', b.quote));
+    // A boss arrives in a manga panel: its face in a cut-cornered frame of speed lines, then its name.
+    const face = b.kind === 'boss' && b.sprite ? this.bannerFace(b.sprite) : null;
+    if (face) {
+      const panel = el('div', 'banner-panel');
+      panel.append(face);
+      this.bannerEl.replaceChildren(panel, text);
+    } else {
+      this.bannerEl.replaceChildren(text);
+    }
+    this.bannerEl.className = `banner show ${b.kind}${face ? ' with-face' : ''}`;
     window.clearTimeout(this.bannerTimer);
     this.bannerTimer = window.setTimeout(
       () => {
@@ -481,6 +488,17 @@ export class UI {
       },
       b.quote ? 3800 : 2600,
     );
+  }
+
+  /** A boss's face for its title card, drawn once per boss and kept. */
+  private bannerFace(sprite: string): HTMLCanvasElement | null {
+    let c = this.faces.get(sprite);
+    if (!c) {
+      c = el('canvas', 'banner-face');
+      if (!drawSprite(c, sprite, 104, undefined, true)) return null;
+      this.faces.set(sprite, c);
+    }
+    return c;
   }
 
   setRotate(show: boolean): void {
