@@ -4154,3 +4154,21 @@ button:focus-visible {
   border-color: var(--gold);
   box-shadow: inset 0 0 0 1px rgba(227, 178, 74, 0.45);
 }
+
+/* -------------------------------------------------------- Treasures */
+
+/* A treasure card: not a relic but spent at once, so it is ruled in gold with a coin-bright badge. */
+.card.tone-treasure {
+  border-color: var(--gold);
+  box-shadow: 4px 4px 0 var(--gold);
+}
+
+.card.tone-treasure .card-badge {
+  background: var(--gold);
+  color: var(--ink-0);
+}
+
+/* The golden chest's board: a gold rule under its title. */
+.board.chest-gold .board-title {
+  text-shadow: 3px 3px 0 var(--gold) !important;
+}

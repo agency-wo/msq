@@ -47,7 +47,16 @@ export type RelicSpecial =
   | 'rikka'
   | 'shunko'
   | 'engetsu'
-  | 'hat';
+  | 'hat'
+  // Quincy gear from chests.
+  | 'ledger'
+  | 'seelebelt'
+  | 'gintocase'
+  | 'shellrelic'
+  | 'cloak'
+  | 'kaiserseal'
+  | 'kaisereye'
+  | 'chalice';
 
 export interface RelicDef {
   id: string;
@@ -131,6 +140,53 @@ export const RELICS: readonly RelicDef[] = [
     icon: 'glove',
     desc: '-20% damage until 8:00, then the glove comes off: +60%',
     special: 'sanrei',
+  },
+  // Quincy gear: more of the Wandenreich's stores.
+  { id: 'horn', name: 'Jagdarmee Horn', rarity: 'common', icon: 'banner', desc: '+12% damage to bosses and elites', mods: { bossDmg: 0.12 } },
+  { id: 'ledger', name: 'Treasurer’s Ledger', rarity: 'common', icon: 'book', desc: '+20% gold from this run', special: 'ledger' },
+  { id: 'letzt-sigil', name: 'Letzt Stil Sigil', rarity: 'rare', icon: 'flame', desc: '+30% damage while below 40% health', mods: { lowHpDmg: 0.3 } },
+  {
+    id: 'seele-belt',
+    name: 'Seele Schneider Belt',
+    rarity: 'rare',
+    icon: 'blade',
+    desc: 'Every 8 s, a ring of spirit blades cuts everything round you',
+    special: 'seelebelt',
+  },
+  {
+    id: 'ginto-case',
+    name: 'Gintō Case',
+    rarity: 'rare',
+    icon: 'tube',
+    desc: 'Every 10 s, Heizen: a pillar of light strikes the toughest enemy near you',
+    special: 'gintocase',
+  },
+  { id: 'reishi-shell', name: 'Reishi Shell', rarity: 'rare', icon: 'shield', desc: 'A shield that turns one blow, grown back every 30 s', special: 'shellrelic' },
+  { id: 'schatten-cloak', name: 'Schatten Cloak', rarity: 'rare', icon: 'feather', desc: 'After a blow lands, you are untouchable twice as long', special: 'cloak' },
+  {
+    id: 'kaiser-seal',
+    name: 'The Emperor’s Seal',
+    rarity: 'legendary',
+    icon: 'crown',
+    desc: 'Every boss you defeat: +8% damage for the rest of the run',
+    special: 'kaiserseal',
+  },
+  {
+    id: 'kaiser-eye',
+    name: 'Kaiser’s Eye',
+    rarity: 'legendary',
+    icon: 'eye',
+    desc: '+15% critical chance, and critical hits strike 30% harder',
+    mods: { critChance: 0.15 },
+    special: 'kaisereye',
+  },
+  {
+    id: 'chalice',
+    name: 'Auswählen Chalice',
+    rarity: 'legendary',
+    icon: 'drop',
+    desc: 'Every 50 kills: heal 5% and +1% max health (at most +25%)',
+    special: 'chalice',
   },
   // Opened by feats.
   { id: 'founder', name: "Founder's Medallion", rarity: 'legendary', icon: 'circles', desc: 'Bankai you take back arrive at Lv 2', locked: true },

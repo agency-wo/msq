@@ -721,6 +721,11 @@ export class Renderer {
           L.auras.add(f.glow, q.x, q.y, 1.5, 1.5, 0, 0xff3d5e, 0.45 + Math.sin(now * 4) * 0.15);
           L.pickups.add(f.chestBlack, q.x, q.y + bob, 0.6, 0.6);
           break;
+        case 'chestGold':
+          L.auras.add(f.glow, q.x, q.y, 1.8, 1.8, 0, 0xffd27a, 0.55 + Math.sin(now * 5) * 0.18);
+          L.auras.add(f.ring, q.x, q.y, 0.45, 0.45, now, 0xffe6a0, 0.5);
+          L.pickups.add(f.chestGold, q.x, q.y + bob, 0.62, 0.62);
+          break;
         case 'medallion': {
           const aura = q.bankai ? (BANKAI_BY_ID.get(q.bankai)?.aura ?? 0xffcb5c) : 0xffcb5c;
           L.auras.add(f.glow, q.x, q.y, 2, 2, 0, aura, 0.55 + Math.sin(now * 5) * 0.2);
@@ -1331,7 +1336,7 @@ export class Renderer {
     const f = this.atlas.frames;
     this.drawBossArrows(w, v, sw, sh);
     for (const q of w.pickups) {
-      if (q.kind !== 'chest' && q.kind !== 'chestBlack' && q.kind !== 'medallion' && q.kind !== 'shrine' && q.kind !== 'fragment') continue;
+      if (q.kind !== 'chest' && q.kind !== 'chestBlack' && q.kind !== 'chestGold' && q.kind !== 'medallion' && q.kind !== 'shrine' && q.kind !== 'fragment') continue;
       const dx = q.x - v.cx;
       const dy = q.y - v.cy;
       if (Math.abs(dx) < v.halfW - 8 && Math.abs(dy) < v.halfH - 8) continue;
@@ -1340,7 +1345,7 @@ export class Renderer {
       // Arrows at the top stay below the HUD and its power tray.
       const ky = (dy < 0 ? sh / 2 - 118 : sh / 2 - 48) / Math.max(1e-6, Math.abs(Math.sin(ang)));
       const k = Math.min(kx, ky);
-      const tint = q.kind === 'chest' ? 0xffd27a : q.kind === 'medallion' || q.kind === 'fragment' ? 0xffe2a0 : q.kind === 'shrine' ? 0x9fdcff : 0xff5a78;
+      const tint = q.kind === 'chest' || q.kind === 'chestGold' ? 0xffd27a : q.kind === 'medallion' || q.kind === 'fragment' ? 0xffe2a0 : q.kind === 'shrine' ? 0x9fdcff : 0xff5a78;
       const s = q.kind === 'medallion' || q.kind === 'shrine' || q.kind === 'fragment' ? 0.9 : 0.7;
       this.L.hud.add(f.pointer, sw / 2 + Math.cos(ang) * k, sh / 2 + Math.sin(ang) * k, s, s, ang, tint, 0.95);
     }

@@ -86,6 +86,7 @@ import {
   MF_ENEMY,
   MS_CIRCLE,
   FLAG_STAMPEDE,
+  FX_SHARD,
   ZK_MIRE,
   ZF_ENEMY,
   ZF_SLOWS,
@@ -98,7 +99,8 @@ import {
   MS_LINE,
 } from './constants';
 import { blinkAI, bossAI, casterAI, chargeAI, COMMANDER_HEAT, eliteAI, eventAI, HARRIBEL_RELEASED, ICHIGO_MASKED, updateEnemyBullets } from './hostile';
-import { generateOffers, rollRelics, type ChestKind, type Offer } from './offers';
+import { generateOffers, rollChest, rollRelics, type ChestCard, type ChestKind, type Offer } from './offers';
+import { cacheGold, TREASURES, type TreasureId } from '../data/treasures';
 import { AYON_RAGE, NEL_RELEASED, OVERKILL_MAX } from './signatures';
 import { GRIMMJOW_RELEASED } from './lasnoches';
 import {
@@ -122,7 +124,7 @@ import { newPowerState, refreshPowerStats, syncPower, updatePowers, type PowerSt
 import { BASE_HP, computeStats, damageMultiplier, LOW_HP, scaleMods, type StatMods, type Stats } from './stats';
 import { xpToNext } from './xp';
 
-export type PickupKind = 'chest' | 'chestBlack' | 'heart' | 'magnet' | 'nuke' | 'medallion' | 'shrine' | 'fragment' | 'spoil';
+export type PickupKind = 'chest' | 'chestBlack' | 'chestGold' | 'heart' | 'magnet' | 'nuke' | 'medallion' | 'shrine' | 'fragment' | 'spoil';
 
 export interface Pickup {
   kind: PickupKind;
@@ -283,7 +285,7 @@ const RUSH_HP = [1, 0.8, 0.55, 0.36];
 const RUSH_DMG = [0.6, 0.75, 0.85, 0.9];
 
 /** Pickups you walk to rather than hoover up: never pulled by the magnet, never dropped for space. */
-const BIG_PICKUPS: ReadonlySet<PickupKind> = new Set<PickupKind>(['chest', 'chestBlack', 'medallion', 'shrine', 'fragment', 'spoil']);
+const BIG_PICKUPS: ReadonlySet<PickupKind> = new Set<PickupKind>(['chest', 'chestBlack', 'chestGold', 'medallion', 'shrine', 'fragment', 'spoil']);
 
 /** Blut Rush: kills chained without being hit, each tier adding damage and speed while the chain holds. */
 export const RUSH_TIERS = [60, 200, 500] as const;
@@ -554,6 +556,17 @@ export class World {
   private clockCd = 20;
   private sigilCd = 6;
   private hasClock = false;
+  /** Chest gear: the Seele Schneider Belt and the Gintō Case on their clocks, the Schatten Cloak, the Emperor's Seal, Kaiser's Eye, the Auswählen Chalice. */
+  private hasBelt = false;
+  private beltCd = 8;
+  private hasCase = false;
+  private caseCd = 10;
+  private hasCloak = false;
+  private hasKaiserSeal = false;
+  private hasKaiserEye = false;
+  private hasChalice = false;
+  private chaliceKills = 0;
+  private chaliceHp = 0;
   private hasSigil = false;
   private hasSanrei = false;
   private sanreiOff = false;
@@ -1692,6 +1705,8 @@ export class World {
     const crit = !noCrit && this.rng.next() < this.stats.critChance;
     const vul = E.vulnT[i] > 0 ? 1 + E.vulnK[i] : 1;
     let dmg = base * this.dmgMul * vul * (crit ? this.stats.critMult : 1);
+    // Kaiser's Eye: critical hits strike harder still.
+    if (crit && this.hasKaiserEye) dmg *= 1.3;
     // Sternritter discipline (and the like): more against bosses and elites; Letzt Stil: more when close to falling.
     if (this.stats.bossDmg > 0 && E.flags[i] & (FLAG_BOSS | FLAG_ELITE)) dmg *= 1 + this.stats.bossDmg;
     if (this.stats.lowHpDmg > 0 && this.player.hp < this.player.maxHp * LOW_HP) dmg *= 1 + this.stats.lowHpDmg;
@@ -1852,7 +1867,21 @@ export class World {
     if (E.volT[i] > 0) this.queueBurst(x, y, 44 * this.stats.size, E.volDmg[i]);
     // Jagdarmee spoils: an elite may leave a second chest behind.
     if (flags & FLAG_ELITE && this.eliteChest > 0 && this.rng.next() < this.eliteChest) this.addPickup('chest', x, y);
+    // The Auswählen Chalice: every fiftieth kill fills it a little.
+    if (this.hasChalice && ++this.chaliceKills % 50 === 0) {
+      this.heal(0.05);
+      if (this.chaliceHp < 0.25 - 1e-9) {
+        this.chaliceHp += 0.01;
+        this.pactMods.push({ maxHp: 0.01 });
+        this.recomputeStats();
+      }
+    }
     if (flags & FLAG_BOSS) {
+      // The Emperor's Seal: every boss put down adds to your strength.
+      if (this.hasKaiserSeal) {
+        this.pactMods.push({ dmg: 0.08 });
+        this.recomputeStats();
+      }
       // Auswählen harvest: a little of the fallen boss's power comes back to you.
       if (this.bossHeal > 0) this.heal(this.bossHeal);
       this.hitStop = Math.max(this.hitStop, 0.18);
@@ -1912,7 +1941,8 @@ export class World {
         // A sealed rift or a caught runner pays out.
         const golden = def.id === 'golden';
         this.gold += golden ? 80 : 40;
-        this.addPickup('chest', x, y);
+        // A caught runner was carrying the good chest.
+        this.addPickup(golden ? 'chestGold' : 'chest', x, y);
         if (golden) this.addPickup('heart', x + 20, y);
         for (let k = 0; k < (golden ? 12 : 6); k++) {
           const a = this.rng.next() * TAU;
@@ -1996,7 +2026,8 @@ export class World {
     this.takenSince += lost;
     // The Scales Turned: part of every wound turns straight back.
     if (this.resonances.has('scales') && lost > 0) this.credit('antithesis', () => this.scalesTurned(lost));
-    p.iframes = PLAYER.iframes;
+    // The Schatten Cloak: after a blow, into the shadows for twice as long.
+    p.iframes = PLAYER.iframes * (this.hasCloak ? 2 : 1);
     this.breakChain();
     this.shake = Math.max(this.shake, 5);
     this.sound('hurt');
@@ -2431,7 +2462,8 @@ export class World {
     switch (q.kind) {
       case 'chest':
       case 'chestBlack':
-        this.gainChest(q.kind === 'chest' ? 'brown' : 'black');
+      case 'chestGold':
+        this.gainChest(q.kind === 'chest' ? 'brown' : q.kind === 'chestBlack' ? 'black' : 'gold');
         this.sound('chest');
         break;
       case 'medallion':
@@ -2471,7 +2503,7 @@ export class World {
   private gainChest(kind: ChestKind): void {
     if (this.stress > 0) return;
     if (this.mods.has('barren') || this.chestGold) {
-      const amount = kind === 'black' ? 150 : 50;
+      const amount = kind === 'gold' ? 300 : kind === 'black' ? 150 : 50;
       this.gold += amount;
       this.messages.push({ text: `Only gold inside: +${amount}`, kind: 'info' });
       return;
@@ -2731,6 +2763,31 @@ export class World {
         this.sound('freeze');
       }
     }
+    if (this.hasBelt) {
+      this.beltCd -= DT;
+      if (this.beltCd <= 0) {
+        // Seele Schneider: a ring of spirit blades whirls out and cuts.
+        this.beltCd = 8;
+        this.shockwave(120 * this.stats.size, 20 + this.level * 2, 220);
+        for (let k = 0; k < 8; k++) {
+          const a = (k / 8) * TAU;
+          this.spawnFx(FX_SHARD, this.player.x, this.player.y, Math.cos(a) * 320, Math.sin(a) * 320, 0.35, 10, 4, 1, a, 0, 0x9fdcff, LAYER_ADD);
+        }
+        this.sound('blade');
+      }
+    }
+    if (this.hasCase) {
+      this.caseCd -= DT;
+      if (this.caseCd <= 0) {
+        // Heizen from a Gintō tube: a pillar of light on the toughest thing near you.
+        this.caseCd = 10;
+        const j = this.toughestNear(340);
+        if (j >= 0) {
+          strikeAt(this, this.en.x[j], this.en.y[j], 60 + this.level * 4, 46 * this.stats.size, null);
+          this.sound('strike');
+        }
+      }
+    }
     if (this.hasSigil) {
       this.sigilCd -= DT;
       if (this.sigilCd <= 0) {
@@ -2743,6 +2800,26 @@ export class World {
         this.sound('strike');
       }
     }
+  }
+
+  /** The enemy with the most health within R of you, bosses first; -1 with none. */
+  private toughestNear(R: number): number {
+    const E = this.en;
+    const p = this.player;
+    let best = -1;
+    let score = -1;
+    for (let i = 0; i < E.n; i++) {
+      if (E.dead[i] || E.charmT[i] > 0) continue;
+      const dx = E.x[i] - p.x;
+      const dy = E.y[i] - p.y;
+      if (dx * dx + dy * dy > R * R) continue;
+      const s = E.hp[i] + (E.flags[i] & FLAG_BOSS ? 1e9 : 0);
+      if (s > score) {
+        score = s;
+        best = i;
+      }
+    }
+    return best;
   }
 
   /** Reishi Storm: mana orbs fall all over the screen for a while. */
@@ -2825,6 +2902,53 @@ export class World {
 
   /** Cards on every level-up board: three, more with the Emperor's Foresight. */
   choices = 3;
+
+  /** A chest's cards: relics, with treasures mixed in (see rollChest). */
+  chestCards(kind: ChestKind): ChestCard[] {
+    const pool = RELICS.filter((r) => (!r.locked || this.relicsOpen.has(r.id)) && this.relicUseful(r.id));
+    const treasures: ChestCard[] = [];
+    for (const t of TREASURES) {
+      if (t.id !== 'surge') {
+        treasures.push({ kind: 'treasure', treasure: t.id });
+        continue;
+      }
+      // A power surge names one of your powers that can still rise.
+      const can = this.powers.filter((ps) => ps.level < upgradeCap(ps.def) && ps.def.group !== 'ultimate');
+      if (can.length > 0) treasures.push({ kind: 'treasure', treasure: 'surge', power: can[this.rng.int(can.length)].def.id });
+    }
+    return rollChest(pool, new Set(this.relics.map((r) => r.id)), kind, this.rng, spoilChestChoices(this) + this.chestChoices + (kind === 'gold' ? 1 : 0), treasures);
+  }
+
+  /** Spend a treasure from a chest. */
+  takeTreasure(id: TreasureId, power?: string): void {
+    switch (id) {
+      case 'cache': {
+        const g = cacheGold(this.t);
+        this.gold += g;
+        this.messages.push({ text: `+${g} gold`, kind: 'info' });
+        break;
+      }
+      case 'spring':
+        this.pactMods.push({ maxHp: 0.1 });
+        this.recomputeStats();
+        this.player.hp = this.player.maxHp;
+        break;
+      case 'surge':
+        if (power) this.addPower(power);
+        break;
+      case 'crystal':
+        this.pendingLevelUps++;
+        break;
+      case 'sigil':
+        this.rerolls++;
+        break;
+      case 'verse':
+        this.pactMods.push({ dmg: 0.05 });
+        this.recomputeStats();
+        break;
+    }
+    this.sound('level');
+  }
 
   relicChoices(kind: ChestKind): RelicDef[] {
     const pool = RELICS.filter((r) => (!r.locked || this.relicsOpen.has(r.id)) && this.relicUseful(r.id));
@@ -3309,6 +3433,14 @@ export class World {
     if (def.special === 'stopclock') this.hasClock = true;
     if (def.special === 'wildsigil') this.hasSigil = true;
     if (def.special === 'sanrei') this.hasSanrei = true;
+    if (def.special === 'ledger') this.goldBonus *= 1.2;
+    if (def.special === 'seelebelt') this.hasBelt = true;
+    if (def.special === 'gintocase') this.hasCase = true;
+    if (def.special === 'shellrelic') this.shellEvery = this.shellEvery > 0 ? Math.min(this.shellEvery, 30) : 30;
+    if (def.special === 'cloak') this.hasCloak = true;
+    if (def.special === 'kaiserseal') this.hasKaiserSeal = true;
+    if (def.special === 'kaisereye') this.hasKaiserEye = true;
+    if (def.special === 'chalice') this.hasChalice = true;
     if (def.boss && def.special) gainSpoil(this, def.special);
     this.recomputeStats();
     // Uryū's arrowhead counts toward The Almighty.

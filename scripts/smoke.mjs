@@ -350,6 +350,18 @@ try {
     await shot(`04d-event-${kind}`);
   }
 
+  // 5e. A golden chest: four cards, a legendary first and a treasure among them.
+  await go(`${BASE}?debug&seed=7&play&god&t=200&give=xaxis5`);
+  await wait(400);
+  await page.evaluate(() => window.__msq.world.pendingChests.push('gold'));
+  await page.waitForSelector('.board.chest-gold .card');
+  const goldCards = await page.$$eval('.board.chest-gold .card', (c) => ({ n: c.length, treasure: c.some((e) => e.classList.contains('tone-treasure')), legendary: c[0].classList.contains('tone-legendary') }));
+  log('golden chest', goldCards);
+  if (goldCards.n !== 4 || !goldCards.treasure || !goldCards.legendary) problems.push(`[smoke] golden chest: ${JSON.stringify(goldCards)}`);
+  await shot('04e-golden-chest');
+  await page.tap('.board.chest-gold .card.tone-treasure');
+  await wait(300);
+
   // 6. Medallion bearers: each fights with its bankai and warns before it hits.
   for (const id of ['tengen', 'raikoben', 'gonryo']) {
     await go(`${BASE}?debug&seed=3&play&god&t=297&bearers=${id}`);

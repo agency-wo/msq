@@ -3174,6 +3174,7 @@ function specs(): Spec[] {
     { name: 'splat2', w: 64, h: 64, draw: splat(37) },
     { name: 'chest', w: 44, h: 38, draw: chest('#2a1d12', '#3a2818', '#e2b552', 'rgba(255,200,90,0.35)') },
     { name: 'chestBlack', w: 44, h: 38, draw: chest('#0e0c14', '#1c1828', '#f0c869', 'rgba(255,60,90,0.45)') },
+    { name: 'chestGold', w: 44, h: 38, draw: chest('#9a6e22', '#e2b04a', '#fff0b0', 'rgba(255,220,120,0.55)') },
     { name: 'medallion', w: 40, h: 40, draw: medallion },
     { name: 'heart', w: 32, h: 32, draw: heart },
     { name: 'magnet', w: 36, h: 36, draw: magnet },

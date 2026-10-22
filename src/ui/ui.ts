@@ -11,7 +11,8 @@ import { PACT_BY_ID, type PactDef } from '../data/shrines';
 import { SPOILS } from '../data/spoils';
 import { MAX_TRIAL, STAGES, stageById, TRIAL_NAMES, trialBlurb, type StageId } from '../data/stages';
 import { CHAPTERS, type Chapter } from '../data/story';
-import type { ChestKind, Offer } from '../game/offers';
+import type { ChestCard, ChestKind, Offer } from '../game/offers';
+import { TREASURE_BY_ID } from '../data/treasures';
 import type { Banner, World } from '../game/world';
 import { drawEmperor, drawSprite } from '../render/atlas';
 import { bossSpriteName, enemySpriteName } from '../render/names';
@@ -161,7 +162,7 @@ interface CardSpec {
   credit?: string;
   badge?: string;
   desc: string;
-  tone?: Rarity | 'attr' | 'bankai' | 'resonance' | 'pact';
+  tone?: Rarity | 'attr' | 'bankai' | 'resonance' | 'pact' | 'treasure';
   /** A pact's price, in red under the description. */
   cost?: string;
   /** Level after picking this card, out of the most it can reach. */
@@ -938,20 +939,29 @@ export class UI {
     this.lock();
   }
 
-  showChest(kind: ChestKind, relics: readonly RelicDef[], onPick: (id: string | null) => void, tip: string | null = null): void {
+  showChest(kind: ChestKind, cards: readonly ChestCard[], onPick: (card: ChestCard | null) => void, tip: string | null = null): void {
     const p = this.open(`board chest-${kind}`);
     p.append(
-      el('div', 'board-kicker', kind === 'black' ? 'Boss reward' : 'Treasure'),
-      el('h2', 'board-title', kind === 'black' ? 'Black chest' : 'Relic chest'),
+      el('div', 'board-kicker', kind === 'black' ? 'Boss reward' : kind === 'gold' ? 'A rare find' : 'Treasure'),
+      el('h2', 'board-title', kind === 'black' ? 'Black chest' : kind === 'gold' ? 'Golden chest' : 'Relic chest'),
     );
     if (tip) p.append(el('p', 'board-tip', tip));
     const list = el('div', 'cards');
-    if (relics.length === 0) {
+    if (cards.length === 0) {
       list.append(this.card({ icon: 'coin', color: '#ffd27a', title: 'Gold', desc: 'Only gold inside: +50.' }, () => onPick(null)));
     }
-    for (const r of relics) {
-      const spec: CardSpec = { icon: r.icon, color: RARITY_COLOR[r.rarity], title: r.name, badge: RARITY_LABEL[r.rarity], desc: r.desc, tone: r.rarity };
-      list.append(this.card(spec, () => onPick(r.id)));
+    for (const c of cards) {
+      if (c.kind === 'relic') {
+        const r = c.relic;
+        const spec: CardSpec = { icon: r.icon, color: RARITY_COLOR[r.rarity], title: r.name, badge: RARITY_LABEL[r.rarity], desc: r.desc, tone: r.rarity };
+        list.append(this.card(spec, () => onPick(c)));
+        continue;
+      }
+      const t = TREASURE_BY_ID.get(c.treasure);
+      if (!t) continue;
+      const power = c.power ? POWER_BY_ID.get(c.power) : undefined;
+      const desc = c.treasure === 'surge' && power ? `${power.name} rises a level.` : t.desc;
+      list.append(this.card({ icon: power?.icon ?? t.icon, letter: power?.letter, color: t.color, title: t.name, badge: 'Treasure', desc, tone: 'treasure' }, () => onPick(c)));
     }
     p.append(list);
     this.lock();

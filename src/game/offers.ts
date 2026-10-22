@@ -1,4 +1,5 @@
 import type { Rng } from '../core/rng';
+import type { TreasureId } from '../data/treasures';
 import type { PassiveDef } from '../data/passives';
 import { upgradeCap, type PowerDef } from '../data/powers';
 import type { Rarity, RelicDef } from '../data/relics';
@@ -113,7 +114,13 @@ export function generateOffers(input: OfferInput, rng: Rng, count = 3): Offer[] 
   return out;
 }
 
-export type ChestKind = 'brown' | 'black';
+export type ChestKind = 'brown' | 'black' | 'gold';
+
+/** One card on a chest's board: a relic, or a treasure (a power surge names the power it raises). */
+export type ChestCard = { kind: 'relic'; relic: RelicDef } | { kind: 'treasure'; treasure: TreasureId; power?: string };
+
+/** How often a brown chest's last card is a treasure. */
+export const TREASURE_CHANCE = 0.4;
 
 const RARITY_WEIGHT: Readonly<Record<Rarity, number>> = { common: 70, rare: 26, legendary: 4 };
 
@@ -142,4 +149,35 @@ export function rollRelics(
   const out: RelicDef[] = [];
   while (out.length < count && pool.length > 0) out.push(drawWeighted(pool, rng));
   return out;
+}
+
+/**
+ * A chest's cards. A brown chest holds relics, its last card a treasure four
+ * times in ten (always, if the relics have run out); a black chest holds
+ * legendaries; a golden chest holds a legendary, a treasure and the rest of
+ * its cards in relics. `treasures` are the cards this run can use.
+ */
+export function rollChest(defs: readonly RelicDef[], owned: ReadonlySet<string>, chest: ChestKind, rng: Rng, count: number, treasures: readonly ChestCard[]): ChestCard[] {
+  const pick = (): ChestCard | null => (treasures.length > 0 ? treasures[rng.int(treasures.length)] : null);
+  if (chest === 'gold') {
+    const legend = rollRelics(defs, owned, 'black', rng, 1);
+    const taken = new Set([...owned, ...legend.map((r) => r.id)]);
+    const cards: ChestCard[] = legend.map((relic) => ({ kind: 'relic', relic }));
+    const t = pick();
+    if (t) cards.push(t);
+    for (const relic of rollRelics(defs, taken, 'brown', rng, Math.max(0, count - cards.length))) cards.push({ kind: 'relic', relic });
+    return cards;
+  }
+  const cards: ChestCard[] = rollRelics(defs, owned, chest, rng, count).map((relic) => ({ kind: 'relic', relic }));
+  if (chest === 'brown') {
+    const short = cards.length < count;
+    if (short || rng.next() < TREASURE_CHANCE) {
+      const t = pick();
+      if (t) {
+        if (short) cards.push(t);
+        else cards[cards.length - 1] = t;
+      }
+    }
+  }
+  return cards;
 }

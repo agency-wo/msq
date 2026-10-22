@@ -629,9 +629,10 @@ export class App {
     const kind = w.pendingChests[0];
     this.ui.showChest(
       kind,
-      w.relicChoices(kind),
-      (id) => {
-        if (id) w.addRelic(id);
+      w.chestCards(kind),
+      (card) => {
+        if (card?.kind === 'relic') w.addRelic(card.relic.id);
+        else if (card?.kind === 'treasure') w.takeTreasure(card.treasure, card.power);
         else w.gold += 50;
         w.pendingChests.shift();
         this.continueFlow();
