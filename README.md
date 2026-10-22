@@ -19,8 +19,9 @@ five it awakens (at three once you have taken back all six bankai across your
 runs). It stops time every 24 s and
 rewrites the future (enemy fire vanishes, everything on screen is struck down).
 All art is drawn in code: the Emperor, the Sternritter, the Gotei 13 captains,
-the Royal Guard, Tier Harribel and the other named characters are chibi
-homages to their Bleach designs; everything else (Hollows, Soul Reaper
+the Royal Guard, Tier Harribel and the other named characters are manga
+homages to their Bleach designs, lanky figures drawn with one shared kit
+(src/render/cast) and known by their silhouettes; everything else (Hollows, Soul Reaper
 soldiers, the palace's servants, effects) is an original design. It is all
 inked like a printed manga: flat tones, a black line round every figure,
 effects in hard-edged bands, grounds in screentone, and a swarm drawn

@@ -397,7 +397,7 @@ export class UI {
       this.last.bossUid = w.boss.uid;
       this.last.bossPhase = w.boss.phase;
       // The portrait changes with the boss: a bankai, a mask, a release.
-      drawSprite(this.bossPortrait, bossSpriteName(w.boss.type, w.boss.variant, w.boss.phase), 40);
+      drawSprite(this.bossPortrait, bossSpriteName(w.boss.type, w.boss.variant, w.boss.phase), 40, undefined, true);
     }
   }
 

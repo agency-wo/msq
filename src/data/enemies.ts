@@ -75,7 +75,7 @@ export interface EnemyDef {
  * Hueco Mundo's Hollows, Seireitei's Soul Reapers, the palace's servants, and
  * the bosses. The swarm and the Hollow bosses are original designs; every
  * named character (the Sternritter, the captains, the Royal Guard, Harribel,
- * the defenders, the runaways) is a chibi homage. Index order matters:
+ * the defenders, the runaways) is a manga homage. Index order matters:
  * enemies store their type as a byte.
  */
 export const ENEMY_LIST: readonly EnemyDef[] = [
