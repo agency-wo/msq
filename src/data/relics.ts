@@ -168,7 +168,7 @@ export const RELICS: readonly RelicDef[] = [
     name: 'The Emperor’s Seal',
     rarity: 'legendary',
     icon: 'crown',
-    desc: 'Every boss you defeat: +8% damage for the rest of the run',
+    desc: 'Every boss you defeat: +8% damage for the rest of the run, for up to ten bosses',
     special: 'kaiserseal',
   },
   {

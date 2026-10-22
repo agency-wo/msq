@@ -19,6 +19,7 @@ import { ROYAL_BY_ID, ROYAL_IDS } from '../data/royal';
 import { RESONANCE_BY_ID, RESONANCES, resonanceParts } from '../data/resonances';
 import { BOSS_LINES } from '../data/story';
 import { missionStage, type MissionDef } from '../data/missions';
+import { GAUNTLET, GAUNTLET_FIRST, GAUNTLET_LEVELS_PER_BOSS, GAUNTLET_START_LEVELS, type GauntletBoss } from '../data/gauntlet';
 import { bossToughness, DIFFICULTY, hpScale, phaseAt, spawnRate, speedScale, stageById, type StageDef, swarmDamage, type TimelineEvent, trialMods, type TrialMods, xpScale } from '../data/stages';
 import { updateMarks, updateZones } from './areas';
 import { rewrite } from './casts/almighty';
@@ -238,6 +239,9 @@ export interface WorldOptions {
   mods?: string[];
   /** A Story Mode mission: its stage, timeline, rules and goal (see data/missions.ts). */
   mission?: MissionDef;
+  /** The Gauntlet: every named enemy, tier after tier (see data/gauntlet.ts); and the tier to start at (testing). */
+  gauntlet?: boolean;
+  gauntletTier?: number;
 }
 
 interface Warning {
@@ -298,7 +302,8 @@ const HAZARD_WARN = 1.1;
 /** One run's whole simulation. Pure logic: the renderer and UI only read it. */
 export class World {
   readonly rng: Rng;
-  readonly stage: StageDef;
+  /** The stage: fixed for a run, except in the Gauntlet, which moves from one tier's ground to the next. */
+  stage: StageDef;
   readonly trial: number;
   readonly endless: boolean;
   readonly bossRush: boolean;
@@ -362,6 +367,8 @@ export class World {
   kills = 0;
   gold = 0;
   pendingLevelUps = 0;
+  /** How many of those were earned with experience; the rest are gifts (the Gauntlet's, Boss Rush's, a Mana crystal's). */
+  earnedLevelUps = 0;
   readonly pendingChests: ChestKind[] = [];
   readonly messages: Message[] = [];
   readonly banners: Banner[] = [];
@@ -390,6 +397,12 @@ export class World {
   over: 'dead' | 'victory' | null = null;
   /** The Story mission being played, or null. */
   readonly mission: MissionDef | null;
+  /** The Gauntlet: the tier being fought, how many tiers are cleared, and the next boss in the tier. */
+  readonly gauntlet: boolean;
+  gauntletTier = 0;
+  gauntletCleared = 0;
+  private gauntletIdx = 0;
+  private gauntletNext = GAUNTLET_FIRST;
 
   readonly powers: PowerState[] = [];
   readonly passives = new Map<string, number>();
@@ -554,6 +567,7 @@ export class World {
   private caseCd = 10;
   private hasCloak = false;
   private hasKaiserSeal = false;
+  private sealStacks = 0;
   private hasKaiserEye = false;
   private hasChalice = false;
   private chaliceKills = 0;
@@ -571,7 +585,10 @@ export class World {
     this.metaMods = opts.meta ?? null;
     this.mission = opts.mission ?? null;
     this.pressure = Math.max(0, Math.min(1, opts.pressure ?? 0));
-    this.stage = this.mission ? missionStage(this.mission) : stageById(opts.stage);
+    this.gauntlet = !!opts.gauntlet && !this.mission;
+    this.gauntletTier = this.gauntlet ? Math.max(0, Math.min(GAUNTLET.length - 1, Math.floor(opts.gauntletTier ?? 0))) : 0;
+    this.gauntletCleared = this.gauntletTier;
+    this.stage = this.mission ? missionStage(this.mission) : this.gauntlet ? gauntletStage(this.gauntletTier) : stageById(opts.stage);
     this.trial = Math.max(0, Math.min(5, Math.floor(opts.trial ?? 0)));
     this.tm = trialMods(this.trial);
     this.endless = !!opts.endless;
@@ -626,6 +643,10 @@ export class World {
     }
     this.nextEventT = this.t + this.rng.range(100, 140);
     if (this.bossRush) this.setupBossRush();
+    if (this.gauntlet) {
+      this.nextEventT = Infinity;
+      this.pendingLevelUps += GAUNTLET_START_LEVELS;
+    }
     this.mastery = opts.mastery ?? {};
     this.addPower(opts.start && STARTABLE_IDS.includes(opts.start) ? opts.start : STARTING_POWER);
     if (opts.extra && STARTABLE_IDS.includes(opts.extra) && !this.powers.some((ps) => ps.def.id === opts.extra)) this.addPower(opts.extra);
@@ -754,6 +775,8 @@ export class World {
     if (this.stress > 0) return;
     if (this.bossRush) {
       this.rushTick();
+    } else if (this.gauntlet) {
+      this.gauntletTick();
     } else {
       while (this.warnCursor < this.warnings.length && this.t >= this.warnings[this.warnCursor].at) {
         const warn = this.warnings[this.warnCursor++];
@@ -807,6 +830,61 @@ export class World {
     this.rushNext = 12;
     this.pendingLevelUps = 8;
     this.nextEventT = Infinity;
+  }
+
+  /**
+   * The Gauntlet: the tier's bosses one at a time, three seconds after the
+   * last falls; when the tier is done, its banner, a golden chest, two
+   * level-ups and the next tier's ground. The last tier won is the run won.
+   */
+  private gauntletTick(): void {
+    if (this.bossCount > 0 || this.victoryT >= 0) return;
+    if (this.gauntletNext <= 0) {
+      this.gauntletNext = this.t + 3;
+      return;
+    }
+    if (this.t < this.gauntletNext) return;
+    this.gauntletNext = 0;
+    const tier = GAUNTLET[this.gauntletTier];
+    if (this.gauntletIdx >= tier.bosses.length) {
+      this.gauntletCleared = this.gauntletTier + 1;
+      if (this.gauntletTier + 1 >= GAUNTLET.length) {
+        this.victoryT = 2.2;
+        this.messages.push({ text: 'Every enemy of the Wandenreich has fallen', kind: 'info' });
+        return;
+      }
+      this.gauntletTier++;
+      this.gauntletIdx = 0;
+      this.stage = gauntletStage(this.gauntletTier);
+      const next = GAUNTLET[this.gauntletTier];
+      this.banners.push({ kind: 'event', title: `Tier ${next.numeral} · ${next.name}`, sub: `${next.bosses.length} to face, the last the strongest` });
+      const p = this.player;
+      this.addPickup('chestGold', p.x + 60, p.y - 40);
+      this.pendingLevelUps += 2;
+      this.gauntletNext = this.t + 6;
+      return;
+    }
+    const k = this.gauntletIdx++;
+    const last = k === tier.bosses.length - 1;
+    this.spawnGauntletBoss(tier.bosses[k], tier.hpMul * (last ? tier.finalMul : 1), last ? tier.name : `Tier ${tier.numeral} · ${k + 1} of ${tier.bosses.length}`);
+  }
+
+  private spawnGauntletBoss(b: GauntletBoss, hpMul: number, sub: string): void {
+    this.edgePoint(80);
+    if ('enemy' in b) {
+      const i = this.spawnEnemy(ENEMY_INDEX[b.enemy], this.tx, this.ty, false, hpMul);
+      if (i < 0) return;
+      this.bossCount++;
+      this.banners.push({ kind: 'boss', title: ENEMY_LIST[ENEMY_INDEX[b.enemy]].name, sub, quote: BOSS_LINES[`boss:${b.enemy}`] });
+      this.shake = Math.max(this.shake, 8);
+      return;
+    }
+    if (b.roster === 'royal') this.spawnRoyal(b.id, hpMul);
+    else if (b.roster === 'gotei') this.spawnGotei(b.id, hpMul);
+    else if (b.roster === 'heroes') this.spawnDefender(b.id, hpMul);
+    else if (b.roster === 'arrancar') this.spawnArrancar(b.id, hpMul);
+    else if (b.roster === 'karakura') this.spawnKarakura(b.id, hpMul);
+    else this.spawnKnight(b.id, hpMul, b.roster === 'captain');
   }
 
   private rushTick(): void {
@@ -1015,7 +1093,11 @@ export class World {
     if (this.stage.roster === 'heroes') return this.spawnDefender(id, hpMul);
     if (this.stage.roster === 'arrancar') return this.spawnArrancar(id, hpMul);
     if (this.stage.roster === 'karakura') return this.spawnKarakura(id, hpMul);
-    const captain = !!this.stage.captains;
+    return this.spawnKnight(id, hpMul, !!this.stage.captains);
+  }
+
+  /** A bankai's bearer: the Sternritter who stole it, or (captain) the captain who owns it. */
+  private spawnKnight(id: string, hpMul: number, captain: boolean): number {
     const i = this.spawnEnemy(captain ? ENEMY_INDEX.captain : ENEMY_INDEX.bearer, this.tx, this.ty, false, hpMul);
     if (i < 0) return -1;
     this.en.variant[i] = BANKAI_IDS.indexOf(id);
@@ -1433,6 +1515,7 @@ export class World {
     E.r[i] = r;
     E.spd[i] = def.speed * (def.boss ? 1 : speedScale(this.t) * this.tm.speed) * this.modSpeed * this.pactSpeed * this.rng.range(0.9, 1.1);
     if (def.boss && this.bossRush) dmg *= RUSH_DMG[Math.min(this.rushWave, RUSH_DMG.length - 1)];
+    if (def.boss && this.gauntlet) dmg *= GAUNTLET[this.gauntletTier].dmgMul;
     if (def.boss && this.mission?.bossDamage) dmg *= this.mission.bossDamage;
     E.dmg[i] = dmg;
     E.xp[i] = xp;
@@ -1872,7 +1955,8 @@ export class World {
     }
     if (flags & FLAG_BOSS) {
       // The Emperor's Seal: every boss put down adds to your strength.
-      if (this.hasKaiserSeal) {
+      if (this.hasKaiserSeal && this.sealStacks < 10) {
+        this.sealStacks++;
         this.pactMods.push({ dmg: 0.08 });
         this.recomputeStats();
       }
@@ -1882,25 +1966,28 @@ export class World {
       this.splash(x, y, E.r[i] * 3.2);
       this.bossCount = Math.max(0, this.bossCount - 1);
       if (E.uid[i] !== this.finalBossUid) this.bossKills++;
-      // Boss Rush: every boss down is four more level-ups.
+      // Boss Rush: every boss down is four more level-ups; the Gauntlet, one.
       if (this.bossRush && E.uid[i] !== this.finalBossUid) this.pendingLevelUps += 4;
+      if (this.gauntlet) this.pendingLevelUps += GAUNTLET_LEVELS_PER_BOSS;
+      // In the Gauntlet only a tier's lord leaves its chests and its spoil: forty bosses' worth would be every relic there is.
+      const loot = !this.gauntlet || this.gauntletIdx >= GAUNTLET[this.gauntletTier].bosses.length;
       const carrier = def.id === 'bearer' || def.id === 'captain';
       if (carrier) {
         this.addPickup('medallion', x, y, BANKAI_IDS[E.variant[i]]);
-        this.addPickup('chestBlack', x + 36, y + 12);
+        if (loot) this.addPickup('chestBlack', x + 36, y + 12);
       }
       // The Royal Guard each leave a Fragment of the Soul King you do not have yet (gold once you hold all three).
       // Silbern's captains and the Wahrwelt's defenders carry no bankai to take: a black chest beside their spoil.
       if (def.id === 'defender' && HERO_IDS[E.variant[i]] === 'aizen') this.clearMirages();
-      if (def.id === 'gotei' || def.id === 'defender' || def.id === 'arrancar' || def.id === 'karakura') {
+      if (loot && (def.id === 'gotei' || def.id === 'defender' || def.id === 'arrancar' || def.id === 'karakura')) {
         this.addPickup('chestBlack', x + 36, y + 12);
       }
-      this.dropSpoil(i, x, y);
+      if (loot) this.dropSpoil(i, x, y);
       if (def.id === 'royal') {
         const fragment = this.fragmentToDrop();
         if (fragment) this.addPickup('fragment', x, y, undefined, fragment);
-        else this.addPickup('chestBlack', x - 36, y - 12);
-        this.addPickup('chestBlack', x + 36, y + 12);
+        else if (loot) this.addPickup('chestBlack', x - 36, y - 12);
+        if (loot) this.addPickup('chestBlack', x + 36, y + 12);
       }
       // The Hunter's Pact: the boss it called pays an extra black chest.
       if (E.uid[i] === this.huntUid) {
@@ -2413,7 +2500,10 @@ export class World {
       this.level++;
       this.xpNext = xpToNext(this.level);
       // Stress runs never open the level-up board: it would pause the very thing being measured.
-      if (this.stress === 0) this.pendingLevelUps++;
+      if (this.stress === 0) {
+        this.pendingLevelUps++;
+        this.earnedLevelUps++;
+      }
       if (this.spoil.on) spoilLevelUp(this);
       this.sound('level');
       this.spawnFx(FX_RING, 0, 0, 0, 0, 0.5, 20, 170, 0.9, 0, 0, 0x9fe8ff, LAYER_ADD, 0, 1);
@@ -2962,7 +3052,7 @@ export class World {
       case 'seal':
         return this.stage.roster === 'royal' && FRAGMENT_IDS.some((f) => !this.dropped.has(f) && !this.powers.some((ps) => ps.def.id === f));
       case 'key':
-        return !this.bossRush && (this.endless || this.t < this.stage.length - 40);
+        return !this.bossRush && !this.gauntlet && (this.endless || this.t < this.stage.length - 40);
       case 'sanrei':
         return !this.bossRush || this.t >= 480;
       default:
@@ -3464,6 +3554,18 @@ export class World {
     else this.addPickup('spoil', x, y - 36, undefined, undefined, spoil.id);
   }
 
+  /** The level the next level-up board is for: earned ones count up to where you are now, a gift is taken at the level you are. */
+  boardLevel(): number {
+    const earned = Math.min(this.earnedLevelUps, this.pendingLevelUps);
+    return earned > 0 ? this.level - earned + 1 : this.level;
+  }
+
+  /** One level-up board done (earned ones first). */
+  takeLevelUp(): void {
+    this.pendingLevelUps = Math.max(0, this.pendingLevelUps - 1);
+    this.earnedLevelUps = Math.max(0, Math.min(this.earnedLevelUps - 1, this.pendingLevelUps));
+  }
+
   recomputeStats(): void {
     const mods: StatMods[] = [];
     for (const [id, level] of this.passives) {
@@ -3494,4 +3596,9 @@ export class World {
       for (let s = 0; s < this.powers.length; s++) syncPower(this, s);
     }
   }
+}
+
+/** A Gauntlet tier's stage: its ground and its swarm, with no timeline of its own (the Gauntlet calls its bosses itself). */
+function gauntletStage(tier: number): StageDef {
+  return { ...stageById(GAUNTLET[tier].stage), events: [], length: 3600 };
 }

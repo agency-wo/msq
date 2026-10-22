@@ -10,6 +10,7 @@ import { STAGE_BY_ID, stageById, TRIAL_NAMES, type StageId } from './data/stages
 import { CHAPTER_BY_ID, type Chapter } from './data/story';
 import { dailyFor, dailyLine, dateKey, type DailySpec } from './data/daily';
 import { MISSION_BY_ID, type MissionDef } from './data/missions';
+import { GAUNTLET } from './data/gauntlet';
 import type { TipId } from './data/tips';
 import type { Offer } from './game/offers';
 import { runGold } from './game/rewards';
@@ -40,20 +41,22 @@ import {
 import { buyLook, buyTrail, wardrobeAffordable, wearLook, wearTrail } from './save/wardrobe';
 import {
   almightyUnlocked,
-  endlessOpen,
   backupDue,
   backupFile,
+  endlessOpen,
   exportCode,
+  gauntletOpen,
   importCode,
-  markBackedUp,
-  snoozeBackup,
   loadSave,
+  markBackedUp,
   recordDaily,
+  recordGauntlet,
   recordMission,
   recordRun,
   redeemGift,
   rushOpen,
   type SaveData,
+  snoozeBackup,
   stageUnlocked,
   trialsOpen,
   writeSave,
@@ -74,6 +77,7 @@ type State =
   | 'daily'
   | 'missions'
   | 'mission'
+  | 'gauntlet'
   | 'story'
   | 'playing'
   | 'paused'
@@ -124,6 +128,8 @@ export class App {
   private daily: DailySpec | null = null;
   /** The Story mission being played, if the current run is one (Play again replays it). */
   private mission: MissionDef | null = null;
+  /** The next run (or this one) is the Gauntlet. */
+  private gauntlet = false;
   /** Chapters a finished run unlocked, told when the player moves on from the results. */
   private pendingChapters: Chapter[] = [];
   private fps = 0;
@@ -152,6 +158,8 @@ export class App {
     void navigator.storage?.persist?.().catch(() => false);
     this.loop.start();
     if (this.debug) this.exposeDebug();
+    // Testing: ?gauntlet plays the Gauntlet (with ?play; ?tier=4 starts at tier V).
+    if (this.params.has('gauntlet')) this.gauntlet = true;
     // Testing: ?mission=jagdarmee plays a Story mission (with ?play).
     const forcedMission = this.params.get('mission');
     if (forcedMission) this.mission = MISSION_BY_ID.get(forcedMission) ?? null;
@@ -166,6 +174,7 @@ export class App {
     this.world = null;
     this.daily = null;
     this.mission = null;
+    this.gauntlet = false;
     this.ui.showHud(false);
     if (!stageUnlocked(this.save, this.save.stage)) this.save.stage = 'hueco';
     this.renderer.setStage(this.save.stage);
@@ -189,6 +198,7 @@ export class App {
       onDaily: () => this.showDaily(),
       daily: this.todaysDaily(),
       onStory: () => this.showMissions(),
+      onGauntlet: () => this.showGauntlet(),
       installHint: isIOS() && !isStandalone(),
       archivesDot: affordable(this.save) !== null,
       onWardrobe: () => this.showWardrobe(),
@@ -380,6 +390,19 @@ export class App {
     });
   }
 
+  /** The Gauntlet's briefing: the seven tiers, how far you have come, Begin. */
+  private showGauntlet(): void {
+    this.state = 'gauntlet';
+    this.ui.showGauntlet(this.save, {
+      open: gauntletOpen(this.save),
+      onBegin: () => {
+        this.gauntlet = true;
+        this.startRun();
+      },
+      onBack: () => this.showTitle(),
+    });
+  }
+
   /** Testing switches skip the story and the tips. */
   private get testing(): boolean {
     const p = this.params;
@@ -434,10 +457,12 @@ export class App {
     const p = this.params;
     const daily = this.daily;
     const mission = this.mission;
-    const stage = daily ? daily.stage : mission ? mission.stage : this.runStage();
+    const gauntlet = this.gauntlet && !daily && !mission;
+    const tier = Math.max(0, Math.floor(numParam(p, 'tier') ?? 0));
+    const stage = daily ? daily.stage : mission ? mission.stage : gauntlet ? GAUNTLET[Math.min(GAUNTLET.length - 1, tier)].stage : this.runStage();
     // Story chapters that belong before this run (the prologue, the invasion); testing switches skip them,
     // and a Story mission has its own briefing.
-    const before = storyTold || this.testing || mission ? [] : chaptersBefore(this.save, stage);
+    const before = storyTold || this.testing || mission || gauntlet ? [] : chaptersBefore(this.save, stage);
     if (before.length > 0) {
       this.halt('story');
       this.tellChapters(before, () => this.startRun(true));
@@ -450,9 +475,11 @@ export class App {
     this.world = new World({
       stage,
       mission: mission ?? undefined,
-      trial: daily || mission ? 0 : this.runTrial(stage),
-      endless: daily || mission ? false : !this.runRush(stage) && this.runEndless(stage),
-      bossRush: daily || mission ? false : this.runRush(stage),
+      gauntlet,
+      gauntletTier: tier,
+      trial: daily || mission || gauntlet ? 0 : this.runTrial(stage),
+      endless: daily || mission || gauntlet ? false : !this.runRush(stage) && this.runEndless(stage),
+      bossRush: daily || mission || gauntlet ? false : this.runRush(stage),
       mods: daily?.mods,
       relicsOpen: this.save.relicsOpen,
       seed: daily ? daily.seed : numParam(p, 'seed'),
@@ -549,6 +576,8 @@ export class App {
         w.banners.length = 0;
       }
       if (this.state === 'playing') this.liveTips(w);
+      // The Gauntlet moves from one tier's ground to the next.
+      if (w.gauntlet) this.renderer.setStage(w.stage.id);
       // During a run (boards and pause included) the music follows the fight; results and story cards keep their own.
       const inRun = this.state === 'playing' || this.state === 'paused' || this.state === 'levelup' || this.state === 'chest' || this.state === 'shrine';
       if (inRun) this.music.play(this.runTrack(w));
@@ -579,7 +608,7 @@ export class App {
     const w = this.world;
     if (!w) return;
     this.halt('levelup');
-    const level = w.level - w.pendingLevelUps + 1;
+    const level = w.boardLevel();
     // Second Auswählen: redraw the whole board, a limited number of times per run.
     const reroll =
       w.rerolls > 0
@@ -620,7 +649,7 @@ export class App {
   private levelDone(): void {
     const w = this.world;
     if (!w) return;
-    w.pendingLevelUps = Math.max(0, w.pendingLevelUps - 1);
+    w.takeLevelUp();
     this.continueFlow();
   }
 
@@ -723,6 +752,7 @@ export class App {
           endless: w.endless,
           daily: !!this.daily,
           mission: !!this.mission,
+          gauntlet: w.gauntlet,
           evolution: w.evolution,
           bossRush: w.bossRush,
           codex: {
@@ -735,6 +765,7 @@ export class App {
     const daily = w.god || !this.daily ? null : recordDaily(this.save, this.daily.date, w.t, victory);
     const mission = this.mission;
     const story = w.god || !mission ? null : recordMission(this.save, mission.id, w.t, victory);
+    const gauntlet = w.god || !w.gauntlet ? null : recordGauntlet(this.save, w.gauntletCleared, w.t);
     const feats = w.god ? [] : evaluateFeats(this.save, runFacts(w, victory, !!this.daily));
     if (!w.god) writeSave(this.save);
     this.pendingChapters = w.god ? [] : chaptersAfter(this.save);
@@ -748,11 +779,13 @@ export class App {
           ? 'Daily Trial'
           : mission
             ? `Story · Mission ${mission.numeral}`
+            : w.gauntlet
+              ? `Gauntlet · Tier ${GAUNTLET[w.gauntletTier].numeral}`
             : [w.trial > 0 ? TRIAL_NAMES[w.trial] : '', w.endless ? 'Endless' : '', w.bossRush ? 'Boss Rush' : ''].filter(Boolean).join(' · '),
         rush: w.bossRush,
         daily: !!this.daily,
         dailyBonus: daily?.bonus ?? 0,
-        storyReward: story?.reward ?? 0,
+        storyReward: (story?.reward ?? 0) + (gauntlet?.reward ?? 0),
         storyNext: story?.opened ?? null,
         dailyLine: this.daily ? dailyLine(this.daily) : '',
         damage: damageRows(w),
@@ -776,12 +809,14 @@ export class App {
           ? this.save.daily.best
           : mission
             ? (this.save.missions[mission.id]?.best ?? 0)
+            : w.gauntlet
+              ? this.save.gauntlet.time
             : w.bossRush
             ? this.save.stages[w.stage.id].rush
             : w.endless
               ? this.save.stages[w.stage.id].endless
               : this.save.stages[w.stage.id].best,
-        newBest: daily ? daily.newBest : story ? story.newBest : record.newBest,
+        newBest: daily ? daily.newBest : story ? story.newBest : gauntlet ? gauntlet.newBest : record.newBest,
         resonances: [...w.resonances],
         powers: w.powers.map((ps) => ({
           name: ps.def.name,

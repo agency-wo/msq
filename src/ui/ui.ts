@@ -18,7 +18,7 @@ import { drawEmperor, drawSprite } from '../render/atlas';
 import { bossSpriteName, enemySpriteName } from '../render/names';
 import { armoryRelics, MASTERY_POWERS, masteryLevel, metaPressure, nextCost, nextMasteryCost, nextVerseCost, startOptions, upgradeLevel, wonSpoils } from '../save/archives';
 import { MASTERY_COSTS, MASTERY_PER } from '../data/archives';
-import { almightyUnlocked, endlessOpen, missionsCleared, rushOpen, stageUnlocked, trialsOpen, type DailyRecord, type MissionRecord, type SaveData, type Settings } from '../save/save';
+import { almightyUnlocked, endlessOpen, gauntletOpen, missionsCleared, rushOpen, stageUnlocked, trialsOpen, type DailyRecord, type MissionRecord, type SaveData, type Settings } from '../save/save';
 import { chapterUnlocked } from '../save/story';
 import { LOOKS, TRAILS, type LookId, type TrailId } from '../data/looks';
 import { codexFound, codexTotal, featProgress, FEATS } from '../save/feats';
@@ -26,6 +26,7 @@ import { drawEmblem, drawIcon, drawTrailSwatch } from './icons';
 import { shareRun } from './share';
 import { drawVista } from './vistas';
 import { MISSIONS, missionOpen, type MissionDef } from '../data/missions';
+import { GAUNTLET, GAUNTLET_GOLD, GAUNTLET_UNLOCK, gauntletBosses } from '../data/gauntlet';
 import { powerRows, statSheet } from './statsheet';
 
 /**
@@ -536,6 +537,7 @@ export class UI {
       onDaily: () => void;
       daily: DailySpec;
       onStory: () => void;
+      onGauntlet: () => void;
       installHint: boolean;
       /** Something in the Archives is affordable: the button carries a gold dot. */
       archivesDot: boolean;
@@ -595,6 +597,7 @@ export class UI {
       play,
       this.dailyCard(save, h.daily, h.onDaily),
       this.storyCard(save, h.onStory),
+      this.gauntletCard(save, h.onGauntlet),
       nav,
       this.collection(save),
     );
@@ -1544,6 +1547,56 @@ export class UI {
     b.append(icon, text, el('span', `daily-status${next ? '' : ' done'}`, `${done}/${MISSIONS.length}`));
     b.addEventListener('click', this.guard(onStory));
     return b;
+  }
+
+  /** The Gauntlet on the title: its best so far, or what opens it. */
+  private gauntletCard(save: SaveData, onGauntlet: () => void): HTMLButtonElement {
+    const open = gauntletOpen(save);
+    const b = button(`story-btn story-card gauntlet-card${open ? '' : ' locked'}`, '');
+    const icon = el('canvas', 'daily-icon');
+    drawIcon(icon, 'crown', '#c8102e');
+    const g = save.gauntlet;
+    const note = !open
+      ? `Clear ${GAUNTLET_UNLOCK} stages to open it`
+      : g.time > 0
+        ? `Every tier cleared · best ${formatTime(g.time)}`
+        : g.tiers > 0
+          ? `Best: ${g.tiers} of ${GAUNTLET.length} tiers`
+          : `${gauntletBosses()} bosses, back to back`;
+    const text = el('span', 'daily-text');
+    text.append(el('span', 'daily-title', 'The Gauntlet'), el('span', 'btn-note', note));
+    b.append(icon, text, el('span', `daily-status${g.time > 0 ? ' done' : ''}`, `${g.tiers}/${GAUNTLET.length}`));
+    b.addEventListener('click', this.guard(onGauntlet));
+    return b;
+  }
+
+  /** The Gauntlet's briefing: every tier and who waits in it, how far you have come, Begin. */
+  showGauntlet(save: SaveData, h: { open: boolean; onBegin: () => void; onBack: () => void }): void {
+    const p = this.open('gauntlet');
+    p.append(el('div', 'board-kicker', 'Every enemy of the Wandenreich'), el('h2', 'board-title', 'The Gauntlet'));
+    const body = el('div', 'story-text');
+    body.append(
+      el('p', '', 'Seven tiers, each on its own ground, each boss one after another and the tier’s lord last. Every boss put down is a level-up; between tiers, a golden chest and two more. Only a tier’s lord leaves its spoils.'),
+      el('p', '', 'No timeline, no shrines: only them, and you.'),
+    );
+    const rows = el('div', 'chapters');
+    GAUNTLET.forEach((t, k) => {
+      const done = save.gauntlet.tiers > k;
+      const row = el('div', `chapter mission${done ? ' done' : ''}`);
+      row.append(el('span', 'chapter-kicker', `Tier ${t.numeral} · ${stageById(t.stage).name}`), el('span', 'chapter-title', t.name), el('span', 'chapter-hint', `${t.bosses.length} bosses${done ? ' · cleared' : ` · first clear +${gold(GAUNTLET_GOLD * (k + 1))} gold`}`));
+      rows.append(row);
+    });
+    const status = !h.open ? `Clear ${GAUNTLET_UNLOCK} stages to open the Gauntlet.` : save.gauntlet.time > 0 ? `Cleared, best ${formatTime(save.gauntlet.time)}.` : 'Clear all seven to wear The Almighty.';
+    p.append(body, rows, el('p', 'archives-hint', status));
+    if (h.open) {
+      const begin = button('btn primary', 'Begin');
+      begin.addEventListener('click', this.guard(h.onBegin));
+      p.append(begin);
+    }
+    const back = button('btn', 'Back');
+    back.addEventListener('click', this.guard(h.onBack));
+    p.append(back);
+    this.lock(150);
   }
 
   /** Story Mode: the missions in order, each open once the one before is cleared, the cleared ones with their best. */

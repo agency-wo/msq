@@ -1,5 +1,6 @@
 import { GESANG_VERSES, UPGRADES } from '../data/archives';
 import { MISSION_BY_ID, MISSIONS } from '../data/missions';
+import { GAUNTLET, GAUNTLET_GOLD, GAUNTLET_UNLOCK } from '../data/gauntlet';
 import { GIFT_CODES, normalizeGiftCode } from '../data/gifts';
 import { BANKAI_IDS } from '../data/bankai';
 import { RESONANCE_BY_ID } from '../data/resonances';
@@ -103,6 +104,8 @@ export interface SaveData {
   gifts: string[];
   /** The last backup (a file or a copied code): when (ms since 1970, 0 for never), how many runs had been played, and until how many runs the reminder sleeps. */
   backup: { at: number; runs: number; snooze: number };
+  /** The Gauntlet: the most tiers cleared in one run, and the fastest clear of all seven (0: not yet). */
+  gauntlet: { tiers: number; time: number };
 }
 
 export interface MissionRecord {
@@ -137,6 +140,8 @@ export interface RunResult {
   daily?: boolean;
   /** A Story mission: counts as a Daily Trial does, and keeps its own record (see recordMission). */
   mission?: boolean;
+  /** A Gauntlet run: the same, with its own record (see recordGauntlet). */
+  gauntlet?: boolean;
   /** How far the Emperor evolved in the run. */
   evolution?: number;
   /** A Boss Rush: keeps its own record (the fastest clear) and changes nothing else about the stage. */
@@ -189,7 +194,33 @@ export function defaultSave(): SaveData {
     missions: {},
     gifts: [],
     backup: { at: 0, runs: 0, snooze: 0 },
+    gauntlet: { tiers: 0, time: 0 },
   };
+}
+
+/** The Gauntlet opens once enough stages are cleared. */
+export function gauntletOpen(save: SaveData): boolean {
+  return STAGE_IDS.filter((id) => save.stages[id].cleared).length >= GAUNTLET_UNLOCK;
+}
+
+/**
+ * Fold a Gauntlet run into the save: the best tier reached, the fastest full
+ * clear, and the gold for every tier cleared for the first time.
+ */
+export function recordGauntlet(save: SaveData, tiers: number, time: number): { reward: number; newBest: boolean } {
+  const g = save.gauntlet;
+  const n = Math.max(0, Math.min(GAUNTLET.length, Math.floor(tiers)));
+  let reward = 0;
+  for (let k = g.tiers + 1; k <= n; k++) reward += GAUNTLET_GOLD * k;
+  let newBest = n > g.tiers;
+  g.tiers = Math.max(g.tiers, n);
+  if (n >= GAUNTLET.length && (g.time === 0 || time < g.time)) {
+    g.time = time;
+    newBest = true;
+  }
+  save.gold += reward;
+  save.totals.gold += reward;
+  return { reward, newBest };
 }
 
 /** The reminder waits for a few runs of progress, and a few days, since the last backup. */
@@ -402,7 +433,15 @@ export function migrate(raw: unknown): SaveData {
     missions: migrateMissions(r.missions),
     gifts: Array.isArray(r.gifts) ? [...new Set(r.gifts.filter((c): c is string => typeof c === 'string' && c in GIFT_CODES))] : [],
     backup: migrateBackup(r.backup),
+    gauntlet: migrateGauntlet(r.gauntlet),
   };
+}
+
+function migrateGauntlet(raw: unknown): SaveData['gauntlet'] {
+  const g = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
+  const tiers = typeof g.tiers === 'number' && Number.isFinite(g.tiers) ? Math.max(0, Math.min(GAUNTLET.length, Math.floor(g.tiers))) : 0;
+  const time = typeof g.time === 'number' && Number.isFinite(g.time) && g.time > 0 ? g.time : 0;
+  return { tiers, time };
 }
 
 function migrateBackup(raw: unknown): SaveData['backup'] {
@@ -582,8 +621,8 @@ export function recordRun(save: SaveData, r: RunResult): RecordOutcome {
   save.evolution = Math.max(save.evolution, Math.min(3, r.evolution ?? 0));
   if (r.codex) recordCodex(save, r.codex);
   if (r.cleared) save.totals.clears++;
-  if (r.time > save.best.time && !r.daily && !r.bossRush && !r.mission) save.best = { time: r.time, level: r.level, kills: r.kills };
-  if (r.daily || r.mission) return { newBest: false, unlocked: null, almighty: !hadAlmighty && almightyUnlocked(save), starts };
+  if (r.time > save.best.time && !r.daily && !r.bossRush && !r.mission && !r.gauntlet) save.best = { time: r.time, level: r.level, kills: r.kills };
+  if (r.daily || r.mission || r.gauntlet) return { newBest: false, unlocked: null, almighty: !hadAlmighty && almightyUnlocked(save), starts };
   if (r.bossRush) {
     const rec = save.stages[r.stage];
     const newBest = r.cleared && (rec.rush === 0 || r.time < rec.rush);

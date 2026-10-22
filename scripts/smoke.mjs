@@ -1037,6 +1037,39 @@ try {
   await page.waitForSelector('.screen.title .btn.primary');
   if (await page.$('.screen.title .backup-nudge')) problems.push('[smoke] the backup reminder came straight back after Later');
 
+  // The Gauntlet: its card on the title, its briefing, and a run that moves to the next tier's ground.
+  await page.evaluate(() => {
+    const s = JSON.parse(localStorage.getItem('msq.save') ?? '{}');
+    for (const id of ['hueco', 'seireitei', 'lasnoches']) s.stages[id].cleared = true;
+    localStorage.setItem('msq.save', JSON.stringify(s));
+  });
+  await go(`${BASE}?debug&seed=3`);
+  await page.tap('.gauntlet-card');
+  await page.waitForSelector('.screen.gauntlet .btn.primary');
+  await shot('14g-gauntlet');
+  await go(`${BASE}?debug&seed=3&play&god&gauntlet`);
+  const g0 = await page.evaluate(() => ({ gauntlet: window.__msq.world.gauntlet, stage: window.__msq.world.stage.id }));
+  // Put every boss of tier I down as it comes, running the clock on (the first boss is half a minute in).
+  for (let k = 0; k < 60; k++) {
+    await page.evaluate(() => {
+      const w = window.__msq.world;
+      for (let s = 0; s < 120 && !w.over; s++) {
+        w.step(0, 0);
+        w.pendingLevelUps = 0;
+        w.pendingChests.length = 0;
+      }
+      for (let i = 0; i < w.en.n; i++) if (!w.en.dead[i] && w.en.flags[i] & 2) w.killEnemy(i);
+    });
+    await wait(50);
+    if ((await page.evaluate(() => window.__msq.world.gauntletTier)) > 0) break;
+  }
+  const g1 = await page.evaluate(() => ({ tier: window.__msq.world.gauntletTier, stage: window.__msq.world.stage.id }));
+  log('gauntlet', { g0, g1 });
+  if (!g0.gauntlet || g1.tier < 1 || g1.stage === g0.stage) problems.push(`[smoke] gauntlet did not move on: ${JSON.stringify({ g0, g1 })}`);
+  await shot('14h-gauntlet-tier');
+  const boardTitle = await page.evaluate(() => document.querySelector('.board-title')?.textContent ?? '');
+  if (/-\d/.test(boardTitle)) problems.push(`[smoke] a level-up board counts below zero: ${boardTitle}`);
+
   // Story Mode: a mission is won on its goal (here, holding out to the end) and told to its end before the results.
   await go(`${BASE}?debug&seed=3&play&god&mission=jagdarmee&t=474`);
   log('mission', await page.evaluate(() => ({ mission: window.__msq.world.mission?.id, length: window.__msq.world.stage.length })));

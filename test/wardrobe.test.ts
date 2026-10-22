@@ -5,12 +5,12 @@ import { evaluateFeats, FEATS } from '../src/save/feats';
 import { buyLook, buyTrail, wardrobeAffordable, wearLook, wearTrail } from '../src/save/wardrobe';
 
 describe('the Wardrobe', () => {
-  it('sells five looks for gold, and keeps three for feats', () => {
+  it('sells five looks for gold, and keeps four for feats', () => {
     const sold = LOOKS.filter((l) => l.price !== undefined);
     expect(sold.map((l) => l.id)).toEqual(['schatten', 'blut', 'silbern', 'heilig', 'kaiser']);
     for (let k = 1; k < sold.length; k++) expect(sold[k].price ?? 0).toBeGreaterThan(sold[k - 1].price ?? 0);
     const featLooks = new Set(FEATS.map((f) => f.look).filter(Boolean));
-    expect([...featLooks].sort()).toEqual(['crimson', 'gilded', 'white']);
+    expect([...featLooks].sort()).toEqual(['almighty', 'crimson', 'gilded', 'white']);
     for (const id of featLooks) expect(LOOKS.find((l) => l.id === id)?.price).toBeUndefined();
   });
 

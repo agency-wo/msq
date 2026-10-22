@@ -4172,3 +4172,15 @@ button:focus-visible {
 .board.chest-gold .board-title {
   text-shadow: 3px 3px 0 var(--gold) !important;
 }
+
+/* ---------------------------------------------------------- Gauntlet */
+
+/* The Gauntlet's card: the Story card's slab, ruled in blood; dimmed until it opens. */
+.gauntlet-card {
+  border-color: var(--blood);
+  box-shadow: 4px 4px 0 var(--blood);
+}
+
+.gauntlet-card.locked {
+  opacity: 0.6;
+}

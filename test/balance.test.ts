@@ -19,7 +19,7 @@ function clock(t: number): string {
 
 function run(seed: number, pick: Strategy, move: Mover, god: boolean, minutes: number): string[] {
   const mission = env.MISSION ? MISSION_BY_ID.get(env.MISSION) : undefined;
-  const w = new World({ seed, god, stage: env.STAGE, mission, start: mission?.start, extra: mission?.extra, ...(env.META === 'max' ? maxedMeta() : {}) });
+  const w = new World({ seed, god, stage: env.STAGE, mission, start: mission?.start, extra: mission?.extra, gauntlet: !!env.GAUNTLET, ...(env.META === 'max' ? maxedMeta() : {}) });
   const rows: string[] = [];
   let nextReport = 30;
   let bossStart = -1;
@@ -40,7 +40,7 @@ function run(seed: number, pick: Strategy, move: Mover, god: boolean, minutes: n
     }
     if (w.t >= nextReport) {
       nextReport += 30;
-      const boss = w.boss.active ? ` boss ${Math.round((w.boss.hp / w.boss.max) * 100)}%` : '';
+      const boss = (w.boss.active ? ` boss ${Math.round((w.boss.hp / w.boss.max) * 100)}%` : '') + (w.gauntlet ? ` tier ${w.gauntletTier + 1}` : '');
       const hp = god ? '' : `  hp ${Math.round(w.player.hp)}/${Math.round(w.player.maxHp)} hits ${hits} low ${Math.round(lowest * 100)}%`;
       const powers = w.powers.map((p) => `${p.def.id}${p.level}`).join(' ');
       rows.push(

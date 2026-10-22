@@ -55,6 +55,8 @@ export const HERO_LOOKS: Readonly<Record<string, HeroLook>> = {
   heilig: { cape: '#ece6d2', coat: '#fffdf6', shade: '#cfc4a4', trim: '#c9a040', star: '#ffd25a', sleeve: '#f2ecdc', cuff: '#c9a040', collar: '#faf6ea', lining: '#c9a040' },
   // Kaiser: a black coat under a royal purple cape, gold at every edge.
   kaiser: { cape: '#2c1040', coat: '#26262e', shade: '#0b0a10', trim: '#e8c060', star: '#ffd25a', sleeve: '#16171e', cuff: '#e8c870', collar: '#101117', lining: '#7a3aaa' },
+  // The Almighty: black on black, lined in blood, the star itself red; won in the Gauntlet.
+  almighty: { cape: '#0b0a10', coat: '#16141c', shade: '#0b0a10', trim: '#c8102e', star: '#ff3050', sleeve: '#0e0c12', cuff: '#c8102e', collar: '#0b0a10', lining: '#c8102e' },
 };
 
 /** The look ids the atlas draws. */

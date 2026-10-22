@@ -125,6 +125,8 @@ export const FEATS: readonly FeatDef[] = [
   { id: 'daily-clear', name: 'Daily Devotion', desc: 'Clear a Daily Trial.', group: 'Modes', goal: 1, gold: 300, run: (r) => yes(r.daily && r.cleared) },
   { id: 'story-half', name: 'Half the War', desc: 'Clear five Story missions.', group: 'Modes', goal: 5, gold: 400, save: (s) => storyCleared(s) },
   { id: 'story-all', name: 'The Thousand-Year Blood War', desc: 'Clear every Story mission.', group: 'Modes', goal: MISSIONS.length, gold: 1000, save: (s) => storyCleared(s) },
+  { id: 'gauntlet-half', name: 'Halfway Through the Gauntlet', desc: 'Clear four tiers of the Gauntlet in one run.', group: 'Modes', goal: 4, gold: 800, save: (s) => s.gauntlet.tiers },
+  { id: 'gauntlet-all', name: 'Every Enemy of the Wandenreich', desc: 'Clear all seven tiers of the Gauntlet.', group: 'Modes', goal: 7, gold: 2000, look: 'almighty', save: (s) => s.gauntlet.tiers },
 ];
 
 export const FEAT_BY_ID: ReadonlyMap<string, FeatDef> = new Map(FEATS.map((f) => [f.id, f]));

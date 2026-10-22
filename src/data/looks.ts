@@ -1,10 +1,10 @@
 /**
  * The Emperor's wardrobe. Looks are the colours of his coat, cape and star:
- * three are earned with feats, five are bought with gold. Trails are motes he
+ * four are earned with feats, five are bought with gold. Trails are motes he
  * leaves behind as he moves; they are only drawn, and change nothing in a run.
  */
 
-export type LookId = 'default' | 'white' | 'crimson' | 'gilded' | 'schatten' | 'blut' | 'silbern' | 'heilig' | 'kaiser';
+export type LookId = 'default' | 'white' | 'crimson' | 'gilded' | 'schatten' | 'blut' | 'silbern' | 'heilig' | 'kaiser' | 'almighty';
 
 export interface LookDef {
   id: LookId;
@@ -23,6 +23,8 @@ export const LOOKS: readonly LookDef[] = [
   { id: 'silbern', name: 'Silbern', price: 1200 },
   { id: 'heilig', name: 'Heilig', price: 1500 },
   { id: 'kaiser', name: 'Kaiser', price: 2000 },
+  // The Gauntlet's: every enemy of the Wandenreich put down.
+  { id: 'almighty', name: 'The Almighty' },
 ];
 
 export const LOOK_BY_ID: ReadonlyMap<string, LookDef> = new Map(LOOKS.map((l) => [l.id, l]));

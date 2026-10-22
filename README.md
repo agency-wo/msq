@@ -44,7 +44,7 @@ a portrait and a title. The pause and results screens break down the **damage**
 each power dealt (total, share and damage per second), and **Share** on the
 results turns the run into a picture for the phone's share sheet.
 
-Thirty-five **Feats** give long goals (a hundred thousand kills, every letter
+Thirty-nine **Feats** give long goals (a hundred thousand kills, every letter
 awakened, Trial V, a Boss Rush under 4:00, all three fragments in one run,
 every spoil of war...),
 each paying gold once; some open one of three new looks for the Emperor
@@ -165,6 +165,14 @@ minutes against everything with The Almighty in hand; and, in another telling,
 Karakura Town and Urahara. The first clear of each pays gold; each keeps its
 fastest clear. Missions count for totals, the Codex and feats, never for a
 stage's own records.
+
+**The Gauntlet** opens once three stages are cleared: every enemy of the
+Wandenreich, forty bosses back to back across seven tiers, each tier on its own
+ground with its own swarm and its lord last (Harribel, Grimmjow, Yamamoto,
+Ichibē, Kyōraku, Ichigo, Urahara). Every boss down is a level-up; only a tier's
+lord leaves its spoils, and the end of a tier pays a golden chest and two more
+level-ups. Each tier's first clear pays gold, the save keeps the furthest tier
+and the fastest full clear, and clearing all seven wins the Almighty look.
 
 Every run pays gold. Spend it in the **Wandenreich Archives** on permanent
 upgrades (attack, health, damage taken, health regeneration, speed, pickup
