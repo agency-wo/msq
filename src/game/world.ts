@@ -286,6 +286,9 @@ const RUSH_WINDOW = 2;
 const RUSH_DAMAGE = 0.05;
 const RUSH_SPEED = 0.03;
 
+/** A Schrift power by its name ('The Fear' → 'fear'), for the letters the bankai thieves carry. */
+const SCHRIFT_BY_NAME: ReadonlyMap<string, string> = new Map(POWERS.filter((d) => d.letter).map((d) => [d.name, d.id]));
+
 const BEHAVIOR_CODE = { chase: BH_CHASE, blink: BH_BLINK, ranged: BH_RANGED, flee: BH_FLEE, charge: BH_CHARGE } as const;
 /** Per enemy type, for the hot loop. */
 const BEHAVIOR = Uint8Array.from(ENEMY_LIST, (d) => BEHAVIOR_CODE[d.behavior]);
@@ -416,6 +419,13 @@ export class World {
 
   /** The three bankai this run's medallion bearers carry, in boss order. */
   readonly bearers: string[];
+  /**
+   * Letters held on this level. A Schrift has one holder: while the Sternritter who carries it stands
+   * (a bankai's thief, or Uryū with the A the Emperor gave him), it is never offered to you. When they
+   * fall the Emperor takes it at once, as a fallen Quincy's power always returns to him: the power is
+   * yours at Lv 1, like a stolen bankai taking no slot. Power id → holder.
+   */
+  readonly heldLetters = new Map<string, string>();
 
   // Player states from utilities.
   shieldCharges = 0;
@@ -618,6 +628,10 @@ export class World {
       pool[i] = pool[j];
       pool[j] = tmp;
     }
+    // A letter has one holder: knights carrying one you start the run with are drawn last.
+    const mine = new Set<string>([opts.start ?? STARTING_POWER, opts.extra ?? STARTING_POWER]);
+    const yours = (id: string): number => Number(mine.has(this.plannedLetter(id)?.power ?? ''));
+    pool.sort((a, b) => yours(a) - yours(b));
     const slots = this.stage.events.filter((e) => e.kind === 'bearer').length;
     const forced = (opts.bearers ?? this.mission?.bearers ?? []).filter((id) => roster.includes(id));
     let order = [...forced, ...pool.filter((id) => !forced.includes(id))];
@@ -650,6 +664,9 @@ export class World {
     this.mastery = opts.mastery ?? {};
     this.addPower(opts.start && STARTABLE_IDS.includes(opts.start) ? opts.start : STARTING_POWER);
     if (opts.extra && STARTABLE_IDS.includes(opts.extra) && !this.powers.some((ps) => ps.def.id === opts.extra)) this.addPower(opts.extra);
+    if (this.gauntlet) this.holdTierLetters();
+    else for (const id of this.bearers) this.holdLetter(this.plannedLetter(id));
+    this.sayHeldLetters();
     this.player.revives += Math.max(0, Math.floor(opts.revives ?? 0));
     this.rerolls = Math.max(0, Math.floor(opts.rerolls ?? 0));
     // The Armory's relic, the Gintō reserve and the Emperor's Foresight.
@@ -858,6 +875,8 @@ export class World {
       this.stage = gauntletStage(this.gauntletTier);
       const next = GAUNTLET[this.gauntletTier];
       this.banners.push({ kind: 'event', title: `Tier ${next.numeral} · ${next.name}`, sub: `${next.bosses.length} to face, the last the strongest` });
+      this.holdTierLetters();
+      this.sayHeldLetters();
       const p = this.player;
       this.addPickup('chestGold', p.x + 60, p.y - 40);
       this.pendingLevelUps += 2;
@@ -1086,6 +1105,58 @@ export class World {
   }
 
   /** A bankai boss: in Seireitei the bankai's own captain defends it; elsewhere a medallion bearer carries it. */
+  /** The letter a boss of this stage would carry: a bankai's thief (not its captain), or a defender given one. */
+  private plannedLetter(id: string): { power: string; holder: string } | null {
+    if (this.stage.roster === 'heroes') return this.heroLetter(id);
+    return this.stage.roster || this.stage.captains ? null : this.thiefLetter(id);
+  }
+
+  private thiefLetter(id: string): { power: string; holder: string } | null {
+    const info = BANKAI_BY_ID.get(id);
+    const power = info ? SCHRIFT_BY_NAME.get(info.thiefSchrift) : undefined;
+    return info && power ? { power, holder: info.thief } : null;
+  }
+
+  private heroLetter(id: string): { power: string; holder: string } | null {
+    const hero = HERO_BY_ID.get(id);
+    return hero?.schrift ? { power: hero.schrift, holder: hero.name } : null;
+  }
+
+  /** A knight on this level keeps their letter out of your reach, unless it is already yours. */
+  private holdLetter(letter: { power: string; holder: string } | null): void {
+    if (letter && !this.powers.some((ps) => ps.def.id === letter.power)) this.heldLetters.set(letter.power, letter.holder);
+  }
+
+  /** The Gauntlet: the letters the current tier's knights carry. */
+  private holdTierLetters(): void {
+    this.heldLetters.clear();
+    for (const b of GAUNTLET[this.gauntletTier].bosses) {
+      if (!('roster' in b)) continue;
+      if (b.roster === 'bearer') this.holdLetter(this.thiefLetter(b.id));
+      else if (b.roster === 'heroes') this.holdLetter(this.heroLetter(b.id));
+    }
+  }
+
+  private sayHeldLetters(): void {
+    const names = [...this.heldLetters.keys()].map((id) => POWER_BY_ID.get(id)?.name ?? id);
+    if (names.length === 0) return;
+    const list = names.length === 1 ? names[0] : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
+    this.messages.push({ text: `${list} ${names.length === 1 ? 'is' : 'are'} held by knights here: defeat them to take ${names.length === 1 ? 'it' : 'them'} back`, kind: 'info' });
+  }
+
+  /** Its holder down: the Emperor takes the letter back, and it is his to use at once. */
+  private takeLetter(letter: { power: string; holder: string } | null): void {
+    if (!letter || !this.heldLetters.delete(letter.power)) return;
+    const def = POWER_BY_ID.get(letter.power);
+    if (!def) return;
+    this.addPower(def.id);
+    this.banners.push({ kind: 'bankai', title: def.name, sub: `${def.letter ? `Schrift ${def.letter} · ` : ''}taken back from ${letter.holder}` });
+    this.sound('bankai');
+    const tint = Number.parseInt(def.color.slice(1), 16);
+    this.spawnFx(FX_GLOW, 0, 0, 0, 0, 0.8, 40, 560, 1, 0, 0, tint, LAYER_ADD, 0, 1);
+    this.spawnFx(FX_RING, 0, 0, 0, 0, 0.7, 30, 480, 1, 0, 0, tint, LAYER_ADD, 0, 1);
+  }
+
   private spawnBearer(id: string, hpMul: number): number {
     this.edgePoint(80);
     if (this.stage.roster === 'royal') return this.spawnRoyal(id, hpMul);
@@ -1102,6 +1173,7 @@ export class World {
     if (i < 0) return -1;
     this.en.variant[i] = BANKAI_IDS.indexOf(id);
     this.bossCount++;
+    if (!captain) this.holdLetter(this.thiefLetter(id));
     const bankaiName = POWER_BY_ID.get(id)?.name ?? id;
     const info = BANKAI_BY_ID.get(id);
     const quote = BOSS_LINES[`${captain ? 'captain' : 'bearer'}:${id}`];
@@ -1179,6 +1251,7 @@ export class World {
     if (i < 0) return -1;
     this.en.variant[i] = Math.max(0, HERO_IDS.indexOf(id));
     this.bossCount++;
+    this.holdLetter(this.heroLetter(id));
     const info = HERO_BY_ID.get(id);
     this.banners.push({ kind: 'boss', title: info?.name ?? 'Defender', sub: info?.title ?? '', quote: BOSS_LINES[`heroes:${id}`] });
     this.shake = Math.max(this.shake, 8);
@@ -1488,7 +1561,8 @@ export class World {
     const tough = def.boss ? bossToughness(hpMul) : null;
     let hp = def.hp * hpMul * (tough ? this.tm.bossHp * tough.hp : hpScale(this.t) * this.stage.hp * this.tm.hp);
     // The world answers your training.
-    hp *= 1 + this.pressure * (def.boss ? DIFFICULTY.pressureBoss : elite ? DIFFICULTY.pressureElite : DIFFICULTY.pressureSwarm);
+    const grow = def.boss ? 0 : DIFFICULTY.pressureGrowth * Math.max(0, Math.min(this.t / 60, DIFFICULTY.pressureGrowthCap) - DIFFICULTY.pressureGrowthFrom);
+    hp *= 1 + this.pressure * ((def.boss ? DIFFICULTY.pressureBoss : elite ? DIFFICULTY.pressureElite : DIFFICULTY.pressureSwarm) + grow);
     // Endless pressure: every minute past the stage's end, the swarm gets sturdier (faster and faster) and hits harder.
     const over = this.endless ? Math.max(0, this.t - this.stage.length) / 60 : 0;
     if (over > 0 && !def.boss) hp *= 1 + 0.15 * over + 0.02 * over * over;
@@ -1956,6 +2030,8 @@ export class World {
       }
     }
     if (flags & FLAG_BOSS) {
+      if (def.id === 'bearer') this.takeLetter(this.thiefLetter(BANKAI_IDS[E.variant[i]]));
+      else if (def.id === 'defender') this.takeLetter(this.heroLetter(HERO_IDS[E.variant[i]]));
       // The Emperor's Seal: every boss put down adds to your strength.
       if (this.hasKaiserSeal && this.sealStacks < 10) {
         this.sealStacks++;
@@ -2974,7 +3050,7 @@ export class World {
       {
         powers: this.powers.map((ps) => ({ id: ps.def.id, level: ps.level })),
         passives: [...this.passives].map(([id, level]) => ({ id, level })),
-        powerDefs: POWERS,
+        powerDefs: this.heldLetters.size > 0 ? POWERS.filter((d) => !this.heldLetters.has(d.id)) : POWERS,
         passiveDefs: PASSIVES,
         maxPowers: 12,
         maxPassives: 8,
@@ -3138,6 +3214,8 @@ export class World {
 
   addPower(id: string): void {
     this.buildVersion++;
+    // A letter you hold is no knight's any more.
+    this.heldLetters.delete(id);
     const owned = this.powers.find((ps) => ps.def.id === id);
     if (owned) {
       if (owned.level < upgradeCap(owned.def)) {

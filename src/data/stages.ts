@@ -132,6 +132,15 @@ export const DIFFICULTY = {
   pressureSwarm: 0.5,
   pressureDamage: 0.6,
   /**
+   * And it answers more as the run goes on: past pressureGrowthFrom minutes the swarm and elites gain
+   * pressureGrowth·p more health for every minute on the clock (up to pressureGrowthCap minutes). A
+   * trained Emperor's damage outgrows the swarm's own curve, so without this the late swarm still fell
+   * to a hit or two.
+   */
+  pressureGrowth: 0.3,
+  pressureGrowthFrom: 3,
+  pressureGrowthCap: 20,
+  /**
    * Boss health and hits, on top of each boss's own multiplier, growing with
    * that multiplier: the first boss of a stage is close to how it always was,
    * the last ones are far tougher. Health: bossHpBase + bossHpPerMul·hpMul, at

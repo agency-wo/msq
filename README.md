@@ -13,7 +13,11 @@ enemies near you lose the same share of their health. Every run in Hueco
 Mundo, three of the Sternritter who stole the captains' bankai with their
 medallions come for you (Äs Nödt with Senbonzakura, Cang Du with Hyōrinmaru,
 BG9 with Raikōben, Bambietta with Tengen, Driscoll with Gonryō Rikyū); beat
-one and its bankai is yours. Every bankai, Fragment of the Soul King and awakened Schrift you take
+one and its bankai is yours. A Schrift has one holder: while a knight who
+carries one stands on the level (those three, or Uryū with the Antithesis in
+the Wahrwelt), its letter never comes up on a level-up board; when they fall the
+Emperor takes it back at once, and it is his to use at Lv 1 (like a bankai, it
+takes no slot). Knights carrying a letter you start the run with are drawn last. Every bankai, Fragment of the Soul King and awakened Schrift you take
 back in a run counts toward **A · The Almighty** (the HUD shows how many): at
 five it awakens (at three once you have taken back all six bankai across your
 runs). It stops time every 24 s and
@@ -134,8 +138,11 @@ Chain kills without being hit for **Blut Rush**: three tiers of extra damage and
 speed, shown by the counter beside your kills.
 
 It is meant to be hard. The first minutes are fair to a new build, but the
-swarm's health, numbers, speed and bite all climb steeply as the run goes on,
-elites come every 75 s, and every boss is tougher the higher it stands on the
+swarm's health, numbers, speed and bite all climb steeply as the run goes on.
+The more of the Archives you hold, the more the world answers: bosses, elites
+and the swarm grow sturdier with your training, and for a trained Emperor the
+swarm keeps growing sturdier minute by minute (the Training tab says how much).
+Elites come every 75 s, and every boss is tougher the higher it stands on the
 stage (the first close to an even fight, the last up to 2.6 times its old
 health); late in Hueco Mundo the Menos Grande join in with their Ceros. Every
 number lives in one place, `DIFFICULTY` in `src/data/stages.ts`.

@@ -16,12 +16,14 @@ export interface HeroInfo {
   warn: string;
   /** Aura colour around the boss. */
   aura: number;
+  /** The Schrift the Emperor gave them, if any (a power id): out of his reach until they fall. */
+  schrift?: string;
 }
 
 export const HERO_INFO: readonly HeroInfo[] = [
   { id: 'renji', name: 'Renji Abarai', title: 'Zabimaru · 6th Division', warn: 'Renji Abarai comes roaring up the stairs', aura: 0xff6a4a },
   { id: 'rukia', name: 'Rukia Kuchiki', title: 'Sode no Shirayuki · 13th Division', warn: 'The air turns bitter cold: Rukia Kuchiki', aura: 0xcfeeff },
-  { id: 'uryu', name: 'Uryū Ishida', title: 'Quincy · The Heir', warn: 'Your heir has turned his bow on you', aura: 0x8fd0ff },
+  { id: 'uryu', name: 'Uryū Ishida', title: 'Quincy · The Heir', warn: 'Your heir has turned his bow on you', aura: 0x8fd0ff, schrift: 'antithesis' },
   { id: 'aizen', name: 'Sōsuke Aizen', title: 'Let out of Muken', warn: 'Kyōraku has let Aizen out of Muken', aura: 0xb89aff },
 ];
 

@@ -306,7 +306,7 @@ export const MISSIONS: readonly MissionDef[] = [
     elite: 'brute',
     events: [bearer(120, 0, 1.8), bearer(240, 1, 2.8), bearer(360, 2, 4.2)],
     bearers: ['renji', 'rukia', 'uryu'],
-    hp: 1.3,
+    hp: 1.15,
     reward: 1600,
     rules: ['Uryū’s silver arrow can silence The Almighty for a while.'],
     brief: [
@@ -335,7 +335,7 @@ export const MISSIONS: readonly MissionDef[] = [
       boss(540, 'kyoraku', 13, 'Shunsui Kyōraku pushes back his hat and draws both blades', 'Captain-Commander of the Gotei 13'),
     ],
     bearers: ['kenpachi', 'mayuri', 'shinji'],
-    hp: 1.35,
+    hp: 1.2,
     reward: 1700,
     brief: [
       'They built a stair of their own up to the palace in the sky. Kenpachi first, as ever; Mayuri with whatever he has made since; Shinji turning every direction backwards.',
@@ -377,7 +377,7 @@ export const MISSIONS: readonly MissionDef[] = [
     events: [bearer(240, 0, 4), bearer(244, 1, 5), boss(600, 'ichigo', 18, 'Ichigo Kurosaki comes, his blades already drawn', 'Substitute Soul Reaper')],
     bearers: ['uryu', 'aizen'],
     almighty: true,
-    hp: 1.4,
+    hp: 1.2,
     spawn: 1.3,
     reward: 2500,
     rules: ['You hold A · The Almighty from the first second.', 'Uryū and Aizen come together; Ichigo comes last.'],

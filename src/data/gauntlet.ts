@@ -69,7 +69,7 @@ export const GAUNTLET: readonly GauntletTier[] = [
     stage: 'silbern',
     hpMul: 19,
     finalMul: 1.8,
-    dmgMul: 1.7,
+    dmgMul: 1.85,
     bosses: [...r('gotei', 'kenpachi', 'mayuri', 'shinji', 'kensei'), { enemy: 'kyoraku' }],
   },
   {
@@ -78,7 +78,7 @@ export const GAUNTLET: readonly GauntletTier[] = [
     stage: 'wahrwelt',
     hpMul: 25,
     finalMul: 2.2,
-    dmgMul: 1.95,
+    dmgMul: 2.2,
     bosses: [...r('heroes', 'renji', 'rukia', 'uryu', 'aizen'), { enemy: 'ichigo' }],
   },
   {
@@ -87,7 +87,7 @@ export const GAUNTLET: readonly GauntletTier[] = [
     stage: 'karakura',
     hpMul: 32,
     finalMul: 2.4,
-    dmgMul: 2.2,
+    dmgMul: 2.5,
     bosses: [...r('karakura', 'chad', 'orihime', 'yoruichi', 'isshin'), { enemy: 'urahara' }],
   },
 ];

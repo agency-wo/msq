@@ -752,7 +752,15 @@ export class UI {
     // The world answers what you learn here: say by how much.
     const pressure = metaPressure(save);
     if (pressure > 0.005) {
-      p.append(el('p', 'archives-hint pressure-line', `Your enemies answer what you have learned: bosses +${Math.round(pressure * DIFFICULTY.pressureBoss * 100)}% health, the swarm +${Math.round(pressure * DIFFICULTY.pressureSwarm * 100)}%.`));
+      const late = DIFFICULTY.pressureSwarm + DIFFICULTY.pressureGrowth * (DIFFICULTY.pressureGrowthCap - DIFFICULTY.pressureGrowthFrom);
+      const pct = (k: number): number => Math.round(pressure * k * 100);
+      p.append(
+        el(
+          'p',
+          'archives-hint pressure-line',
+          `Your enemies answer what you have learned: bosses +${pct(DIFFICULTY.pressureBoss)}% health, the swarm +${pct(DIFFICULTY.pressureSwarm)}% at first and +${pct(late)}% by ${DIFFICULTY.pressureGrowthCap}:00.`,
+        ),
+      );
     }
     const list = el('div', 'upgrades');
     for (const u of UPGRADES) {

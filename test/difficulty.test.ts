@@ -60,4 +60,18 @@ describe('difficulty', () => {
     const dmg = (w: World): number => w.en.dmg[w.spawnEnemy(ENEMY_INDEX.hollow, w.player.x - 200, w.player.y)];
     expect(dmg(b) / dmg(a)).toBeCloseTo(1 + DIFFICULTY.pressureDamage, 3);
   });
+
+  it('and more so as the run goes on: a trained Emperor’s late swarm is far sturdier than his early one', () => {
+    const at = (pressure: number, t: number): World => new World({ seed: 4, god: true, pressure, startTime: t });
+    const hp = (w: World, type: number, elite = false, hpMul = 1): number => w.en.hp[w.spawnEnemy(type, w.player.x + 200, w.player.y, elite, hpMul)];
+    const m = 13;
+    const grow = DIFFICULTY.pressureGrowth * (m - DIFFICULTY.pressureGrowthFrom);
+    const [a, b] = [at(0, m * 60), at(1, m * 60)];
+    expect(hp(b, ENEMY_INDEX.hollow) / hp(a, ENEMY_INDEX.hollow)).toBeCloseTo(1 + DIFFICULTY.pressureSwarm + grow, 3);
+    expect(hp(b, ENEMY_INDEX.brute, true) / hp(a, ENEMY_INDEX.brute, true)).toBeCloseTo(1 + DIFFICULTY.pressureElite + grow, 3);
+    // Bosses keep their own scale; the first minutes are as they were.
+    expect(hp(b, ENEMY_INDEX.bearer, false, 5) / hp(a, ENEMY_INDEX.bearer, false, 5)).toBeCloseTo(1 + DIFFICULTY.pressureBoss, 3);
+    const [c, d] = [at(0, 120), at(1, 120)];
+    expect(hp(d, ENEMY_INDEX.hollow) / hp(c, ENEMY_INDEX.hollow)).toBeCloseTo(1 + DIFFICULTY.pressureSwarm, 3);
+  });
 });
