@@ -3088,6 +3088,31 @@ const ENEMY_DRAW: readonly [string, number, Draw][] = [
   ['kon', 52, heroes.kon],
 ];
 
+/** The stage finals strike in poses of their own; every other named figure leans into its blow (actionFrame). */
+const STRIKE: Readonly<Record<string, Draw>> = {
+  commander: gotei.yamamotoStrike,
+  kyoraku: gotei.kyorakuStrike,
+  harribel: hueco.harribelStrike,
+  grimmjow: hueco.grimmjowStrike,
+  ichibe: royal.ichibeStrike,
+  ichigo: heroes.ichigoStrike,
+  ichigo_mask: heroes.ichigoMaskStrike,
+  urahara: heroes.uraharaStrike,
+};
+
+/** A named figure leaning into its blow: the idle art turned forward about its feet and sheared, for the strike frame. */
+function actionFrame(draw: Draw): Draw {
+  return (g, w, h) => {
+    g.save();
+    g.translate(w / 2, h * 0.95);
+    g.rotate(0.12);
+    g.transform(1, 0, -0.14, 1, 0, 0);
+    g.translate(-w / 2, -h * 0.95);
+    draw(g, w, h);
+    g.restore();
+  };
+}
+
 function specs(): Spec[] {
   const list: Spec[] = [
     { name: 'beam', w: 40, h: 200, draw: beam },
@@ -3116,10 +3141,12 @@ function specs(): Spec[] {
     { name: 'meteor', w: 72, h: 72, draw: meteor },
     // The Emperor in every look: his body, its hit flash, and his cape on its own.
     { name: 'player', w: 60, h: 72, draw: hero },
+    { name: 'player_w', w: 60, h: 72, draw: heroBody(HERO_LOOKS.default, true) },
     { name: 'player_f', w: 60, h: 72, draw: flash(hero) },
     { name: 'cape', w: 60, h: 72, draw: heroCape(HERO_LOOKS.default) },
     ...HERO_LOOK_IDS.filter((look) => look !== 'default').flatMap((look) => [
       { name: `player_${look}`, w: 60, h: 72, draw: heroBody(HERO_LOOKS[look]) },
+      { name: `player_${look}_w`, w: 60, h: 72, draw: heroBody(HERO_LOOKS[look], true) },
       { name: `player_${look}_f`, w: 60, h: 72, draw: flash(heroBody(HERO_LOOKS[look])) },
       { name: `cape_${look}`, w: 60, h: 72, draw: heroCape(HERO_LOOKS[look]) },
     ]),
@@ -3168,6 +3195,8 @@ function specs(): Spec[] {
   for (const [name, size, draw] of ENEMY_DRAW) {
     list.push({ name, w: size, h: size, draw });
     list.push({ name: `${name}_f`, w: size, h: size, draw: flash(draw) });
+    // The named characters' strike frames (no flash of their own: the idle one's serves).
+    if (FACE[name]) list.push({ name: `${name}_a`, w: size, h: size, draw: STRIKE[name] ?? actionFrame(draw) });
   }
   for (let d = 0; d < 10; d++) list.push({ name: `d${d}`, w: 22, h: 30, draw: digit(String(d)) });
   // Tallest first packs the shelves tighter.
@@ -3176,7 +3205,8 @@ function specs(): Spec[] {
 
 export function buildAtlas(): Atlas {
   const list = specs();
-  const W = 1024;
+  // Two thousand wide: every figure and its strike frame fit under 4096 high, the limit every phone's GPU takes.
+  const W = 2048;
   const pad = 2;
   let x = pad;
   let y = pad;

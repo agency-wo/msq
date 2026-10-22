@@ -22,6 +22,7 @@ import {
   oval,
   PAPER,
   type Pt,
+  ribbon,
   shape,
   SKIN,
   stroke,
@@ -175,12 +176,18 @@ export const senjumaru = fig((g, cx) => {
 });
 
 /** Ichibē Hyōsube, the monk who named everything: a great bald head, a bushy black beard and brows, dark robes and prayer beads round a round belly, and his giant brush. */
-export const ichibe = fig((g, cx) => {
+function ichibeDraw(g: Ctx, cx: number, strike: boolean): void {
   const C: Pt = [cx, 20];
-  // The brush, longer than he is tall, its head soaked in ink.
-  const hand: Pt = [cx + 22, 52];
+  // The brush, longer than he is tall, its head soaked in ink; striking, swung down in a stroke that leaves ink in the air.
+  const hand: Pt = strike ? [cx + 24, 44] : [cx + 22, 52];
+  if (strike) ribbon(g, [[hand[0] - 30, hand[1] - 46], [hand[0] - 6, hand[1] - 56], [hand[0] + 18, hand[1] - 40], [hand[0] + 26, hand[1] - 14]], 7, 2.4, INK, false);
+  g.save();
+  g.translate(hand[0], hand[1]);
+  g.rotate(strike ? 0.85 : 0);
+  g.translate(-hand[0], -hand[1]);
   shape(g, [[hand[0] - 1.6, hand[1] + 40], [hand[0] + 1.6, hand[1] + 40], [hand[0] + 9, hand[1] - 30], [hand[0] + 5.8, hand[1] - 30]], '#8a5a2c', INK, 1);
   blob(g, [[hand[0] + 4, hand[1] - 30], [hand[0] + 12, hand[1] - 32], [hand[0] + 14, hand[1] - 42], [hand[0] + 9, hand[1] - 54], [hand[0] + 4, hand[1] - 42]], INK);
+  g.restore();
   for (const d of [-1, 1]) limb(g, [cx + d * 12, 80], [cx + d * 16, 95], 11, 10, INK);
   // Dark robes over a round belly.
   blob(g, [[cx - 28, 46], [cx - 20, 32], [cx + 20, 32], [cx + 28, 46], [cx + 30, 72], [cx + 18, 88], [cx - 18, 88], [cx - 30, 72]], '#2a2a36', INK, 1.6);
@@ -210,5 +217,9 @@ export const ichibe = fig((g, cx) => {
   // The beard, bushy and black, from ear to ear.
   blob(g, hp(C, [[-1.15, 0.35], [-0.6, 0.7], [0, 0.6], [0.6, 0.7], [1.15, 0.35], [1.2, 1.2], [0.6, 1.8], [0, 1.95], [-0.6, 1.8], [-1.2, 1.2]], 1.4), INK);
   mouth(g, cx, C[1] + 8.6, 'grin', 3.6, 0.1);
-});
+}
+
+export const ichibe = fig((g, cx) => ichibeDraw(g, cx, false));
+/** In the strike frame. */
+export const ichibeStrike = fig((g, cx) => ichibeDraw(g, cx, true));
 

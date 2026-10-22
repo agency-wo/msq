@@ -84,6 +84,8 @@ export class EnemyPool extends Pool {
   /** Boss and elite attack timers. */
   readonly atkT = this.f32();
   readonly atk2T = this.f32();
+  /** A boss just attacked: seconds left of its strike, for the renderer only. */
+  readonly actT = this.f32();
   /** Marked by a Volatile blast: explodes for volDmg if it dies within volT. */
   readonly volT = this.f32();
   readonly volDmg = this.f32();

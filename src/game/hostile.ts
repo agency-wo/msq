@@ -51,6 +51,7 @@ import {
   MK_SILVER,
   EB_GETSUGA,
   EB_ARROW,
+  BOSS_ACT,
 } from './constants';
 import { ayonAI, captainSignature, nelAI, thiefSchrift, unohanaAI } from './signatures';
 import { arrancarAI, grimmjowAI } from './lasnoches';
@@ -276,10 +277,21 @@ function tendAround(w: World, i: number): void {
 
 export function bossAI(w: World, i: number, dist: number): void {
   const E = w.en;
+  if (E.actT[i] > 0) E.actT[i] -= DT;
   // Bosses only attack once they are on (or right next to) the screen.
   if (dist > Math.hypot(w.viewHalfW, w.viewHalfH) * 1.15) return;
   E.atkT[i] -= DT;
   E.atk2T[i] -= DT;
+  const t1 = E.atkT[i];
+  const t2 = E.atk2T[i];
+  bossMoves(w, i, dist);
+  // A timer that jumped back up means the boss just struck: the renderer shows it.
+  if (E.atkT[i] > t1 + 0.05 || E.atk2T[i] > t2 + 0.05) E.actT[i] = BOSS_ACT;
+}
+
+/** Every boss's own moves, by who it is. */
+function bossMoves(w: World, i: number, dist: number): void {
+  const E = w.en;
   const def = ENEMY_LIST[E.type[i]];
   if (def.id === 'bearer' || def.id === 'captain') {
     const bankai = BANKAI_IDS[E.variant[i]] ?? '';

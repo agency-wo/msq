@@ -104,7 +104,7 @@ export const byakuya = fig((g, cx) => {
  * brows and a beard bound with a band, the haori hung from his shoulders
  * like a cloak, and Ryūjin Jakka sealed as the cane in his hand.
  */
-export const yamamoto = fig((g, cx) => {
+function yamamotoDraw(g: Ctx, cx: number, strike: boolean): void {
   const B = bodyFrame(cx, { broad: 1.05 });
   const C: Pt = [cx, 14.5];
   // The haori, draped from the shoulders as a cloak, falling wide.
@@ -118,12 +118,24 @@ export const yamamoto = fig((g, cx) => {
   stroke(g, [[cx + 14, 36], [cx + 18, 80]], 1.1, LIGHT);
   hakama(g, B, { stance: 12 });
   kosode(g, B, { obi: '#7a5aa8' });
-  // His cane: Ryūjin Jakka sealed in plain wood, planted at his side.
-  const hand: Pt = [cx + 18, 50];
-  shape(g, [[hand[0] - 1.4, 38], [hand[0] + 1.4, 38], [hand[0] + 2.4, 96], [hand[0] - 0.4, 96]], '#8a5a2c', INK, 0.9);
-  shape(g, [[hand[0] - 1.8, 34.5], [hand[0] + 1.8, 34.5], [hand[0] + 1.8, 39], [hand[0] - 1.8, 39]], INK);
+  // His cane: Ryūjin Jakka sealed in plain wood, planted at his side; striking, the blade drawn and burning.
+  const hand: Pt = strike ? [cx + 20, 36] : [cx + 18, 50];
+  if (!strike) {
+    shape(g, [[hand[0] - 1.4, 38], [hand[0] + 1.4, 38], [hand[0] + 2.4, 96], [hand[0] - 0.4, 96]], '#8a5a2c', INK, 0.9);
+    shape(g, [[hand[0] - 1.8, 34.5], [hand[0] + 1.8, 34.5], [hand[0] + 1.8, 39], [hand[0] - 1.8, 39]], INK);
+  }
   arm(g, B.sl, [cx - 9, 50], { sleeve: 'square', elbow: -3 });
   arm(g, B.sr, hand, { sleeve: 'square', elbow: 3, fist: true });
+  if (strike) {
+    const tip = katana(g, hand, -0.45, { len: 42, width: 3.2, curve: 1.2 });
+    // Ryūjin Jakka's flames running up the blade.
+    for (let k = 1; k <= 5; k++) {
+      const p = along(hand, tip, k / 5.6);
+      const s2 = 3.4 + k * 0.6;
+      shape(g, [[p[0] - s2 * 0.6, p[1] + s2 * 0.4], [p[0] + s2 * 0.2, p[1] - s2 * 1.6], [p[0] + s2 * 0.8, p[1] + s2 * 0.3]], '#ff7a3c', INK, 0.7);
+      shape(g, [[p[0] - s2 * 0.2, p[1] + s2 * 0.2], [p[0] + s2 * 0.15, p[1] - s2 * 0.8], [p[0] + s2 * 0.4, p[1] + s2 * 0.2]], '#ffd27a');
+    }
+  }
   // The cloak's shoulders over the arms.
   shape(g, [[cx - 13.5, 24.5], [cx - 4, 23.5], [cx - 9, 35], [cx - 18.5, 38]], PAPER, INK, 1.1);
   shape(g, [[cx + 13.5, 24.5], [cx + 4, 23.5], [cx + 9, 35], [cx + 18.5, 38]], PAPER, INK, 1.1);
@@ -143,7 +155,11 @@ export const yamamoto = fig((g, cx) => {
   shape(g, [[cx - 3.4, 38], [cx + 3.8, 38], [cx + 3.4, 41], [cx - 3, 41]], '#7a5aa8', INK, 0.8);
   // The moustache.
   shape(g, [[cx - 5, C[1] + 3.8], [cx + 0.2, C[1] + 2.6], [cx + 5.4, C[1] + 3.8], [cx + 6, C[1] + 6.4], [cx + 0.2, C[1] + 4.6], [cx - 5.6, C[1] + 6.4]], PAPER, INK, 0.8);
-});
+}
+
+export const yamamoto = fig((g, cx) => yamamotoDraw(g, cx, false));
+/** In the strike frame. */
+export const yamamotoStrike = fig((g, cx) => yamamotoDraw(g, cx, true));
 
 /**
  * Kenpachi Zaraki: a head of stiff black spikes with a bell tied to each tip,
@@ -543,7 +559,7 @@ const PINK = '#e88aa8';
  * kimono thrown over his haori, and Katen Kyōkotsu's two blades, one in each
  * hand.
  */
-export const kyoraku = fig((g, cx) => {
+function kyorakuDraw(g: Ctx, cx: number, strike: boolean): void {
   const B = bodyFrame(cx, { broad: 1.08 });
   const C: Pt = [cx, 15];
   // The ponytail, swinging out behind.
@@ -556,12 +572,13 @@ export const kyoraku = fig((g, cx) => {
   shape(g, [[cx + 12, 25], [cx + 5, 24], [cx + 6, 44], [cx + 9, 70], [cx + 22, 73], [cx + 19, 44]], PINK, INK, 1.1);
   for (const [x, y] of [[cx - 16, 40], [cx - 12, 58], [cx - 19, 66], [cx + 14, 38], [cx + 16, 56], [cx + 12, 66]] as const) flower(g, x, y);
   // Both blades out.
-  const handL: Pt = [cx - 20, 50];
-  const handR: Pt = [cx + 21, 52];
+  // Striking, the two blades cross high in front of him.
+  const handL: Pt = strike ? [cx - 15, 40] : [cx - 20, 50];
+  const handR: Pt = strike ? [cx + 17, 38] : [cx + 21, 52];
   arm(g, B.sl, handL, { sleeve: 'square', color: PINK, elbow: -2 });
   arm(g, B.sr, handR, { sleeve: 'square', color: PINK, elbow: 2 });
-  katana(g, handL, 2.25, { len: 30, width: 4.4, curve: 2.6, guard: INK });
-  katana(g, handR, 0.95, { len: 36, width: 4.6, curve: 2.8, guard: INK });
+  katana(g, handL, strike ? -0.7 : 2.25, { len: 30, width: 4.4, curve: 2.6, guard: INK });
+  katana(g, handR, strike ? -2.45 : 0.95, { len: 36, width: 4.6, curve: 2.8, guard: INK });
   neckHead(g, cx, { turn: 0.2, y: C[1], jaw: 0.4 });
   stroke(g, hp(C, [[-1.05, -0.2], [1.05, -0.1]]), 0.9);
   shape(g, hp(C, [[0.1, -0.08], [0.85, -0.04], [0.8, 0.45], [0.18, 0.42]]), INK);
@@ -577,7 +594,11 @@ export const kyoraku = fig((g, cx) => {
   // The straw hat, wide and tipped low.
   shape(g, hp(C, [[-2.9, -0.5], [0, -1.95], [2.9, -0.4], [2.6, -0.15], [-2.6, -0.25]]), '#c8a868', INK, 1.1);
   for (const u of [-1.6, -0.6, 0.6, 1.6]) stroke(g, hp(C, [[0, -1.85], [u, -0.4]]), 0.6, '#8a6a32');
-});
+}
+
+export const kyoraku = fig((g, cx) => kyorakuDraw(g, cx, false));
+/** In the strike frame. */
+export const kyorakuStrike = fig((g, cx) => kyorakuDraw(g, cx, true));
 
 function flower(g: Ctx, x: number, y: number): void {
   for (let k = 0; k < 5; k++) {

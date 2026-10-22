@@ -27,6 +27,7 @@ import {
   EB_SWORD,
   EB_WATER,
   FLAG_BOSS,
+  BOSS_ACT,
   FLAG_ELITE,
   FLAG_ZOMBIE,
   FX_ASH,
@@ -150,6 +151,8 @@ class Layer {
 interface EnemySprite {
   tex: Texture;
   flash: Texture;
+  /** A named character's strike frame, shown while it attacks. */
+  strike?: Texture;
   /** Radius the art was drawn for. */
   ref: number;
 }
@@ -344,7 +347,7 @@ export class Renderer {
     );
     this.app.stage.addChild(this.ground, this.worldRoot, L.hud.view);
     // Indexed by enemy type, matching ENEMY_LIST order. `ref` is the radius the art was drawn for.
-    const sprite = (name: string, ref: number): EnemySprite => ({ tex: f[name], flash: f[`${name}_f`], ref });
+    const sprite = (name: string, ref: number): EnemySprite => ({ tex: f[name], flash: f[`${name}_f`], strike: f[`${name}_a`], ref });
     const REF: Record<string, number> = {
       hollow: 11,
       hound: 9,
@@ -782,6 +785,9 @@ export class Renderer {
     const f = this.atlas.frames;
     const L = this.L;
     const frozenAll = w.freezeAllT > 0;
+    const pl = w.player;
+    const px = pl.ox + (pl.x - pl.ox) * alpha;
+    const py = pl.oy + (pl.y - pl.oy) * alpha;
     for (let i = 0; i < E.n; i++) {
       if (E.dead[i]) continue;
       const r = E.r[i];
@@ -876,7 +882,47 @@ export class Renderer {
       const bob = E.freezeT[i] > 0 ? 0 : Math.sin(now * 7 + E.uid[i] * 1.7) * 0.05;
       // Kyōka Suigetsu's copies are a little less there than the real one.
       const ghost = type === ENEMY_INDEX.mirage ? 0.62 + Math.sin(now * 5 + E.uid[i]) * 0.1 : 1;
-      L.enemies.add(E.flash[i] > 0 ? spr.flash : spr.tex, x, y, scale * (1 + bob), scale * (1 - bob), 0, tint, ghost);
+      let tex = E.flash[i] > 0 ? spr.flash : spr.tex;
+      let sx = scale * (1 + bob);
+      let sy = scale * (1 - bob);
+      let rot = 0;
+      let ex = x;
+      let ey = y;
+      if (boss && E.freezeT[i] <= 0 && w.almightyT <= 0) {
+        // A boss acts: it winds up before the blow, lunges into it in its strike frame, and staggers when struck.
+        const dx = px - x;
+        const dy = py - y;
+        const d = Math.hypot(dx, dy) || 1;
+        const ux = dx / d;
+        const uy = dy / d;
+        const side = ux >= 0 ? 1 : -1;
+        const act = E.actT[i];
+        if (act > 0) {
+          const k = act / BOSS_ACT;
+          if (spr.strike && E.flash[i] <= 0) {
+            tex = spr.strike;
+            sx *= side;
+          }
+          ex += ux * 5 * k;
+          ey += uy * 5 * k;
+          // The sweep of the blow, a white crescent between it and you.
+          if (k > 0.5) {
+            const cs = (r * 2.6) / 256;
+            L.fxAdd.add(f.crescent, x + ux * r * 1.1, y + uy * r * 1.1, cs, cs, Math.atan2(uy, ux), 0xffffff, (k - 0.5) * 1.6);
+          }
+        } else if (E.atkT[i] > 0 && E.atkT[i] < 0.3) {
+          ex -= ux * 2.5;
+          ey -= uy * 2.5;
+          rot = -side * 0.06;
+          sy *= 0.97;
+        }
+        if (E.flash[i] > 0) {
+          ex -= ux * 3;
+          ey -= uy * 3;
+          rot -= side * 0.05;
+        }
+      }
+      L.enemies.add(tex, ex, ey, sx, sy, rot, tint, ghost);
     }
   }
 
@@ -959,7 +1005,9 @@ export class Renderer {
       L.auras.add(f.evo_wings, x, hy - 4 * HERO_SIZE, 0.62 * HERO_SIZE * (1 + flap * 0.07), 0.62 * HERO_SIZE * (1 - flap * 0.04), 0, 0xffffff, 0.85 + flap * 0.1);
     }
     const suffix = this.look === 'default' ? '' : `_${this.look}`;
-    const body = f[`player${suffix}`];
+    // Mid-stride on every other step of the walk.
+    const stride = moving && Math.abs(Math.sin(this.walk * 0.2)) > 0.55;
+    const body = f[`player${suffix}${stride ? '_w' : ''}`] ?? f[`player${suffix}`];
     const bodyHit = f[`player${suffix}_f`];
     const cape = f[`cape${suffix}`];
     const fade = blink ? 0.45 : 1;

@@ -15,6 +15,9 @@ export const FLAG_EVENT = 64;
 /** A charging formation: stands through its warning, then runs straight along (sx, sy) and leaves at the far side. */
 export const FLAG_STAMPEDE = 128;
 
+/** How long a boss shows its strike after it attacks (the renderer's strike frame and lunge). */
+export const BOSS_ACT = 0.45;
+
 /** Projectile kinds. */
 export const PK_ARROW = 0;
 export const PK_BLADE = 1;

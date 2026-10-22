@@ -1414,6 +1414,7 @@ export class World {
     E.atkT[i] = def.boss ? 2.5 : 2 + this.rng.next() * 2;
     // A sentinel's second timer is its wind-up, which only starts when it lunges.
     E.atk2T[i] = def.boss ? 4 : BEHAVIOR[type] === BH_CHARGE ? 0 : 1.5 + this.rng.next() * 2.5;
+    E.actT[i] = 0;
     E.volT[i] = 0;
     E.volDmg[i] = 0;
     E.charmT[i] = 0;

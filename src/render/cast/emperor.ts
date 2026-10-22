@@ -1,4 +1,20 @@
-import { disc, fig, hp, INK, limb, type Draw, type Pt, ribbon, shape, SKIN, SKIN_SHADE, star, stroke, head, eyes } from './kit';
+import {
+  disc,
+  type Draw,
+  eyes,
+  fig,
+  head,
+  hp,
+  INK,
+  limb,
+  type Pt,
+  ribbon,
+  shape,
+  SKIN,
+  SKIN_SHADE,
+  star,
+  stroke,
+} from './kit';
 
 /**
  * The Emperor, after Yhwach as the manga draws him in the war: tall, long
@@ -87,8 +103,8 @@ export function heroCape(look: HeroLook): Draw {
 /** Head scale: he is small on screen, so his face is drawn a little larger than the kit's. */
 const K = 1.14;
 
-/** Everything but the cape. */
-export function heroBody(look: HeroLook): Draw {
+/** Everything but the cape; `stride` draws him mid-step, legs apart. */
+export function heroBody(look: HeroLook, stride = false): Draw {
   return fig((g, cx) => {
     const c: Pt = [cx, C[1]];
     // Hair falling behind the shoulders, in long waves, strands catching the light.
@@ -96,8 +112,10 @@ export function heroBody(look: HeroLook): Draw {
     for (const d of [-1, 1]) stroke(g, hp(c, [[d * 1.25, 0.6], [d * 1.6, 1.9], [d * 1.35, 3], [d * 1.6, 3.8]], K), 1, STRAND);
     // Boots under the long coat.
     for (const d of [-1, 1]) {
-      limb(g, [cx + d * 4.5, 64], [cx + d * 9, 93], 7, 6, INK);
-      shape(g, [[cx + d * 9 - 3.8, 90], [cx + d * 9 + 3.8, 90], [cx + d * 9 + 4 + d * 1.4, 97], [cx + d * 9 - 4 + d * 0.4, 97]], INK);
+      const fx = cx + d * (stride ? (d > 0 ? 15 : 13) : 9);
+      const fy = stride && d > 0 ? -2 : 0;
+      limb(g, [cx + d * 4.5, 64], [fx, 93 + fy], 7, 6, INK);
+      shape(g, [[fx - 3.8, 90 + fy], [fx + 3.8, 90 + fy], [fx + 4 + d * 1.4, 97 + fy], [fx - 4 + d * 0.4, 97 + fy]], INK);
     }
     // The coat, long, split up the front from the knee.
     shape(g, [

@@ -215,16 +215,17 @@ function harribelHair(g: Ctx, C: Pt): void {
 }
 
 /** Tier Harribel, the Third Espada: dark skin, short ragged blonde hair with three braids, narrow green eyes over the tall white collar that hides her face below them, and Tiburón, a broad blade with a hollow down its middle. */
-export const harribel = fig((g, cx) => {
+function harribelDraw(g: Ctx, cx: number, strike: boolean): void {
   const C: Pt = [cx, 14];
   const B = whiteUniform(g, cx, { broad: 0.95, stance: 13 });
   arm(g, B.sl, [cx - 15, 50], { sleeve: 'tight', color: PAPER, elbow: -2, skin: HARRIBEL_SKIN });
-  const hand: Pt = [cx + 18, 46];
+  // Striking, Tiburón comes up high.
+  const hand: Pt = strike ? [cx + 15, 30] : [cx + 18, 46];
   arm(g, B.sr, hand, { sleeve: 'tight', color: PAPER, elbow: 3, skin: HARRIBEL_SKIN });
   // Tiburón, the hollow running down its blade.
   g.save();
   g.translate(hand[0], hand[1]);
-  g.rotate(1.2);
+  g.rotate(strike ? -0.95 : 1.2);
   shape(g, [[-6, -1.2], [1, -1.2], [1, 1.2], [-6, 1.2]], INK);
   shape(g, [[1, -4.6], [36, -3.8], [40, 0], [36, 3.8], [1, 4.6]], STEEL, INK, 1);
   shape(g, [[8, -1.6], [32, -1.2], [32, 1.2], [8, 1.6]], INK);
@@ -235,7 +236,11 @@ export const harribel = fig((g, cx) => {
   shape(g, [[cx - 7.6, 30], [cx - 7, 16.4], [cx + 7.4, 16.4], [cx + 8, 30]], PAPER, INK, 1.2);
   stroke(g, [[cx, 17], [cx + 0.4, 30]], 0.9, LIGHT);
   harribelHair(g, C);
-});
+}
+
+export const harribel = fig((g, cx) => harribelDraw(g, cx, false));
+/** In the strike frame. */
+export const harribelStrike = fig((g, cx) => harribelDraw(g, cx, true));
 
 /** Harribel with Tiburón released: plates of bone over her shoulders and chest, a guard of bone across her face, and Tiburón become a great shark-tooth blade on her right arm, water spiralling round it. */
 export const harribelReleased = fig((g, cx) => {
@@ -464,7 +469,7 @@ export const gantenDragra = fig((g, cx) => {
 const GRIMM_HAIR = '#3a90d8';
 
 /** Grimmjow Jaegerjaquez, the Sexta Espada: spiked blue hair swept back, teal marks under his eyes, the jaw of his mask on his right cheek, the white jacket open over the hole in his belly, hands in his pockets. */
-export const grimmjow = fig((g, cx) => {
+function grimmjowDraw(g: Ctx, cx: number, strike: boolean): void {
   const C: Pt = [cx, 14];
   const B = bodyFrame(cx, { broad: 1.08 });
   hakama(g, B, { stance: 15, hakama: PAPER, tabi: INK });
@@ -477,8 +482,15 @@ export const grimmjow = fig((g, cx) => {
   for (const d of [-1, 1]) {
     shape(g, [[cx + d * 4, 24], [cx + d * 13, 25], [cx + d * 14.5, 50], [cx + d * 7.5, 50], [cx + d * 6, 32]], PAPER, INK, 1.1);
     shape(g, [[cx + d * 4.5, 24], [cx + d * 9.6, 17.8], [cx + d * 11.4, 25.2]], PAPER, INK, 1);
-    // Hands in his pockets.
-    arm(g, [cx + d * 12.4, 27], [cx + d * 10, 47], { sleeve: 'tight', color: PAPER, elbow: d * 4 });
+    // Hands in his pockets; striking, the right one out and raking.
+    arm(g, [cx + d * 12.4, 27], strike && d > 0 ? [cx + 25, 24] : [cx + d * 10, 47], { sleeve: 'tight', color: PAPER, elbow: d * 4 });
+  }
+  if (strike) {
+    // Desgarrón: claws of blue reishi raking out of his fingers.
+    for (let k = 0; k < 5; k++) {
+      const a = -1.2 + k * 0.32;
+      stroke(g, [[cx + 26, 24], [cx + 26 + Math.cos(a) * 12, 24 + Math.sin(a) * 12], [cx + 26 + Math.cos(a + 0.3) * 22, 24 + Math.sin(a + 0.3) * 22]], 1.8, '#5ab0f0');
+    }
   }
   neckHead(g, cx, { turn: 0.25, y: C[1], jaw: 0.6 });
   // Teal marks under the eyes.
@@ -490,7 +502,11 @@ export const grimmjow = fig((g, cx) => {
   for (const u of [0.45, 0.7, 0.92]) stroke(g, hp(C, [[u, 0.5], [u, 0.88]]), 0.5);
   // Hair spiked up and back.
   shape(g, hp(C, [[-1.15, 0.05], [-1.7, -0.5], [-1.05, -0.8], [-1.35, -1.45], [-0.5, -1.15], [-0.25, -1.85], [0.3, -1.2], [0.95, -1.75], [0.95, -0.95], [1.6, -0.9], [1.15, -0.3], [0.7, -0.6], [-0.4, -0.5]]), GRIMM_HAIR, INK, 1);
-});
+}
+
+export const grimmjow = fig((g, cx) => grimmjowDraw(g, cx, false));
+/** In the strike frame. */
+export const grimmjowStrike = fig((g, cx) => grimmjowDraw(g, cx, true));
 
 /** Grimmjow released, Pantera: long wild hair to his waist, a panther's ears and tail, white armour plates, claws, crouched to spring. */
 export const grimmjowPantera = fig((g, cx) => {

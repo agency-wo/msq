@@ -244,7 +244,7 @@ export const aizen = fig((g, cx) => {
 
 // ---------------------------------------------------------------- Ichigo
 
-function ichigoBody(g: Ctx, cx: number): void {
+function ichigoBody(g: Ctx, cx: number, strike = false): void {
   const B = bodyFrame(cx, { broad: 1.08 });
   hakama(g, B, { stance: 16 });
   // The long black coat over his robes, its hem torn and flaring.
@@ -253,11 +253,12 @@ function ichigoBody(g: Ctx, cx: number): void {
   stroke(g, [[cx + 13, 40], [cx + 18, 80]], 1.1, DARK);
   kosode(g, B);
   // Both blades: the great cleaver in his right hand, the short one in his left.
-  const hand: Pt = [cx + 19, 48];
+  // Striking, the cleaver comes up over his head for the Getsuga.
+  const hand: Pt = strike ? [cx + 13, 24] : [cx + 19, 48];
   arm(g, B.sr, hand, { sleeve: 'square', elbow: 3, fist: true });
   g.save();
   g.translate(hand[0], hand[1]);
-  g.rotate(-1.15);
+  g.rotate(strike ? -2.05 : -1.15);
   shape(g, [[-8, -1.4], [1, -1.4], [1, 1.4], [-8, 1.4]], INK);
   shape(g, [[1, -4.4], [42, -5.4], [46, 0.4], [40, 5.2], [1, 4.4]], STEEL, INK, 1.1);
   stroke(g, [[4, 2.6], [40, 3]], 1, STEEL_SHADE);
@@ -272,8 +273,8 @@ function ichigoHair(g: Ctx, C: Pt): void {
 }
 
 /** Ichigo Kurosaki: spiked orange hair, a scowl, the long black coat over his robes, and both of his blades. */
-export const ichigo = fig((g, cx) => {
-  ichigoBody(g, cx);
+function ichigoDraw(g: Ctx, cx: number, strike: boolean): void {
+  ichigoBody(g, cx, strike);
   const C: Pt = [cx, 15];
   neckHead(g, cx, { turn: 0.2, y: C[1], jaw: 0.5 });
   eyes(g, cx, C[1] + 1.2, { turn: 0.2, color: '#6a3a1a', brow: ORANGE, tilt: 1.8 });
@@ -281,11 +282,15 @@ export const ichigo = fig((g, cx) => {
   stroke(g, [[cx + 0.2, C[1] - 1.8], [cx + 0.4, C[1] - 0.6]], 0.8);
   mouth(g, cx, C[1] + 5.2, 'frown', 1.8, 0.2);
   ichigoHair(g, C);
-});
+}
+
+export const ichigo = fig((g, cx) => ichigoDraw(g, cx, false));
+/** In the strike frame. */
+export const ichigoStrike = fig((g, cx) => ichigoDraw(g, cx, true));
 
 /** Ichigo with his Hollow mask: white, red stripes down its left side, black eyes with yellow irises, its teeth bared. */
-export const ichigoMask = fig((g, cx) => {
-  ichigoBody(g, cx);
+function ichigoMaskDraw(g: Ctx, cx: number, strike: boolean): void {
+  ichigoBody(g, cx, strike);
   const C: Pt = [cx, 15];
   limb(g, [cx + 0.3, C[1] + 5], [cx, C[1] + 12], 4.6, 5.2, SKIN);
   shape(g, hp(C, [[-1.15, 0.1], [-1.1, -0.85], [0, -1.15], [1.1, -0.85], [1.15, 0.1], [0.75, 0.85], [0.2, 1.1], [-0.6, 0.95]]), BONE, INK, 1.2);
@@ -298,7 +303,11 @@ export const ichigoMask = fig((g, cx) => {
   shape(g, hp(C, [[-0.55, 0.55], [0.6, 0.55], [0.5, 0.85], [-0.45, 0.85]]), INK);
   for (let k = -2; k <= 2; k++) stroke(g, hp(C, [[k * 0.2, 0.55], [k * 0.2, 0.85]]), 0.6, BONE);
   ichigoHair(g, C);
-});
+}
+
+export const ichigoMask = fig((g, cx) => ichigoMaskDraw(g, cx, false));
+/** In the strike frame. */
+export const ichigoMaskStrike = fig((g, cx) => ichigoMaskDraw(g, cx, true));
 
 // ------------------------------------------------------------------ Sado
 
@@ -487,7 +496,7 @@ export const isshinLate = fig((g, cx) => isshinBody(g, cx, true));
 
 // ----------------------------------------------------------------- Urahara
 
-function uraharaBody(g: Ctx, cx: number): void {
+function uraharaBody(g: Ctx, cx: number, strike = false): void {
   const B = bodyFrame(cx);
   hakama(g, B, { stance: 13, hakama: '#2a3a2a', tabi: '#c8a868' });
   kosode(g, B, { kosode: '#2a3a2a', obi: PAPER, collar: '#2a3a2a' });
@@ -499,12 +508,15 @@ function uraharaBody(g: Ctx, cx: number): void {
       shape(g, [[x, 68.5], [x + 1.3, 70], [x, 71.5], [x - 1.3, 70]], PAPER);
     }
   }
-  // Benihime as a cane, the geta under his feet.
-  const hand: Pt = [cx + 17, 52];
-  shape(g, [[hand[0] - 1.2, 40], [hand[0] + 1.2, 40], [hand[0] + 2, 96], [hand[0] - 0.2, 96]], '#6a4a2a', INK, 0.8);
-  shape(g, [[hand[0] - 2, 36], [hand[0] + 4, 36], [hand[0] + 4, 40], [hand[0] - 2, 40]], '#6a4a2a', INK, 0.8);
+  // Benihime as a cane, the geta under his feet; striking, the blade drawn out of it.
+  const hand: Pt = strike ? [cx + 20, 42] : [cx + 17, 52];
+  if (!strike) {
+    shape(g, [[hand[0] - 1.2, 40], [hand[0] + 1.2, 40], [hand[0] + 2, 96], [hand[0] - 0.2, 96]], '#6a4a2a', INK, 0.8);
+    shape(g, [[hand[0] - 2, 36], [hand[0] + 4, 36], [hand[0] + 4, 40], [hand[0] - 2, 40]], '#6a4a2a', INK, 0.8);
+  }
   arm(g, B.sl, [cx - 6, 50], { sleeve: 'square', color: URAHARA_GREEN, elbow: -5 });
   arm(g, B.sr, hand, { sleeve: 'square', color: URAHARA_GREEN, elbow: 3 });
+  if (strike) katana(g, hand, -0.5, { len: 36, width: 2.4, curve: 0.8, grip: '#6a4a2a', guard: INK });
   for (const d of [-1, 1]) shape(g, [[cx + d * 13 - 5, 96], [cx + d * 13 + 5, 96], [cx + d * 13 + 5, 98.5], [cx + d * 13 - 5, 98.5]], '#8a6a3a', INK, 0.7);
   const C: Pt = [cx, 15];
   neckHead(g, cx, { turn: 0.15, y: C[1] });
@@ -523,6 +535,8 @@ function uraharaBody(g: Ctx, cx: number): void {
 
 /** Kisuke Urahara: the shopkeeper of Karakura, once Captain of the 12th Division. A striped bucket hat over his eyes, a dark green haori with white diamonds at the hem, wooden geta, and a cane that is Benihime. */
 export const urahara = fig((g, cx) => uraharaBody(g, cx));
+/** In the strike frame. */
+export const uraharaStrike = fig((g, cx) => uraharaBody(g, cx, true));
 
 /** Urahara's bankai: Kannonbiraki Benihime Aratame stands behind him, a great figure in red with a needle that remakes whatever it touches. */
 export const uraharaBankai = fig((g, cx) => {
