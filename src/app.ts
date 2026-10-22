@@ -33,8 +33,12 @@ import { buyLook, buyTrail, wardrobeAffordable, wearLook, wearTrail } from './sa
 import {
   almightyUnlocked,
   endlessOpen,
+  backupDue,
+  backupFile,
   exportCode,
   importCode,
+  markBackedUp,
+  snoozeBackup,
   loadSave,
   recordDaily,
   recordMission,
@@ -136,6 +140,8 @@ export class App {
       (alpha, frame) => this.frame(alpha, frame),
     );
     this.bindLifecycle();
+    // Ask the browser to keep this site's storage through clean-ups (granted quietly, or not at all).
+    void navigator.storage?.persist?.().catch(() => false);
     this.loop.start();
     if (this.debug) this.exposeDebug();
     // Testing: ?mission=jagdarmee plays a Story mission (with ?play).
@@ -179,6 +185,12 @@ export class App {
       archivesDot: affordable(this.save) !== null,
       onWardrobe: () => this.showWardrobe(),
       wardrobeDot: wardrobeAffordable(this.save),
+      backupDue: !this.testing && backupDue(this.save, Date.now()),
+      onBackup: () => this.showSettings(true),
+      onSnooze: () => {
+        snoozeBackup(this.save);
+        writeSave(this.save);
+      },
     });
   }
 
@@ -339,13 +351,18 @@ export class App {
     return stageUnlocked(this.save, this.save.stage) ? this.save.stage : 'hueco';
   }
 
-  private showSettings(): void {
+  private showSettings(toBackup = false): void {
     this.state = 'settings';
     this.ui.showSettings(this.save.settings, {
+      toBackup,
+      lastBackup: this.save.backup.at,
+      persisted: navigator.storage?.persisted?.().catch(() => false) ?? Promise.resolve(false),
       onToggle: this.toggle,
       onBack: () => this.showTitle(),
       onExport: () => this.exportSave(),
       onImport: () => this.importSave(),
+      onSaveFile: () => this.saveBackupFile(),
+      onLoadFile: () => this.loadBackupFile(),
       onGift: () => this.redeemGift(),
       onResetTips: () => {
         resetTips(this.save);
@@ -812,6 +829,9 @@ export class App {
   }
 
   private exportSave(): void {
+    // A copied code is a backup too.
+    markBackedUp(this.save, Date.now());
+    writeSave(this.save);
     const code = exportCode(this.save);
     const fallback = (): void => {
       window.prompt('Copy your save code:', code);
@@ -826,16 +846,72 @@ export class App {
   private importSave(): void {
     const code = window.prompt('Paste a save code:');
     if (!code) return;
-    const data = importCode(code);
+    this.loadSaveText(code, 'That is not a save code');
+  }
+
+  private loadSaveText(text: string, notOne: string): void {
+    const data = importCode(text);
     if (!data) {
-      this.ui.toast('That is not a save code');
+      this.ui.toast(notOne);
       return;
     }
     this.save = data;
     writeSave(this.save);
     this.applySettings();
     this.ui.toast('Save loaded');
-    this.showSettings();
+    this.showSettings(true);
+  }
+
+  /**
+   * The backup file: through the share sheet where the phone offers one for
+   * files (Save to Files, Notes, Mail, AirDrop), otherwise downloaded.
+   */
+  private saveBackupFile(): void {
+    const now = Date.now();
+    markBackedUp(this.save, now);
+    writeSave(this.save);
+    const { name, text } = backupFile(this.save, now);
+    const file = new File([text], name, { type: 'text/plain' });
+    const done = (): void => {
+      this.ui.toast('Backup saved');
+      this.showSettings(true);
+    };
+    if (navigator.canShare?.({ files: [file] })) {
+      navigator.share({ files: [file], title: 'Quincy Survival save' }).then(done, (e: unknown) => {
+        // Closing the share sheet is not an error worth a word.
+        if (!(e instanceof DOMException && e.name === 'AbortError')) this.downloadFile(file, done);
+      });
+      return;
+    }
+    this.downloadFile(file, done);
+  }
+
+  private downloadFile(file: File, done: () => void): void {
+    const url = URL.createObjectURL(file);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = file.name;
+    document.body.append(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+    done();
+  }
+
+  /** Pick a backup file (or any text holding a save code) and load it. */
+  private loadBackupFile(): void {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.txt,text/plain';
+    input.addEventListener('change', () => {
+      const file = input.files?.[0];
+      if (!file) return;
+      file.text().then(
+        (text) => this.loadSaveText(text, 'That file holds no save'),
+        () => this.ui.toast('That file could not be read'),
+      );
+    });
+    input.click();
   }
 
   /** A gift code typed in Settings: its gold goes straight into the save. */

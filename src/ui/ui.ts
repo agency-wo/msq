@@ -519,6 +519,10 @@ export class UI {
       /** The Emperor's portrait opens the Wardrobe; a dot when something there is affordable. */
       onWardrobe: () => void;
       wardrobeDot: boolean;
+      /** It has been a while since the last backup: a strip asks for one. */
+      backupDue: boolean;
+      onBackup: () => void;
+      onSnooze: () => void;
     },
   ): void {
     const p = this.open('title');
@@ -573,6 +577,7 @@ export class UI {
     );
     // New players get the controls in one line; everyone else already knows.
     if (save.totals.runs === 0) p.append(el('p', 'hint', 'Drag anywhere to move. Your powers fire on their own. Each stage lasts 20 minutes.'));
+    if (h.backupDue) p.insertBefore(this.backupNudge(h.onBackup, h.onSnooze), play);
     if (h.installHint) {
       const box = el('div', 'install');
       box.append(el('strong', '', 'Play full-screen'), el('span', '', 'Tap Share, then Add to Home Screen.'));
@@ -581,9 +586,43 @@ export class UI {
     this.lock(150);
   }
 
+  /** A paper strip on the title: the save lives only on this device, so back it up. */
+  private backupNudge(onBackup: () => void, onSnooze: () => void): HTMLElement {
+    const box = el('div', 'backup-nudge');
+    box.setAttribute('role', 'note');
+    const text = el('div', 'backup-nudge-text');
+    text.append(el('strong', '', 'Back up your progress'), el('span', '', 'It lives only on this device, and a phone can clear it.'));
+    const yes = button('btn small backup-now', 'Back up');
+    yes.addEventListener('click', this.guard(onBackup));
+    const later = button('btn small backup-later', 'Later');
+    later.addEventListener('click', () => {
+      onSnooze();
+      box.remove();
+    });
+    const acts = el('div', 'backup-nudge-acts');
+    acts.append(yes, later);
+    box.append(text, acts);
+    return box;
+  }
+
   showSettings(
     settings: Settings,
-    h: { onToggle: (k: Toggle) => boolean; onBack: () => void; onExport: () => void; onImport: () => void; onGift: () => void; onResetTips: () => void },
+    h: {
+      onToggle: (k: Toggle) => boolean;
+      onBack: () => void;
+      onExport: () => void;
+      onImport: () => void;
+      onSaveFile: () => void;
+      onLoadFile: () => void;
+      onGift: () => void;
+      onResetTips: () => void;
+      /** Open scrolled to the backup section (from the title's reminder). */
+      toBackup: boolean;
+      /** When the last backup was made (ms), 0 for never. */
+      lastBackup: number;
+      /** Whether the browser has promised to keep this site's storage. */
+      persisted: Promise<boolean>;
+    },
   ): void {
     const p = this.open('settings');
     p.append(el('h2', 'board-title', 'Settings'), this.toggles(settings, h.onToggle));
@@ -593,17 +632,33 @@ export class UI {
       this.toast('Tips will show again');
     });
     p.append(again);
+    // Backup: the save lives only on this device.
+    const backup = el('section', 'backup');
+    backup.append(el('h3', 'section-title', 'Backup'));
+    const days = h.lastBackup > 0 ? Math.floor((Date.now() - h.lastBackup) / 86_400_000) : -1;
+    backup.append(el('p', 'backup-status', days < 0 ? 'Never backed up.' : days === 0 ? 'Last backup: today.' : days === 1 ? 'Last backup: yesterday.' : `Last backup: ${days} days ago.`));
+    const kept = el('p', 'backup-kept', 'Your progress lives only on this device.');
+    h.persisted.then((ok) => {
+      kept.textContent = ok ? 'This device has promised to keep your progress, but a backup is still the safe way.' : 'Your progress lives only on this device, and a phone can clear it: keep a backup somewhere else.';
+    });
+    backup.append(kept);
+    const fileSave = button('btn backup-file-btn', 'Save a backup file');
+    fileSave.addEventListener('click', h.onSaveFile);
+    const fileLoad = button('btn small backup-load-btn', 'Load a backup file');
+    fileLoad.addEventListener('click', h.onLoadFile);
     const save = el('div', 'row-btns');
     const exp = button('btn small', 'Copy save code');
     exp.addEventListener('click', h.onExport);
     const imp = button('btn small', 'Load save code');
     imp.addEventListener('click', h.onImport);
     save.append(exp, imp);
+    backup.append(fileSave, fileLoad, save);
     const gift = button('btn small gift-btn', 'Redeem a gift code');
     gift.addEventListener('click', h.onGift);
     const back = button('btn primary', 'Back');
     back.addEventListener('click', this.guard(h.onBack));
-    p.append(save, gift, back);
+    p.append(backup, gift, back);
+    if (h.toBackup) requestAnimationFrame(() => backup.scrollIntoView({ block: 'start' }));
     this.lock(150);
   }
 

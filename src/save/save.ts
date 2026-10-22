@@ -15,8 +15,10 @@ import { FEAT_BY_ID, LOOKS, type LookId } from './feats';
 
 /**
  * Versioned save in localStorage. On iPhone a Home Screen web app keeps its
- * own storage, which Safari's 7-day cleanup does not touch; the export code
- * is a manual backup on top of that.
+ * own storage, which Safari's 7-day cleanup does not touch, but iOS can still
+ * clear a web app's data (a full phone, a reset). So the save can be backed
+ * up: as a file (shared to Files, Notes or Mail) or as a code, and the title
+ * screen reminds a player who has not done so in a while.
  */
 
 export interface Settings {
@@ -99,6 +101,8 @@ export interface SaveData {
   missions: Record<string, MissionRecord>;
   /** Gift codes already redeemed on this save. */
   gifts: string[];
+  /** The last backup (a file or a copied code): when (ms since 1970, 0 for never), how many runs had been played, and until how many runs the reminder sleeps. */
+  backup: { at: number; runs: number; snooze: number };
 }
 
 export interface MissionRecord {
@@ -184,6 +188,40 @@ export function defaultSave(): SaveData {
     trail: 'none',
     missions: {},
     gifts: [],
+    backup: { at: 0, runs: 0, snooze: 0 },
+  };
+}
+
+/** The reminder waits for a few runs of progress, and a few days, since the last backup. */
+export const BACKUP_RUNS = 3;
+export const BACKUP_DAYS = 3;
+
+/** Whether the title screen should ask for a backup now. */
+export function backupDue(save: SaveData, now: number): boolean {
+  const b = save.backup;
+  const runs = save.totals.runs;
+  if (runs < BACKUP_RUNS || runs - b.runs < BACKUP_RUNS || runs < b.snooze) return false;
+  return b.at === 0 || now - b.at >= BACKUP_DAYS * 86_400_000;
+}
+
+/** A backup was just made. */
+export function markBackedUp(save: SaveData, now: number): void {
+  save.backup = { at: now, runs: save.totals.runs, snooze: 0 };
+}
+
+/** "Later": the reminder sleeps for a few more runs. */
+export function snoozeBackup(save: SaveData): void {
+  save.backup = { ...save.backup, snooze: save.totals.runs + BACKUP_RUNS };
+}
+
+/** The backup file: a dated name, and a line for whoever opens it above the code itself. */
+export function backupFile(save: SaveData, now: number): { name: string; text: string } {
+  const d = new Date(now);
+  const pad = (n: number): string => String(n).padStart(2, '0');
+  const day = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  return {
+    name: `quincy-survival-save-${day}.txt`,
+    text: `Quincy Survival save, ${day}. To bring it back: Settings, Load a backup file.\n${exportCode(save)}\n`,
   };
 }
 
@@ -363,7 +401,14 @@ export function migrate(raw: unknown): SaveData {
     ...migrateTrails(r),
     missions: migrateMissions(r.missions),
     gifts: Array.isArray(r.gifts) ? [...new Set(r.gifts.filter((c): c is string => typeof c === 'string' && c in GIFT_CODES))] : [],
+    backup: migrateBackup(r.backup),
   };
+}
+
+function migrateBackup(raw: unknown): SaveData['backup'] {
+  const b = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
+  const n = (v: unknown): number => (typeof v === 'number' && Number.isFinite(v) && v >= 0 ? v : 0);
+  return { at: n(b.at), runs: Math.floor(n(b.runs)), snooze: Math.floor(n(b.snooze)) };
 }
 
 /** Records only for missions that exist; anything else in the save is dropped. */
@@ -493,12 +538,14 @@ export function exportCode(data: SaveData): string {
   return CODE_PREFIX + toBase64(JSON.stringify(data));
 }
 
-/** Parse a code from exportCode; null if it is not one. */
+/** Parse a code from exportCode, alone or inside a backup file's text; null if there is none. */
 export function importCode(code: string): SaveData | null {
-  const c = code.trim();
-  if (!c.startsWith(CODE_PREFIX)) return null;
+  const at = code.indexOf(CODE_PREFIX);
+  if (at < 0) return null;
+  const c = code.slice(at + CODE_PREFIX.length).match(/^[A-Za-z0-9+/=]+/)?.[0];
+  if (!c) return null;
   try {
-    return migrate(JSON.parse(fromBase64(c.slice(CODE_PREFIX.length))));
+    return migrate(JSON.parse(fromBase64(c)));
   } catch {
     return null;
   }

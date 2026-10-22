@@ -985,6 +985,41 @@ try {
   if (gift.gold - giftBefore !== 900000) problems.push(`[smoke] gift code paid ${gift.gold - giftBefore}`);
   await shot('15-gift-code');
 
+  // Backup: with no share sheet for files (Edge on Windows offers one, which a headless run cannot answer,
+  // so it is switched off here), the file downloads, and it loads straight back.
+  await page.evaluate(() => Object.defineProperty(navigator, 'canShare', { value: () => false, configurable: true }));
+  const goldSaved = await page.evaluate(() => JSON.parse(localStorage.getItem('msq.save') ?? '{}').gold);
+  const [download] = await Promise.all([page.waitForEvent('download'), page.tap('.backup-file-btn')]);
+  const backupPath = join(OUT, 'backup.txt');
+  await download.saveAs(backupPath);
+  await wait(300);
+  const status = await page.textContent('.screen.settings .backup-status');
+  // Spend nothing, change nothing: load the file over the same save and the gold must match.
+  const [chooser] = await Promise.all([page.waitForEvent('filechooser'), page.tap('.backup-load-btn')]);
+  await chooser.setFiles(backupPath);
+  await wait(600);
+  const restored = { name: download.suggestedFilename(), status, toast: await page.textContent('.toast'), gold: await page.evaluate(() => JSON.parse(localStorage.getItem('msq.save') ?? '{}').gold) };
+  log('backup file', restored);
+  if (!/^quincy-survival-save-\d{4}-\d\d-\d\d\.txt$/.test(restored.name)) problems.push(`[smoke] backup file named ${restored.name}`);
+  if (restored.gold !== goldSaved || !/Save loaded/.test(restored.toast ?? '')) problems.push(`[smoke] backup did not load back: ${JSON.stringify(restored)}`);
+  if (!/today/.test(status ?? '')) problems.push(`[smoke] backup status after saving: ${status}`);
+  await shot('15b-backup');
+
+  // The title's reminder: shown when a backup is due, gone (for a few runs) after Later.
+  await page.evaluate(() => {
+    const s = JSON.parse(localStorage.getItem('msq.save') ?? '{}');
+    s.totals.runs = Math.max(5, s.totals.runs);
+    s.backup = { at: 0, runs: 0, snooze: 0 };
+    localStorage.setItem('msq.save', JSON.stringify(s));
+  });
+  await go(`${BASE}?debug&seed=3`);
+  await page.waitForSelector('.screen.title .backup-nudge');
+  await shot('15c-backup-nudge');
+  await page.tap('.backup-later');
+  await go(`${BASE}?debug&seed=3`);
+  await page.waitForSelector('.screen.title .btn.primary');
+  if (await page.$('.screen.title .backup-nudge')) problems.push('[smoke] the backup reminder came straight back after Later');
+
   // Story Mode: a mission is won on its goal (here, holding out to the end) and told to its end before the results.
   await go(`${BASE}?debug&seed=3&play&god&mission=jagdarmee&t=474`);
   log('mission', await page.evaluate(() => ({ mission: window.__msq.world.mission?.id, length: window.__msq.world.stage.length })));
