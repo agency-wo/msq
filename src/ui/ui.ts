@@ -1899,6 +1899,8 @@ export class UI {
   }
 
   private open(cls: string, keepScroll = false): HTMLElement {
+    // A long menu scrolls its panel rather than the screen: a redraw after a purchase keeps the player's place in it.
+    const kept = keepScroll ? (this.screen.querySelector<HTMLElement>(':scope > .panel')?.scrollTop ?? 0) : 0;
     this.screen.replaceChildren();
     // "scroll" exempts the screen from the page-wide touchmove block, so tall screens can scroll on iOS.
     this.screen.className = `screen scroll ${cls}`;
@@ -1906,6 +1908,7 @@ export class UI {
     if (!keepScroll) this.screen.scrollTop = 0;
     const panel = el('div', 'panel');
     this.screen.append(panel);
+    if (kept > 0) requestAnimationFrame(() => (panel.scrollTop = kept));
     return panel;
   }
 

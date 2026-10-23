@@ -3939,11 +3939,49 @@ button:focus-visible {
   font-size: 14px;
 }
 
-/* Long menus: Back stays at the bottom of the screen, however far down the list you are. */
+/* Long menus are one screen too: the screen itself never scrolls; the list scrolls inside its margins
+   (so nothing slides under the status bar or the home indicator), and Back sits on the list's bottom
+   edge, always in reach. */
+.screen:is(.archives, .codex, .feats, .chronicle, .settings, .wardrobe, .missions, .daily) {
+  overflow: hidden;
+}
+
+.screen:is(.archives, .codex, .feats, .chronicle, .settings, .wardrobe, .missions, .daily) .panel {
+  height: 100%;
+  margin: 0 auto;
+  /* Room for the buttons' offset shadows, which the scrolling list would otherwise cut. */
+  padding: 0 6px 6px 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.screen:is(.archives, .codex, .feats, .chronicle, .settings, .wardrobe, .missions, .daily) .panel > * {
+  flex-shrink: 0;
+}
+
 .screen:is(.archives, .codex, .feats, .chronicle, .settings, .wardrobe, .missions, .daily) .panel > .btn:last-child {
   position: sticky;
-  bottom: calc(var(--safe-b) + 4px);
+  bottom: 0;
   z-index: 3;
+  margin-top: auto;
+  /* Slimmer than a page's main button: it is a way out, and the list needs the room. */
+  padding-top: 12px;
+  padding-bottom: 12px;
+}
+
+/* Any screen that does scroll keeps the status bar clear: a band of the screen's ink under it. */
+.screen::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--safe-t);
+  background: rgb(5, 5, 7);
+  z-index: 6;
+  pointer-events: none;
 }
 
 /* A view not chosen stays out of the way, whatever display its own class gives it. */

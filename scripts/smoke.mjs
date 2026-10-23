@@ -167,6 +167,8 @@ function overflowProbe() {
   const edge = s.getBoundingClientRect();
   const inScroller = (e) => {
     for (let q = e.parentElement; q && q !== s; q = q.parentElement) {
+      // A sideways track excuses what scrolls along it; a menu's own list panel (which scrolls down) does not.
+      if (q.classList.contains('panel')) continue;
       const o = getComputedStyle(q).overflowX;
       if (o === 'auto' || o === 'scroll' || o === 'hidden') return true;
     }
@@ -355,7 +357,9 @@ try {
   // 5d2. Calamities, each through the ?calamity= switch: its banner, and for a barrage the warned lines.
   for (const kind of ['barrage', 'hunt', 'frenzy', 'hazard']) {
     await go(`${BASE}?debug&seed=7&play&god&t=200&give=xaxis5&calamity=${kind}`);
-    await wait(kind === 'barrage' ? 1500 : 600);
+    await wait(600);
+    // A barrage's first wave falls 0.6 s of game time in: give a slow headless frame rate up to 5 s to get there.
+    if (kind === 'barrage') await page.waitForFunction(() => window.__msq.world.marks.n > 0, null, { timeout: 5000 }).catch(() => {});
     const banner = (await page.isVisible('.banner.show.event')) ? await page.textContent('.banner .banner-title') : null;
     const marks = await page.evaluate(() => window.__msq.world.marks.n);
     log(`calamity ${kind}`, { banner, marks });
@@ -1130,6 +1134,14 @@ try {
     const check = async (name) => {
       await np.waitForTimeout(300);
       const bad = await np.evaluate(overflowProbe);
+      // A long menu is one screen: it never scrolls itself, and its Back sits inside the screen.
+      const reach = await np.evaluate(() => {
+        const s = document.querySelector('.screen');
+        if (!s || !s.matches('.archives, .codex, .feats, .chronicle, .settings, .wardrobe, .missions, .daily')) return null;
+        const b = s.querySelector('.panel > .btn:last-child')?.getBoundingClientRect();
+        return { scrolls: s.scrollHeight > s.clientHeight + 1, back: b ? b.top >= 0 && b.bottom <= innerHeight + 1 : false };
+      });
+      if (reach && (reach.scrolls || !reach.back)) bad.push(`not one screen: ${JSON.stringify(reach)}`);
       fit[name] = bad.length > 0 ? bad : 'ok';
       for (const b of bad) problems.push(`[${vw}px ${name}] ${b}`);
       await np.screenshot({ path: join(OUT, `20-${vw}-${name}.png`) });
