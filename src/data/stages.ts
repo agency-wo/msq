@@ -129,18 +129,18 @@ export const DIFFICULTY = {
    * 1 + pressureSwarm·p, and every swarm hit lands 1 + pressureDamage·p times as hard. A new save meets
    * none of it; a veteran meets all of it.
    */
-  pressureBoss: 5,
-  pressureBossDamage: 0.75,
-  pressureElite: 3.4,
-  pressureSwarm: 2,
-  pressureDamage: 2.2,
+  pressureBoss: 7,
+  pressureBossDamage: 2.5,
+  pressureElite: 6,
+  pressureSwarm: 3.5,
+  pressureDamage: 5.4,
   /**
    * And it answers more as the run goes on: past pressureGrowthFrom minutes the swarm and elites gain
    * pressureGrowth·p more health for every minute on the clock (up to pressureGrowthCap minutes). A
    * trained Emperor's damage outgrows the swarm's own curve, so without this the late swarm still fell
    * to a hit or two.
    */
-  pressureGrowth: 0.6,
+  pressureGrowth: 0.9,
   pressureGrowthFrom: 3,
   pressureGrowthCap: 20,
   /**
